@@ -24,8 +24,10 @@ def test_end_to_end(mock_meta_image) -> None:
 
     header = statistic.add_to_header(client, {})
 
-    assert header["GUIDING RMS1"] == (1.0, "RMS for guiding on axis 1")
-    assert header["GUIDING RMS2"] == (1.0, "RMS for guiding on axis 2")
+    assert header["GUIDING RMS1"].value == 1.0
+    assert header["GUIDING RMS1"].comment == "RMS for guiding on axis 1"
+    assert header["GUIDING RMS2"].value == 1.0
+    assert header["GUIDING RMS2"].comment == "RMS for guiding on axis 2"
 
 
 def test_build_header_to_few_values() -> None:

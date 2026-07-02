@@ -7,6 +7,7 @@ import numpy as np
 
 from pyobs.images import Image
 from pyobs.images.processors.detection import SourceDetection
+from pyobs.interfaces import AutoFocusPoint
 from pyobs.object import get_object
 from pyobs.utils.curvefit import fit_hyperbola
 from pyobs.utils.focusseries.base import FocusSeries
@@ -63,6 +64,10 @@ class PhotometryFocusSeries(FocusSeries):
 
         # add to list
         self._data.append({"focus": focus_value, "r": radius, "rerr": radius_err})
+
+    def get_data_points(self) -> list[AutoFocusPoint]:
+        """Returns a list of data points."""
+        return [AutoFocusPoint(focus=d["focus"], value=d["r"]) for d in self._data]
 
     def fit_focus(self) -> tuple[float, float]:
         """Fit focus from analysed images

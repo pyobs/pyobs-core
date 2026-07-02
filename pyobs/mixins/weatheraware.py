@@ -120,7 +120,8 @@ class WeatherAwareMixin:
                     try:
                         # get good status
                         async with module.proxy(this.__weather, IWeather) as proxy:
-                            this.__is_weather_good = await proxy.is_weather_good()
+                            weather_state = await proxy.wait_for_state(IWeather, timeout=5.0)
+                            this.__is_weather_good = weather_state.good if weather_state is not None else False
 
                     except Exception:
                         # could either not connect or weather is not good

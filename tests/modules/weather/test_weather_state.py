@@ -1,23 +1,23 @@
 import pytest
 
-from pyobs.modules.weather.weather_state import WeatherState
+from pyobs.modules.weather.weather_state import WeatherStatus
 
 
 def test_status_set_non_good():
-    weather_state = WeatherState()
+    weather_status = WeatherStatus()
     with pytest.raises(ValueError):
-        weather_state.status = {}
+        weather_status.status = {}
 
 
 def test_status_set_none_good():
-    weather_state = WeatherState()
-    weather_state.status = {"good": None}
+    weather_status = WeatherStatus()
+    weather_status.status = {"good": None}
 
-    assert weather_state.status["good"] is False
+    assert weather_status.status["good"] is False
 
 
 def test_status_set():
-    weather_state = WeatherState()
-    weather_state.status = {"good": True}
+    weather_status = WeatherStatus()
+    weather_status.status = {"good": True}
 
-    assert weather_state.status["good"] is True
+    assert weather_status.status["good"] is True

@@ -159,7 +159,7 @@ class RPC:
         jid: str | slixmpp.JID = iq["id"]
         if isinstance(jid, slixmpp.JID):
             jid = jid.node
-        future = Future(annotation=annotation, comm=self._comm)
+        future = Future(annotation=annotation)
         self._futures[jid] = future
 
         await iq.send()

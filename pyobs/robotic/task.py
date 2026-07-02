@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import ConfigDict, Field, PrivateAttr
 
+from pyobs.interfaces import FitsHeaderEntry
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
@@ -90,7 +91,7 @@ class Task(BaseModel):
         """Whether task is finished."""
         return False
 
-    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, tuple[Any, str]]:
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:

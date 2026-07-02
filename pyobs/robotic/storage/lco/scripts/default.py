@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 
 from pyobs.interfaces import (
+    FitsHeaderEntry,
     IAcquisition,
     IAutoGuiding,
     IBinning,
@@ -250,7 +251,7 @@ class LcoDefaultScript(LcoScript):
                 log.info("Stopping telescope...")
                 await telescope.stop_motion()
 
-    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -261,12 +262,12 @@ class LcoDefaultScript(LcoScript):
         """
 
         # init header
-        hdr = {}
+        hdr: dict[str, FitsHeaderEntry] = {}
 
         # which image type?
         if self._image_type == ImageType.OBJECT:
             # add object name
-            hdr["OBJECT"] = self.request.configurations[0].target.name, "Name of target"
+            hdr["OBJECT"] = FitsHeaderEntry(self.request.configurations[0].target.name, "Name of target")
 
         # return
         return hdr

@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Any
 
+from pyobs.interfaces import FitsHeaderEntry
 from pyobs.modules.pointing.guidingstatistics.guidingstatistics import GuidingStatistics
 
 
@@ -39,12 +39,12 @@ class GuidingStatisticsUptime(GuidingStatistics[bool, tuple[bool | None, datetim
 
         return uptime / total_time * 100.0
 
-    def _build_header(self, data: list[tuple[bool | None, datetime]]) -> dict[str, tuple[Any, str]]:
+    def _build_header(self, data: list[tuple[bool | None, datetime]]) -> dict[str, FitsHeaderEntry]:
         now = datetime.now()
         data.append((None, now))
 
         uptime_percentage = self._calc_uptime_percentage(data)
-        return {"GUIDING UPTIME": (uptime_percentage, "Time the guiding loop was closed [%]")}
+        return {"GUIDING UPTIME": FitsHeaderEntry(uptime_percentage, "Time the guiding loop was closed [%]")}
 
     def _get_session_data(self, input_data: bool) -> tuple[bool | None, datetime] | None:
         now = datetime.now()

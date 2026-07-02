@@ -27,9 +27,14 @@ class MockBaseDome(BaseDome):
 async def test_get_fits_header_before(mocker):
     dome = MockBaseDome()
 
-    mocker.patch("pyobs.modules.roof.BaseRoof.get_fits_header_before", return_value={"ROOF-OPN": (True, "")})
+    from pyobs.interfaces import FitsHeaderEntry
+
+    mocker.patch(
+        "pyobs.modules.roof.BaseRoof.get_fits_header_before", return_value={"ROOF-OPN": FitsHeaderEntry(True, "")}
+    )
 
     header = await dome.get_fits_header_before()
 
     assert "ROOF-OPN" in header
-    assert header["ROOF-AZ"] == (0.0, "Azimuth of roof slit, deg E of N")
+    assert header["ROOF-AZ"].value == 0.0
+    assert header["ROOF-AZ"].comment == "Azimuth of roof slit, deg E of N"

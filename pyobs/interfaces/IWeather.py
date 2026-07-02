@@ -1,11 +1,28 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
 from pyobs.utils.enums import WeatherSensors
 
+from ..utils.time import Time
 from .IStartStop import IStartStop
+
+
+@dataclass
+class WeatherSensorReading:  # WeatherState.readings element
+    sensor: WeatherSensors
+    value: float
+    unit: str
+    time: Time = field(default_factory=Time.now)
+
+
+@dataclass
+class WeatherState:
+    good: bool
+    readings: list[WeatherSensorReading] = field(default_factory=list)
+    time: Time = field(default_factory=Time.now)
 
 
 class IWeather(IStartStop, metaclass=ABCMeta):
@@ -13,28 +30,10 @@ class IWeather(IStartStop, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    @abstractmethod
-    async def get_weather_status(self, **kwargs: Any) -> dict[str, Any]:
-        """Returns status of object in form of a dictionary. See other interfaces for details."""
-        ...
+    state = WeatherState
 
     @abstractmethod
-    async def is_weather_good(self, **kwargs: Any) -> bool:
-        """Whether the weather is good to observe."""
-        ...
-
-    @abstractmethod
-    async def get_current_weather(self, **kwargs: Any) -> dict[str, Any]:
-        """Returns current weather.
-
-        Returns:
-            Dictionary containing entries for time, good, and sensor, with the latter being another dictionary
-            with sensor information, which contain a value and a good flag.
-        """
-        ...
-
-    @abstractmethod
-    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> tuple[str, float]:
+    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> WeatherSensorReading:
         """Return value for given sensor.
 
         Args:
@@ -42,9 +41,9 @@ class IWeather(IStartStop, metaclass=ABCMeta):
             sensor: Name of sensor to get value from.
 
         Returns:
-            Tuple of current value of given sensor or None and time of measurement or None.
+            Current reading for the given sensor.
         """
         ...
 
 
-__all__ = ["IWeather"]
+__all__ = ["IWeather", "WeatherState", "WeatherSensorReading"]

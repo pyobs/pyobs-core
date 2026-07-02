@@ -1,7 +1,15 @@
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .interface import Interface
+
+
+@dataclass
+class OptimalFocusState:  # 2.0 adds focus_err alongside the existing focus value
+    focus: float
+    time: Time = field(default_factory=Time.now)
 
 
 class IFocusModel(Interface, metaclass=ABCMeta):
@@ -9,10 +17,7 @@ class IFocusModel(Interface, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    @abstractmethod
-    async def get_optimal_focus(self, **kwargs: Any) -> float:
-        """Returns the optimal focus."""
-        ...
+    state = OptimalFocusState
 
     @abstractmethod
     async def set_optimal_focus(self, **kwargs: Any) -> None:

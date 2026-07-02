@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 import pyobs.utils.exceptions as exc
+from pyobs.interfaces import FitsHeaderEntry
 from pyobs.robotic.scheduler.constraints import (
     AirmassConstraint,
     Constraint,
@@ -214,7 +215,7 @@ class LcoTask(Task):
         """Whether task is finished."""
         return self.request.configurations[0].state != "PENDING"
 
-    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, tuple[Any, str]]:
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:

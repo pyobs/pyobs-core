@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 from typing import Any
 
 from .interface import Interface
+
+
+@dataclass
+class FitsHeaderEntry:
+    value: int | float | str | None
+    comment: str
 
 
 class IFitsHeaderBefore(Interface, metaclass=ABCMeta):
@@ -15,7 +22,7 @@ class IFitsHeaderBefore(Interface, metaclass=ABCMeta):
     @abstractmethod
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -27,4 +34,4 @@ class IFitsHeaderBefore(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IFitsHeaderBefore"]
+__all__ = ["FitsHeaderEntry", "IFitsHeaderBefore"]

@@ -13,7 +13,7 @@ __title__ = "Interfaces"
 
 from .IAbortable import IAbortable
 from .IAcquisition import IAcquisition
-from .IAutoFocus import IAutoFocus
+from .IAutoFocus import AutoFocusPoint, AutoFocusResult, AutoFocusState, IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .IAutonomous import IAutonomous
 from .IBinning import BinningCapabilities, BinningState, IBinning
@@ -27,10 +27,10 @@ from .IExposure import ExposureState, IExposure
 from .IExposureTime import ExposureTimeState, IExposureTime
 from .IFilters import FiltersCapabilities, FilterState, IFilters
 from .IFitsHeaderAfter import IFitsHeaderAfter
-from .IFitsHeaderBefore import IFitsHeaderBefore
+from .IFitsHeaderBefore import FitsHeaderEntry, IFitsHeaderBefore
 from .IFlatField import IFlatField
 from .IFocuser import FocuserState, IFocuser
-from .IFocusModel import IFocusModel
+from .IFocusModel import IFocusModel, OptimalFocusState
 from .IGain import GainState, IGain
 from .IImageFormat import IImageFormat, ImageFormatCapabilities, ImageFormatState
 from .IImageType import IImageType, ImageTypeState
@@ -58,13 +58,16 @@ from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures, SensorReading, TemperaturesState
 from .IVideo import IVideo, VideoCapabilities
-from .IWeather import IWeather
+from .IWeather import IWeather, WeatherSensorReading, WeatherState
 from .IWindow import IWindow, WindowCapabilities, WindowState
 
 __all__ = [
     "IAbortable",
     "IAcquisition",
     "IAutoFocus",
+    "AutoFocusResult",
+    "AutoFocusPoint",
+    "AutoFocusState",
     "IAutoGuiding",
     "IAutonomous",
     "IBinning",
@@ -84,10 +87,12 @@ __all__ = [
     "IFilters",
     "FiltersCapabilities",
     "FilterState",
+    "FitsHeaderEntry",
     "IFitsHeaderAfter",
     "IFitsHeaderBefore",
     "IFlatField",
     "IFocusModel",
+    "OptimalFocusState",
     "IFocuser",
     "FocuserState",
     "IGain",
@@ -141,6 +146,8 @@ __all__ = [
     "IVideo",
     "VideoCapabilities",
     "IWeather",
+    "WeatherState",
+    "WeatherSensorReading",
     "IWindow",
     "WindowCapabilities",
     "WindowState",

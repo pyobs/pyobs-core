@@ -7,9 +7,10 @@ import pytest
 import pyobs
 from pyobs.comm.dummy import DummyComm
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
+from pyobs.interfaces import IWeather, WeatherSensorReading
 from pyobs.modules import Module
 from pyobs.modules.weather import Weather
-from pyobs.utils.enums import WeatherSensors
+from pyobs.utils.enums import Unit, WeatherSensors
 from pyobs.utils.time import Time
 
 
@@ -85,8 +86,15 @@ async def test_get_sensor_value_invalid_response():
 async def test_get_sensor_value():
     weather = Weather("example.com/")
 
-    weather._api.get_sensor_value = AsyncMock(return_value={"time": 1, "value": 2})
-    assert await weather.get_sensor_value("test", WeatherSensors.RAIN) == (1, 2)
+    weather._api.get_sensor_value = AsyncMock(return_value={"time": "2026-07-02T08:36:42", "value": 2})
+    reading = await weather.get_sensor_value("test", WeatherSensors.RAIN)
+
+    assert reading == WeatherSensorReading(
+        sensor=WeatherSensors.RAIN,
+        value=2,
+        unit="",
+        time=Time("2026-07-02T08:36:42", format="isot", scale="utc"),
+    )
 
 
 @pytest.mark.asyncio
@@ -103,7 +111,8 @@ async def test_get_fits_header_before(caplog) -> None:
     weather._weather.status["sensors"] = {"rain": {"value": 1}}
 
     header = await weather.get_fits_header_before()
-    assert header["WS-PREC"] == (True, "Ambient precipitation [0/1]")
+    assert header["WS-PREC"].value is True
+    assert header["WS-PREC"].comment == "Ambient precipitation [0/1]"
 
 
 @pytest.mark.asyncio
@@ -197,19 +206,61 @@ def test_calc_system_init_eta() -> None:
 
 
 @pytest.mark.asyncio
-async def test_is_weather_good() -> None:
+async def test_update_publishes_state() -> None:
     weather = Weather("")
-    weather._active = False
-    assert await weather.is_weather_good() is True
-
+    weather._comm.set_state = AsyncMock()
     weather._active = True
 
-    assert await weather.is_weather_good() is False
+    weather._api.get_current_status = AsyncMock(
+        return_value={"good": True, "sensors": {"temp": {"value": 12.3}, "rain": {"value": None}}}
+    )
+
+    await weather._update()
+
+    weather._comm.set_state.assert_awaited_once()
+    interface, state = weather._comm.set_state.await_args[0]
+    assert interface is IWeather
+    assert state.good is True
+    assert len(state.readings) == 1
+    assert (state.readings[0].sensor, state.readings[0].value, state.readings[0].unit) == (
+        WeatherSensors.TEMPERATURE,
+        12.3,
+        Unit.CELSIUS.value,
+    )
 
 
 @pytest.mark.asyncio
-async def test_get_current_weather() -> None:
+async def test_update_publishes_good_when_inactive() -> None:
     weather = Weather("")
-    status = {"good": True}
-    weather._weather.status = status
-    assert await weather.get_current_weather() == status
+    weather._comm.set_state = AsyncMock()
+    weather._active = False
+
+    weather._api.get_current_status = AsyncMock(return_value={"good": False})
+
+    await weather._update()
+
+    _, state = weather._comm.set_state.await_args[0]
+    assert state.good is True
+
+
+def test_get_readings() -> None:
+    weather = Weather("")
+    weather._weather.status = {
+        "good": True,
+        "sensors": {
+            "temp": {"value": 12.3},
+            "humid": {"value": None},
+            "windspeed": {"value": 5.0},
+        },
+    }
+
+    readings = weather._get_readings()
+    assert [(r.sensor, r.value, r.unit) for r in readings] == [
+        (WeatherSensors.TEMPERATURE, 12.3, Unit.CELSIUS.value),
+        (WeatherSensors.WINDSPEED, 5.0, Unit.KM_PER_HOUR.value),
+    ]
+
+
+def test_get_readings_no_sensors() -> None:
+    weather = Weather("")
+    assert weather._get_readings() == []

@@ -96,8 +96,8 @@ class DataDisplayWidget(QtWidgets.QWidget):
         # set headers
         for i, key in enumerate(sorted(headers.keys())):
             self.table_fits_header.setItem(i, 0, QtWidgets.QTableWidgetItem(key))
-            self.table_fits_header.setItem(i, 1, QtWidgets.QTableWidgetItem(str(headers[key][0])))
-            self.table_fits_header.setItem(i, 2, QtWidgets.QTableWidgetItem(headers[key][1]))
+            self.table_fits_header.setItem(i, 1, QtWidgets.QTableWidgetItem(str(headers[key].value)))
+            self.table_fits_header.setItem(i, 2, QtWidgets.QTableWidgetItem(headers[key].comment))
 
         # adjust column widths
         self.table_fits_header.resizeColumnToContents(0)

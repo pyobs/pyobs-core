@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
+from .IFitsHeaderBefore import FitsHeaderEntry
 from .interface import Interface
 
 
@@ -15,7 +16,7 @@ class IFitsHeaderAfter(Interface, metaclass=ABCMeta):
     @abstractmethod
     async def get_fits_header_after(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:

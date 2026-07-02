@@ -5,7 +5,7 @@ from typing import Any
 import astropy.units as u
 
 from pyobs.events import TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
-from pyobs.interfaces import IAutonomous, IFitsHeaderBefore
+from pyobs.interfaces import FitsHeaderEntry, IAutonomous, IFitsHeaderBefore
 from pyobs.modules import Module
 from pyobs.robotic import (
     Observation,
@@ -190,7 +190,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -203,8 +203,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         # inside an observation?
         if self._task is not None:
             hdr = self._task.get_fits_headers()
-            hdr["TASK"] = self._task.name, "Name of task"
-            hdr["REQNUM"] = str(self._task.id), "Unique ID of task"
+            hdr["TASK"] = FitsHeaderEntry(self._task.name, "Name of task")
+            hdr["REQNUM"] = FitsHeaderEntry(str(self._task.id), "Unique ID of task")
             return hdr
         else:
             return {}

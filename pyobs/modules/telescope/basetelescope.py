@@ -10,6 +10,7 @@ from astropy.coordinates import ICRS, SkyCoord
 
 from pyobs.events import MoveAltAzEvent, MoveRaDecEvent
 from pyobs.interfaces import (
+    FitsHeaderEntry,
     IFitsHeaderBefore,
     IPointingAltAz,
     IPointingRaDec,
@@ -222,7 +223,7 @@ class BaseTelescope(
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -233,7 +234,7 @@ class BaseTelescope(
         """
 
         # define base header
-        hdr: dict[str, Any | tuple[Any, str]] = {}
+        hdr: dict[str, FitsHeaderEntry] = {}
 
         # positions
         coords_ra_dec = None
@@ -246,32 +247,38 @@ class BaseTelescope(
 
         # set coordinate headers
         if coords_ra_dec is not None:
-            hdr["TEL-RA"] = (float(coords_ra_dec.ra.degree), "Right ascension of telescope [degrees]")
-            hdr["TEL-DEC"] = (float(coords_ra_dec.dec.degree), "Declination of telescope [degrees]")
+            hdr["TEL-RA"] = FitsHeaderEntry(float(coords_ra_dec.ra.degree), "Right ascension of telescope [degrees]")
+            hdr["TEL-DEC"] = FitsHeaderEntry(float(coords_ra_dec.dec.degree), "Declination of telescope [degrees]")
         if coords_alt_az is not None:
-            hdr["TEL-ALT"] = (float(coords_alt_az.alt.degree), "Telescope altitude [degrees]")
-            hdr["TEL-AZ"] = (float(coords_alt_az.az.degree), "Telescope azimuth [degrees]")
-            hdr["TEL-ZD"] = (90.0 - hdr["TEL-ALT"][0], "Telescope zenith distance [degrees]")
-            hdr["AIRMASS"] = (float(coords_alt_az.secz.value), "Airmass of observation start")
+            hdr["TEL-ALT"] = FitsHeaderEntry(float(coords_alt_az.alt.degree), "Telescope altitude [degrees]")
+            hdr["TEL-AZ"] = FitsHeaderEntry(float(coords_alt_az.az.degree), "Telescope azimuth [degrees]")
+            hdr["TEL-ZD"] = FitsHeaderEntry(90.0 - hdr["TEL-ALT"].value, "Telescope zenith distance [degrees]")
+            hdr["AIRMASS"] = FitsHeaderEntry(float(coords_alt_az.secz.value), "Airmass of observation start")
 
         # convert to sexagesimal
         if coords_ra_dec is not None:
-            hdr["RA"] = (str(coords_ra_dec.ra.to_string(sep=":", unit=u.hour, pad=True)), "Right ascension of object")
-            hdr["DEC"] = (str(coords_ra_dec.dec.to_string(sep=":", unit=u.deg, pad=True)), "Declination of object")
+            hdr["RA"] = FitsHeaderEntry(
+                str(coords_ra_dec.ra.to_string(sep=":", unit=u.hour, pad=True)), "Right ascension of object"
+            )
+            hdr["DEC"] = FitsHeaderEntry(
+                str(coords_ra_dec.dec.to_string(sep=":", unit=u.deg, pad=True)), "Declination of object"
+            )
 
         # site location
         if self._observer is not None:
-            hdr["LATITUDE"] = (float(self.observer.location.lat.degree), "Latitude of telescope [deg N]")
-            hdr["LONGITUD"] = (float(self.observer.location.lon.degree), "Longitude of telescope [deg E]")
-            hdr["HEIGHT"] = (float(self.observer.location.height.value), "Altitude of telescope [m]")
+            hdr["LATITUDE"] = FitsHeaderEntry(float(self.observer.location.lat.degree), "Latitude of telescope [deg N]")
+            hdr["LONGITUD"] = FitsHeaderEntry(
+                float(self.observer.location.lon.degree), "Longitude of telescope [deg E]"
+            )
+            hdr["HEIGHT"] = FitsHeaderEntry(float(self.observer.location.height.value), "Altitude of telescope [m]")
 
         # add static fits headers
         for key, value in self._fits_headers.items():
-            hdr[key] = tuple(value)
+            hdr[key] = FitsHeaderEntry(value[0], value[1])
 
         # add celestial headers
         for key, value in self._celestial_headers.items():
-            hdr[key] = tuple(value)
+            hdr[key] = FitsHeaderEntry(value[0], value[1])
 
         # finish
         return hdr

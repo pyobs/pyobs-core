@@ -58,7 +58,7 @@ from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures, SensorReading, TemperaturesState
 from .IVideo import IVideo, VideoCapabilities
-from .IWeather import IWeather
+from .IWeather import IWeather, WeatherSensorReading, WeatherState
 from .IWindow import IWindow, WindowCapabilities, WindowState
 
 __all__ = [
@@ -144,6 +144,8 @@ __all__ = [
     "IVideo",
     "VideoCapabilities",
     "IWeather",
+    "WeatherState",
+    "WeatherSensorReading",
     "IWindow",
     "WindowCapabilities",
     "WindowState",

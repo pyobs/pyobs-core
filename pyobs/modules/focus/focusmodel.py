@@ -265,12 +265,12 @@ class FocusModel(Module, IFocusModel):
             log.info("Fetching temperature from weather module...")
 
             async with self.proxy(self._weather, IWeather) as weather:
-                time, val = await weather.get_sensor_value(self._temp_station, self._temp_sensor)
-                if val is None:
+                reading = await weather.get_sensor_value(self._temp_station, self._temp_sensor)
+                if reading.value is None:
                     raise ValueError("Received invalid temperature from weather station.")
 
             # get temperature
-            variables["temp"] = val
+            variables["temp"] = reading.value
             log.info("Got temperature of %.2f.", variables["temp"])
 
         # loop other temperatures

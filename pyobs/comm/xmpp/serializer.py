@@ -468,6 +468,45 @@ def _interface_schema_to_xml(interface: type) -> ET.Element:
     return root
 
 
+def _event_schema_to_xml(event_cls: type) -> ET.Element:
+    """Build the <{ns}event> disco#info schema element for one Event subclass."""
+    ns = f"urn:pyobs:event:{event_cls.__name__}:{event_cls.version}"
+    root = ET.Element(f"{{{ns}}}event", attrib={"name": event_cls.__name__})
+
+    enums: dict[str, type] = {}
+    field_elems: list[ET.Element] = []
+
+    try:
+        hints = get_type_hints(event_cls.__init__, include_extras=True)
+        sig = inspect.signature(event_cls.__init__)
+    except Exception:
+        return root
+
+    for param_name, param in sig.parameters.items():
+        if param_name == "self" or param.kind in (param.VAR_KEYWORD, param.VAR_POSITIONAL):
+            continue
+        if param_name not in hints:
+            continue
+        type_str, unit_str = _wire_type(hints[param_name], enums)
+        attrib: dict[str, str] = {"name": param_name, "type": type_str}
+        if unit_str:
+            attrib["unit"] = unit_str
+        field_elems.append(ET.Element("field", attrib=attrib))
+
+    if enums:
+        types_elem = ET.SubElement(root, "types")
+        for enum_name, enum_cls in sorted(enums.items()):
+            enum_elem = ET.SubElement(types_elem, "enum", attrib={"name": enum_name})
+            for member in enum_cls:
+                val_elem = ET.SubElement(enum_elem, "value")
+                val_elem.text = member.value
+
+    for f in field_elems:
+        root.append(f)
+
+    return root
+
+
 __all__ = [
     "PYOBS_NS",
     "value_to_xml",
@@ -475,4 +514,5 @@ __all__ = [
     "_dataclass_to_xml",
     "_xml_to_dataclass",
     "_interface_schema_to_xml",
+    "_event_schema_to_xml",
 ]

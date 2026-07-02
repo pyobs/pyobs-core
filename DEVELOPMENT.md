@@ -378,7 +378,7 @@ class NewImageEvent(Event):
 
 `urn:pyobs:event:NewImageEvent:{version}` derives from the event class itself — mechanically identical to `Interface.version`, just answering a question ("what changed about this event's schema") that's genuinely independent of any one interface's command/state contract, because the event was never that interface's to version in the first place.
 
-✅ `Event.version: int = 1` exists on `develop`, same as `Interface.version`. 🔵 **Still not done:** the wire side — `add_feature(f"pyobs:event:{ev.__name__}")` in `xmppcomm.py` still publishes the bare pre-2.0 form, not `urn:pyobs:event:{name}:{version}`. Event schema publication in disco#info hasn't started either. This was deliberately left out of scope when the interface-feature versioning landed (see the mixed-version-fleet fix in Open Questions below) and is still open — see Phase 0/Phase 3 in the Work Plan.
+✅ `Event.version: int = 1` exists on `develop`, same as `Interface.version`. ✅ Wire side done: `add_feature`/`add_interest`/PubSub node all use `urn:pyobs:event:{name}:{version}`; `_event_schema_to_xml` in `serializer.py` emits typed `<{ns}event>` blocks (with `<field>` and `<types>/<enum>` elements) in disco#info responses.
 
 ## Wire Protocol
 
@@ -1523,7 +1523,7 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 
 Consolidated list of every 🔵 open item still standing elsewhere in this document — the single place to check what's left, rather than scanning each section.
 
-- 🔵 **Event feature versioning + schema publication.** `add_feature` in `xmppcomm.py` still publishes the unversioned `pyobs:event:{name}` form, not `urn:pyobs:event:{name}:{version}`; no event schema block exists in disco#info yet. See [Events](#4-events--unchanged-at-the-api-level), [Versioning](#versioning), [Phase 0](#phase-0--foundations), [Phase 3](#phase-3--bulk-rollout).
+- ✅ ~~**Event feature versioning + schema publication.**~~ `add_feature`/`add_interest`/PubSub node now use `urn:pyobs:event:{name}:{version}`; `_event_schema_to_xml` emits `<{ns}event>` blocks with typed `<field>` and `<types>/<enum>` in disco#info. See [Events](#4-events--unchanged-at-the-api-level).
 - ✅ ~~**`<types>` disco#info block for enums** not yet implemented.~~ Full `<pyobs:interface>` schema (commands, state, types/enums) now emitted in disco#info via `_interface_schema_to_xml` in `serializer.py`. See [Enums in RPC and State](#enums-in-rpc-and-state).
 - ✅ ~~**`with_units`/`_interface_unit_hints` decorator** not implemented.~~ Implemented in `pyobs/utils/units.py`; no call sites applied yet — opt-in per method.
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).

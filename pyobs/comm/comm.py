@@ -38,6 +38,7 @@ class Comm:
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._logging_task: asyncio.Task[Any] | None = None
         self._event_handlers: dict[type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
+        self._registered_events: set[type[Event]] = set()
         self._closing = asyncio.Event()
 
     @property
@@ -434,6 +435,7 @@ class Comm:
 
         # we also want to register all events derived from the given one
         event_classes = self._get_derived_events(event_class)
+        self._registered_events.update(event_classes)
 
         # do we have a handler?
         if handler:

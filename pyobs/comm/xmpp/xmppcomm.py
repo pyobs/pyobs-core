@@ -27,7 +27,7 @@ from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
 
 from .rpc import RPC
-from .serializer import _dataclass_to_xml, _interface_schema_to_xml, _xml_to_dataclass
+from .serializer import _dataclass_to_xml, _event_schema_to_xml, _interface_schema_to_xml, _xml_to_dataclass
 from .xmppclient import XmppClient
 
 _CAPABILITY_NS = "urn:pyobs:capability:1"
@@ -653,7 +653,7 @@ class XmppComm(Comm):
         await self._safe_send(
             self.client["xep_0163"].publish,
             stanza,
-            node=f"pyobs:event:{event.__class__.__name__}",
+            node=f"urn:pyobs:event:{event.__class__.__name__}:{event.version}",
             callback=functools.partial(self._send_event_callback, event=event),
         )
 
@@ -677,12 +677,12 @@ class XmppComm(Comm):
         # loop events
         for ev in events:
             # register event at XMPP
-            self.client["xep_0030"].add_feature(f"pyobs:event:{ev.__name__}")
+            self.client["xep_0030"].add_feature(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
 
             # if we have a handler, we're also interested in receiving such events
             if handler:
                 # add interest
-                self.client["xep_0163"].add_interest(f"pyobs:event:{ev.__name__}")
+                self.client["xep_0163"].add_interest(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
 
         # update caps and send presence
         await self._safe_send(self.client["xep_0115"].update_caps)
@@ -835,12 +835,13 @@ class XmppComm(Comm):
         # each query appends another copy of every element)
         for old_elem in list(info.xml):
             local = old_elem.tag.split("}")[-1]
+            ns = old_elem.tag[1 : old_elem.tag.index("}")] if "}" in old_elem.tag else ""
             if local == "capabilities":
                 info.xml.remove(old_elem)
-            elif local == "interface":
-                ns = old_elem.tag[1 : old_elem.tag.index("}")] if "}" in old_elem.tag else ""
-                if ns.startswith("urn:pyobs:interface:"):
-                    info.xml.remove(old_elem)
+            elif local == "interface" and ns.startswith("urn:pyobs:interface:"):
+                info.xml.remove(old_elem)
+            elif local == "event" and ns.startswith("urn:pyobs:event:"):
+                info.xml.remove(old_elem)
 
         # Append current capabilities
         for interface, caps in self._capabilities.items():
@@ -852,6 +853,11 @@ class XmppComm(Comm):
         if self._module is not None:
             for interface in self._module.interfaces:
                 info.xml.append(_interface_schema_to_xml(interface))
+
+        # Append event schemas
+        for ev_cls in sorted(self._registered_events, key=lambda e: e.__name__):
+            if not ev_cls.local:
+                info.xml.append(_event_schema_to_xml(ev_cls))
 
         return info
 

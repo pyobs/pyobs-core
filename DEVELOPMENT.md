@@ -525,7 +525,7 @@ Two things this surfaced that the original illustrative list didn't account for:
 
 `datetime` is kept in the vocabulary even though nothing in current interface signatures uses it — not even the buried "time" entry inside `get_current_weather`'s untyped dict — because that's exactly the field a real `IWeather.State` would need once it exists. Reserved for when state schemas need it, not because anything requires it today.
 
-✅ **The predicted conversion mostly happened, now further still.** Of the 19 `tuple[...]`-returning methods this survey found, only 2 remain on `develop`: `IFlatField.flat_field` (`-> tuple[int, float]`) and `IWeather.get_sensor_value` (`-> tuple[str, float]`) — the rest were converted to named dataclasses as designed, most recently `IAutoFocus.auto_focus`, which now returns `AutoFocusResult(focus, focus_err)` instead of a bare tuple, alongside a new `IAutoFocus.state = AutoFocusState` and removal of the old `auto_focus_status() -> dict[str, Any]` method entirely. `IWeather` not yet having a `state =` assignment (see the Work Plan) is why its tuple return is still standing; `IFlatField.flat_field` is a genuine RPC action result, not a State candidate, so it wasn't in scope for removal.
+✅ **The predicted conversion mostly happened, now further still.** Of the 19 `tuple[...]`-returning methods this survey found, only 1 remains on `develop`: `IFlatField.flat_field` (`-> tuple[int, float]`) — the rest were converted to named dataclasses as designed. Most recently: `IAutoFocus.auto_focus`, which now returns `AutoFocusResult(focus, focus_err)` instead of a bare tuple, alongside a new `IAutoFocus.state = AutoFocusState` and removal of the old `auto_focus_status() -> dict[str, Any]` method entirely; and `IWeather.get_sensor_value`, which now returns `WeatherSensorReading(sensor, value, unit, time)` instead of `tuple[str, float]`, kept as RPC by design (a live per-station call) rather than folded into `IWeather.state`, which was added separately. `IFlatField.flat_field` is a genuine RPC action result, not a State candidate, so it stays out of scope for removal.
 
 ### Enums in RPC and State
 
@@ -635,7 +635,7 @@ class Unit(StrEnum):
 
 So `ra * Unit.DEGREES.to_astropy()` replaces `ra * u.deg` wherever a module is already doing that construction, without inventing a second, disconnected unit vocabulary that could drift from what astropy actually means by `"deg"`. One real wrinkle worth flagging for whoever eventually uses this for conversion, not just construction: astropy treats `deg_C` as a non-multiplicative unit — `(20 * u.deg_C).to(u.K)` raises `UnitConversionError` unless called with `equivalencies=u.temperature()`. Doesn't affect the tagging design here, but would bite silently if `to_astropy()`'s result were later fed into naive `.to()` conversion code without that equivalency.
 
-One thing this surfaced rather than fixed: `WeatherSensors.RAIN` is a 0/1 flag encoded as `float` — not a physical quantity with a unit at all, a `bool` wearing a `float`'s clothes. Annotating it with a unit would paper over the real issue; it belongs on the punch list for when `IWeather.State` actually gets designed (see [Phase 2](#phase-2--audit-and-design-pass-no-implementation-yet)), not solved at the vocabulary level.
+One thing this surfaced rather than fixed: `WeatherSensors.RAIN` is a 0/1 flag encoded as `float` — not a physical quantity with a unit at all, a `bool` wearing a `float`'s clothes. Annotating it with a unit would paper over the real issue. 🔵 **Still unfixed now that `IWeather.state = WeatherState` exists**: `WeatherSensorReading.unit` for `RAIN` is just `""` (see `SENSOR_UNITS` in `weather.py`) — a placeholder, not a real answer to what this field should be.
 
 **Optional convenience: automating the `to_astropy()` call itself, not just providing it.** Manually writing `ra * Unit.DEGREES.to_astropy()` repeats a unit that's already declared once, on the interface signature — the same kind of duplication this whole document has otherwise tried to design out. Since the unit only ever needs to be looked up, not re-specified, that lookup can be automated with a decorator on the concrete implementation:
 
@@ -1516,7 +1516,7 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 - Almost all of this is isolated to `pyobs.comm.xmpp`; Local backend required little to no change (✅ done). There is no D-Bus backend in `pyobs-core` to migrate — see the correction in Impact Analysis.
 - ✅ `await self.proxy(...)` is removed in favor of `async with self.proxy(...) as x:` as the only way to obtain a proxy, closing off the long-held-reference pattern that causes stale state at its source rather than just discouraging it. `cache_proxies` (real, on `1.x`) is gone. `has_proxy()` (plain `async def`, not `async with` — it returns `bool`, never a `Proxy`) covers the common case of using `proxy()` purely as an existence/type check. All migrated: no `await self.proxy(...)` call sites remain in `pyobs-core`.
 - ✅ Versioning is settled and implemented for interfaces: `urn:pyobs:interface:ICamera:2`, with state namespaces and PubSub node paths inheriting the interface's version — commands and state are one versioned contract. `Interface.version`/`Event.version` both exist. 🔵 **Not yet done:** events are versioned independently in principle (`urn:pyobs:event:NewImageEvent:1`) but the wire side hasn't landed — event disco#info features are still the unversioned `pyobs:event:{name}` form.
-- ✅ Mostly done: tuple-returning methods and undocumented `Any`-typed methods converted to named dataclasses. Only 2 of the original 19 tuple-returning methods remain (`IFlatField.flat_field`, `IWeather.get_sensor_value` — the second tied to the one interface not yet migrated to `state`). `IConfig`'s deliberately dynamic config values are handled separately as designed.
+- ✅ Mostly done: tuple-returning methods and undocumented `Any`-typed methods converted to named dataclasses. Only 1 of the original 19 tuple-returning methods remains (`IFlatField.flat_field`, a genuine RPC action result, out of scope for removal). `IConfig`'s deliberately dynamic config values are handled separately as designed.
 - ✅ Units: `Unit(StrEnum)` exists in `pyobs/utils/enums.py` with `to_astropy()`. Annotation rollout is partial — 12 interface files use `Annotated[float, Unit.X]` so far, not yet exhaustive across every applicable field.
 
 ## Open Questions / Next Steps
@@ -1528,8 +1528,9 @@ Consolidated list of every 🔵 open item still standing elsewhere in this docum
 - 🔵 **`Unit` annotation rollout in progress** — 12 of ~19 applicable interface files annotated as of this pass. See [Units](#units).
 - 🔵 **`with_units`/`_interface_unit_hints` decorator** not implemented — flagged as optional convenience, not a gap. See [Units](#units).
 - 🔵 **Stale-reference `callback(None)` on disconnect not implemented.** `XmppComm._unsubscribe_state` removes the callback and sends the PubSub unsubscribe IQ on last-subscriber, but doesn't push a final `callback(None)`; a `Proxy` held past its module's disconnect keeps returning stale last-known state instead of collapsing to `None`. See [Lifecycle](#lifecycle-piggyback-on-existing-proxy-eviction-no-new-proxy-api).
-- 🔵 **One interface still missing `state =` assignment**: `IWeather` — still exposes its original `get_*`/tuple-returning RPC methods. (`IAutoFocus` and `IFocusModel` both closed since — see [Phase 1.5](#phase-15--rpc-payload-encoding-20).) See [Phase 3](#phase-3--bulk-rollout), [Appendix: get_* to State Survey](#appendix-get_-to-state-survey).
+- ✅ ~~One interface still missing `state =` assignment: `IWeather`.~~ Closed: `IWeather.state = WeatherState(good, readings, time)`; `get_weather_status`/`is_weather_good`/`get_current_weather` removed outright. `get_sensor_value` deliberately kept as RPC (a live per-station HTTP call, not a fit for continuous state) but now returns `WeatherSensorReading` instead of a bare tuple, and `WeatherState.readings` carries aggregate per-sensor values with no `station` field. All three interfaces flagged here (`IAutoFocus`, `IFocusModel`, `IWeather`) are now closed — see [Phase 1.5](#phase-15--rpc-payload-encoding-20) and [Phase 3](#phase-3--bulk-rollout).
 - 🔵 **`IFocusModel.state = OptimalFocusState` is missing the `focus_err` field** the design (and the field's own source comment) called for — currently just `focus`/`time`. Likely an oversight worth a follow-up, not a deliberate change. See [Phase 1.5](#phase-15--rpc-payload-encoding-20).
+- 🔵 **`WeatherSensors.RAIN` still has no real unit.** `WeatherSensorReading.unit` for `RAIN` is a placeholder empty string (`SENSOR_UNITS` in `weather.py`) — the underlying "0/1 flag encoded as `float`" design question flagged in [Units](#units) was never resolved, just carried through into the now-implemented `WeatherState`.
 - 🔵 **`IConfig.ConfigValue` type alias** (`bool | int | float | str`) designed but never applied — `get_config_value`/`set_config_value` still type as bare `Any`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 - 🔵 **`IAcquisition.acquire_target` → `AcquisitionResult`** designed but not applied. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 - 🔵 **`IFitsHeaderBefore`/`After` → `FitsHeaderResult`/`FitsHeaderEntry`** designed but not applied — both methods still return bare `dict[str, tuple[Any, str]]`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
@@ -1588,19 +1589,19 @@ services:
 **Landed:**
 - ✅ `pyobs/comm/xmpp/serializer.py` — shared `value_to_xml`/`xml_to_value` core used by both state and RPC. Handles the full vocabulary: `bool`, `int`, `float`, `str`, `StrEnum`, `nil`, `list`, `tuple`, `dict`, dataclasses, `Annotated`/`Optional` unwrapping, ejabberd namespace-strip on round-trip. `_dataclass_to_xml`/`_xml_to_dataclass` delegate to `value_to_xml`/`xml_to_value` per field — cleaner than the document sketched.
 - ✅ `pyobs/comm/xmpp/rpc.py` — `RPC` class using `urn:pyobs:rpc:1`: `params_to_xml`/`xml_to_params` for arguments, `return_to_xml`/`xml_to_return` reading `return_annotation`, `fault_to_xml`/`xml_to_fault` for typed exception reconstruction. XEP-0009 envelope (`jabber:iq:rpc`) unchanged; `urn:pyobs:rpc:1` scopes only `<value>` content.
-- ✅ **`get_*` removal has gone much further than "still pending."** This isn't an intermediate step anymore for most interfaces — `ICooling.get_cooling`, `IWindow.get_full_frame`, `IModule.get_label`/`get_version`, `IMultiFiber.get_fiber_count`, `IVideo.get_video`, `IConfig.get_config_caps`, `IFocusModel.get_optimal_focus` and others are gone outright, not returning `State` as a transition shape. Only 6 `get_*`-prefixed abstract methods remain across all interfaces: `IConfig.get_config_value` (RPC by design), `IFitsHeaderBefore`/`After.get_fits_header_*` (RPC by design), and `IWeather`'s three (🔵 not yet migrated — see Phase 3). The `IWindow.get_full_frame` vs. Discovery discrepancy this section used to flag is moot: the method isn't there to be inconsistent anymore.
+- ✅ **`get_*` removal has gone much further than "still pending."** This isn't an intermediate step anymore for most interfaces — `ICooling.get_cooling`, `IWindow.get_full_frame`, `IModule.get_label`/`get_version`, `IMultiFiber.get_fiber_count`, `IVideo.get_video`, `IConfig.get_config_caps`, `IFocusModel.get_optimal_focus`, `IWeather.get_weather_status`/`is_weather_good`/`get_current_weather` and others are gone outright, not returning `State` as a transition shape. Only 4 `get_*`-prefixed abstract methods remain across all interfaces: `IConfig.get_config_value` (RPC by design), `IFitsHeaderBefore`/`After.get_fits_header_*` (RPC by design), and `IWeather.get_sensor_value` (RPC by design — a live per-station HTTP call, kept deliberately rather than folded into `IWeather.state`). The `IWindow.get_full_frame` vs. Discovery discrepancy this section used to flag is moot: the method isn't there to be inconsistent anymore.
 
 🔵 **Still pending:**
 - `utils/types.py` — still used in `proxy.py`, `module.py`, `parallel.py`, `localcomm.py`. Old cast path runs alongside the new serializer. Leave in place until `LocalComm` and all backends are updated (Phase 4).
-- 1 of the ~26 catalogued State-bearing interfaces remains: `IWeather` (Phase 3 completion). `IAutoFocus` and `IFocusModel` both closed this pass. `IFocusModel.state = OptimalFocusState` replaces `get_optimal_focus()`, but **`OptimalFocusState` shipped with only `focus`/`time` — no `focus_err` field**, despite the class's own comment ("2.0 adds focus_err alongside the existing focus value") and this document's catalogue both saying it should carry one; looks like an oversight rather than a deliberate scope cut. See the [get_* to State Survey](#appendix-get_-to-state-survey) and [catalogue](#appendix-state-and-capability-dataclass-catalogue) below.
 - `ConfigValue = bool | int | float | str` was a settled design decision (Phase 2) but was never actually applied — `IConfig.get_config_value`/`set_config_value` still type as bare `Any` on `develop`.
+- `WeatherSensors.RAIN`'s unit is still an unresolved placeholder (`""`) in `WeatherSensorReading` — see [Units](#units).
 
 ### Phase 2 — Audit and design pass (no implementation yet)
 
 ✅ **Done.**
 
 - ✅ ~~Systematic survey of every `get_*` method across all interfaces for State-read candidacy.~~ Done — see the [get_* to State Survey](#appendix-get_-to-state-survey). All 47 methods settled: 34 `State`, 8 `Discovery`, 2 `Presence`, 4 `RPC`.
-- ✅ ~~Design (not yet implement) the State dataclasses resolving the six genuinely-undocumented-`Any` interfaces.~~ Design done — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). `IAutoFocus` implemented this pass; 🔵 implementation for `IWeather` still pending (Phase 3).
+- ✅ ~~Design (not yet implement) the State dataclasses resolving the six genuinely-undocumented-`Any` interfaces.~~ Design done and now fully implemented — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). `IAutoFocus` and `IWeather` both closed (Phase 3).
 - ~~Design the tagged-union approach for `IConfig.get_config_value`/`set_config_value` separately.~~ Design settled — `ConfigValue = bool | int | float | str` — 🔵 but never actually applied in code; `get_config_value`/`set_config_value` still type as `Any` on `develop`.
 - ✅ ~~Design the named dataclasses for all 19 tuple-returning methods (`RaDec`, `AltAz`, `Binning`, `Window`, and the rest).~~ Done and implemented — only 3 of the 19 remain (see [Type Vocabulary](#type-vocabulary)).
 
@@ -1638,10 +1639,10 @@ The `<capability>` element pattern designed in [Capabilities / Discovery](#1-cap
 
 ### Phase 3 — Bulk rollout
 
-✅ **Mostly done** — 🔵 2 interfaces and event schema publication remain.
+✅ **Done**, aside from event schema publication — 🔵 see below.
 
-- ✅ Tuple-returning methods converted to dataclasses — 17 of 19 done; the 2 remaining (`IFlatField.flat_field`, `IWeather.get_sensor_value`) are tied to the interface below.
-- Add `State` to every interface identified in Phase 2's `get_*` survey: **done for 25 of ~26**; `IWeather` still has no `state =` assignment and still exposes its original `get_*`/tuple-returning methods. (`IAutoFocus` and `IFocusModel` done since — the latter's `state` dataclass is missing the `focus_err` field the design called for, see Open Questions.)
+- ✅ Tuple-returning methods converted to dataclasses — 18 of 19 done; the 1 remaining (`IFlatField.flat_field`) is a genuine RPC action result, out of scope for removal.
+- ✅ Add `State` to every interface identified in Phase 2's `get_*` survey: **done for all ~26**. `IAutoFocus`, `IFocusModel`, and `IWeather` were the last three — all closed now (`IFocusModel`'s `state` dataclass is still missing the `focus_err` field the design called for, see Open Questions).
 - ✅ disco#info and PubSub state publishing extended to every interface now carrying a `State`.
 - 🔵 **Not done:** publishing `urn:pyobs:event:Name:{version}` schemas for events — event disco#info features remain unversioned (see [Events](#4-events--unchanged-at-the-api-level) and [Versioning](#versioning)), and no event schema block exists in disco#info at all yet.
 
@@ -1714,7 +1715,7 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **Focuser:** `IFocuser.get_focus` and `IFocuser.get_focus_offset` — both `State`, on `IFocuser.State`. ✅ Implemented. `IFocusModel.get_optimal_focus` — `State`, on `IFocusModel.State(focus, focus_err)`. The 2.0 design adds `focus_err` alongside the existing `focus` value; the model recomputes continuously as conditions change, making push the right delivery mechanism. ✅ `get_optimal_focus()` removed, `IFocusModel.state = OptimalFocusState` implemented — 🔵 but the shipped dataclass only carries `focus`/`time`; `focus_err` from the settled design was never added (see Open Questions).
 
-**Weather — three methods, one `IWeather.State`, but only because all three are on `IWeather` itself:** `get_weather_status` and `get_current_weather` (both already flagged as `Any`-interfaces) plus `get_sensor_value(station: str, sensor: WeatherSensors) -> tuple[str, float]`. The third looks RPC-shaped (it takes parameters) but isn't: `sensor` is a closed `StrEnum`, not an open key the way `IConfig`'s are. Bounded enough for the same extensible-typed-collection pattern already designed for `ITemperatures` — `IWeather.State.readings: list[WeatherSensorReading]` (`station`, `sensor`, `value`, `unit` fields) lets all three collapse into one state object on the one interface that owns them. 🔵 **Not yet implemented** — `IWeather` still has no `state =` assignment on `develop`; `get_sensor_value` remains a tuple-returning RPC method.
+**Weather — `get_weather_status`/`is_weather_good`/`get_current_weather` folded into `IWeather.state`; `get_sensor_value` stays RPC, on reflection.** `get_weather_status` and `get_current_weather` (both already flagged as `Any`-interfaces) collapsed into `WeatherState(good, readings, time)`, with `WeatherState.readings: list[WeatherSensorReading]` (`sensor`, `value`, `unit`, `time` fields) covering the extensible-typed-collection pattern already designed for `ITemperatures` — aggregate per-sensor values only, no `station` field, since state is one value per sensor, not one per station. `get_sensor_value(station: str, sensor: WeatherSensors)` looked foldable into that same state at first glance (`sensor` is a closed `StrEnum`, not an open key the way `IConfig`'s are) but isn't: unlike the aggregate readings, it targets one specific *station* on demand — a genuine live HTTP call per invocation, not something to push continuously for every station. Kept as RPC, and changed to return `WeatherSensorReading` instead of `tuple[str, float]`, reusing the same type `WeatherState.readings` uses rather than a second one-off shape. ✅ **Implemented** — `IWeather.state = WeatherState`; `get_weather_status`/`is_weather_good`/`get_current_weather` removed outright.
 
 **Multi-fiber, all on `IMultiFiber`:** `get_fiber`, `get_pixel_position`, `get_radius` → `State`. `get_fiber_count` → Discovery (fixed hardware count, not a live value).
 
@@ -1728,9 +1729,9 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **Settled:** `IMode.get_mode(group: int)` — ✅ implemented as `IMode.state = ModeState`. `IMotion.get_motion_status(device: str | None)` — ✅ implemented as `IMotion.state = MotionState`. `IConfig.get_config_value`/`set_config_value` — stays RPC as designed, 🔵 but the `ConfigValue = bool | int | float | str` type alias was never actually added; both still type as bare `Any`.
 
-**The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above. `IReady`/`IRunning` ✅ implemented; 🔵 `IWeather.is_weather_good` still pending along with the rest of `IWeather`.
+**The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above. `IReady`/`IRunning`/`IWeather` ✅ all implemented — `is_weather_good()` removed, folded into `WeatherState.good`.
 
-**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level. Implementation: 33 of 34 `State` items done (🔵 `IWeather` remaining; `IFocusModel` implemented but missing the `focus_err` field — see Open Questions), all 8 `Discovery` done, both `Presence` done, 3 of 4 `RPC` items match their settled type (🔵 the fourth, `IConfig`'s `ConfigValue` alias, was never applied). See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level. Implementation: all 34 `State` items done (`IFocusModel` implemented but missing the `focus_err` field — see Open Questions), all 8 `Discovery` done, both `Presence` done, 3 of 4 `RPC` items match their settled type (🔵 the fourth, `IConfig`'s `ConfigValue` alias, was never applied). See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 
 ## Appendix: State and Capability dataclass catalogue
 
@@ -1774,11 +1775,11 @@ class SensorReading:                # TemperaturesState.readings element
     value: Annotated[float, Unit.CELSIUS]
 
 @dataclass
-class WeatherSensorReading:         # WeatherState.readings element
-    station: str
+class WeatherSensorReading:         # WeatherState.readings element -- also get_sensor_value()'s RPC return type
     sensor: WeatherSensors
     value: float
     unit: str
+    time: Time = field(default_factory=Time.now)  # get_sensor_value() parses the station's own ISO-8601 time here
 
 @dataclass
 class ModeEntry:                    # ModeState.modes element
@@ -2013,7 +2014,7 @@ class IReady(Interface):            state = ReadyState           # ✅
 class IRunning(Interface):          state = RunningState         # ✅
 class ICooling(Interface):          state = CoolingState         # ✅
 class ITemperatures(Interface):     state = TemperaturesState    # ✅
-class IWeather(Interface):          state = WeatherState         # 🔵 not yet -- still get_weather_status/get_current_weather/get_sensor_value RPC
+class IWeather(Interface):          state = WeatherState         # ✅ get_weather_status/is_weather_good/get_current_weather removed; get_sensor_value kept (RPC by design), returns WeatherSensorReading
 class IMultiFiber(Interface):       state = MultiFiberState      # ✅
 class IMode(Interface):             state = ModeState            # ✅
 class IAutoFocus(Interface):        state = AutoFocusState       # ✅ auto_focus() -> AutoFocusResult; auto_focus_status() removed

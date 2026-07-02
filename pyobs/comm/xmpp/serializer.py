@@ -27,10 +27,16 @@ strip the namespace from the tag before matching (tag.split('}')[-1]).
 from __future__ import annotations
 
 import dataclasses
+import inspect
+import types as _builtin_types
 from enum import StrEnum
-from typing import Annotated, Any, get_args, get_origin, get_type_hints
+from typing import Annotated, Any, Union, get_args, get_origin, get_type_hints
 
 from slixmpp.xmlstream import ET
+
+from ...interfaces.interface import Interface as _Interface
+from ...utils.enums import Unit
+from ...utils.time import Time as _Time
 
 # Namespace used for the <pyobs:value> wrapper in RPC
 PYOBS_NS = "urn:pyobs:rpc:1"
@@ -329,10 +335,144 @@ def _parse_scalar(text: str, type_hint: Any) -> Any:
     return text
 
 
+# ---------------------------------------------------------------------------
+# Interface schema (disco#info <pyobs:interface> blocks)
+# ---------------------------------------------------------------------------
+
+
+def _wire_type(hint: Any, enums: dict[str, type]) -> tuple[str, str | None]:
+    """Map a Python type hint to a (wire_type_string, unit_string|None) pair."""
+    origin = get_origin(hint)
+    args = get_args(hint)
+
+    # Annotated[T, ...] — extract optional Unit annotation
+    if origin is Annotated:
+        inner = args[0]
+        unit = next((a for a in args[1:] if isinstance(a, Unit)), None)
+        type_str, _ = _wire_type(inner, enums)
+        return type_str, unit.value if unit else None
+
+    # T | None → optional<T>  (handles typing.Union and builtin types.UnionType)
+    if origin is Union or origin is _builtin_types.UnionType:
+        non_none = [a for a in args if a is not type(None)]
+        if len(non_none) == 1:
+            inner_str, _ = _wire_type(non_none[0], enums)
+            return f"optional<{inner_str}>", None
+        return "any", None
+
+    # list[T] → array<T>
+    if origin is list:
+        inner_str, _ = _wire_type(args[0] if args else Any, enums)
+        return f"array<{inner_str}>", None
+
+    # Primitives — bool before int (bool is a subclass of int)
+    if hint is bool:
+        return "bool", None
+    if hint is int:
+        return "int32", None
+    if hint is float:
+        return "float64", None
+    if hint is str:
+        return "string", None
+    if hint is type(None):
+        return "void", None
+
+    # Time (pyobs's astropy.time.Time subclass)
+    if isinstance(hint, type) and issubclass(hint, _Time):
+        return "datetime", None
+
+    # StrEnum subclass → enum(Name) + record for <types> block
+    if isinstance(hint, type) and issubclass(hint, StrEnum) and hint is not StrEnum:
+        enums[hint.__name__] = hint
+        return f"enum({hint.__name__})", None
+
+    # dataclass → struct<Name>
+    if dataclasses.is_dataclass(hint) and isinstance(hint, type):
+        return f"struct<{hint.__name__}>", None
+
+    return "any", None
+
+
+def _interface_schema_to_xml(interface: type) -> ET.Element:
+    """Build the <{ns}interface> disco#info schema element for one Interface subclass."""
+    ns = f"urn:pyobs:interface:{interface.__name__}:{interface.version}"
+    root = ET.Element(f"{{{ns}}}interface", attrib={"name": interface.__name__})
+
+    enums: dict[str, type] = {}
+
+    # Collect <command> elements from abstract methods, MRO base-first
+    seen: set[str] = set()
+    cmd_elems: list[ET.Element] = []
+
+    for base in reversed(interface.__mro__):
+        if base in (object, _Interface):
+            continue
+        for name, member in sorted(base.__dict__.items()):
+            if name.startswith("_") or name in seen:
+                continue
+            if not getattr(member, "__isabstractmethod__", False):
+                continue
+            seen.add(name)
+
+            try:
+                hints = get_type_hints(member, include_extras=True)
+                sig = inspect.signature(member)
+            except Exception:
+                continue
+
+            cmd = ET.Element("command", attrib={"name": name})
+            for param_name, param in sig.parameters.items():
+                if param_name == "self" or param.kind in (param.VAR_KEYWORD, param.VAR_POSITIONAL):
+                    continue
+                if param_name not in hints:
+                    continue
+                type_str, unit_str = _wire_type(hints[param_name], enums)
+                attrib: dict[str, str] = {"name": param_name, "type": type_str}
+                if unit_str:
+                    attrib["unit"] = unit_str
+                ET.SubElement(cmd, "parameter", attrib=attrib)
+
+            cmd_elems.append(cmd)
+
+    # Build <state> element (after commands, so enum collection covers both)
+    state_elem: ET.Element | None = None
+    if getattr(interface, "state", None) is not None and dataclasses.is_dataclass(interface.state):
+        state_node = f"state/{interface.__name__}/{interface.version}"
+        state_elem = ET.Element("state", attrib={"name": "State", "node": state_node})
+        try:
+            state_hints = get_type_hints(interface.state, include_extras=True)
+        except Exception:
+            state_hints = {}
+        for f in dataclasses.fields(interface.state):
+            type_str, unit_str = _wire_type(state_hints.get(f.name, Any), enums)
+            fattrib: dict[str, str] = {"name": f.name, "type": type_str}
+            if unit_str:
+                fattrib["unit"] = unit_str
+            ET.SubElement(state_elem, "field", attrib=fattrib)
+
+    # Emit in order: <types> → <command>... → <state>
+    if enums:
+        types_elem = ET.SubElement(root, "types")
+        for enum_name, enum_cls in sorted(enums.items()):
+            enum_elem = ET.SubElement(types_elem, "enum", attrib={"name": enum_name})
+            for member in enum_cls:
+                val_elem = ET.SubElement(enum_elem, "value")
+                val_elem.text = member.value
+
+    for cmd in cmd_elems:
+        root.append(cmd)
+
+    if state_elem is not None:
+        root.append(state_elem)
+
+    return root
+
+
 __all__ = [
     "PYOBS_NS",
     "value_to_xml",
     "xml_to_value",
     "_dataclass_to_xml",
     "_xml_to_dataclass",
+    "_interface_schema_to_xml",
 ]

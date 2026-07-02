@@ -529,7 +529,7 @@ Two things this surfaced that the original illustrative list didn't account for:
 
 ### Enums in RPC and State
 
-✅ Premise already true (all enums are `StrEnum`). 🔵 The `<types>` disco#info block itself is not yet implemented.
+✅ Premise already true (all enums are `StrEnum`). ✅ The full `<pyobs:interface>` schema (commands, state, types/enums) is now emitted in disco#info responses.
 
 The type vocabulary above includes `enum(CameraStatus)`, but an enum reference is only half the story — the set of valid values has to be declared somewhere too. Inlining the full value list at every command parameter and state field that uses it would duplicate information within a single discovery reply and make the schema harder to keep consistent.
 
@@ -1524,7 +1524,7 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 Consolidated list of every 🔵 open item still standing elsewhere in this document — the single place to check what's left, rather than scanning each section.
 
 - 🔵 **Event feature versioning + schema publication.** `add_feature` in `xmppcomm.py` still publishes the unversioned `pyobs:event:{name}` form, not `urn:pyobs:event:{name}:{version}`; no event schema block exists in disco#info yet. See [Events](#4-events--unchanged-at-the-api-level), [Versioning](#versioning), [Phase 0](#phase-0--foundations), [Phase 3](#phase-3--bulk-rollout).
-- 🔵 **`<types>` disco#info block for enums** not yet implemented. See [Enums in RPC and State](#enums-in-rpc-and-state).
+- ✅ ~~**`<types>` disco#info block for enums** not yet implemented.~~ Full `<pyobs:interface>` schema (commands, state, types/enums) now emitted in disco#info via `_interface_schema_to_xml` in `serializer.py`. See [Enums in RPC and State](#enums-in-rpc-and-state).
 - ✅ ~~**`with_units`/`_interface_unit_hints` decorator** not implemented.~~ Implemented in `pyobs/utils/units.py`; no call sites applied yet — opt-in per method.
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
 - 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).

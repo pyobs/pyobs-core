@@ -27,7 +27,7 @@ from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
 
 from .rpc import RPC
-from .serializer import _dataclass_to_xml, _xml_to_dataclass
+from .serializer import _dataclass_to_xml, _interface_schema_to_xml, _xml_to_dataclass
 from .xmppclient import XmppClient
 
 _CAPABILITY_NS = "urn:pyobs:capability:1"
@@ -257,6 +257,8 @@ class XmppComm(Comm):
         if self._module is not None:
             for i in self._module.interfaces:
                 self._xmpp["xep_0030"].add_feature(f"urn:pyobs:interface:{i.__name__}:{i.version}")
+                if i.state is not None:
+                    self._xmpp["xep_0030"].add_feature(f"urn:pyobs:state:{i.__name__}:{i.version}")
 
         # register custom disco#info handler to inject <capability> elements
         if self._module is not None:
@@ -828,19 +830,28 @@ class XmppComm(Comm):
 
             info = DiscoInfo()
 
-        # Remove any previously appended capability elements (info.xml is cached
-        # by slixmpp and reused across calls — without this, each query appends
-        # another copy of every capability element)
-        _CAP_TAG = "capabilities"
-        for old_cap in list(info.xml):
-            if old_cap.tag.split("}")[-1] == _CAP_TAG:
-                info.xml.remove(old_cap)
+        # Remove any previously appended capability and interface schema elements
+        # (info.xml is cached by slixmpp and reused across calls — without this,
+        # each query appends another copy of every element)
+        for old_elem in list(info.xml):
+            local = old_elem.tag.split("}")[-1]
+            if local == "capabilities":
+                info.xml.remove(old_elem)
+            elif local == "interface":
+                ns = old_elem.tag[1 : old_elem.tag.index("}")] if "}" in old_elem.tag else ""
+                if ns.startswith("urn:pyobs:interface:"):
+                    info.xml.remove(old_elem)
 
         # Append current capabilities
         for interface, caps in self._capabilities.items():
             ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
             cap_xml = _dataclass_to_xml(caps, ns, tag="capabilities")
             info.xml.append(cap_xml)
+
+        # Append interface schemas (<command>, <state>, <types> blocks)
+        if self._module is not None:
+            for interface in self._module.interfaces:
+                info.xml.append(_interface_schema_to_xml(interface))
 
         return info
 

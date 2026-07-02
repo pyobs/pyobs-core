@@ -196,7 +196,7 @@ XEP-0030 is extensible via custom namespaces, so this introspection can sit dire
       <command name="set_gain">
         <parameter name="gain" type="float64"/>
       </command>
-      <state name="State" node="state/IGain/1">
+      <state node="state/IGain/1">
         <field name="gain" type="float64"/>
         <field name="offset" type="float64"/>
       </state>
@@ -215,7 +215,7 @@ XEP-0030 is extensible via custom namespaces, so this introspection can sit dire
       <command name="set_image_format">
         <parameter name="format" type="enum(ImageFormat)"/>
       </command>
-      <state name="State" node="state/IImageFormat/1">
+      <state node="state/IImageFormat/1">
         <field name="format" type="enum(ImageFormat)"/>
       </state>
     </pyobs:interface>
@@ -225,7 +225,7 @@ XEP-0030 is extensible via custom namespaces, so this introspection can sit dire
         <parameter name="enabled" type="bool"/>
         <parameter name="setpoint" type="float64" unit="celsius"/>
       </command>
-      <state name="State" node="state/ICooling/1">
+      <state node="state/ICooling/1">
         <field name="enabled" type="bool"/>
         <field name="setpoint" type="float64" unit="celsius"/>
         <field name="power" type="float64" unit="percent"/>

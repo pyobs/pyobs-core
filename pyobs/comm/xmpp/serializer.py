@@ -438,7 +438,7 @@ def _interface_schema_to_xml(interface: type) -> ET.Element:
     state_elem: ET.Element | None = None
     if getattr(interface, "state", None) is not None and dataclasses.is_dataclass(interface.state):
         state_node = f"state/{interface.__name__}/{interface.version}"
-        state_elem = ET.Element("state", attrib={"name": "State", "node": state_node})
+        state_elem = ET.Element("state", attrib={"node": state_node})
         try:
             state_hints = get_type_hints(interface.state, include_extras=True)
         except Exception:

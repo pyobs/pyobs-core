@@ -92,7 +92,7 @@ async def test_get_sensor_value():
     assert reading == WeatherSensorReading(
         sensor=WeatherSensors.RAIN,
         value=2,
-        unit="",
+        unit="bool",
         time=Time("2026-07-02T08:36:42", format="isot", scale="utc"),
     )
 

@@ -257,7 +257,7 @@ class XmppComm(Comm):
         if self._module is not None:
             for i in self._module.interfaces:
                 self._xmpp["xep_0030"].add_feature(f"urn:pyobs:interface:{i.__name__}:{i.version}")
-                if i.state is not None:
+                if i.has_own_state():
                     self._xmpp["xep_0030"].add_feature(f"urn:pyobs:state:{i.__name__}:{i.version}")
 
         # register custom disco#info handler to inject <capability> elements

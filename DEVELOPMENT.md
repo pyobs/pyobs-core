@@ -681,7 +681,7 @@ class Telescope(BaseTelescope):
 
 Deliberately stops at opt-in, not automatic for every method on every module (e.g. via `__init_subclass__`/metaclass wrapping), for three reasons: most of the 92 `**kwargs`-bearing methods never touch astropy at all and shouldn't be forced to unwrap a `Quantity` they didn't ask for; implicit, invisible type transformation is exactly the kind of magic this document has otherwise avoided in favor of explicit mechanisms (`Comm.set_state()` over auto-detection, `async with` over implicit cleanup); and an automatically-`Quantity`'d value that later gets passed on to another module's RPC call would need unwrapping again before re-serialization, which is easy to get right when it's one visible decorator and easy to get subtly wrong if it's invisible everywhere.
 
-🔵 Not implemented — `with_units`/`_interface_unit_hints` don't exist in `pyobs-core` yet. Flagged here as still optional, not a gap.
+✅ Implemented in `pyobs/utils/units.py`. No call sites applied yet — opt-in per method.
 
 ### Versioning
 
@@ -1525,7 +1525,7 @@ Consolidated list of every 🔵 open item still standing elsewhere in this docum
 
 - 🔵 **Event feature versioning + schema publication.** `add_feature` in `xmppcomm.py` still publishes the unversioned `pyobs:event:{name}` form, not `urn:pyobs:event:{name}:{version}`; no event schema block exists in disco#info yet. See [Events](#4-events--unchanged-at-the-api-level), [Versioning](#versioning), [Phase 0](#phase-0--foundations), [Phase 3](#phase-3--bulk-rollout).
 - 🔵 **`<types>` disco#info block for enums** not yet implemented. See [Enums in RPC and State](#enums-in-rpc-and-state).
-- 🔵 **`with_units`/`_interface_unit_hints` decorator** not implemented — flagged as optional convenience, not a gap. See [Units](#units).
+- ✅ ~~**`with_units`/`_interface_unit_hints` decorator** not implemented.~~ Implemented in `pyobs/utils/units.py`; no call sites applied yet — opt-in per method.
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
 - 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).
 - 🔵 **Phase 6 — official hardware modules** status unknown, external repos, not checked as part of this pass. See [Phase 6](#phase-6--external-official-pyobs--hardware-modules).

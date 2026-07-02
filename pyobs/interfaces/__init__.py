@@ -12,7 +12,7 @@ implement :class:`~pyobs.interfaces.ICamera`.
 __title__ = "Interfaces"
 
 from .IAbortable import IAbortable
-from .IAcquisition import IAcquisition
+from .IAcquisition import AcquisitionResult, IAcquisition
 from .IAutoFocus import AutoFocusPoint, AutoFocusResult, AutoFocusState, IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .IAutonomous import IAutonomous
@@ -63,6 +63,7 @@ from .IWindow import IWindow, WindowCapabilities, WindowState
 
 __all__ = [
     "IAbortable",
+    "AcquisitionResult",
     "IAcquisition",
     "IAutoFocus",
     "AutoFocusResult",

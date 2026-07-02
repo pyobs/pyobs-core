@@ -1531,8 +1531,6 @@ Consolidated list of every 🔵 open item still standing elsewhere in this docum
 - 🔵 **`IFocusModel.state = OptimalFocusState` is missing the `focus_err` field** the design (and the field's own source comment) called for — currently just `focus`/`time`. Likely an oversight worth a follow-up, not a deliberate change. See [Phase 1.5](#phase-15--rpc-payload-encoding-20).
 - 🔵 **`WeatherSensors.RAIN` still has no real unit.** `WeatherSensorReading.unit` for `RAIN` is a placeholder empty string (`SENSOR_UNITS` in `weather.py`) — the underlying "0/1 flag encoded as `float`" design question flagged in [Units](#units) was never resolved, just carried through into the now-implemented `WeatherState`.
 - 🔵 **`IConfig.ConfigValue` type alias** (`bool | int | float | str`) designed but never applied — `get_config_value`/`set_config_value` still type as bare `Any`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
-- 🔵 **`IAcquisition.acquire_target` → `AcquisitionResult`** designed but not applied. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
-- ✅ **`IFitsHeaderBefore`/`After` → `FitsHeaderEntry`** — both methods now return `dict[str, FitsHeaderEntry]` (dataclass with `value: int | float | str | None` and `comment: str`). `FitsHeaderResult` wrapper was dropped as unnecessary; `FitsHeaderEntry` is exported directly from `pyobs.interfaces`. All producers and the `fitsheader.py` mixin consumer updated.
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
 - 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).
 - 🔵 **Phase 6 — official hardware modules** status unknown, external repos, not checked as part of this pass. See [Phase 6](#phase-6--external-official-pyobs--hardware-modules).
@@ -2063,12 +2061,12 @@ class IVideo(Interface):            capabilities = VideoCapabilities
 
 
 # ---- RPC result types (not State) ----
-# IAcquisition.acquire_target still returns bare dict[str, Any] -- 🔵 AcquisitionResult not yet applied.
+# IAcquisition.acquire_target -- ✅ now returns AcquisitionResult (applied).
 # IFitsHeaderBefore/After.get_fits_header_* -- ✅ applied as dict[str, FitsHeaderEntry];
 # FitsHeaderResult wrapper was dropped as unnecessary.
 
 @dataclass
-class AcquisitionResult:            # IAcquisition.acquire_target return type -- 🔵 not yet applied
+class AcquisitionResult:            # IAcquisition.acquire_target return type -- ✅ applied
     time: Time
     ra: Annotated[float, Unit.DEGREES]
     dec: Annotated[float, Unit.DEGREES]

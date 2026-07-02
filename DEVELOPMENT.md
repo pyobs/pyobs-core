@@ -1,8 +1,8 @@
-# Towards pyobs 2.0 — v0.47 (2026-07-01, 20:00)
+# Towards pyobs 2.0 — v0.49 (2026-07-02, 13:00)
 
 ## Status
 
-Design exploration turned implementation log. Most of what this document proposed is now built and merged to `develop` (version, state, capabilities, presence, disco#info schema publication, RPC payload encoding 2.0, the `async with`-only `Proxy` redesign, the mixed-version-fleet diagnostic) — checked directly against the code while revising this pass, not just against the document's own earlier self-reported notes, several of which had gone stale. ✅ marks a point confirmed implemented; remaining unmarked items are genuinely still open. Two corrections surfaced during this pass, noted where relevant: there is no D-Bus `Comm` backend in `pyobs-core` (only `xmpp`, `local`, `dummy`), and `ILatLon`/`LatLonCapabilities` no longer exist in `pyobs.interfaces` — both are left as historical context where the reasoning still applies, corrected where it was stated as current fact.
+Design exploration turned implementation log. Most of what this document proposed is now built and merged to `develop` (version, state, capabilities, presence, disco#info schema publication, RPC payload encoding 2.0, the `async with`-only `Proxy` redesign, the mixed-version-fleet diagnostic) — checked directly against the code while revising this pass, not just against the document's own earlier self-reported notes, several of which had gone stale. ✅ marks a point confirmed implemented; remaining unmarked items are genuinely still open. Two corrections surfaced in an earlier pass, noted where relevant: there is no D-Bus `Comm` backend in `pyobs-core` (only `xmpp`, `local`, `dummy`), and `ILatLon`/`LatLonCapabilities` no longer exist in `pyobs.interfaces` — both are left as historical context where the reasoning still applies, corrected where it was stated as current fact. A later pass found event feature versioning and event schema publication in disco#info — flagged 🔵 throughout an earlier revision — were actually already implemented, landed in `9c19e512` before this doc was last edited; verified directly against `pyobs/comm/xmpp/xmppcomm.py` and `serializer.py` rather than trusting the doc's own prior notes. **This pass: Phase 6 (external hardware-module repos) checked for the first time** — all 11 repos exist locally alongside `pyobs-core` and were audited for `comm.set_state` migration; 9/11 fully migrated, and the 2 exceptions (`pyobs-aravis`, `pyobs-v4l`) traced to one real `pyobs-core` bug (`BaseVideo.set_image_type` never called `comm.set_state`, unlike `BaseCamera.set_image_type`), not a per-module gap — see [Phase 6](#phase-6--external-official-pyobs--hardware-modules). ✅ **Fixed in this pass**: `BaseVideo` now publishes `IImageType` state on `open()` and on every `set_image_type()` call, matching `BaseCamera`'s pattern exactly (`pyobs/modules/camera/basevideo.py`).
 
 ## Table of Contents
 
@@ -685,7 +685,7 @@ Deliberately stops at opt-in, not automatic for every method on every module (e.
 
 ### Versioning
 
-✅ `Interface.version`/`Event.version` implemented; interface disco#info features versioned. 🔵 Event disco#info features and PubSub node paths for events are not yet.
+✅ `Interface.version`/`Event.version` implemented; interface disco#info features versioned. ✅ Event disco#info features and PubSub node paths are versioned too — `urn:pyobs:event:{name}:{version}`, landed in `9c19e512`.
 
 Where the version number actually lives: everything above settled the *shape* of versioned namespaces (`urn:pyobs:interface:ICamera:2`, with state and PubSub node paths inheriting the same number) but not where that number actually comes from. On `1.x` — the baseline this document describes and migrates from — nothing in `Interface` carries a version at all, so there's nowhere for a developer to even put a bump. (`develop` already has exactly this added, confirming the direction independently of this document.)
 
@@ -775,7 +775,7 @@ ICamera / ICooling / IModule        ← core interfaces: define what exists
 **XMPP backend** ✅ implemented
 - Interface discovery: extended introspection lives entirely in the disco#info handling.
 - RPC: no changes — `await camera.expose(10)` still becomes an IQ round-trip unchanged.
-- Events: no changes to delivery; 🔵 discovery-time schema publication for events is still not done (see [Events](#4-events--unchanged-at-the-api-level)).
+- Events: no changes to delivery; ✅ discovery-time schema publication for events is done (see [Events](#4-events--unchanged-at-the-api-level)).
 - State: a PubSub node per interface/module, with native XML payloads generated from the dataclass (see [Payload Encoding](#payload-encoding) and the [concrete implementation](#xmpp-backend-concrete-implementation)), pushed on update.
 
 **D-Bus backend — hypothetical, does not exist in `pyobs-core`** (see correction above)
@@ -1043,7 +1043,7 @@ class Comm:
 
 `Proxy` stays simple from the consuming side's point of view — `subscribe_state` gets called once per State-bearing interface (`Comm._get_client` does the calling, not `Proxy.__init__`), and `Proxy` never calls `unsubscribe_state` itself, directly or indirectly. `Comm`'s abstract surface grows by three methods (`set_state`, `subscribe_state`, `unsubscribe_state`), each backend has to implement all three, and `Comm._client_disconnected` gets a few new lines. What stays at zero is `Proxy`'s public surface and every existing `self.proxy(...)` call site.
 
-**`cache_proxies` was real on `1.x`, already removed on `develop`** — `Comm.__init__()` takes no parameters there, the conditional is just `if client not in self._proxies:`, matching this document's Phase 0 direction. ✅ **Update from later in this pass: the rest of this paragraph, as originally written, is now out of date.** It previously said none of the `State`/`Comm` work or the `async with`-only `Proxy` redesign existed yet on any branch — checked directly against `develop` during this revision, and all of it is there now: `Comm.set_state`/`subscribe_state`/`unsubscribe_state`, `Proxy.get_state`/`get_capabilities`/`wait_for_state`, `_ProxyContext`-based `proxy()`/`safe_proxy()` with `has_proxy()`, and interface-feature versioning (🔵 event-feature versioning is the one piece still open — see [Versioning](#versioning) and the Work Plan).
+**`cache_proxies` was real on `1.x`, already removed on `develop`** — `Comm.__init__()` takes no parameters there, the conditional is just `if client not in self._proxies:`, matching this document's Phase 0 direction. ✅ **Update from later in this pass: the rest of this paragraph, as originally written, is now out of date.** It previously said none of the `State`/`Comm` work or the `async with`-only `Proxy` redesign existed yet on any branch — checked directly against `develop` during this revision, and all of it is there now: `Comm.set_state`/`subscribe_state`/`unsubscribe_state`, `Proxy.get_state`/`get_capabilities`/`wait_for_state`, `_ProxyContext`-based `proxy()`/`safe_proxy()` with `has_proxy()`, and interface-feature versioning (✅ event-feature versioning landed too, in `9c19e512` — see [Versioning](#versioning) and the Work Plan).
 
 ### Reconnect with a different interface set
 
@@ -1512,10 +1512,10 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 - ✅ The one missing concept was **state**: continuously-published, cached, "what is true right now" data, distinct from both RPC-polled values and immutable events. Implemented for 23 of ~26 State-bearing interfaces (see the Work Plan).
 - ✅ State uses **extensible, typed collections** (not fixed per-sensor fields) where hardware varies between installations — `ITemperatures.state = TemperaturesState(readings: list[SensorReading])` matches this exactly.
 - ✅ Encoding leans into XMPP-native **XML**, generated automatically from dataclass schemas (`pyobs/comm/xmpp/serializer.py`) — not hand-maintained in parallel.
-- Exposing interface/state/event schemas over the wire effectively turns pyobs's Python interfaces into a **language-neutral IDL**, directly enabling `pyobs-web-client` and any future non-Python bindings, and removing the need for a separate interface-extraction script. Interface/state/capability schemas are live in disco#info; 🔵 **event schema publication is not yet done** (see Events above), so the IDL is not fully complete on the wire yet.
+- Exposing interface/state/event schemas over the wire effectively turns pyobs's Python interfaces into a **language-neutral IDL**, directly enabling `pyobs-web-client` and any future non-Python bindings, and removing the need for a separate interface-extraction script. ✅ Interface/state/capability *and* event schemas are all live in disco#info now — the IDL is complete on the wire.
 - Almost all of this is isolated to `pyobs.comm.xmpp`; Local backend required little to no change (✅ done). There is no D-Bus backend in `pyobs-core` to migrate — see the correction in Impact Analysis.
 - ✅ `await self.proxy(...)` is removed in favor of `async with self.proxy(...) as x:` as the only way to obtain a proxy, closing off the long-held-reference pattern that causes stale state at its source rather than just discouraging it. `cache_proxies` (real, on `1.x`) is gone. `has_proxy()` (plain `async def`, not `async with` — it returns `bool`, never a `Proxy`) covers the common case of using `proxy()` purely as an existence/type check. All migrated: no `await self.proxy(...)` call sites remain in `pyobs-core`.
-- ✅ Versioning is settled and implemented for interfaces: `urn:pyobs:interface:ICamera:2`, with state namespaces and PubSub node paths inheriting the interface's version — commands and state are one versioned contract. `Interface.version`/`Event.version` both exist. 🔵 **Not yet done:** events are versioned independently in principle (`urn:pyobs:event:NewImageEvent:1`) but the wire side hasn't landed — event disco#info features are still the unversioned `pyobs:event:{name}` form.
+- ✅ Versioning is settled and implemented for interfaces: `urn:pyobs:interface:ICamera:2`, with state namespaces and PubSub node paths inheriting the interface's version — commands and state are one versioned contract. `Interface.version`/`Event.version` both exist. ✅ Events are versioned independently too, wire side landed: `urn:pyobs:event:NewImageEvent:1` is the real disco#info feature/PubSub node form (`9c19e512`).
 - ✅ Mostly done: tuple-returning methods and undocumented `Any`-typed methods converted to named dataclasses. Only 1 of the original 19 tuple-returning methods remains (`IFlatField.flat_field`, a genuine RPC action result, out of scope for removal). `IConfig`'s deliberately dynamic config values are handled separately as designed.
 - ✅ Units: `Unit(StrEnum)` exists in `pyobs/utils/enums.py` with `to_astropy()`. Annotation rollout complete — all applicable interface files annotated.
 
@@ -1523,9 +1523,7 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 
 Consolidated list of every 🔵 open item still standing elsewhere in this document — the single place to check what's left, rather than scanning each section.
 
-- 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
-- ✅ ~~**Phase 5 — `pyobs-gui`: one stale call site.**~~ `compassmovewidget.py` updated to use `wait_for_state` instead of removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods.
-- 🔵 **Phase 6 — official hardware modules** status unknown, external repos, not checked as part of this pass. See [Phase 6](#phase-6--external-official-pyobs--hardware-modules).
+- 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes — `pyobs-core`'s own side (interface *and* event feature versioning) is now fully done. See [Phase 7](#phase-7--pyobs-web-client-catch-up).
 
 ## Work Plan
 
@@ -1533,9 +1531,9 @@ Ordered by dependency, not by section order above — several things only make s
 
 ### Phase 0 — Foundations
 
-✅ **Done, except event-feature versioning.** Nothing here is interesting on its own, but everything later depends on it existing first.
+✅ **Done, including event-feature versioning.** Nothing here is interesting on its own, but everything later depends on it existing first.
 
-- ✅ `Interface.version`/`Event.version` (lowercase `version`, default `1`) — wired into state (`urn:pyobs:state:{name}:{version}`) and capabilities (`urn:pyobs:capabilities:{name}:{version}`) namespaces. **Interface features: done.** `add_feature` publishes `urn:pyobs:interface:{name}:{version}`, and `_get_interfaces`'s parsing filters to only the versioned form, so `.version` mismatches now actually exclude the interface from a resolved proxy instead of resolving silently — see the mixed-version-fleet diagnostic above. 🔵 **Still missing:** `Event` features — `add_feature(f"pyobs:event:{ev.__name__}")` still publishes the old pre-2.0 unversioned form, not `urn:pyobs:event:{name}:{version}`. See [Versioning](#versioning).
+- ✅ `Interface.version`/`Event.version` (lowercase `version`, default `1`) — wired into state (`urn:pyobs:state:{name}:{version}`) and capabilities (`urn:pyobs:capabilities:{name}:{version}`) namespaces. **Interface features: done.** `add_feature` publishes `urn:pyobs:interface:{name}:{version}`, and `_get_interfaces`'s parsing filters to only the versioned form, so `.version` mismatches now actually exclude the interface from a resolved proxy instead of resolving silently — see the mixed-version-fleet diagnostic above. **Event features: done too** — `add_feature(f"urn:pyobs:event:{ev.__name__}:{ev.version}")` publishes the versioned form (`9c19e512`), replacing the old pre-2.0 unversioned `pyobs:event:{name}`. See [Versioning](#versioning).
 - ✅ `Comm.proxy()`/`Object.proxy()`/`Comm.safe_proxy()` converted to the `async with`-only `_ProxyContext`, `ProxyType`/`_ProxyContext` consolidated into `proxy.py`, `has_proxy()` added. Migration complete: no `await self.proxy(...)` call sites remain in `pyobs-core`. `cache_proxies` removed.
 - ✅ ~~All six project enums converting `Enum` → `StrEnum`~~ Already true today — nothing to do here. This is what the wire-vocabulary's `enum(Name)` design assumes. See [Type Vocabulary](#type-vocabulary).
 - ✅ `Unit(StrEnum)` added to `pyobs/utils/enums.py` with `to_astropy()`. All applicable interface signatures annotated with `Annotated[float, Unit.X]`. See [Units](#units).
@@ -1579,9 +1577,9 @@ services:
 - ✅ `pyobs/comm/xmpp/rpc.py` — `RPC` class using `urn:pyobs:rpc:1`: `params_to_xml`/`xml_to_params` for arguments, `return_to_xml`/`xml_to_return` reading `return_annotation`, `fault_to_xml`/`xml_to_fault` for typed exception reconstruction. XEP-0009 envelope (`jabber:iq:rpc`) unchanged; `urn:pyobs:rpc:1` scopes only `<value>` content.
 - ✅ **`get_*` removal has gone much further than "still pending."** This isn't an intermediate step anymore for most interfaces — `ICooling.get_cooling`, `IWindow.get_full_frame`, `IModule.get_label`/`get_version`, `IMultiFiber.get_fiber_count`, `IVideo.get_video`, `IConfig.get_config_caps`, `IFocusModel.get_optimal_focus`, `IWeather.get_weather_status`/`is_weather_good`/`get_current_weather` and others are gone outright, not returning `State` as a transition shape. Only 4 `get_*`-prefixed abstract methods remain across all interfaces: `IConfig.get_config_value` (RPC by design), `IFitsHeaderBefore`/`After.get_fits_header_*` (RPC by design), and `IWeather.get_sensor_value` (RPC by design — a live per-station HTTP call, kept deliberately rather than folded into `IWeather.state`). The `IWindow.get_full_frame` vs. Discovery discrepancy this section used to flag is moot: the method isn't there to be inconsistent anymore.
 
-🔵 **Still pending:**
+✅ **Nothing pending** — this section is fully resolved now:
 - ✅ `ConfigValue = bool | int | float | str` — applied.
-- `WeatherSensors.RAIN`'s unit is still an unresolved placeholder (`""`) in `WeatherSensorReading` — see [Units](#units).
+- ✅ `WeatherSensors.RAIN`'s unit is resolved: `SENSOR_UNITS[RAIN] = "bool"` in `pyobs/modules/weather/weather.py`, documenting the 0/1-flag-as-float interpretation — see [Units](#units).
 
 ### Phase 2 — Audit and design pass (no implementation yet)
 
@@ -1626,12 +1624,12 @@ The `<capability>` element pattern designed in [Capabilities / Discovery](#1-cap
 
 ### Phase 3 — Bulk rollout
 
-✅ **Done**, aside from event schema publication — 🔵 see below.
+✅ **Done**, including event schema publication.
 
 - ✅ Tuple-returning methods converted to dataclasses — 18 of 19 done; the 1 remaining (`IFlatField.flat_field`) is a genuine RPC action result, out of scope for removal.
 - ✅ Add `State` to every interface identified in Phase 2's `get_*` survey: **done for all ~26**. `IAutoFocus`, `IFocusModel`, and `IWeather` were the last three — all closed now.
 - ✅ disco#info and PubSub state publishing extended to every interface now carrying a `State`.
-- 🔵 **Not done:** publishing `urn:pyobs:event:Name:{version}` schemas for events — event disco#info features remain unversioned (see [Events](#4-events--unchanged-at-the-api-level) and [Versioning](#versioning)), and no event schema block exists in disco#info at all yet.
+- ✅ `urn:pyobs:event:Name:{version}` schemas for events: event disco#info features are versioned and an event schema block (`_event_schema_to_xml` in `serializer.py`) is emitted in disco#info (`9c19e512`) — see [Events](#4-events--unchanged-at-the-api-level) and [Versioning](#versioning).
 
 ### Phase 4 — Other backends and Presence
 
@@ -1642,29 +1640,31 @@ The `<capability>` element pattern designed in [Capabilities / Discovery](#1-cap
 
 ### Phase 5 — `pyobs-gui`
 
-✅ **Mostly done, checked against `../pyobs-gui` on this pass.** Every widget (`coolingwidget.py`, `filterwidget.py`, `temperatureswidget.py`, `camerawidget.py`, `focuswidget.py`, `modewidget.py`, `roofwidget.py`, `videowidget.py`, `telescopewidget.py`, `spectrographwidget.py`) now consumes `comm.subscribe_state(...)`/`comm.get_capabilities(...)`/`comm.get_interfaces(...)` and `statuswidget.py` uses `comm.subscribe_presence(...)` — the reactive 2.0 model this phase called for, not `get_*` polling.
+✅ **Done, checked against `../pyobs-gui` on this pass.** Every widget (`coolingwidget.py`, `filterwidget.py`, `temperatureswidget.py`, `camerawidget.py`, `focuswidget.py`, `modewidget.py`, `roofwidget.py`, `videowidget.py`, `telescopewidget.py`, `spectrographwidget.py`) now consumes `comm.subscribe_state(...)`/`comm.get_capabilities(...)`/`comm.get_interfaces(...)` and `statuswidget.py` uses `comm.subscribe_presence(...)` — the reactive 2.0 model this phase called for, not `get_*` polling.
 
-🔵 **One leftover stale call site:** `compassmovewidget.py:45,54,58` still calls `p.get_altaz()`, `p.get_offsets_altaz()`, `p.get_offsets_radec()` (each `# type: ignore[attr-defined]`) against `IPointingAltAz`/`IOffsetsAltAz`/`IOffsetsRaDec` — all three interfaces now expose `state = AltAzState`/`AltAzOffsetState`/`RaDecOffsetState` with no `get_*` abstract method at all on `develop`. These calls will raise `AttributeError` at runtime; the widget needs migrating to `comm.get_state(...)` reads (or a live subscription) like every other widget in the repo.
+✅ **The one former stale call site is fixed:** `compassmovewidget.py:45,56,62` now calls `p.wait_for_state(IPointingAltAz, ...)`, `p.wait_for_state(IOffsetsAltAz, ...)`, `p.wait_for_state(IOffsetsRaDec, ...)` — no more `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC calls against the removed `get_*` methods.
 
 ### Phase 6 — External official `pyobs-*` hardware modules
 
-🔵 Status unknown — external repos, not checked as part of this pass. Migrate the official hardware-specific repos to implement the new State interfaces — call `set_state(Interface.State(...))` wherever they currently call `set_*` or implement `get_*`. Depends on Phase 3 complete and the `get_*` removal having happened so mypy flags any missed call sites immediately. Not checked as part of this pass — these are separate repos.
+✅ **Done.** Checked this pass — all 11 repos available locally (parallel to `pyobs-core`), each audited for `comm.set_state(...)` calls on every state-bearing interface it implements, and for leftover `get_*` methods that would indicate a module never migrated. All 11 are now fully migrated: 9 needed no changes, and the 2 that initially weren't (`pyobs-aravis`, `pyobs-v4l`) shared one root cause that turned out to be a `pyobs-core` bug — fixed upstream in this pass, not a per-module migration gap (see below). Note the table below has 11 rows, not the "13" the count previously (and wrongly) claimed — corrected.
 
-Hardware module repos in scope (13):
+| Repo | Hardware | Status |
+|---|---|---|
+| `pyobs-alpaca` | ASCOM Alpaca wrapper | ✅ Fully migrated — `IFocuser`, `IPointingRaDec`, `IPointingAltAz` (via `IDome`), `IOffsetsRaDec`, `IReady`, `IMotion` all publish via `set_state` |
+| `pyobs-aravis` | Aravis webcams | ✅ Fully migrated — `IExposureTime` migrated directly; `IImageType` (inherited via `BaseVideo`) fixed upstream in `pyobs-core`, see below |
+| `pyobs-asi` | ZWO ASI cameras | ✅ Fully migrated — `IWindow`, `IBinning`, `IImageFormat`, `IGain`, `ITemperatures`, `ICooling` |
+| `pyobs-brot` | BROTlib telescopes | ✅ Fully migrated — `IPointingRaDec`, `IPointingAltAz`, `IOffsetsRaDec`, `IOffsetsAltAz`, `IFocuser`, `ITemperatures`, `IReady` |
+| `pyobs-fli` | FLI cameras | ✅ Fully migrated — `IWindow`, `IBinning`, `ICooling`, `ITemperatures`, `IFilters`, `IReady` |
+| `pyobs-flipro` | FLIPRO cameras | ✅ Fully migrated — `IWindow`, `IBinning`, `ICooling`, `ITemperatures` |
+| `pyobs-qhyccd` | QHYCCD cameras | ✅ Fully migrated — `ICooling`, `IWindow`, `IBinning`, `IGain`, `ITemperatures` (cosmetic-only gap: `ITemperatures` state is published but the class doesn't formally list it as a base) |
+| `pyobs-sbig` | SBIG cameras | ✅ Fully migrated — `IWindow`, `IBinning`, `ICooling`, `ITemperatures`, `IFilters` |
+| `pyobs-v4l` | V4L webcams | ✅ Fully migrated — its only state-bearing interface, `IImageType` (via `BaseVideo`), fixed upstream in `pyobs-core` alongside `pyobs-aravis`, see below |
+| `pyobs-zaber` | Zaber motors | ✅ Fully migrated — `IMode`, `IMotion` (repo has one module, a mode selector; no focuser/filter-wheel module exists here despite what this table used to imply) |
+| `pyobs-zwoeaf` | ZWO EAF focus motor | ✅ Fully migrated — `IFocuser`, `ITemperatures` |
 
-| Repo | Hardware |
-|---|---|
-| `pyobs-alpaca` | ASCOM Alpaca wrapper |
-| `pyobs-aravis` | Aravis webcams |
-| `pyobs-asi` | ZWO ASI cameras |
-| `pyobs-brot` | BROTlib telescopes |
-| `pyobs-fli` | FLI cameras |
-| `pyobs-flipro` | FLIPRO cameras |
-| `pyobs-qhyccd` | QHYCCD cameras |
-| `pyobs-sbig` | SBIG cameras |
-| `pyobs-v4l` | V4L webcams |
-| `pyobs-zaber` | Zaber motors |
-| `pyobs-zwoeaf` | ZWO EAF focus motor |
+No leftover `get_cooling`/`get_window`/`get_binning`/`get_gain`/`get_focus`/`get_radec`/`get_altaz`/etc. methods were found standing in as the sole way to read state in any of the 11 repos — where old `get_*` methods appear at all, they're either unrelated (`get_fits_header_before`) or low-level driver accessors, not interface overrides.
+
+**The `pyobs-aravis`/`pyobs-v4l` gap was a real `pyobs-core` bug, found by checking these two repos: `BaseVideo.set_image_type` only did `self._image_type = image_type` and never called `self.comm.set_state(IImageType, ImageTypeState(...))`, unlike its sibling `BaseCamera.set_image_type` (`pyobs/modules/camera/basecamera.py:142-150`), which does exactly that.** Any module built on `BaseVideo` instead of `BaseCamera` — `pyobs-aravis` and `pyobs-v4l` — silently never published `IImageType` state. ✅ **Fixed**: `BaseVideo` (`pyobs/modules/camera/basevideo.py`) now publishes the initial `IImageType` state in `open()` and republishes it in `set_image_type()`, mirroring `BaseCamera` exactly. Resolves both external repos at once; no change needed on their side.
 
 Out of scope for this phase (infrastructure, services, UIs handled in other phases): `pyobs-core`, `pyobs-gui`, `pyobs-web-admin`, `pyobs-robotic-backend`, `pyobs-weather`, `pyobs-task-editor`, `pyobs-archive`, `pyobs-astrometry`, `pyobs-allsky-cloudcover`, `pyobs-tui`, `pyobs-launcher`, `pyobs-web`, `pyobs.github.io`.
 
@@ -1672,7 +1672,7 @@ Out of scope for this phase (infrastructure, services, UIs handled in other phas
 
 🔵 Status unknown — external repo, not checked as part of this pass. Explicitly last and lowest-priority: the client is early-stage by its own admission, was never a constraint on the design, and absorbs changes easily.
 
-- Fix the live disco#info feature-matching to check `urn:pyobs:interface:...:{version}` / `urn:pyobs:event:...:{version}` instead of the current bare `pyobs:interface:`/`pyobs:event:` prefixes. On the `pyobs-core` side, the interface half of this is now live (see Phase 0); the event half isn't yet, since event features are still unversioned.
+- Fix the live disco#info feature-matching to check `urn:pyobs:interface:...:{version}` / `urn:pyobs:event:...:{version}` instead of the current bare `pyobs:interface:`/`pyobs:event:` prefixes. On the `pyobs-core` side, both halves are now live (see Phase 0) — interface *and* event features are versioned.
 - Optionally retire `generate-interfaces.py`'s build-time extraction in favor of fetching schema live from disco#info, per the original motivation for this whole redesign.
 - Optionally render real dropdowns for `enum`-typed parameters using the `<types>` block, replacing today's free-text inputs.
 

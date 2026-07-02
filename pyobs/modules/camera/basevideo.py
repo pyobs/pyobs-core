@@ -14,7 +14,7 @@ from numpy.typing import NDArray
 
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
-from pyobs.interfaces import IExposureTime, IImageType, IVideo, VideoCapabilities
+from pyobs.interfaces import IExposureTime, IImageType, ImageTypeState, IVideo, VideoCapabilities
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils.cache import DataCache
@@ -167,6 +167,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # publish video URL as capability
         await self.comm.set_capabilities(IVideo, VideoCapabilities(video=self._video_path))
+
+        # publish initial state
+        await self.comm.set_state(IImageType, ImageTypeState(image_type=self._image_type))
 
     async def close(self) -> None:
         """Close server"""
@@ -477,3 +480,4 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         """
         log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
+        await self.comm.set_state(IImageType, ImageTypeState(image_type=image_type))

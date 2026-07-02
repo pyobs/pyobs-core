@@ -1528,7 +1528,8 @@ Consolidated list of every 🔵 open item still standing elsewhere in this docum
 - 🔵 **`Unit` annotation rollout in progress** — 12 of ~19 applicable interface files annotated as of this pass. See [Units](#units).
 - 🔵 **`with_units`/`_interface_unit_hints` decorator** not implemented — flagged as optional convenience, not a gap. See [Units](#units).
 - 🔵 **Stale-reference `callback(None)` on disconnect not implemented.** `XmppComm._unsubscribe_state` removes the callback and sends the PubSub unsubscribe IQ on last-subscriber, but doesn't push a final `callback(None)`; a `Proxy` held past its module's disconnect keeps returning stale last-known state instead of collapsing to `None`. See [Lifecycle](#lifecycle-piggyback-on-existing-proxy-eviction-no-new-proxy-api).
-- 🔵 **Two interfaces still missing `state =` assignment**: `IFocusModel`, `IWeather` — both still expose their original `get_*`/tuple-returning RPC methods. (`IAutoFocus` closed this pass — see [Phase 1.5](#phase-15--rpc-payload-encoding-20).) See [Phase 3](#phase-3--bulk-rollout), [Appendix: get_* to State Survey](#appendix-get_-to-state-survey).
+- 🔵 **One interface still missing `state =` assignment**: `IWeather` — still exposes its original `get_*`/tuple-returning RPC methods. (`IAutoFocus` and `IFocusModel` both closed since — see [Phase 1.5](#phase-15--rpc-payload-encoding-20).) See [Phase 3](#phase-3--bulk-rollout), [Appendix: get_* to State Survey](#appendix-get_-to-state-survey).
+- 🔵 **`IFocusModel.state = OptimalFocusState` is missing the `focus_err` field** the design (and the field's own source comment) called for — currently just `focus`/`time`. Likely an oversight worth a follow-up, not a deliberate change. See [Phase 1.5](#phase-15--rpc-payload-encoding-20).
 - 🔵 **`IConfig.ConfigValue` type alias** (`bool | int | float | str`) designed but never applied — `get_config_value`/`set_config_value` still type as bare `Any`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 - 🔵 **`IAcquisition.acquire_target` → `AcquisitionResult`** designed but not applied. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 - 🔵 **`IFitsHeaderBefore`/`After` → `FitsHeaderResult`/`FitsHeaderEntry`** designed but not applied — both methods still return bare `dict[str, tuple[Any, str]]`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
@@ -1587,11 +1588,11 @@ services:
 **Landed:**
 - ✅ `pyobs/comm/xmpp/serializer.py` — shared `value_to_xml`/`xml_to_value` core used by both state and RPC. Handles the full vocabulary: `bool`, `int`, `float`, `str`, `StrEnum`, `nil`, `list`, `tuple`, `dict`, dataclasses, `Annotated`/`Optional` unwrapping, ejabberd namespace-strip on round-trip. `_dataclass_to_xml`/`_xml_to_dataclass` delegate to `value_to_xml`/`xml_to_value` per field — cleaner than the document sketched.
 - ✅ `pyobs/comm/xmpp/rpc.py` — `RPC` class using `urn:pyobs:rpc:1`: `params_to_xml`/`xml_to_params` for arguments, `return_to_xml`/`xml_to_return` reading `return_annotation`, `fault_to_xml`/`xml_to_fault` for typed exception reconstruction. XEP-0009 envelope (`jabber:iq:rpc`) unchanged; `urn:pyobs:rpc:1` scopes only `<value>` content.
-- ✅ **`get_*` removal has gone much further than "still pending."** This isn't an intermediate step anymore for most interfaces — `ICooling.get_cooling`, `IWindow.get_full_frame`, `IModule.get_label`/`get_version`, `IMultiFiber.get_fiber_count`, `IVideo.get_video`, `IConfig.get_config_caps` and others are gone outright, not returning `State` as a transition shape. Only 7 `get_*`-prefixed abstract methods remain across all interfaces: `IConfig.get_config_value` (RPC by design), `IFitsHeaderBefore`/`After.get_fits_header_*` (RPC by design), `IFocusModel.get_optimal_focus`, and `IWeather`'s three (🔵 not yet migrated — see Phase 3). The `IWindow.get_full_frame` vs. Discovery discrepancy this section used to flag is moot: the method isn't there to be inconsistent anymore.
+- ✅ **`get_*` removal has gone much further than "still pending."** This isn't an intermediate step anymore for most interfaces — `ICooling.get_cooling`, `IWindow.get_full_frame`, `IModule.get_label`/`get_version`, `IMultiFiber.get_fiber_count`, `IVideo.get_video`, `IConfig.get_config_caps`, `IFocusModel.get_optimal_focus` and others are gone outright, not returning `State` as a transition shape. Only 6 `get_*`-prefixed abstract methods remain across all interfaces: `IConfig.get_config_value` (RPC by design), `IFitsHeaderBefore`/`After.get_fits_header_*` (RPC by design), and `IWeather`'s three (🔵 not yet migrated — see Phase 3). The `IWindow.get_full_frame` vs. Discovery discrepancy this section used to flag is moot: the method isn't there to be inconsistent anymore.
 
 🔵 **Still pending:**
 - `utils/types.py` — still used in `proxy.py`, `module.py`, `parallel.py`, `localcomm.py`. Old cast path runs alongside the new serializer. Leave in place until `LocalComm` and all backends are updated (Phase 4).
-- 2 of the ~26 catalogued State-bearing interfaces remain: `IFocusModel`, `IWeather` (Phase 3 completion). `IAutoFocus` closed this pass: `state = AutoFocusState`, `auto_focus() -> AutoFocusResult` replaces the old tuple return, and the dict-returning `auto_focus_status()` was removed outright rather than superseded.
+- 1 of the ~26 catalogued State-bearing interfaces remains: `IWeather` (Phase 3 completion). `IAutoFocus` and `IFocusModel` both closed this pass. `IFocusModel.state = OptimalFocusState` replaces `get_optimal_focus()`, but **`OptimalFocusState` shipped with only `focus`/`time` — no `focus_err` field**, despite the class's own comment ("2.0 adds focus_err alongside the existing focus value") and this document's catalogue both saying it should carry one; looks like an oversight rather than a deliberate scope cut. See the [get_* to State Survey](#appendix-get_-to-state-survey) and [catalogue](#appendix-state-and-capability-dataclass-catalogue) below.
 - `ConfigValue = bool | int | float | str` was a settled design decision (Phase 2) but was never actually applied — `IConfig.get_config_value`/`set_config_value` still type as bare `Any` on `develop`.
 
 ### Phase 2 — Audit and design pass (no implementation yet)
@@ -1640,7 +1641,7 @@ The `<capability>` element pattern designed in [Capabilities / Discovery](#1-cap
 ✅ **Mostly done** — 🔵 2 interfaces and event schema publication remain.
 
 - ✅ Tuple-returning methods converted to dataclasses — 17 of 19 done; the 2 remaining (`IFlatField.flat_field`, `IWeather.get_sensor_value`) are tied to the interface below.
-- Add `State` to every interface identified in Phase 2's `get_*` survey: **done for 24 of ~26**; `IFocusModel`, `IWeather` still have no `state =` assignment and still expose their original `get_*`/tuple-returning methods. (`IAutoFocus` done this pass.)
+- Add `State` to every interface identified in Phase 2's `get_*` survey: **done for 25 of ~26**; `IWeather` still has no `state =` assignment and still exposes its original `get_*`/tuple-returning methods. (`IAutoFocus` and `IFocusModel` done since — the latter's `state` dataclass is missing the `focus_err` field the design called for, see Open Questions.)
 - ✅ disco#info and PubSub state publishing extended to every interface now carrying a `State`.
 - 🔵 **Not done:** publishing `urn:pyobs:event:Name:{version}` schemas for events — event disco#info features remain unversioned (see [Events](#4-events--unchanged-at-the-api-level) and [Versioning](#versioning)), and no event schema block exists in disco#info at all yet.
 
@@ -1711,7 +1712,7 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **Pointing / position — all drift continuously, all clear `State`, each on its own interface already:** `IPointingRaDec.get_radec` → `RaDec`, `IPointingAltAz.get_altaz` → `AltAz`, `IPointingHGS.get_hgs_lon_lat`, `IPointingHelioprojective.get_helioprojective`, `IRotation.get_rotation`, `IOffsetsRaDec.get_offsets_radec`, `IOffsetsAltAz.get_offsets_altaz`.
 
-**Focuser:** `IFocuser.get_focus` and `IFocuser.get_focus_offset` — both `State`, on `IFocuser.State`. ✅ Implemented. `IFocusModel.get_optimal_focus` — `State`, on `IFocusModel.State(focus, focus_err)`. The 2.0 design adds `focus_err` alongside the existing `focus` value; the model recomputes continuously as conditions change, making push the right delivery mechanism. 🔵 **Not yet implemented** — `IFocusModel` still has no `state =` assignment on `develop`.
+**Focuser:** `IFocuser.get_focus` and `IFocuser.get_focus_offset` — both `State`, on `IFocuser.State`. ✅ Implemented. `IFocusModel.get_optimal_focus` — `State`, on `IFocusModel.State(focus, focus_err)`. The 2.0 design adds `focus_err` alongside the existing `focus` value; the model recomputes continuously as conditions change, making push the right delivery mechanism. ✅ `get_optimal_focus()` removed, `IFocusModel.state = OptimalFocusState` implemented — 🔵 but the shipped dataclass only carries `focus`/`time`; `focus_err` from the settled design was never added (see Open Questions).
 
 **Weather — three methods, one `IWeather.State`, but only because all three are on `IWeather` itself:** `get_weather_status` and `get_current_weather` (both already flagged as `Any`-interfaces) plus `get_sensor_value(station: str, sensor: WeatherSensors) -> tuple[str, float]`. The third looks RPC-shaped (it takes parameters) but isn't: `sensor` is a closed `StrEnum`, not an open key the way `IConfig`'s are. Bounded enough for the same extensible-typed-collection pattern already designed for `ITemperatures` — `IWeather.State.readings: list[WeatherSensorReading]` (`station`, `sensor`, `value`, `unit` fields) lets all three collapse into one state object on the one interface that owns them. 🔵 **Not yet implemented** — `IWeather` still has no `state =` assignment on `develop`; `get_sensor_value` remains a tuple-returning RPC method.
 
@@ -1729,7 +1730,7 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above. `IReady`/`IRunning` ✅ implemented; 🔵 `IWeather.is_weather_good` still pending along with the rest of `IWeather`.
 
-**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level. Implementation: 32 of 34 `State` items done (🔵 `IFocusModel`, `IWeather` remaining), all 8 `Discovery` done, both `Presence` done, 3 of 4 `RPC` items match their settled type (🔵 the fourth, `IConfig`'s `ConfigValue` alias, was never applied). See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level. Implementation: 33 of 34 `State` items done (🔵 `IWeather` remaining; `IFocusModel` implemented but missing the `focus_err` field — see Open Questions), all 8 `Discovery` done, both `Presence` done, 3 of 4 `RPC` items match their settled type (🔵 the fourth, `IConfig`'s `ConfigValue` alias, was never applied). See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 
 ## Appendix: State and Capability dataclass catalogue
 
@@ -1906,7 +1907,7 @@ class FocuserState:
 @dataclass
 class OptimalFocusState:            # 2.0 adds focus_err alongside the existing focus value
     focus: float
-    focus_err: float
+    focus_err: float                # 🔵 designed but not shipped -- develop's version has only focus/time
     time: Time = field(default_factory=Time.now)
 
 
@@ -2007,7 +2008,7 @@ class IOffsetsAltAz(Interface):     state = AltAzOffsetState     # ✅
 class IRotation(Interface):         state = RotationState        # ✅
 class IMotion(Interface):           state = MotionState          # ✅
 class IFocuser(Interface):          state = FocuserState         # ✅
-class IFocusModel(Interface):       state = OptimalFocusState    # 🔵 not yet -- still get_optimal_focus() RPC
+class IFocusModel(Interface):       state = OptimalFocusState    # ✅ get_optimal_focus() removed -- 🔵 focus_err field not shipped
 class IReady(Interface):            state = ReadyState           # ✅
 class IRunning(Interface):          state = RunningState         # ✅
 class ICooling(Interface):          state = CoolingState         # ✅

@@ -356,13 +356,17 @@ class Module(Object, IModule, IConfig):
                 if name in ["self", "args", "kwargs"]:
                     continue
 
-                # add it
-                caps[name] = self._add_config_cap(name)
+                # only add if at least one capability flag is set
+                cap = self._add_config_cap(name)
+                if any(cap):
+                    caps[name] = cap
 
             # also add all additional config vars
             if self._additional_config_variables:
                 for name in self._additional_config_variables:
-                    caps[name] = self._add_config_cap(name)
+                    cap = self._add_config_cap(name)
+                    if any(cap):
+                        caps[name] = cap
 
         # finished
         return caps

@@ -16,7 +16,7 @@ from .IAcquisition import AcquisitionResult, IAcquisition
 from .IAutoFocus import AutoFocusPoint, AutoFocusResult, AutoFocusState, IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .IAutonomous import IAutonomous
-from .IBinning import BinningCapabilities, BinningState, IBinning
+from .IBinning import Binning, BinningCapabilities, BinningState, IBinning
 from .ICalibrate import ICalibrate
 from .ICamera import ICamera
 from .IConfig import ConfigCapabilities, ConfigScalar, ConfigValue, IConfig
@@ -71,6 +71,7 @@ __all__ = [
     "AutoFocusState",
     "IAutoGuiding",
     "IAutonomous",
+    "Binning",
     "IBinning",
     "BinningCapabilities",
     "BinningState",

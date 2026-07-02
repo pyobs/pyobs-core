@@ -17,6 +17,7 @@ from numpy.typing import NDArray
 
 from pyobs.images import Image
 from pyobs.interfaces import (
+    Binning,
     BinningCapabilities,
     BinningState,
     CoolingState,
@@ -134,7 +135,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         )
         await self.comm.set_capabilities(
             IBinning,
-            BinningCapabilities(binnings=[BinningState(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]]),
+            BinningCapabilities(binnings=[Binning(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]]),
         )
         await self.comm.set_capabilities(
             IImageFormat, ImageFormatCapabilities(image_formats=[ImageFormat.INT8, ImageFormat.INT16])

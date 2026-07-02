@@ -15,7 +15,6 @@ from pyobs.interfaces import ConfigCapabilities, IConfig, IModule, Interface, Mo
 from pyobs.object import Object
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
-from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_simple
 from pyobs.version import version
 
 log = logging.getLogger(__name__)
@@ -313,9 +312,6 @@ class Module(Object, IModule, IConfig):
             func_kwargs = ba.arguments["kwargs"]
             del ba.arguments["kwargs"]
 
-        # cast to types requested by method
-        cast_bound_arguments_to_real(ba, type_hints, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
-
         # call method — set module name context var so log messages from RPC calls
         # carry the correct module name rather than the caller's context
         from pyobs.utils.logging.context import module_name as _module_name_var
@@ -339,10 +335,7 @@ class Module(Object, IModule, IConfig):
                 e.log(log, level, f"Exception was raised in call to {method}: {e}", exc_info=exc_info)
             raise e
 
-        # finished
-        return cast_response_to_simple(
-            response, type_hints["return"], self.comm.cast_to_simple_pre, self.comm.cast_to_simple_post
-        )
+        return response
 
     def _get_config_caps(self) -> dict[str, tuple[bool, bool, bool]]:
         """Returns a dictionary with config caps."""

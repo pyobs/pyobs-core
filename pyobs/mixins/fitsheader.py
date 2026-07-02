@@ -111,13 +111,8 @@ class FitsHeaderMixin:
             # add them to fits file
             if headers:
                 log.debug("Adding additional FITS headers from %s...", client)
-                for key, value in headers.items():
-                    # if value is not a string, it may be a list of value and comment
-                    if isinstance(value, list) and not isinstance(value, str):
-                        # convert list to tuple
-                        image.header[key] = tuple(value)
-                    else:
-                        image.header[key] = value
+                for key, entry in headers.items():
+                    image.header[key] = (entry.value, entry.comment)
 
     async def add_fits_headers(self, image: Image | fits.PrimaryHDU) -> None:
         """Add requested FITS headers to header of given image.

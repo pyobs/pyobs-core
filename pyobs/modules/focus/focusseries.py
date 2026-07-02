@@ -14,6 +14,7 @@ from pyobs.interfaces import (
     IFocuser,
     IImageType,
 )
+from pyobs.interfaces.IAutoFocus import AutoFocusResult, AutoFocusState
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import Module, raises, timeout
 from pyobs.object import get_object
@@ -96,12 +97,15 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         if not await self.has_proxy(self._focuser, IFocuser) or not await self.has_proxy(self._camera, IData):
             log.warning("Either camera or focuser do not exist or are not of correct type at the moment.")
 
+        # publish initial states
+        await self.comm.set_state(IAutoFocus, AutoFocusState())
+
     @raises(exc.AbortedError, exc.FocusError)
     @timeout(600)
-    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
-        """Perform an auto-focus series.
+    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> AutoFocusResult:
+        """Perform an autofocus series.
 
-        This method performs an auto-focus series with "count" images on each side of the initial guess and the given
+        This method performs an autofocus series with "count" images on each side of the initial guess and the given
         step size. With count=3, step=1 and guess=10, this takes images at the following focus values:
         7, 8, 9, 10, 11, 12, 13
 
@@ -111,23 +115,22 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             exposure_time: Exposure time for images.
 
         Returns:
-            Tuple of obtained best focus value and its uncertainty. Or Nones, if focus series failed.
+            Result of autofocus.
 
         Raises:
-            FileNotFoundException: If image could not be downloaded.
+            ValueError: If focus could not be obtained.
         """
 
         try:
             log.info("Performing auto-focus...")
             self._running = True
-            return await self._auto_focus(count, step, exposure_time, **kwargs)
+            focus, error = await self._auto_focus(count, step, exposure_time, **kwargs)
+            return AutoFocusResult(focus=focus, focus_err=error)
 
         finally:
             self._running = False
 
     async def _auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
-        # async with self.proxy(self._focuser, IFocuser) as focuser, :
-
         # do camera settings
         async with self.proxy(self._camera, ICamera) as camera:
             await self._do_camera_settings(camera)
@@ -217,6 +220,9 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 log.info("Could not analyse image.")
                 continue
 
+            # publish state
+            await self.comm.set_state(IAutoFocus, AutoFocusState(points=self._series.get_data_points()))
+
         # fit focus
         if self._abort.is_set():
             raise exc.AbortedError()
@@ -278,16 +284,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             await camera.set_exposure_time(exposure_time)
         async with self.proxy(self._camera, IData) as camera:
             return await camera.grab_data(broadcast=self._broadcast)
-
-    async def auto_focus_status(self, **kwargs: Any) -> dict[str, Any]:
-        """Returns current status of auto focus.
-
-        Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
-
-        Returns:
-            Dictionary with current status.
-        """
-        return {}
 
     @timeout(20)
     async def abort(self, **kwargs: Any) -> None:

@@ -7,11 +7,11 @@ from typing import Any
 import astropy.units as u
 
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import IFitsHeaderBefore, IWeather
+from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IWeather, WeatherSensorReading, WeatherState
 from pyobs.modules import Module
 from pyobs.modules.weather.weather_api import WeatherApi
-from pyobs.modules.weather.weather_state import WeatherState
-from pyobs.utils.enums import WeatherSensors
+from pyobs.modules.weather.weather_state import WeatherStatus
+from pyobs.utils.enums import Unit, WeatherSensors
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -28,6 +28,21 @@ FITS_HEADERS = {
     WeatherSensors.DEWPOINT: ("WS-TDEW", "Ambient dewpoint average during expsoure, C", float),
     WeatherSensors.PARTICLES: ("WS-DUST", "Average particle count during exposure, ppcm", float),
     WeatherSensors.SKYMAG: ("SKYMAG", "Sky brightness, mag/arcsec^2", float),
+}
+
+# unit for each sensor's reading in WeatherState.readings -- reuses the canonical Unit enum where one
+# applies; RAIN/PARTICLES/SKYMAG have no canonical wire unit, so they carry a plain descriptive string
+SENSOR_UNITS = {
+    WeatherSensors.TEMPERATURE: Unit.CELSIUS.value,
+    WeatherSensors.HUMIDITY: Unit.PERCENT.value,
+    WeatherSensors.PRESSURE: Unit.HPA.value,
+    WeatherSensors.WINDDIR: Unit.DEGREES.value,
+    WeatherSensors.WINDSPEED: Unit.KM_PER_HOUR.value,
+    WeatherSensors.RAIN: "",
+    WeatherSensors.SKYTEMP: Unit.CELSIUS.value,
+    WeatherSensors.DEWPOINT: Unit.CELSIUS.value,
+    WeatherSensors.PARTICLES: "1/m3",
+    WeatherSensors.SKYMAG: "mag/arcsec2",
 }
 
 
@@ -52,8 +67,8 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # whether module is active, i.e. if None, weather is always good
         self._active = True
 
-        # whole status
-        self._weather = WeatherState()
+        # raw status from the weather station API
+        self._weather = WeatherStatus()
 
         # add thread func
         self.add_background_task(self._run, True)
@@ -120,32 +135,25 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
                 log.info("Weather is now bad.")
                 await self.comm.send_event(BadWeatherEvent())
 
+        # publish state
+        is_good = True if not self._active else self._weather.is_good
+        await self.comm.set_state(IWeather, WeatherState(good=is_good, readings=self._get_readings()))
+
+    def _get_readings(self) -> list[WeatherSensorReading]:
+        """Builds the current per-sensor readings from the last raw status, for state publication."""
+        sensors = self._weather.status.get("sensors", {})
+        readings = []
+        for sensor_type, unit in SENSOR_UNITS.items():
+            entry = sensors.get(sensor_type.value)
+            if entry is None or entry.get("value") is None:
+                continue
+            readings.append(WeatherSensorReading(sensor=sensor_type, value=entry["value"], unit=unit))
+        return readings
+
     def _calc_system_init_eta(self) -> Time:
         return Time(Time.now() + self._system_init_time * u.second)
 
-    async def get_weather_status(self, **kwargs: Any) -> dict[str, Any]:
-        """Returns status of object in form of a dictionary. See other interfaces for details."""
-        raise NotImplementedError
-
-    async def is_weather_good(self, **kwargs: Any) -> bool:
-        """Whether the weather is good to observe."""
-
-        # if not active, weather is always good
-        if not self._active:
-            return True
-
-        return self._weather.is_good
-
-    async def get_current_weather(self, **kwargs: Any) -> dict[str, Any]:
-        """Returns current weather.
-
-        Returns:
-            Dictionary containing entries for time, good, and sensor, with the latter being another dictionary
-            with sensor information, which contain a value and a good flag.
-        """
-        return self._weather.status
-
-    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> tuple[str, float]:
+    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> WeatherSensorReading:
         """Return value for given sensor.
 
         Args:
@@ -153,7 +161,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             sensor: Name of sensor to get value from.
 
         Returns:
-            Tuple of current value of given sensor or None and time of measurement or None.
+            Current reading for the given sensor.
         """
 
         # do request
@@ -163,12 +171,17 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         if "time" not in status or "value" not in status:
             raise ValueError("Time and/or value parameters not found in response from weather station.")
 
-        # return time and value
-        return status["time"], status["value"]
+        # return reading
+        return WeatherSensorReading(
+            sensor=sensor,
+            value=status["value"],
+            unit=SENSOR_UNITS[sensor],
+            time=Time(status["time"], format="isot", scale="utc"),
+        )
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -193,7 +206,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             key, comment, dtype = FITS_HEADERS[sensor_type]
 
             header_value = None if value is None else dtype(value)
-            header[key] = (header_value, comment)
+            header[key] = FitsHeaderEntry(header_value, comment)
 
         return header
 

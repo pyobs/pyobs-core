@@ -13,6 +13,7 @@ from pyobs.events import FilterChangedEvent, OffsetsRaDecEvent
 from pyobs.interfaces import (
     FiltersCapabilities,
     FilterState,
+    FitsHeaderEntry,
     FocuserState,
     IFilters,
     IFitsHeaderBefore,
@@ -298,9 +299,9 @@ class DummyTelescope(
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         hdr = await BaseTelescope.get_fits_header_before(self)
-        hdr["TEL-FOCU"] = (self._focus, "Focus position [mm]")
+        hdr["TEL-FOCU"] = FitsHeaderEntry(self._focus, "Focus position [mm]")
         return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
     async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:

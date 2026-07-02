@@ -193,13 +193,24 @@ class Comm:
             elif obj_type is None or isinstance(proxy, obj_type):
                 return proxy
             else:
-                raise ValueError(
-                    f'Proxy obtained from given name "{name_or_object}" is not of requested type "{obj_type}".'
-                )
+                message = f'Proxy obtained from given name "{name_or_object}" is not of requested type "{obj_type}".'
+                hint = self._diagnose_missing_interface(name_or_object, obj_type)
+                if hint is not None:
+                    message += f" {hint}"
+                raise ValueError(message)
 
         else:
             # completely wrong...
             raise ValueError(f'Given parameter is neither a name nor an object of requested type "{obj_type}".')
+
+    def _diagnose_missing_interface(self, client: str, obj_type: type[Any]) -> str | None:
+        """Backend hook, called when a proxy exists but doesn't implement obj_type.
+
+        Backends that can tell "genuinely missing" apart from "present at an
+        incompatible version" using data already in hand return a hint string
+        to append to the ValueError; other backends just return None.
+        """
+        return None
 
     async def _safe_resolve_proxy(
         self, name_or_object: str | object, obj_type: type[ProxyType] | None = None
@@ -599,54 +610,6 @@ class Comm:
                 ret = handler(event, from_client)
                 if asyncio.iscoroutine(ret):
                     asyncio.create_task(ret)
-
-    def cast_to_simple_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them to be sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-        return False, value
-
-    def cast_to_simple_post(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them to be sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-        return False, value
-
-    def cast_to_real_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them after being sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-        return False, value
-
-    def cast_to_real_post(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them after being sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-        return False, value
 
 
 __all__ = ["Comm"]

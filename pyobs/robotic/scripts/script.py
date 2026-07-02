@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
+from pyobs.interfaces import FitsHeaderEntry
 from pyobs.utils.serialization import PolymorphicBaseModel
 from pyobs.utils.time import Time
 
@@ -37,7 +38,7 @@ class Script(PolymorphicBaseModel):
         """
         raise NotImplementedError
 
-    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:

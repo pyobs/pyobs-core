@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import numpy as np
 
 from pyobs.images import Image
 from pyobs.images.meta import SkyOffsets
+from pyobs.interfaces import FitsHeaderEntry
 
 from .guidingstatistics import GuidingStatistics
 
@@ -32,12 +32,12 @@ class GuidingStatisticsSkyOffset(GuidingStatistics[Image, float]):
         rms = np.sqrt(np.sum(np.power(data, 2)) / data_len)
         return float(rms)
 
-    def _build_header(self, data: list[float]) -> dict[str, tuple[Any, str]]:
-        header = {}
+    def _build_header(self, data: list[float]) -> dict[str, FitsHeaderEntry]:
+        header: dict[str, FitsHeaderEntry] = {}
         rms = self._calc_rms(data)
 
         if rms is not None:
-            header["GUIDING RMS"] = (float(rms), "RMS for guiding on sky")
+            header["GUIDING RMS"] = FitsHeaderEntry(float(rms), "RMS for guiding on sky")
 
         return header
 

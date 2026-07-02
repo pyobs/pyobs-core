@@ -1,10 +1,10 @@
 import logging
-from typing import Any
 
 import numpy as np
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
+from pyobs.interfaces import FitsHeaderEntry
 
 from .guidingstatistics import GuidingStatistics
 
@@ -31,13 +31,13 @@ class GuidingStatisticsPixelOffset(GuidingStatistics[Image, tuple[float, float]]
         rms = np.sqrt(np.sum(np.power(flattened_data, 2), axis=1) / data_len)
         return tuple(rms)
 
-    def _build_header(self, data: list[tuple[float, float]]) -> dict[str, tuple[Any, str]]:
-        header = {}
+    def _build_header(self, data: list[tuple[float, float]]) -> dict[str, FitsHeaderEntry]:
+        header: dict[str, FitsHeaderEntry] = {}
         rms = self._calc_rms(data)
 
         if rms is not None:
-            header["GUIDING RMS1"] = (float(rms[0]), "RMS for guiding on axis 1")
-            header["GUIDING RMS2"] = (float(rms[1]), "RMS for guiding on axis 2")
+            header["GUIDING RMS1"] = FitsHeaderEntry(float(rms[0]), "RMS for guiding on axis 1")
+            header["GUIDING RMS2"] = FitsHeaderEntry(float(rms[1]), "RMS for guiding on axis 2")
 
         return header
 

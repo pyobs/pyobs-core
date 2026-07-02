@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 import pyobs.utils.exceptions as exc
 from pyobs.interfaces import (
+    FitsHeaderEntry,
     IAcquisition,
     IAutoGuiding,
     IBinning,
@@ -286,7 +287,7 @@ class ImagingScript(Script):
             async with self.comm.proxy(self.telescope, ITelescope) as telescope:
                 await telescope.stop_motion()
 
-    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -297,12 +298,12 @@ class ImagingScript(Script):
         """
 
         # init header
-        hdr = {}
+        hdr: dict[str, FitsHeaderEntry] = {}
 
         # which image type?
         if self._object_name is not None:
             # add object name
-            hdr["OBJECT"] = self._object_name, "Name of target"
+            hdr["OBJECT"] = FitsHeaderEntry(self._object_name, "Name of target")
 
         # return
         return hdr

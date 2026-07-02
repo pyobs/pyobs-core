@@ -2,6 +2,8 @@ from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from typing import Any, Generic, TypeVar
 
+from pyobs.interfaces import FitsHeaderEntry
+
 IN = TypeVar("IN")
 OUT = TypeVar("OUT")
 
@@ -27,10 +29,10 @@ class GuidingStatistics(Generic[IN, OUT], metaclass=ABCMeta):
             self._sessions[client].append(self._get_session_data(default))
 
     @abstractmethod
-    def _build_header(self, data: Any) -> dict[str, tuple[Any, str]]:
+    def _build_header(self, data: Any) -> dict[str, FitsHeaderEntry]:
         raise NotImplementedError
 
-    def add_to_header(self, client: str, header: dict[str, tuple[Any, str]]) -> dict[str, tuple[Any, str]]:
+    def add_to_header(self, client: str, header: dict[str, FitsHeaderEntry]) -> dict[str, FitsHeaderEntry]:
         """
         Add statistics to given header.
 

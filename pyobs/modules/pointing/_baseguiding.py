@@ -8,7 +8,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 
 from pyobs.images import Image
-from pyobs.interfaces import IAutoGuiding, IFitsHeaderAfter, IFitsHeaderBefore
+from pyobs.interfaces import FitsHeaderEntry, IAutoGuiding, IFitsHeaderAfter, IFitsHeaderBefore
 from pyobs.utils.time import Time
 
 from ...interfaces import ITelescope
@@ -92,7 +92,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -110,11 +110,11 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
 
         # return header
-        return {"AGSTATE": (state, "Autoguider state")}
+        return {"AGSTATE": FitsHeaderEntry(state, "Autoguider state")}
 
     async def get_fits_header_after(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -126,7 +126,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
 
         # state
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
-        hdr = {"AGSTATE": (state, "Autoguider state")}
+        hdr: dict[str, FitsHeaderEntry] = {"AGSTATE": FitsHeaderEntry(state, "Autoguider state")}
 
         # add statistics
         hdr = self._statistics.add_to_header(kwargs["sender"], hdr)

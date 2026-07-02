@@ -7,7 +7,6 @@ from collections.abc import Coroutine
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, get_type_hints
 
 from pyobs.interfaces import Interface
-from pyobs.utils.types import cast_bound_arguments_to_simple
 
 if TYPE_CHECKING:
     from pyobs.comm import Comm
@@ -122,11 +121,6 @@ class Proxy:
         # bind signature
         ba = signature.bind(*args, **kwargs)
         ba.apply_defaults()
-
-        # cast to simple types
-        cast_bound_arguments_to_simple(
-            ba, type_hints, pre=self._comm.cast_to_simple_pre, post=self._comm.cast_to_simple_post
-        )
 
         # do request and return future
         return await self._comm.execute(self._client, method, type_hints, *ba.args[1:])

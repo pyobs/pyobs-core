@@ -18,6 +18,7 @@ from slixmpp.xmlstream import ET
 from slixmpp.xmlstream.handler import Callback
 from slixmpp.xmlstream.matcher import MatchXMLMask
 
+import pyobs.interfaces
 from pyobs.comm import Comm
 from pyobs.events import Event, LogEvent, ModuleClosedEvent, ModuleOpenedEvent
 from pyobs.events.event import EventFactory
@@ -144,6 +145,8 @@ class XmppComm(Comm):
         self._connected = False
         self._online_clients: list[str] = []
         self._interface_cache: dict[str, asyncio.Future[list[type[Interface]]]] = {}
+        self._interface_features: dict[str, list[str]] = {}
+        self._warned_version_mismatches: set[tuple[str, str]] = set()
         self._user = user
         self._password = password
         self._domain = domain
@@ -253,7 +256,7 @@ class XmppComm(Comm):
         # add features
         if self._module is not None:
             for i in self._module.interfaces:
-                self._xmpp["xep_0030"].add_feature(f"pyobs:interface:{i.__name__}")
+                self._xmpp["xep_0030"].add_feature(f"urn:pyobs:interface:{i.__name__}:{i.version}")
 
         # register custom disco#info handler to inject <capability> elements
         if self._module is not None:
@@ -381,10 +384,23 @@ class XmppComm(Comm):
         try:
             if isinstance(info, slixmpp.stanza.iq.Iq):
                 info = info["disco_info"]
-            prefix = "pyobs:interface:"
-            interface_names = [i[len(prefix) :] for i in info["features"] if i.startswith(prefix)]
+            prefix = "urn:pyobs:interface:"
+            features = [i for i in info["features"] if i.startswith(prefix)]
         except TypeError:
             raise IndexError()
+
+        # cache raw features for this JID, so a later version-mismatch can be diagnosed
+        self._interface_features[jid] = features
+
+        # keep only names whose remote-published version matches what this client expects --
+        # a mismatch is treated the same as the interface not being there at all, rather than
+        # silently using the local (possibly incompatible) class
+        interface_names = []
+        for feature in features:
+            name, _, version = feature[len(prefix) :].rpartition(":")
+            local_cls = getattr(pyobs.interfaces, name, None)
+            if local_cls is not None and issubclass(local_cls, Interface) and str(local_cls.version) == version:
+                interface_names.append(name)
 
         # IModule not in list?
         if "IModule" not in interface_names:
@@ -397,6 +413,39 @@ class XmppComm(Comm):
 
         # finished
         return interface_names
+
+    def _diagnose_missing_interface(self, client: str, obj_type: type[Any]) -> str | None:
+        """Checks the disco#info features already cached for client for a version of obj_type
+        other than the one this client expects, to tell a version mismatch apart from
+        obj_type genuinely not being implemented at all.
+        """
+        jid = self._get_full_client_name(client)
+        features = self._interface_features.get(jid, [])
+        prefix = f"urn:pyobs:interface:{obj_type.__name__}:"
+        other = [f for f in features if f.startswith(prefix)]
+        if not other:
+            return None
+
+        remote_version = other[0][len(prefix) :]
+        try:
+            remote_version_int = int(remote_version)
+        except ValueError:
+            return None
+        direction = "upgrade the remote module" if remote_version_int < obj_type.version else "upgrade this client"
+
+        pair = (jid, obj_type.__name__)
+        if pair not in self._warned_version_mismatches:
+            self._warned_version_mismatches.add(pair)
+            log.warning(
+                '"%s" implements %s at v%s, this client expects v%s (%s).',
+                client,
+                obj_type.__name__,
+                remote_version,
+                obj_type.version,
+                direction,
+            )
+
+        return f"Remote implements it at v{remote_version}, this client expects v{obj_type.version} ({direction})."
 
     async def _supports_interface(self, client: str, interface: type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
@@ -557,6 +606,7 @@ class XmppComm(Comm):
         # clear interface cache
         if jid in self._interface_cache:
             del self._interface_cache[jid]
+        self._interface_features.pop(jid, None)
 
         # send event
         self._send_event_to_module(ModuleClosedEvent(), module_name)
@@ -729,38 +779,6 @@ class XmppComm(Comm):
 
         # never should reach this
         raise slixmpp.exceptions.IqTimeout(iq)
-
-    def cast_to_simple_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them to be sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-
-        if isinstance(value, str):
-            return True, xml.sax.saxutils.escape(value)
-        else:
-            return False, value
-
-    def cast_to_real_post(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them after being sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-
-        if isinstance(value, str):
-            return True, xml.sax.saxutils.unescape(value)
-        else:
-            return False, value
 
     @staticmethod
     def _state_namespace(interface: type[Interface]) -> str:

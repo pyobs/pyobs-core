@@ -4,12 +4,7 @@ import asyncio
 import contextlib
 from asyncio import Task
 from collections.abc import Coroutine
-from typing import TYPE_CHECKING, Any
-
-from pyobs.utils.types import cast_response_to_real
-
-if TYPE_CHECKING:
-    from pyobs.comm import Comm
+from typing import Any
 
 
 async def event_wait(evt: asyncio.Event, timeout: float = 1.0) -> bool:
@@ -33,7 +28,6 @@ class Future(asyncio.Future[Any]):
         self,
         empty: bool = False,
         annotation: dict[str, Any] | None = None,
-        comm: Comm | None = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -42,7 +36,6 @@ class Future(asyncio.Future[Any]):
         """Init new base future."""
         self.timeout: float | None = None
         self.annotation = annotation
-        self.comm = comm
         self._timeout_handle: asyncio.TimerHandle | None = None
 
         # already set?
@@ -91,15 +84,7 @@ class Future(asyncio.Future[Any]):
         if not self.done():
             raise RuntimeError("await wasn't used with future")
 
-        # get result
-        result = self.result()
-
-        # all ok, return value
-        if self.annotation and self.comm:
-            result = cast_response_to_real(
-                result, self.annotation["return"], self.comm.cast_to_real_pre, self.comm.cast_to_real_post
-            )
-        return result
+        return self.result()
 
     @staticmethod
     async def wait_all(futures: list[Future | Coroutine[Any, Any, Any] | Task[Any] | None]) -> list[Any]:

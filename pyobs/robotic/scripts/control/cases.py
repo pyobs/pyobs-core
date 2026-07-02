@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
     from pyobs.utils.time import Time
+from pyobs.interfaces import FitsHeaderEntry
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class CasesRunner(Script):
         script = self.__get_script()
         await script.run(data)
 
-    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:

@@ -611,53 +611,5 @@ class Comm:
                 if asyncio.iscoroutine(ret):
                     asyncio.create_task(ret)
 
-    def cast_to_simple_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them to be sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-        return False, value
-
-    def cast_to_simple_post(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them to be sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-        return False, value
-
-    def cast_to_real_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them after being sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-        return False, value
-
-    def cast_to_real_post(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them after being sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-        return False, value
-
 
 __all__ = ["Comm"]

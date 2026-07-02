@@ -780,38 +780,6 @@ class XmppComm(Comm):
         # never should reach this
         raise slixmpp.exceptions.IqTimeout(iq)
 
-    def cast_to_simple_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them to be sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-
-        if isinstance(value, str):
-            return True, xml.sax.saxutils.escape(value)
-        else:
-            return False, value
-
-    def cast_to_real_post(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
-        """Special treatment of single parameters when converting them after being sent via Comm.
-
-        Args:
-            value: Value to be treated.
-            annotation: Annotation for value.
-
-        Returns:
-            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
-        """
-
-        if isinstance(value, str):
-            return True, xml.sax.saxutils.unescape(value)
-        else:
-            return False, value
-
     @staticmethod
     def _state_namespace(interface: type[Interface]) -> str:
         return f"urn:pyobs:state:{interface.__name__}:{interface.version}"

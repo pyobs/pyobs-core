@@ -8,7 +8,6 @@ from pyobs.comm.comm import PresenceCallback
 from pyobs.events import Event
 from pyobs.interfaces import Interface
 from pyobs.utils.enums import ModuleState
-from pyobs.utils.types import cast_response_to_real
 
 from .localnetwork import LocalNetwork
 
@@ -53,11 +52,7 @@ class LocalComm(Comm):
         remote_client = self._network.get_client(client)
         if remote_client.module is None:
             raise ValueError
-        simple_results = await remote_client.module.execute(method, *args, sender=self.name)
-        real_results = cast_response_to_real(
-            simple_results, annotation["return"], self.cast_to_real_pre, self.cast_to_real_post
-        )
-        return real_results
+        return await remote_client.module.execute(method, *args, sender=self.name)
 
     async def send_event(self, event: Event) -> None:
         """Send an event to other clients."""

@@ -1533,7 +1533,6 @@ Consolidated list of every 🔵 open item still standing elsewhere in this docum
 - 🔵 **`IConfig.ConfigValue` type alias** (`bool | int | float | str`) designed but never applied — `get_config_value`/`set_config_value` still type as bare `Any`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 - 🔵 **`IAcquisition.acquire_target` → `AcquisitionResult`** designed but not applied. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 - 🔵 **`IFitsHeaderBefore`/`After` → `FitsHeaderResult`/`FitsHeaderEntry`** designed but not applied — both methods still return bare `dict[str, tuple[Any, str]]`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
-- 🔵 **`utils/types.py` cleanup pending.** The old XML-RPC cast pipeline is still used in `proxy.py`, `module.py`, `parallel.py`, `localcomm.py`, alongside the new serializer — leave in place until `LocalComm` and all backends are updated. See [Phase 4](#phase-4--other-backends-and-presence).
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
 - 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).
 - 🔵 **Phase 6 — official hardware modules** status unknown, external repos, not checked as part of this pass. See [Phase 6](#phase-6--external-official-pyobs--hardware-modules).
@@ -1591,7 +1590,6 @@ services:
 - ✅ **`get_*` removal has gone much further than "still pending."** This isn't an intermediate step anymore for most interfaces — `ICooling.get_cooling`, `IWindow.get_full_frame`, `IModule.get_label`/`get_version`, `IMultiFiber.get_fiber_count`, `IVideo.get_video`, `IConfig.get_config_caps`, `IFocusModel.get_optimal_focus`, `IWeather.get_weather_status`/`is_weather_good`/`get_current_weather` and others are gone outright, not returning `State` as a transition shape. Only 4 `get_*`-prefixed abstract methods remain across all interfaces: `IConfig.get_config_value` (RPC by design), `IFitsHeaderBefore`/`After.get_fits_header_*` (RPC by design), and `IWeather.get_sensor_value` (RPC by design — a live per-station HTTP call, kept deliberately rather than folded into `IWeather.state`). The `IWindow.get_full_frame` vs. Discovery discrepancy this section used to flag is moot: the method isn't there to be inconsistent anymore.
 
 🔵 **Still pending:**
-- `utils/types.py` — still used in `proxy.py`, `module.py`, `parallel.py`, `localcomm.py`. Old cast path runs alongside the new serializer. Leave in place until `LocalComm` and all backends are updated (Phase 4).
 - `ConfigValue = bool | int | float | str` was a settled design decision (Phase 2) but was never actually applied — `IConfig.get_config_value`/`set_config_value` still type as bare `Any` on `develop`.
 - `WeatherSensors.RAIN`'s unit is still an unresolved placeholder (`""`) in `WeatherSensorReading` — see [Units](#units).
 
@@ -1647,11 +1645,10 @@ The `<capability>` element pattern designed in [Capabilities / Discovery](#1-cap
 
 ### Phase 4 — Other backends and Presence
 
-✅ Local done; D-Bus not applicable (no such backend); 🔵 `utils/types.py` cleanup still pending.
+✅ Done. D-Bus not applicable (no such backend). `utils/types.py` and the old XML-RPC cast pipeline deleted.
 
 - ~~D-Bus backend: `set_state`/`subscribe_state`/`unsubscribe_state` via D-Bus properties and `PropertiesChanged`.~~ Not applicable — `pyobs-core` has no D-Bus `Comm` backend (see the correction in [Impact Analysis](#impact-analysis)). Nothing to migrate; this bullet only applies if a D-Bus backend is built in the future.
 - ✅ Local backend: `LocalComm` already implements `_set_state`, `_subscribe_state`, `_set_capabilities`, `_set_presence` as simple in-memory operations, matching this design.
-- 🔵 **Still pending:** `utils/types.py` cleanup — the old XML-RPC cast pipeline is still used in `proxy.py`, `module.py`, `parallel.py`, `localcomm.py`, alongside the new serializer.
 
 ### Phase 5 — `pyobs-gui`
 

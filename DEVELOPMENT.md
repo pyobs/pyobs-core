@@ -1599,7 +1599,7 @@ services:
 ✅ **Done.**
 
 - ✅ ~~Systematic survey of every `get_*` method across all interfaces for State-read candidacy.~~ Done — see the [get_* to State Survey](#appendix-get_-to-state-survey). All 47 methods settled: 34 `State`, 8 `Discovery`, 2 `Presence`, 4 `RPC`.
-- ✅ ~~Design (not yet implement) the State dataclasses resolving the six genuinely-undocumented-`Any` interfaces.~~ Design done — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). 🔵 Implementation for `IWeather`/`IAutoFocus` still pending (Phase 3).
+- ✅ ~~Design (not yet implement) the State dataclasses resolving the six genuinely-undocumented-`Any` interfaces.~~ Design done — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). `IAutoFocus` implemented this pass; 🔵 implementation for `IWeather` still pending (Phase 3).
 - ~~Design the tagged-union approach for `IConfig.get_config_value`/`set_config_value` separately.~~ Design settled — `ConfigValue = bool | int | float | str` — 🔵 but never actually applied in code; `get_config_value`/`set_config_value` still type as `Any` on `develop`.
 - ✅ ~~Design the named dataclasses for all 19 tuple-returning methods (`RaDec`, `AltAz`, `Binning`, `Window`, and the rest).~~ Done and implemented — only 3 of the 19 remain (see [Type Vocabulary](#type-vocabulary)).
 
@@ -1637,10 +1637,10 @@ The `<capability>` element pattern designed in [Capabilities / Discovery](#1-cap
 
 ### Phase 3 — Bulk rollout
 
-✅ **Mostly done** — 🔵 3 interfaces and event schema publication remain.
+✅ **Mostly done** — 🔵 2 interfaces and event schema publication remain.
 
-- ✅ Tuple-returning methods converted to dataclasses — 16 of 19 done; the 3 remaining (`IAutoFocus.auto_focus`, `IFlatField.flat_field`, `IWeather.get_sensor_value`) are tied to the interfaces below.
-- Add `State` to every interface identified in Phase 2's `get_*` survey: **done for 23 of ~26**; `IFocusModel`, `IWeather`, `IAutoFocus` still have no `state =` assignment and still expose their original `get_*`/tuple-returning methods.
+- ✅ Tuple-returning methods converted to dataclasses — 17 of 19 done; the 2 remaining (`IFlatField.flat_field`, `IWeather.get_sensor_value`) are tied to the interface below.
+- Add `State` to every interface identified in Phase 2's `get_*` survey: **done for 24 of ~26**; `IFocusModel`, `IWeather` still have no `state =` assignment and still expose their original `get_*`/tuple-returning methods. (`IAutoFocus` done this pass.)
 - ✅ disco#info and PubSub state publishing extended to every interface now carrying a `State`.
 - 🔵 **Not done:** publishing `urn:pyobs:event:Name:{version}` schemas for events — event disco#info features remain unversioned (see [Events](#4-events--unchanged-at-the-api-level) and [Versioning](#versioning)), and no event schema block exists in disco#info at all yet.
 
@@ -1729,11 +1729,11 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above. `IReady`/`IRunning` ✅ implemented; 🔵 `IWeather.is_weather_good` still pending along with the rest of `IWeather`.
 
-**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level. Implementation: 31 of 34 `State` items done (🔵 `IFocusModel`, `IWeather`, `IAutoFocus` remaining), all 8 `Discovery` done, both `Presence` done, 3 of 4 `RPC` items match their settled type (🔵 the fourth, `IConfig`'s `ConfigValue` alias, was never applied). See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level. Implementation: 32 of 34 `State` items done (🔵 `IFocusModel`, `IWeather` remaining), all 8 `Discovery` done, both `Presence` done, 3 of 4 `RPC` items match their settled type (🔵 the fourth, `IConfig`'s `ConfigValue` alias, was never applied). See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 
 ## Appendix: State and Capability dataclass catalogue
 
-Every interface's state is a standalone dataclass assigned to `interface.state` — `ICooling.state = CoolingState`, etc. `Interface.state: ClassVar[type | None] = None` provides the default; all base classes agree on the type so module classes inheriting from multiple state-bearing interfaces don't cause `[inconsistent-inheritance]` errors. Supporting dataclasses used as list elements (`DeviceMotionStatus`, `SensorReading`, etc.) stay standalone since they're not `interface.state` targets themselves. `AutoFocusPoint` similarly stays standalone as a list element inside `AutoFocusStatus`.
+Every interface's state is a standalone dataclass assigned to `interface.state` — `ICooling.state = CoolingState`, etc. `Interface.state: ClassVar[type | None] = None` provides the default; all base classes agree on the type so module classes inheriting from multiple state-bearing interfaces don't cause `[inconsistent-inheritance]` errors. Supporting dataclasses used as list elements (`DeviceMotionStatus`, `SensorReading`, etc.) stay standalone since they're not `interface.state` targets themselves. `AutoFocusPoint` similarly stays standalone as a list element inside `AutoFocusState`. `AutoFocusResult` is a third, independent case — not a list element, not a `state`, but the return type of the `auto_focus()` RPC action itself, following the same `Result`-suffix convention as `AcquisitionResult`/`FitsHeaderResult` below for "RPC action returns a named dataclass instead of a bare tuple/dict."
 
 Capabilities follow the identical pattern via a second, independent ClassVar — `Interface.capabilities: ClassVar[type | None] = None`, `IModule.capabilities = ModuleCapabilities`, etc. — covering the Discovery interfaces from the survey (`ILatLon`/`LatLonCapabilities`, listed in the survey's original count, no longer exist). Fixed-for-lifetime values, parsed once from disco#info rather than subscribed via PubSub; see [the "two independent ClassVars" note above](#proxy-state-hidden-behind-update_state-and-a-state-method) for why these stay separate from state rather than merging into one mechanism. ✅ Implemented, and broader on `develop` than this catalogue lists: `IFilters`, `IImageFormat`, `IMode`, and `IBinning` also declare `capabilities =` now (e.g. listing available filters/formats/modes/binning options) — additions made during implementation, not catalogued here in detail.
 
@@ -1785,7 +1785,7 @@ class ModeEntry:                    # ModeState.modes element
     mode: str
 
 @dataclass
-class AutoFocusPoint:               # AutoFocusStatus.points element
+class AutoFocusPoint:               # AutoFocusState.points element
     focus: float
     value: float
 
@@ -1972,7 +1972,12 @@ class ModeState:
 # ---- Auto-focus ----
 
 @dataclass
-class AutoFocusStatus:              # growing curve during autofocus run
+class AutoFocusResult:              # auto_focus() return type -- RPC action result, not state
+    focus: float
+    focus_err: float
+
+@dataclass
+class AutoFocusState:               # growing curve during autofocus run
     points: list[AutoFocusPoint] = field(default_factory=list)
     time: Time = field(default_factory=Time.now)
 
@@ -2010,7 +2015,7 @@ class ITemperatures(Interface):     state = TemperaturesState    # ✅
 class IWeather(Interface):          state = WeatherState         # 🔵 not yet -- still get_weather_status/get_current_weather/get_sensor_value RPC
 class IMultiFiber(Interface):       state = MultiFiberState      # ✅
 class IMode(Interface):             state = ModeState            # ✅
-class IAutoFocus(Interface):        state = AutoFocusStatus      # 🔵 not yet -- still auto_focus_status()/auto_focus() -> tuple RPC
+class IAutoFocus(Interface):        state = AutoFocusState       # ✅ auto_focus() -> AutoFocusResult; auto_focus_status() removed
 
 
 # ---- Capabilities: fixed-for-lifetime values, parsed once from disco#info ----

@@ -1670,8 +1670,6 @@ Hardware module repos in scope (13):
 | `pyobs-brot` | BROTlib telescopes |
 | `pyobs-fli` | FLI cameras |
 | `pyobs-flipro` | FLIPRO cameras |
-| `pyobs-gemini` | Optec Gemini focuser/rotator |
-| `pyobs-pilar` | Pilar TCS |
 | `pyobs-qhyccd` | QHYCCD cameras |
 | `pyobs-sbig` | SBIG cameras |
 | `pyobs-v4l` | V4L webcams |

@@ -7,7 +7,7 @@ from typing import Any
 import astropy.units as u
 
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import IFitsHeaderBefore, IWeather, WeatherSensorReading, WeatherState
+from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IWeather, WeatherSensorReading, WeatherState
 from pyobs.modules import Module
 from pyobs.modules.weather.weather_api import WeatherApi
 from pyobs.modules.weather.weather_state import WeatherStatus
@@ -181,7 +181,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -206,7 +206,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             key, comment, dtype = FITS_HEADERS[sensor_type]
 
             header_value = None if value is None else dtype(value)
-            header[key] = (header_value, comment)
+            header[key] = FitsHeaderEntry(header_value, comment)
 
         return header
 

@@ -1532,7 +1532,7 @@ Consolidated list of every 🔵 open item still standing elsewhere in this docum
 - 🔵 **`WeatherSensors.RAIN` still has no real unit.** `WeatherSensorReading.unit` for `RAIN` is a placeholder empty string (`SENSOR_UNITS` in `weather.py`) — the underlying "0/1 flag encoded as `float`" design question flagged in [Units](#units) was never resolved, just carried through into the now-implemented `WeatherState`.
 - 🔵 **`IConfig.ConfigValue` type alias** (`bool | int | float | str`) designed but never applied — `get_config_value`/`set_config_value` still type as bare `Any`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 - 🔵 **`IAcquisition.acquire_target` → `AcquisitionResult`** designed but not applied. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
-- 🔵 **`IFitsHeaderBefore`/`After` → `FitsHeaderResult`/`FitsHeaderEntry`** designed but not applied — both methods still return bare `dict[str, tuple[Any, str]]`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+- ✅ **`IFitsHeaderBefore`/`After` → `FitsHeaderEntry`** — both methods now return `dict[str, FitsHeaderEntry]` (dataclass with `value: int | float | str | None` and `comment: str`). `FitsHeaderResult` wrapper was dropped as unnecessary; `FitsHeaderEntry` is exported directly from `pyobs.interfaces`. All producers and the `fitsheader.py` mixin consumer updated.
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
 - 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).
 - 🔵 **Phase 6 — official hardware modules** status unknown, external repos, not checked as part of this pass. See [Phase 6](#phase-6--external-official-pyobs--hardware-modules).
@@ -1719,7 +1719,7 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **Not State — maps onto Presence instead:** `IModule.get_state` (`ModuleState`: closed/ready/error/local) and `IModule.get_error_string`. ✅ Implemented — both methods removed, replaced by `Comm.get_client_state()`/presence subscription, exactly as this section proposed.
 
-**Stays RPC:** `IConfig.get_config_value(name)` and `get_config_value_options(name)` — already the flagged open-key exception, still RPC as designed. `IFitsHeaderBefore`/`After.get_fits_header_*(namespaces)` — stays RPC, still present. Return type settled as `FitsHeaderResult`/`FitsHeaderEntry` in this document's catalogue, 🔵 but not applied — both methods still return bare `dict[str, tuple[Any, str]]` on `develop`.
+**Stays RPC:** `IConfig.get_config_value(name)` and `get_config_value_options(name)` — already the flagged open-key exception, still RPC as designed. `IFitsHeaderBefore`/`After.get_fits_header_*(namespaces)` — stays RPC, still present. Return type ✅ applied as `dict[str, FitsHeaderEntry]` (`FitsHeaderResult` wrapper dropped as unnecessary).
 
 **Settled:** `IMode.get_mode(group: int)` — ✅ implemented as `IMode.state = ModeState`. `IMotion.get_motion_status(device: str | None)` — ✅ implemented as `IMotion.state = MotionState`. `IConfig.get_config_value`/`set_config_value` — stays RPC as designed, 🔵 but the `ConfigValue = bool | int | float | str` type alias was never actually added; both still type as bare `Any`.
 
@@ -2063,10 +2063,9 @@ class IVideo(Interface):            capabilities = VideoCapabilities
 
 
 # ---- RPC result types (not State) ----
-# 🔵 Neither of the two below has actually been applied yet: IAcquisition.acquire_target
-# still returns bare dict[str, Any], and IFitsHeaderBefore/After.get_fits_header_*
-# still return bare dict[str, tuple[Any, str]], confirmed by reading both interfaces.
-# Designs settled, implementation still pending.
+# IAcquisition.acquire_target still returns bare dict[str, Any] -- 🔵 AcquisitionResult not yet applied.
+# IFitsHeaderBefore/After.get_fits_header_* -- ✅ applied as dict[str, FitsHeaderEntry];
+# FitsHeaderResult wrapper was dropped as unnecessary.
 
 @dataclass
 class AcquisitionResult:            # IAcquisition.acquire_target return type -- 🔵 not yet applied
@@ -2081,10 +2080,6 @@ class AcquisitionResult:            # IAcquisition.acquire_target return type --
     off_dec: Annotated[float, Unit.DEGREES] | None = None
     off_alt: Annotated[float, Unit.DEGREES] | None = None
     off_az: Annotated[float, Unit.DEGREES] | None = None
-
-@dataclass
-class FitsHeaderResult:             # IFitsHeaderBefore/After return type -- 🔵 not yet applied
-    entries: dict[str, FitsHeaderEntry] = field(default_factory=dict)
 
 
 # ---- Config (dynamic, not a State -- typed alias for get/set_config_value) ----

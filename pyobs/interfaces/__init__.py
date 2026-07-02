@@ -27,7 +27,7 @@ from .IExposure import ExposureState, IExposure
 from .IExposureTime import ExposureTimeState, IExposureTime
 from .IFilters import FiltersCapabilities, FilterState, IFilters
 from .IFitsHeaderAfter import IFitsHeaderAfter
-from .IFitsHeaderBefore import IFitsHeaderBefore
+from .IFitsHeaderBefore import FitsHeaderEntry, IFitsHeaderBefore
 from .IFlatField import IFlatField
 from .IFocuser import FocuserState, IFocuser
 from .IFocusModel import IFocusModel, OptimalFocusState
@@ -87,6 +87,7 @@ __all__ = [
     "IFilters",
     "FiltersCapabilities",
     "FilterState",
+    "FitsHeaderEntry",
     "IFitsHeaderAfter",
     "IFitsHeaderBefore",
     "IFlatField",

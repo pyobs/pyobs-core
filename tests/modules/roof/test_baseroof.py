@@ -40,7 +40,8 @@ async def test_get_fits_header_before_open():
     telescope.motion_status = MagicMock(return_value=MotionStatus.POSITIONED)
     header = await telescope.get_fits_header_before()
 
-    assert header["ROOF-OPN"] == (True, "True for open, false for closed roof")
+    assert header["ROOF-OPN"].value is True
+    assert header["ROOF-OPN"].comment == "True for open, false for closed roof"
 
 
 @pytest.mark.asyncio
@@ -50,7 +51,8 @@ async def test_get_fits_header_before_closed():
     telescope.motion_status = MagicMock(return_value=MotionStatus.PARKED)
     header = await telescope.get_fits_header_before()
 
-    assert header["ROOF-OPN"] == (False, "True for open, false for closed roof")
+    assert header["ROOF-OPN"].value is False
+    assert header["ROOF-OPN"].comment == "True for open, false for closed roof"
 
 
 def test_ready():

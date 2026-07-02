@@ -4,7 +4,7 @@ import logging
 from abc import ABCMeta
 from typing import Any
 
-from pyobs.interfaces import AltAzState, IDome, IPointingAltAz
+from pyobs.interfaces import AltAzState, FitsHeaderEntry, IDome, IPointingAltAz
 from pyobs.utils import exceptions as exc
 
 from .baseroof import BaseRoof
@@ -25,7 +25,7 @@ class BaseDome(IDome, BaseRoof, metaclass=ABCMeta):
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -39,7 +39,7 @@ class BaseDome(IDome, BaseRoof, metaclass=ABCMeta):
 
         altaz: AltAzState | None = self.comm.get_own_state(IPointingAltAz)
         az = altaz.az if altaz is not None else 0.0
-        hdr["ROOF-AZ"] = (az, "Azimuth of roof slit, deg E of N")
+        hdr["ROOF-AZ"] = FitsHeaderEntry(az, "Azimuth of roof slit, deg E of N")
         return hdr
 
 

@@ -4,7 +4,7 @@ import logging
 from abc import ABCMeta
 from typing import Any
 
-from pyobs.interfaces import IFitsHeaderBefore, IReady, IRoof, ReadyState
+from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IReady, IRoof, ReadyState
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
@@ -37,7 +37,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, tuple[Any, str]]:
+    ) -> dict[str, FitsHeaderEntry]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -47,7 +47,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
             Dictionary containing FITS headers.
         """
         return {
-            "ROOF-OPN": (
+            "ROOF-OPN": FitsHeaderEntry(
                 self.motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
                 "True for open, false for closed roof",
             )

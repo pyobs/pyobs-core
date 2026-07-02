@@ -111,7 +111,8 @@ async def test_get_fits_header_before(caplog) -> None:
     weather._weather.status["sensors"] = {"rain": {"value": 1}}
 
     header = await weather.get_fits_header_before()
-    assert header["WS-PREC"] == (True, "Ambient precipitation [0/1]")
+    assert header["WS-PREC"].value is True
+    assert header["WS-PREC"].comment == "Ambient precipitation [0/1]"
 
 
 @pytest.mark.asyncio

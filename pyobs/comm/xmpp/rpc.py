@@ -48,12 +48,13 @@ def xml_to_params(params_elem: ET.Element, names: list[str], types: dict[str, An
         type_hint = types.get(name, Any)
         value_elem = param_elem.find(f"{{{_NS}}}value")
         if value_elem is None:
-            result.append(None)
-            continue
+            raise ValueError(f"Malformed RPC param '{name}': missing <value> element.")
         pyobs_value = value_elem.find(f"{{{_PYOBS_NS}}}value")
         if pyobs_value is None:
-            result.append(None)
-            continue
+            raise ValueError(
+                f"Malformed RPC param '{name}': missing <value> element in namespace '{_PYOBS_NS}' "
+                f"(sender may have serialized it without the required xmlns)."
+            )
         children = list(pyobs_value)
         result.append(xml_to_value(children[0], type_hint) if children else None)
     return result

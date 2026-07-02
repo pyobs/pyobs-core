@@ -190,7 +190,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             count: Number of images to take
 
         Returns:
-            Number of images actually taken and total exposure time in ms
+            Number of images actually taken and total exposure time in seconds
         """
 
         # check

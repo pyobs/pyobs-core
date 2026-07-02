@@ -562,7 +562,7 @@ What it deliberately does **not** do is de-duplicate enum definitions *across* i
 
 ### Units
 
-✅ `Unit(StrEnum)` implemented in `pyobs/utils/enums.py`. 🔵 Annotation rollout in progress — 12 of ~19 applicable interface files annotated as of this pass.
+✅ `Unit(StrEnum)` implemented in `pyobs/utils/enums.py`. ✅ Annotation rollout complete — all applicable interface files annotated. `Unit.MM` added for `IFocuser`.
 
 `float64` doesn't distinguish degrees from radians, or Celsius from Kelvin — surfaced by the C/Java thought experiment below, where there's no human reading every field to absorb a docstring's "RA in deg."
 
@@ -1517,7 +1517,7 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 - ✅ `await self.proxy(...)` is removed in favor of `async with self.proxy(...) as x:` as the only way to obtain a proxy, closing off the long-held-reference pattern that causes stale state at its source rather than just discouraging it. `cache_proxies` (real, on `1.x`) is gone. `has_proxy()` (plain `async def`, not `async with` — it returns `bool`, never a `Proxy`) covers the common case of using `proxy()` purely as an existence/type check. All migrated: no `await self.proxy(...)` call sites remain in `pyobs-core`.
 - ✅ Versioning is settled and implemented for interfaces: `urn:pyobs:interface:ICamera:2`, with state namespaces and PubSub node paths inheriting the interface's version — commands and state are one versioned contract. `Interface.version`/`Event.version` both exist. 🔵 **Not yet done:** events are versioned independently in principle (`urn:pyobs:event:NewImageEvent:1`) but the wire side hasn't landed — event disco#info features are still the unversioned `pyobs:event:{name}` form.
 - ✅ Mostly done: tuple-returning methods and undocumented `Any`-typed methods converted to named dataclasses. Only 1 of the original 19 tuple-returning methods remains (`IFlatField.flat_field`, a genuine RPC action result, out of scope for removal). `IConfig`'s deliberately dynamic config values are handled separately as designed.
-- ✅ Units: `Unit(StrEnum)` exists in `pyobs/utils/enums.py` with `to_astropy()`. Annotation rollout is partial — 12 interface files use `Annotated[float, Unit.X]` so far, not yet exhaustive across every applicable field.
+- ✅ Units: `Unit(StrEnum)` exists in `pyobs/utils/enums.py` with `to_astropy()`. Annotation rollout complete — all applicable interface files annotated.
 
 ## Open Questions / Next Steps
 
@@ -1525,7 +1525,6 @@ Consolidated list of every 🔵 open item still standing elsewhere in this docum
 
 - 🔵 **Event feature versioning + schema publication.** `add_feature` in `xmppcomm.py` still publishes the unversioned `pyobs:event:{name}` form, not `urn:pyobs:event:{name}:{version}`; no event schema block exists in disco#info yet. See [Events](#4-events--unchanged-at-the-api-level), [Versioning](#versioning), [Phase 0](#phase-0--foundations), [Phase 3](#phase-3--bulk-rollout).
 - 🔵 **`<types>` disco#info block for enums** not yet implemented. See [Enums in RPC and State](#enums-in-rpc-and-state).
-- 🔵 **`Unit` annotation rollout in progress** — 12 of ~19 applicable interface files annotated as of this pass. See [Units](#units).
 - 🔵 **`with_units`/`_interface_unit_hints` decorator** not implemented — flagged as optional convenience, not a gap. See [Units](#units).
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
 - 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).
@@ -1542,7 +1541,7 @@ Ordered by dependency, not by section order above — several things only make s
 - ✅ `Interface.version`/`Event.version` (lowercase `version`, default `1`) — wired into state (`urn:pyobs:state:{name}:{version}`) and capabilities (`urn:pyobs:capabilities:{name}:{version}`) namespaces. **Interface features: done.** `add_feature` publishes `urn:pyobs:interface:{name}:{version}`, and `_get_interfaces`'s parsing filters to only the versioned form, so `.version` mismatches now actually exclude the interface from a resolved proxy instead of resolving silently — see the mixed-version-fleet diagnostic above. 🔵 **Still missing:** `Event` features — `add_feature(f"pyobs:event:{ev.__name__}")` still publishes the old pre-2.0 unversioned form, not `urn:pyobs:event:{name}:{version}`. See [Versioning](#versioning).
 - ✅ `Comm.proxy()`/`Object.proxy()`/`Comm.safe_proxy()` converted to the `async with`-only `_ProxyContext`, `ProxyType`/`_ProxyContext` consolidated into `proxy.py`, `has_proxy()` added. Migration complete: no `await self.proxy(...)` call sites remain in `pyobs-core`. `cache_proxies` removed.
 - ✅ ~~All six project enums converting `Enum` → `StrEnum`~~ Already true today — nothing to do here. This is what the wire-vocabulary's `enum(Name)` design assumes. See [Type Vocabulary](#type-vocabulary).
-- ✅ mostly. `Unit(StrEnum)` added to `pyobs/utils/enums.py` with `to_astropy()`. Annotation of existing interface signatures with `Annotated[float, Unit.X]` is in progress, not exhaustive — 12 interface files use it so far. See [Units](#units).
+- ✅ `Unit(StrEnum)` added to `pyobs/utils/enums.py` with `to_astropy()`. All applicable interface signatures annotated with `Annotated[float, Unit.X]`. See [Units](#units).
 
 ### Phase 1 — Walking skeleton: prove State end-to-end on one interface
 

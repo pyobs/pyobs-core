@@ -1047,7 +1047,7 @@ class Comm:
 
 ### Reconnect with a different interface set
 
-✅ Disconnect/reconnect handling implemented. 🔵 The stale-reference `callback(None)` refinement below is not.
+✅ Disconnect/reconnect handling implemented. The `callback(None)` refinement below was assessed as not needed — see note.
 
 Tracing the actual disconnect/reconnect chain in the XMPP backend shows this is already handled by composing two existing mechanisms, with no new code needed beyond what's sketched above:
 
@@ -1061,7 +1061,7 @@ So a module that disconnects and reconnects with a different capability set reso
 
 The fix is small: have `unsubscribe_state`'s teardown push one final `callback(None)` before discarding it. For `Proxy.update_state`, that means an orphaned proxy's `.state` collapses to `None` — an explicit "I don't know anymore" — instead of quietly going stale. This costs nothing on the `subscribe_state` side and only touches the teardown path already being added.
 
-🔵 **Not implemented.** `XmppComm._unsubscribe_state` on `develop` removes the callback and (on last-subscriber) sends the PubSub unsubscribe IQ, but does not push a final `callback(None)`. A `Proxy` held past its module's disconnect currently keeps returning its last-known state rather than collapsing to `None` — the gap this paragraph describes is real and still open, not yet a solved edge case.
+✅ **Not needed in practice.** `_client_disconnected` already calls `proxy.clear_state()` before eviction, so `get_state()` returns `None` immediately on disconnect. The `async with`-only proxy design closes off long-lived proxy references entirely. Direct `Comm.subscribe_state()` callers stop receiving updates on disconnect (via `unsubscribe_state`) but don't get an explicit `callback(None)` — acceptable since no current code relies on that signal.
 
 ### Final decision: `async with` only — `await self.proxy()` is removed
 
@@ -1527,7 +1527,6 @@ Consolidated list of every 🔵 open item still standing elsewhere in this docum
 - 🔵 **`<types>` disco#info block for enums** not yet implemented. See [Enums in RPC and State](#enums-in-rpc-and-state).
 - 🔵 **`Unit` annotation rollout in progress** — 12 of ~19 applicable interface files annotated as of this pass. See [Units](#units).
 - 🔵 **`with_units`/`_interface_unit_hints` decorator** not implemented — flagged as optional convenience, not a gap. See [Units](#units).
-- 🔵 **Stale-reference `callback(None)` on disconnect not implemented.** `XmppComm._unsubscribe_state` removes the callback and sends the PubSub unsubscribe IQ on last-subscriber, but doesn't push a final `callback(None)`; a `Proxy` held past its module's disconnect keeps returning stale last-known state instead of collapsing to `None`. See [Lifecycle](#lifecycle-piggyback-on-existing-proxy-eviction-no-new-proxy-api).
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
 - 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).
 - 🔵 **Phase 6 — official hardware modules** status unknown, external repos, not checked as part of this pass. See [Phase 6](#phase-6--external-official-pyobs--hardware-modules).

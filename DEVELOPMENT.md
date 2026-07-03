@@ -832,7 +832,7 @@ acl:
 
 ### Follow-ups (not required for v1)
 
-- **Interface-name sugar** — allow an `acl:` entry to name an interface (`ICamera`) as shorthand for all of that interface's methods, instead of listing methods individually. A plausible convenience on top of the method-list form once real `acl:` blocks exist to see whether the repetition is actually annoying in practice; method lists alone are sufficient and fully cover the design, so this is picked up later rather than blocking Phase 8.
+- ✅ **Interface-name sugar** — an `acl: allow:` entry may name an interface (e.g. `ICooling`) as shorthand for all of that interface's own methods, instead of listing them individually; unrecognized entries are kept as plain method names, and `"*"` is left untouched. Expansion happens once, at `acl:` parse time in `Module._parse_acl`/`_expand_acl_entries`, against the module's own `_interface_methods` map (built alongside `_methods` in `_get_interfaces_and_methods`, which now runs before acl parsing rather than after) — so `_acl_allow` always ends up holding fully-resolved method lists, and the `Module.execute()` check itself is unchanged. Covered by unit tests in `tests/modules/test/standalone.py` and an XMPP integration test (`tests/integration/test_xmpp_acl.py::test_acl_allow_interface_name_sugar`) confirming a method from an unlisted interface on the same module is still denied.
 
 ### Fleet-wide visibility (cross-repo: `pyobs-web-admin`)
 

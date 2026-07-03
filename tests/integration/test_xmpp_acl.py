@@ -14,7 +14,7 @@ import asyncio
 import pytest
 
 from pyobs.comm.xmpp.xmppcomm import XmppComm
-from pyobs.interfaces import ICooling
+from pyobs.interfaces import ICooling, IGain
 from pyobs.modules.camera.dummycamera import DummyCamera
 from pyobs.utils import exceptions as exc
 
@@ -55,6 +55,36 @@ async def test_acl_deny_forbids_call(make_xmpp_comm, xmpp_config) -> None:
             async with observer_comm.proxy("camera", ICooling) as cam:
                 with pytest.raises(exc.RemoteError) as exc_info:
                     await cam.set_cooling(enabled=True, setpoint=-20.0)
+            assert "forbidden" in str(exc_info.value).lower()
+
+        finally:
+            await camera.close()
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_acl_allow_interface_name_sugar(make_xmpp_comm, xmpp_config) -> None:
+    """Naming an interface under "allow" permits all of its methods, but nothing outside it."""
+
+    async def _run():
+        camera = DummyCamera(
+            name="camera", comm=make_camera_comm(xmpp_config), acl={"allow": {"observer": ["ICooling"]}}
+        )
+        try:
+            await camera.open()
+            observer_comm = await make_xmpp_comm("observer")
+            ok = await wait_for(lambda: "camera" in observer_comm.clients)
+            assert ok
+
+            # set_cooling is part of ICooling -- permitted via the interface-name sugar
+            async with observer_comm.proxy("camera", ICooling) as cam:
+                result = await cam.set_cooling(enabled=True, setpoint=-20.0)
+            assert result is None
+
+            # set_gain is part of IGain -- not covered by the "ICooling" sugar entry
+            async with observer_comm.proxy("camera", IGain) as cam:
+                with pytest.raises(exc.RemoteError) as exc_info:
+                    await cam.set_gain(42.0)
             assert "forbidden" in str(exc_info.value).lower()
 
         finally:

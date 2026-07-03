@@ -74,6 +74,56 @@ def test_acl_invalid_mode():
         StandAlone(acl={"allow": {"scheduler": "*"}, "mode": "bogus"})
 
 
+def test_acl_allow_interface_name_sugar_expands_to_methods():
+    module = StandAlone(acl={"allow": {"scheduler": ["IConfig"]}})
+    interface_methods = set(module._interface_methods["IConfig"])
+    assert interface_methods == set(module._acl_allow["scheduler"])
+    assert "get_config_value" in module._acl_allow["scheduler"]
+    assert "set_config_value" in module._acl_allow["scheduler"]
+    # not part of IConfig
+    assert "reset_error" not in module._acl_allow["scheduler"]
+
+
+def test_acl_allow_interface_name_sugar_mixed_with_plain_methods():
+    module = StandAlone(acl={"allow": {"scheduler": ["IConfig", "reset_error"]}})
+    assert "get_config_value" in module._acl_allow["scheduler"]
+    assert "reset_error" in module._acl_allow["scheduler"]
+
+
+def test_acl_allow_interface_name_sugar_deduplicates():
+    module = StandAlone(acl={"allow": {"scheduler": ["IConfig", "get_config_value"]}})
+    assert module._acl_allow["scheduler"].count("get_config_value") == 1
+
+
+def test_acl_allow_star_not_expanded():
+    module = StandAlone(acl={"allow": {"mastermind": "*"}})
+    assert module._acl_allow["mastermind"] == "*"
+
+
+def test_acl_allow_unknown_entry_kept_as_plain_method_name():
+    module = StandAlone(acl={"allow": {"scheduler": ["some_unknown_method"]}})
+    assert module._acl_allow["scheduler"] == ["some_unknown_method"]
+
+
+@pytest.mark.asyncio
+async def test_execute_allow_interface_name_sugar_permits_interface_methods():
+    module = StandAlone(acl={"allow": {"scheduler": ["IConfig"]}})
+    with pytest.raises(exc.ForbiddenError):
+        await module.execute("reset_error", sender="scheduler")
+    # set_config_value is part of IConfig, so it's permitted by the "IConfig" sugar entry --
+    # denial happens before argument binding, so a missing "name" arg would still raise
+    # ForbiddenError first if this were denied; here we just confirm it isn't ForbiddenError.
+    with pytest.raises(TypeError):
+        await module.execute("set_config_value", sender="scheduler")
+
+
+@pytest.mark.asyncio
+async def test_get_permitted_methods_interface_name_sugar():
+    module = StandAlone(acl={"allow": {"scheduler": ["IConfig"]}})
+    methods = await module.get_permitted_methods(sender="scheduler")
+    assert set(methods) == set(module._interface_methods["IConfig"])
+
+
 @pytest.mark.asyncio
 async def test_execute_no_acl_allows_everyone():
     module = StandAlone()

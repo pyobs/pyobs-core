@@ -124,6 +124,14 @@ An optional ``mode`` key (``enforce``, the default, or ``log``) controls whether
 blocked or just logged as a warning while still being allowed through -- useful for validating a new policy
 against real traffic before switching it on. A module with no ``acl`` block is fully open, exactly as before.
 
+An ``allow`` entry may also name an interface (e.g. ``ICooling``) instead of listing its methods one by one::
+
+    acl:
+      allow:
+        scheduler: [ICooling, expose, abort]   # every ICooling method, plus these two
+
+Interface names and plain method names can be mixed freely in the same list.
+
 A denied caller can still ask what it *is* allowed to do, via ``IModule.get_permitted_methods()`` -- this call
 is itself always exempt from the acl check.
 

@@ -117,16 +117,18 @@ class Module(Object, IModule, IConfig):
         """
         Object.__init__(self, **kwargs)
 
-        # access control
+        # get list of client interfaces
+        self._interfaces: list[type[Interface]] = []
+        self._methods: dict[str, tuple[Callable[..., Any], inspect.Signature, dict[Any, Any]]] = {}
+        self._interface_methods: dict[str, list[str]] = {}
+        self._get_interfaces_and_methods()
+
+        # access control -- parsed after interfaces/methods, since "allow" entries may
+        # name an interface as shorthand for all of that interface's methods
         self._acl_allow: dict[str, list[str] | str] | None = None
         self._acl_deny: list[str] | None = None
         self._acl_mode: str = "enforce"
         self._parse_acl(acl)
-
-        # get list of client interfaces
-        self._interfaces: list[type[Interface]] = []
-        self._methods: dict[str, tuple[Callable[..., Any], inspect.Signature, dict[Any, Any]]] = {}
-        self._get_interfaces_and_methods()
 
         # get configuration caps, i.e. all parameters from c'tor
         self._additional_config_variables = additional_config_variables
@@ -269,9 +271,30 @@ class Module(Object, IModule, IConfig):
         if mode not in ("enforce", "log"):
             raise ValueError(f'Invalid acl mode "{mode}", must be "enforce" or "log".')
 
+        if allow is not None:
+            allow = {sender: self._expand_acl_entries(entries) for sender, entries in allow.items()}
+
         self._acl_allow = allow
         self._acl_deny = deny
         self._acl_mode = mode
+
+    def _expand_acl_entries(self, entries: list[str] | str) -> list[str] | str:
+        """Expand any interface names (e.g. "ICamera") in an "allow" entry list into that
+        interface's own method names, so listing an interface is shorthand for listing all
+        of its methods individually. Unrecognized entries are kept as-is (plain method names).
+
+        Args:
+            entries: Either "*" (kept as-is) or a list of method and/or interface names.
+        """
+        if entries == "*":
+            return entries
+
+        expanded = []
+        for entry in entries:
+            expanded.extend(self._interface_methods.get(entry, [entry]))
+
+        # de-duplicate while preserving order
+        return list(dict.fromkeys(expanded))
 
     def _get_interfaces_and_methods(self) -> None:
         """List interfaces and methods of this module."""
@@ -280,6 +303,7 @@ class Module(Object, IModule, IConfig):
         # get interfaces
         self._interfaces = []
         self._methods = {}
+        self._interface_methods = {}
         for _, interface in inspect.getmembers(pyobs.interfaces, predicate=inspect.isclass):
             # is module a sub-class of that class that inherits from Interface?
             if isinstance(self, interface) and issubclass(interface, pyobs.interfaces.Interface):
@@ -291,6 +315,7 @@ class Module(Object, IModule, IConfig):
                 self._interfaces += [interface]
 
                 # loop methods of that interface
+                method_names = []
                 for method_name, method in inspect.getmembers(interface, predicate=inspect.isfunction):
                     # get method and signature
                     func = getattr(self, method_name)
@@ -299,6 +324,10 @@ class Module(Object, IModule, IConfig):
 
                     # fill dict of name->(method, signature)
                     self._methods[method_name] = (func, signature, type_hints)
+                    method_names.append(method_name)
+
+                # remember method names per interface, for acl "allow" interface-name sugar
+                self._interface_methods[interface.__name__] = method_names
 
     def _acl_denied(self, sender: str, method: str) -> bool:
         """Whether the acl policy denies `sender` calling `method`, ignoring `mode` (enforce vs. log).

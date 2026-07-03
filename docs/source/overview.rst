@@ -103,6 +103,31 @@ Once configured, other modules on the network can be reached via a proxy::
 More details about this can be found in the :doc:`api/comm` section.
 
 
+Access control
+---------------
+
+By default, any module that can reach another module on the network may call any of its methods. To restrict
+this, add an ``acl`` block next to ``comm`` in the module's configuration. It takes exactly one of ``allow``
+(list only who may call in, deny everyone else) or ``deny`` (block a few named callers, allow everyone else)::
+
+    acl:
+      allow:
+        scheduler: [expose, abort]   # scheduler may call only these two methods
+        mastermind: "*"              # mastermind may call anything
+        # anyone else -> denied
+
+    # or:
+    acl:
+      deny: [legacy_gui]             # legacy_gui is blocked entirely, everyone else keeps full access
+
+An optional ``mode`` key (``enforce``, the default, or ``log``) controls whether a denied call is actually
+blocked or just logged as a warning while still being allowed through -- useful for validating a new policy
+against real traffic before switching it on. A module with no ``acl`` block is fully open, exactly as before.
+
+A denied caller can still ask what it *is* allowed to do, via ``IModule.get_permitted_methods()`` -- this call
+is itself always exempt from the acl check.
+
+
 Virtual File System
 -------------------
 

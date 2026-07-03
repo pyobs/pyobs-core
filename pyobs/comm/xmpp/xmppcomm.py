@@ -477,7 +477,12 @@ class XmppComm(Comm):
         # call
         try:
             return await self._rpc.call(jid, method, annotation, *args)
-        except slixmpp.exceptions.IqError:
+        except slixmpp.exceptions.IqError as e:
+            # slixmpp's own Iq.send() future resolves on the reply's stanza id before the
+            # RPC layer's jabber_rpc_error event handling ever gets a chance to act on it,
+            # so the IQ-level "forbidden" condition (see Module ACLs) has to be read here.
+            if e.iq["error"]["condition"] == "forbidden":
+                raise exc.RemoteError(client, f"Forbidden to invoke {method} on {client}.")
             raise exc.RemoteError(client, f"Could not call {method} on {client}.")
         except slixmpp.exceptions.IqTimeout:
             raise exc.RemoteTimeoutError(client, f"Call to {method} on {client} timed out.")

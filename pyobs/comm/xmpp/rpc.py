@@ -215,6 +215,10 @@ class RPC:
             response_params = return_to_xml(return_value, return_type)
             self._client.plugin["xep_0009"].make_iq_method_response(iq["id"], iq["from"], response_params).send()
 
+        except exc.ForbiddenError as e:
+            e.log(log, "WARNING", f"Forbidden call to {pmethod}: {e}")
+            self._client.plugin["xep_0009"].forbidden(iq).send()
+
         except Exception as e:
             if isinstance(e, exc.PyObsError):
                 e.log(log, "ERROR", f"Exception in call to {pmethod}: {e}", exc_info=True)

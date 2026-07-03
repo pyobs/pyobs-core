@@ -103,6 +103,7 @@ class Module(Object, IModule, IConfig):
         label: str | None = None,
         own_comm: bool = True,
         additional_config_variables: list[str] | None = None,
+        acl: dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """
@@ -111,8 +112,16 @@ class Module(Object, IModule, IConfig):
             label: Label for module. If None, name is used.
             own_comm: If True, module owns comm and opens/closes it.
             additional_config_variables: List of additional variable names available to remote config getter/setter.
+            acl: Access control config, with either an "allow" or a "deny" key (mutually exclusive), and an
+                optional "mode" key ("enforce", the default, or "log"). No acl block means fully open access.
         """
         Object.__init__(self, **kwargs)
+
+        # access control
+        self._acl_allow: dict[str, list[str] | str] | None = None
+        self._acl_deny: list[str] | None = None
+        self._acl_mode: str = "enforce"
+        self._parse_acl(acl)
 
         # get list of client interfaces
         self._interfaces: list[type[Interface]] = []
@@ -239,6 +248,31 @@ class Module(Object, IModule, IConfig):
         """List of methods."""
         return self._methods
 
+    def _parse_acl(self, acl: dict[str, Any] | None) -> None:
+        """Parse the optional "acl" config block into _acl_allow/_acl_deny/_acl_mode.
+
+        Args:
+            acl: Raw "acl" config dict, or None if no ACL block was given (fully open access).
+
+        Raises:
+            ValueError: If both "allow" and "deny" are set, or "mode" is neither "enforce" nor "log".
+        """
+        if acl is None:
+            return
+
+        allow = acl.get("allow")
+        deny = acl.get("deny")
+        mode = acl.get("mode", "enforce")
+
+        if allow is not None and deny is not None:
+            raise ValueError('acl config must set either "allow" or "deny", not both.')
+        if mode not in ("enforce", "log"):
+            raise ValueError(f'Invalid acl mode "{mode}", must be "enforce" or "log".')
+
+        self._acl_allow = allow
+        self._acl_deny = deny
+        self._acl_mode = mode
+
     def _get_interfaces_and_methods(self) -> None:
         """List interfaces and methods of this module."""
         import pyobs.interfaces
@@ -265,6 +299,27 @@ class Module(Object, IModule, IConfig):
 
                     # fill dict of name->(method, signature)
                     self._methods[method_name] = (func, signature, type_hints)
+
+    def _acl_denied(self, sender: str, method: str) -> bool:
+        """Whether the acl policy denies `sender` calling `method`, ignoring `mode` (enforce vs. log).
+
+        Args:
+            sender: Name of the calling module.
+            method: Name of the method being called.
+
+        Returns:
+            True if the configured "allow"/"deny" policy denies this call.
+        """
+        if self._acl_allow is not None:
+            allowed = self._acl_allow.get(sender)
+            if allowed is None:
+                return True
+            if allowed == "*":
+                return False
+            return method not in allowed
+        if self._acl_deny is not None:
+            return sender in self._acl_deny
+        return False
 
     def quit(self) -> None:
         """Quit module."""
@@ -301,6 +356,14 @@ class Module(Object, IModule, IConfig):
 
         # get method and signature (may raise KeyError)
         func, signature, type_hints = self._methods[method]
+
+        # check acl, exempting get_permitted_methods itself so a denied caller can still ask what it's denied from
+        sender = kwargs.get("sender", "")
+        if method != "get_permitted_methods" and self._acl_denied(sender, method):
+            if self._acl_mode == "enforce":
+                raise exc.ForbiddenError(sender, method)
+            else:
+                log.warning('Caller "%s" would be denied calling "%s" (acl mode=log, allowing).', sender, method)
 
         # bind parameters
         ba = signature.bind(*args, **kwargs)
@@ -502,6 +565,15 @@ class Module(Object, IModule, IConfig):
         self._state = ModuleState.READY
         self.set_error_string()
         return True
+
+    async def get_permitted_methods(self, **kwargs: Any) -> list[str]:
+        """Returns names of all methods the calling module is allowed to invoke on this module."""
+        # a rule that isn't actually enforced yet (mode=log) shouldn't be reflected here
+        if self._acl_mode == "log":
+            return list(self._methods.keys())
+
+        sender = kwargs.get("sender", "")
+        return [name for name in self._methods if not self._acl_denied(sender, name)]
 
     async def _default_remote_error_callback(self, exception: exc.PyObsError) -> None:
         """Called on severe errors.

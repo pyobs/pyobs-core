@@ -23,5 +23,14 @@ class Interface(metaclass=ABCMeta):
         """Return state immediately if available, otherwise wait for the first update."""
         return None
 
+    @classmethod
+    def has_own_state(cls) -> bool:
+        """True if this interface defines its own state, as opposed to merely inheriting
+        one from a component interface it combines (e.g. ICamera inheriting IExposure's
+        state). Modules publish state under the interface that actually defines it, so
+        composite interfaces would otherwise be (wrongly) treated as publishing state too.
+        """
+        return "state" in cls.__dict__
+
 
 __all__ = ["Interface"]

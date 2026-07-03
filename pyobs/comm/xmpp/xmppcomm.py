@@ -30,20 +30,6 @@ from .rpc import RPC
 from .serializer import _dataclass_to_xml, _event_schema_to_xml, _interface_schema_to_xml, _xml_to_dataclass
 from .xmppclient import XmppClient
 
-_CAPABILITY_NS = "urn:pyobs:capability:1"
-
-
-def _capability_type(value: object) -> str:
-    """Map a Python value to a pyobs wire type string for capability elements."""
-    if isinstance(value, bool):
-        return "bool"
-    if isinstance(value, int):
-        return "int32"
-    if isinstance(value, float):
-        return "float64"
-    return "string"
-
-
 if TYPE_CHECKING:
     from pyobs.modules import Module
 
@@ -257,7 +243,7 @@ class XmppComm(Comm):
         if self._module is not None:
             for i in self._module.interfaces:
                 self._xmpp["xep_0030"].add_feature(f"urn:pyobs:interface:{i.__name__}:{i.version}")
-                if i.state is not None:
+                if i.has_own_state():
                     self._xmpp["xep_0030"].add_feature(f"urn:pyobs:state:{i.__name__}:{i.version}")
 
         # register custom disco#info handler to inject <capability> elements

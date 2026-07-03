@@ -409,6 +409,8 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
+        if not name:
+            raise ValueError("No parameter name given.")
         if name not in self._config_caps:
             raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][0]:
@@ -432,6 +434,8 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
+        if not name:
+            raise ValueError("No parameter name given.")
         if name not in self._config_caps:
             raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][2]:
@@ -453,6 +457,8 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
+        if not name:
+            raise ValueError("No parameter name given.")
         if name not in self._config_caps:
             raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][1]:

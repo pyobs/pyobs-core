@@ -56,6 +56,18 @@ class XmppClient(slixmpp.ClientXMPP):
         self.add_event_handler("failed_all_auth", self.failed_all_auth)
         self.add_filter("in", self._filter_messages)
 
+    def reconnect(self, wait: int | float = 2.0, reason: str = "Reconnecting") -> Any:
+        """Disconnect only, instead of slixmpp's default reconnect-in-place.
+
+        xep_0199's keepalive calls this on ping timeout. slixmpp's own
+        implementation would reconnect this same client object, while
+        XmppComm's "disconnected" handler independently spins up a brand-new
+        XmppClient. The two then fight over the same JID resource, each
+        kicking the other off the server ("replaced by new connection"),
+        forever. Leaving reconnection solely to XmppComm avoids that.
+        """
+        return self.disconnect(0.0, reason=reason)
+
     def _filter_messages(self, stanza: StanzaBase) -> StanzaBase | None:
         # if a user with same JID is already connected, we get a conflict
         if '<conflict xmlns="urn:ietf:params:xml:ns:xmpp-stanzas" />' in str(stanza):

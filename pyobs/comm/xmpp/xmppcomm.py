@@ -202,6 +202,13 @@ class XmppComm(Comm):
         await Comm.open(self)
 
     async def _connect(self) -> None:
+        # abort any previous client instead of just dropping the reference —
+        # otherwise its socket/tasks keep running in the background and it
+        # can still try to reconnect itself, fighting the new client below
+        # for the same JID resource
+        if self._xmpp is not None:
+            self._xmpp.abort()
+
         # create client
         self._xmpp = XmppClient(self._jid, self._password)
 
@@ -225,7 +232,7 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("changed_status", self._got_presence_update)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
-        self._xmpp.add_event_handler("disconnected", self._disconnected)
+        self._xmpp.add_event_handler("disconnected", functools.partial(self._disconnected, client=self._xmpp))
 
         # server given?
         server: str = "localhost"
@@ -292,9 +299,12 @@ class XmppComm(Comm):
         await asyncio.sleep(2)
         await self._connect()
 
-    def _disconnected(self, event: Any) -> None:
+    def _disconnected(self, event: Any, client: XmppClient) -> None:
         """Reset connection after disconnect."""
         if self._closing.is_set():
+            return
+        if client is not self._xmpp:
+            # stale event from a client that's already been replaced/aborted
             return
         log.info("Disconnected from server, waiting for reconnect...")
         self._capabilities = {}  # clear capabilities on reconnect

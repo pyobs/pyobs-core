@@ -1629,7 +1629,9 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 
 Consolidated list of every 🔵 open item still standing elsewhere in this document — the single place to check what's left, rather than scanning each section.
 
-None remaining as of this pass — Access Control (ACLs) was the last open item and is now ✅ implemented, see [Access Control (ACLs)](#access-control-acls) and [Phase 8](#phase-8--access-control-acls) below. All phases in the Work Plan below are ✅.
+Access Control (ACLs) was the previous open item and is now ✅ implemented, see [Access Control (ACLs)](#access-control-acls) and [Phase 8](#phase-8--access-control-acls) below. One new item added this pass:
+
+- 🔵 **`pyobsd` should enable systemd (journal) logging by default instead of per-module file logging.** Today `pyobsd` (`pyobs/cli/pyobsd.py`) spawns each module with `--log-file <log_path>/<module>.log` (see `_log_file`) and manages PID/log files itself under a configurable `log_path` directory. Under systemd, this duplicates what the journal already does (capturing stdout/stderr, rotation, centralized querying via `journalctl`), and fights it rather than using it — two overlapping logging systems for one daemon. Direction for 2.0: default to logging to stdout/stderr (or a `systemd.journal.JournalHandler`) when run under systemd, with file-based logging becoming opt-in rather than the default. Not yet designed in detail — no decision on how `log_path`/`--log-file` config keys are deprecated or what the transition looks like for existing installs running under sysvinit/non-systemd setups.
 
 ## Work Plan
 

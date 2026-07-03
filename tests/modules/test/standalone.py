@@ -28,7 +28,7 @@ async def test_loop(mocker, caplog):
 @pytest.mark.asyncio
 async def test_background_task():
     module = StandAlone()
-    assert module._message_func in module._background_tasks
+    assert any(task._func == module._message_func for task, _ in module._background_tasks)
 
 
 @pytest.mark.asyncio

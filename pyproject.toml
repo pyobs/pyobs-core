@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
     "scipy>=1.15.2,<2",
-    "astropy>=7.0.1,<8",
+    "astropy>=7.0.1,<9",
     "numpy>=2.2.5,<3",
     "pytz>=2025.2,<2027.0",
     "PyYAML>=6.0.2,<7",

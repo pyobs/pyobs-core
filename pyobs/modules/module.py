@@ -99,7 +99,6 @@ class Module(Object, IModule, IConfig):
 
     def __init__(
         self,
-        name: str | None = None,
         label: str | None = None,
         own_comm: bool = True,
         additional_config_variables: list[str] | None = None,
@@ -108,7 +107,6 @@ class Module(Object, IModule, IConfig):
     ):
         """
         Args:
-            name: Name of module. If None, ID from comm object is used.
             label: Label for module. If None, name is used.
             own_comm: If True, module owns comm and opens/closes it.
             additional_config_variables: List of additional variable names available to remote config getter/setter.
@@ -134,8 +132,9 @@ class Module(Object, IModule, IConfig):
         self._additional_config_variables = additional_config_variables
         self._config_caps = self._get_config_caps()
 
-        # name and label
-        self._device_name = name if name is not None else self.comm.name
+        # name and label -- name always tracks the comm's own identity (e.g. XMPP JID),
+        # since other modules address us by that, not by any locally configured string
+        self._device_name = self.comm.name
         self._label = label if label is not None else self._device_name
 
         # state
@@ -647,7 +646,10 @@ class MultiModule(Module):
             modules: Dictionary with modules.
             shared: Shared objects between modules.
         """
-        Module.__init__(self, name="multi", **kwargs)
+        Module.__init__(self, **kwargs)
+        # MultiModule itself has no real comm identity (its children each have their own),
+        # so give it a fixed, recognizable tag for its own log lines
+        self._device_name = "multi"
 
         # create shared objects
         self._shared: dict[str, Module] = {}

@@ -3,7 +3,7 @@ from pyobs.robotic import Task
 from pyobs.robotic.task import TaskData
 
 
-class TestTask(Task):
+class DummyTask(Task):
     async def can_run(self, data: TaskData | None) -> bool:
         return True
 
@@ -22,7 +22,7 @@ def test_compare_block_lists() -> None:
     # create lists of tasks
     tasks: list[Task] = []
     for i in range(10):
-        tasks.append(TestTask(id=i, name=str(i), duration=100))
+        tasks.append(DummyTask(id=i, name=str(i), duration=100))
 
     # create two lists from these with some overlap
     tasks1 = tasks[:7]

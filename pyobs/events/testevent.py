@@ -12,6 +12,7 @@ class DataType(TypedDict):
 class TestEvent(Event):
     """Just a test event."""
 
+    __test__ = False
     __module__ = "pyobs.events"
 
     def __init__(self, message: str | None = None, **kwargs: Any):

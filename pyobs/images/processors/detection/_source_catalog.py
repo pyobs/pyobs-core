@@ -20,8 +20,8 @@ class _SourceCatalog:
 
     @classmethod
     def from_table(cls, sources: Table) -> "_SourceCatalog":
-        sources.rename_column("xcentroid", "x")
-        sources.rename_column("ycentroid", "y")
+        sources.rename_column("x_centroid", "x")
+        sources.rename_column("y_centroid", "y")
 
         source_dataframe = sources.to_pandas()
         return cls(source_dataframe)

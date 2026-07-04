@@ -3347,7 +3347,7 @@ requires-dist = [
     { name = "opencv-python-headless", marker = "extra == 'full'", specifier = ">=4.10.0.84" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "paramiko", specifier = ">=3.5.1" },
-    { name = "photutils", marker = "extra == 'full'", specifier = ">=2.2.0,<4" },
+    { name = "photutils", marker = "extra == 'full'", specifier = ">=3.0.0,<4" },
     { name = "pillow", specifier = ">=11.3.0" },
     { name = "psutil", specifier = ">=7.2.2" },
     { name = "py-expression-eval", specifier = ">=0.3.14,<0.4" },

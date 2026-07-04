@@ -3,6 +3,8 @@ Command Line Interface
 *pyobs* comes with two different command line tools, :program:`pyobs` and :program:`pyobsd`, which can run a single
 module or start multiple ones, respectively.
 
+.. _cli-config-file:
+
 Default parameters via config file
 -----------------------------------
 Instead of passing parameters on the command line every time, both :program:`pyobs` and :program:`pyobsd` can read

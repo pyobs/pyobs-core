@@ -1,8 +1,11 @@
 import argparse
+import logging
 import os
 from typing import Any
 
 import yaml
+
+log = logging.getLogger("pyobs")
 
 
 class CLI:
@@ -42,11 +45,17 @@ class CLI:
 
     def _load_config(self) -> None:
         """Load config from config file"""
-        config_file = os.path.expanduser(os.path.join("~", ".config", "pyobs.yaml"))
-        if not os.path.exists(config_file):
-            config_file = os.path.expanduser(os.path.join("/", "etc", "pyobs.yaml"))
-            if not os.path.exists(config_file):
-                return
+        candidates = [
+            os.path.expanduser(os.path.join("~", ".config", "pyobs.yaml")),
+            os.path.join("/", "etc", "pyobs.yaml"),
+            os.path.join("/", "opt", "pyobs", "storage", "pyobs.yaml"),
+        ]
+        for config_file in candidates:
+            if os.path.exists(config_file):
+                break
+        else:
+            return
+        log.info("Using config file %s.", config_file)
         with open(config_file) as f:
             cfg = yaml.safe_load(f)
             if cfg is None or self.CONFIG_SECTION not in cfg:

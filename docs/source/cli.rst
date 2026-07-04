@@ -3,6 +3,28 @@ Command Line Interface
 *pyobs* comes with two different command line tools, :program:`pyobs` and :program:`pyobsd`, which can run a single
 module or start multiple ones, respectively.
 
+Default parameters via config file
+-----------------------------------
+Instead of passing parameters on the command line every time, both :program:`pyobs` and :program:`pyobsd` can read
+their default values from a YAML config file. The first of the following locations that exists is used:
+
+1. :file:`~/.config/pyobs.yaml`
+2. :file:`/etc/pyobs.yaml`
+3. :file:`/opt/pyobs/storage/pyobs.yaml`
+
+Within that file, parameters go into a section named after the tool, e.g.::
+
+    pyobs:
+      log_level: debug
+
+    pyobsd:
+      path: /opt/pyobs
+      chuid: pyobs:pyobs
+
+Only a fixed set of parameters can be set this way (roughly those without a value that changes between runs, such as
+the module config file itself). Command line parameters always take precedence over values from the config file.
+Which config file was picked, if any, is logged on startup.
+
 .. _cli-pyobs:
 
 Module launcher *pyobs*

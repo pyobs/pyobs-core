@@ -3341,7 +3341,7 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.11.18,<4" },
     { name = "astroplan", specifier = ">=0.10.1,<0.11" },
-    { name = "astropy", specifier = ">=7.0.1,<8" },
+    { name = "astropy", specifier = ">=7.0.1,<9" },
     { name = "astropy-iers-data", specifier = ">=0.2026.6.22.1.23.34" },
     { name = "astropydantic", specifier = ">=0.0.5" },
     { name = "astroquery", specifier = ">=0.4.10,<0.5" },
@@ -3367,7 +3367,7 @@ requires-dist = [
     { name = "pyside6", marker = "extra == 'gui'", specifier = ">=6.11.0" },
     { name = "python-daemon", marker = "extra == 'full'", specifier = ">=3.1.2,<4" },
     { name = "python-telegram-bot", marker = "extra == 'full'", specifier = "~=22.0" },
-    { name = "pytz", specifier = "~=2025.2" },
+    { name = "pytz", specifier = ">=2025.2,<2027.0" },
     { name = "pyyaml", specifier = ">=6.0.2,<7" },
     { name = "qfitswidget", marker = "extra == 'gui'", specifier = ">=0.13.1" },
     { name = "qtpy", marker = "extra == 'gui'", specifier = ">=2.4.3" },
@@ -3395,7 +3395,7 @@ dev = [
     { name = "pyrefly", specifier = ">=1.1.1" },
     { name = "pyside6-stubs", specifier = ">=6.7.3.0" },
     { name = "pytest", specifier = ">=8.3.5,<10" },
-    { name = "pytest-asyncio", specifier = ">=0.26.0,<1.4" },
+    { name = "pytest-asyncio", specifier = ">=0.26.0,<1.5" },
     { name = "pytest-cov", specifier = ">=6.1.1,<8" },
     { name = "pytest-mock", specifier = ">=3.14.0,<4" },
     { name = "radon", specifier = ">=6.0.1" },
@@ -3405,7 +3405,7 @@ dev = [
     { name = "types-cryptography", specifier = ">=3.3.23.2,<4" },
     { name = "types-enum34", specifier = ">=1.1.8,<2" },
     { name = "types-ipaddress", specifier = ">=1.0.8,<2" },
-    { name = "types-paramiko", specifier = ">=3.5.0.20240928,<5" },
+    { name = "types-paramiko", specifier = ">=3.5.0.20240928,<6" },
     { name = "types-psutil", specifier = ">=7.2.2.20260518" },
     { name = "types-pytz", specifier = ">=2025.2.0.20250326,<2026" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20250402,<7" },
@@ -4728,14 +4728,14 @@ wheels = [
 
 [[package]]
 name = "types-paramiko"
-version = "4.0.0.20260518"
+version = "5.0.0.20260617"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/b6/4cdb11fb6006be6309844dc5f88b6efef3f5ea5352ade42a1e9308570e28/types_paramiko-4.0.0.20260518.tar.gz", hash = "sha256:286f6830945cba63797eedf375ed87138d93198121253afe66c5d6dbcf91318d", size = 29193, upload-time = "2026-05-18T06:06:36.776Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/89/902652d7b62bb7cd2b73c7f08c8fd03945c223c3814022f0ad305e1018b9/types_paramiko-5.0.0.20260617.tar.gz", hash = "sha256:50a5b0dc68b39d30097cb7d93b4915dbbc97ed740ea633bd492be25ca1f25df4", size = 28474, upload-time = "2026-06-17T06:56:52.955Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/a2/1a54b77758c9c175526bd0448de353f0563e71ba1ddc8bd4ac0c835deafd/types_paramiko-4.0.0.20260518-py3-none-any.whl", hash = "sha256:0ffaf1a6eb796833a49653cba4c7be13af51c8269d75234972d6239763dda270", size = 38791, upload-time = "2026-05-18T06:06:35.771Z" },
+    { url = "https://files.pythonhosted.org/packages/50/4d/eab89decb4201dfff665a3b92088f384ff1e165bf6caa447509733bc1bc6/types_paramiko-5.0.0.20260617-py3-none-any.whl", hash = "sha256:83d87c396405666524441710ec59e693bca8b19021861456ac0a2401327812f8", size = 37123, upload-time = "2026-06-17T06:56:51.81Z" },
 ]
 
 [[package]]

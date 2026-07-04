@@ -523,6 +523,11 @@ class XmppComm(Comm):
         if len(interface_names) == 0:
             module = jid[: jid.index("@")]
             log.debug("Module %s does not seem to implement IModule, ignoring.", module)
+            # resolve the future we created above, otherwise it's left pending forever and
+            # any later get_interfaces()/proxy() call for this JID hangs indefinitely
+            future = self._interface_cache.get(jid)
+            if future is not None and not future.done():
+                future.set_result([])
             return
 
         # store interfaces — guard against a second _got_online for the same JID
@@ -544,8 +549,7 @@ class XmppComm(Comm):
 
         # fire presence callbacks
         module_name = jid[: jid.index("@")]
-        for cb in self._presence_callbacks.get(module_name, []):
-            cb(client_state, status)
+        self._fire_presence_callbacks(module_name, client_state, status)
 
         # append to list
         if jid not in self._online_clients:
@@ -553,6 +557,21 @@ class XmppComm(Comm):
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
+
+    def _fire_presence_callbacks(self, module_name: str, state: ModuleState, status: str) -> None:
+        """Call every presence callback registered for a module, isolating failures.
+
+        A callback belongs to whoever subscribed (e.g. a GUI widget) and may be stale --
+        subscribers are expected to unsubscribe on disconnect, but a callback raising here
+        must never abort the caller: this runs inline inside got_online/got_offline presence
+        handling, and an uncaught exception here previously meant the module's reconnect was
+        silently dropped (online_clients never updated, ModuleOpenedEvent never sent).
+        """
+        for cb in list(self._presence_callbacks.get(module_name, [])):
+            try:
+                cb(state, status)
+            except Exception:
+                log.exception("Presence callback for module %s raised, ignoring.", module_name)
 
     def _get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
         """Return cached presence state for a connected module."""
@@ -578,8 +597,7 @@ class XmppComm(Comm):
 
         # fire presence callbacks
         module_name = jid[: jid.index("@")]
-        for cb in self._presence_callbacks.get(module_name, []):
-            cb(client_state, status)
+        self._fire_presence_callbacks(module_name, client_state, status)
 
     def _got_offline(self, msg: Any) -> None:
         """If a new client disconnects, remove it from list.
@@ -603,8 +621,7 @@ class XmppComm(Comm):
 
         # notify presence subscribers that the module is gone
         module_name = jid[: jid.find("@")]
-        for cb in self._presence_callbacks.get(module_name, []):
-            cb(ModuleState.CLOSED, "")
+        self._fire_presence_callbacks(module_name, ModuleState.CLOSED, "")
 
         # clear interface cache
         if jid in self._interface_cache:
@@ -916,6 +933,11 @@ class XmppComm(Comm):
         result = self._get_client_state(module)
         if result is not None:
             callback(*result)
+
+    async def _unsubscribe_presence(self, module: str, callback: Callable[[ModuleState, str], None]) -> None:
+        callbacks = self._presence_callbacks.get(module)
+        if callbacks is not None and callback in callbacks:
+            callbacks.remove(callback)
 
     async def _subscribe_with_retry(self, node: str, interface: type[Interface]) -> None:
         """Subscribe to a pubsub node, retrying until the node exists.

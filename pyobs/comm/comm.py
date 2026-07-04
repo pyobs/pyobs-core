@@ -34,6 +34,7 @@ class Comm:
 
         self._proxies: dict[str, Proxy] = {}
         self._state_subscriptions: dict[str, list[tuple[type[Interface], StateCallback]]] = {}
+        self._presence_subscriptions: dict[str, list[PresenceCallback]] = {}
         self._module: Module | None = None
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._logging_task: asyncio.Task[Any] | None = None
@@ -265,6 +266,12 @@ class Comm:
         # tear down any state subscriptions held for that client
         for interface, callback in self._state_subscriptions.pop(sender, []):
             await self.unsubscribe_state(sender, interface, callback)
+
+        # tear down any presence subscriptions held for that client -- otherwise a stale
+        # callback (e.g. bound to a since-destroyed GUI widget) lingers and can blow up
+        # the next presence update for this client, silently swallowing its reconnect
+        for callback in self._presence_subscriptions.pop(sender, []):
+            await self.unsubscribe_presence(sender, callback)
 
         return True
 
@@ -592,9 +599,25 @@ class Comm:
             module: Name of remote module.
             callback: Called with (ModuleState, error_string) on each update.
         """
+        self._presence_subscriptions.setdefault(module, []).append(callback)
         await self._subscribe_presence(module, callback)
 
     async def _subscribe_presence(self, module: str, callback: PresenceCallback) -> None:
+        pass
+
+    async def unsubscribe_presence(self, module: str, callback: PresenceCallback) -> None:
+        """Unsubscribe from presence updates.
+
+        Args:
+            module: Name of remote module.
+            callback: Callback that was registered.
+        """
+        subs = self._presence_subscriptions.get(module)
+        if subs is not None and callback in subs:
+            subs.remove(callback)
+        await self._unsubscribe_presence(module, callback)
+
+    async def _unsubscribe_presence(self, module: str, callback: PresenceCallback) -> None:
         pass
 
     def _send_event_to_module(self, event: Event, from_client: str) -> None:

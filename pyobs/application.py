@@ -114,6 +114,11 @@ class Application:
             class PyobsJournaldLogHandler(JournaldLogHandler):
                 """JournaldLogHandler that adds SYSLOG_IDENTIFIER=pyobs and PYOBS_MODULE per record."""
 
+                # logging.CRITICAL and logging.FATAL are both 50, so the upstream LEVELS dict
+                # literal collides and silently maps level 50 to FATAL's priority (0, "emerg")
+                # instead of CRITICAL's (2, "crit"). Override explicitly to restore priority 2.
+                LEVELS = {**JournaldLogHandler.LEVELS, logging.CRITICAL: 2}
+
                 def __init__(self, **kw: Any) -> None:
                     super().__init__(identifier="pyobs", **kw)
 

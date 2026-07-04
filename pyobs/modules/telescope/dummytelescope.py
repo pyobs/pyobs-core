@@ -280,13 +280,15 @@ class DummyTelescope(
     async def park(self, **kwargs: Any) -> None:
         """Park telescope."""
         log.info("Parking telescope...")
-        await self._change_motion_status(MotionStatus.PARKING)
-        try:
-            await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
-            return
-        except TimeoutError:
-            pass
-        await self._change_motion_status(MotionStatus.PARKED)
+        async with LockWithAbort(self._lock_moving, self._abort_move):
+            await self._change_motion_status(MotionStatus.PARKING)
+            self._dest_coords = None
+            try:
+                await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
+                return
+            except TimeoutError:
+                pass
+            await self._change_motion_status(MotionStatus.PARKED)
         log.info("Telescope parked.")
 
     async def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
@@ -305,7 +307,15 @@ class DummyTelescope(
         return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
     async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
-        pass
+        """Stop the motion.
+
+        Args:
+            device: Name of device to stop, or None for all.
+        """
+        await self._change_motion_status(MotionStatus.ABORTING)
+        async with LockWithAbort(self._lock_moving, self._abort_move):
+            self._dest_coords = None
+            await self._change_motion_status(MotionStatus.IDLE)
 
     async def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
         log.error("Not implemented")

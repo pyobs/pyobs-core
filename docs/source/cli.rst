@@ -30,6 +30,9 @@ The command accepts the following optional parameters:
     Only valid in combination with **-l/--log-file**. Requests an automated rotation of log files to avoid
     large files.
 
+:--syslog:
+    If given, log messages are also sent to the systemd journal, tagged with the module name.
+
 :-p/--pid-file <file>:
     If given, *pyobs* writes its process ID into the given file and starts in the background.
 
@@ -108,6 +111,10 @@ The command accepts the following optional parameters:
 
 :--log-level <level>:
     One of critical, error, warning, info, debug. Indicates the level of logging.
+
+:--syslog:
+    If given, forwards **--syslog** to every started module, so their log messages are also sent to the
+    systemd journal.
 
 :--chuid <user>\:<group>:
     Switches user to the given user in the given group when starting/stopping a module, defaults to **pyobs**.

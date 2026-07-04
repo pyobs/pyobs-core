@@ -306,12 +306,22 @@ class XmppComm(Comm):
         if client is not self._xmpp:
             # stale event from a client that's already been replaced/aborted
             return
-        log.info("Disconnected from server, waiting for reconnect...")
         self._capabilities = {}  # clear capabilities on reconnect
 
         # disconnect all clients
         for jid in self._online_clients:
             self._jid_got_offline(jid)
+
+        if client.kicked_by_conflict:
+            # another session took over our JID/resource -- reconnecting would just
+            # race that session for the resource again, so shut down instead
+            reason = client.conflict_reason or "conflict, no reason given"
+            log.error("Kicked from server (%s), shutting down module.", reason)
+            if self._module is not None:
+                self._module.quit()
+            return
+
+        log.info("Disconnected from server, waiting for reconnect...")
 
         # reconnect
         asyncio.create_task(self._reconnect())

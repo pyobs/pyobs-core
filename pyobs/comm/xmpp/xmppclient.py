@@ -32,6 +32,7 @@ class XmppClient(slixmpp.ClientXMPP):
         self._auth_event = asyncio.Event()
         self._auth_success = False
         self._jid_conflict = False
+        self._conflict_reason: str | None = None
 
         # auto-accept invitations
         self.auto_authorize = True
@@ -54,6 +55,7 @@ class XmppClient(slixmpp.ClientXMPP):
         self.add_event_handler("auth_success", lambda ev: self._auth(True))
         self.add_event_handler("failed_auth", lambda ev: self._auth(False))
         self.add_event_handler("failed_all_auth", self.failed_all_auth)
+        self.add_event_handler("stream_error", self._stream_error)
         self.add_filter("in", self._filter_messages)
 
     def reconnect(self, wait: int | float = 2.0, reason: str = "Reconnecting") -> Any:
@@ -74,6 +76,28 @@ class XmppClient(slixmpp.ClientXMPP):
             self._jid_conflict = True
             return None
         return stanza
+
+    def _stream_error(self, error: Any) -> None:
+        """Called when the server sends a <stream:error/>, e.g. when this connection gets
+        kicked because another session took over the same JID/resource.
+
+        Args:
+            error: The stream error stanza.
+        """
+        if error["condition"] == "conflict":
+            self._jid_conflict = True
+            self._conflict_reason = error["text"] or None
+
+    @property
+    def kicked_by_conflict(self) -> bool:
+        """Whether this client was (or is being) kicked because another session connected
+        with the same JID, rather than disconnecting for some other reason."""
+        return self._jid_conflict
+
+    @property
+    def conflict_reason(self) -> str | None:
+        """Human-readable reason text sent alongside the conflict stream error, if any."""
+        return self._conflict_reason
 
     async def wait_connect(self) -> bool:
         """Wait for client to connect.

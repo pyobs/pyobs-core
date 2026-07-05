@@ -212,7 +212,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
             # apply offsets
             async with self.proxy(self._telescope, ITelescope) as telescope:
-                if await self._apply(image, telescope, self._location):
+                result = await self._apply(image, telescope, self._location)
+                if result.applied:
                     log.info("Finished image.")
                     frame, lon, lat = await self._get_offsets()
                     self._attempts_log[-1].offset_frame = frame

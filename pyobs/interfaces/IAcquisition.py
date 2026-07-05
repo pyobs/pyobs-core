@@ -2,20 +2,12 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Annotated, Any
 
-from ..utils.enums import Unit
+from ..utils.enums import OffsetFrame, Unit
 from ..utils.time import Time
 from .IAbortable import IAbortable
 from .IRunning import IRunning
-
-
-class OffsetFrame(StrEnum):
-    """Coordinate frame an acquisition offset is expressed in, whichever the mount supports."""
-
-    RA_DEC = "radec"
-    ALT_AZ = "altaz"
 
 
 @dataclass

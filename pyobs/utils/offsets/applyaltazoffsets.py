@@ -9,8 +9,9 @@ from pyobs.images import Image
 
 from ...images.meta import AltAzOffsets, PixelOffsets, RaDecOffsets
 from ...interfaces import AltAzOffsetState, IOffsetsAltAz, ITelescope
+from ...utils.enums import OffsetFrame
 from ..time import Time
-from .applyoffsets import ApplyOffsets
+from .applyoffsets import ApplyOffsets, OffsetResult
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
         self._min_offset = min_offset
         self._max_offset = max_offset
 
-    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation | None) -> bool:
+    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation | None) -> OffsetResult:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -42,14 +43,14 @@ class ApplyAltAzOffsets(ApplyOffsets):
             location: Observer location on Earth.
 
         Returns:
-            Whether offsets have been applied successfully.
+            Result indicating whether offsets were applied, and if so, in which frame and by how much.
         """
 
         # telescope must be of type IAltAzOffsets
         tel = telescope
         if not isinstance(telescope, IOffsetsAltAz):
             log.error("Given telescope cannot handle Alt/Az offsets.")
-            return False
+            return OffsetResult(applied=False)
 
         # what kind of offsets to we have?
         if image.has_meta(AltAzOffsets):
@@ -67,7 +68,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
                 radec_center, radec_target = self._get_radec_center_target(image, location)
             except ValueError:
                 log.warning("Could not get offsets from image meta.")
-                return False
+                return OffsetResult(applied=False)
 
             # convert to Alt/Az
             frame = AltAz(obstime=Time(image.header["DATE-OBS"]), location=location)
@@ -92,15 +93,15 @@ class ApplyAltAzOffsets(ApplyOffsets):
         diff = np.sqrt(dalt.arcsec**2.0 + daz.arcsec**2)
         if diff < self._min_offset:
             log.warning("Shift too small, skipping auto-guiding for now...")
-            return False
+            return OffsetResult(applied=False)
         if diff > self._max_offset:
             log.warning("Shift too large, skipping auto-guiding for now...")
-            return False
+            return OffsetResult(applied=False)
 
         # move offset
         log.info("Offsetting telescope...")
         await telescope.set_offsets_altaz(float(cur_dalt + dalt.degree), float(cur_daz + daz.degree))
-        return True
+        return OffsetResult(applied=True, frame=OffsetFrame.ALT_AZ, lon=dalt.degree, lat=daz.degree)
 
 
 __all__ = ["ApplyAltAzOffsets"]

@@ -8,9 +8,9 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets
 from pyobs.interfaces import FitsHeaderEntry, GuidingState, IAutoGuiding, IFitsHeaderAfter, IFitsHeaderBefore, IRunning
 from pyobs.interfaces.IRunning import RunningState
+from pyobs.utils.enums import OffsetFrame
 from pyobs.utils.time import Time
 
 from ...interfaces import ITelescope
@@ -62,7 +62,9 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._reset_at_focus = reset_at_focus
         self._reset_at_filter = reset_at_filter
         self._loop_closed = False
-        self._last_offset: tuple[float, float] | None = None
+        self._last_offset_frame: OffsetFrame | None = None
+        self._last_offset_lon: float | None = None
+        self._last_offset_lat: float | None = None
 
         # headers of last and of reference image
         self._last_header = None
@@ -163,17 +165,22 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             # if image is given, process it
             await self.run_pipeline(image)
 
-    async def _set_loop_state(self, state: bool, offset: tuple[float, float] | None = None) -> None:
+    async def _set_loop_state(
+        self, state: bool, frame: OffsetFrame | None = None, lon: float | None = None, lat: float | None = None
+    ) -> None:
         self._uptime.add_data(state)
         self._loop_closed = state
-        if offset is not None:
-            self._last_offset = offset
+        if frame is not None:
+            self._last_offset_frame = frame
+            self._last_offset_lon = lon
+            self._last_offset_lat = lat
         await self.comm.set_state(
             IAutoGuiding,
             GuidingState(
                 loop_closed=state,
-                last_offset_x=self._last_offset[0] if self._last_offset is not None else None,
-                last_offset_y=self._last_offset[1] if self._last_offset is not None else None,
+                offset_frame=self._last_offset_frame,
+                offset_lon=self._last_offset_lon,
+                offset_lat=self._last_offset_lat,
             ),
         )
 
@@ -270,12 +277,9 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         # apply offsets
         try:
             async with self.proxy(self._telescope, ITelescope) as telescope:
-                if await self._apply(image, telescope, self._location):
-                    offset = None
-                    if image.has_meta(PixelOffsets):
-                        po = image.get_meta(PixelOffsets)
-                        offset = (po.dx, po.dy)
-                    await self._set_loop_state(True, offset)
+                result = await self._apply(image, telescope, self._location)
+                if result.applied:
+                    await self._set_loop_state(True, result.frame, result.lon, result.lat)
                     log.info("Finished image.")
                 else:
                     log.info("Could not apply offsets.")

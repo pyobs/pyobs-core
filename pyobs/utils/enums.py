@@ -180,4 +180,24 @@ _ASTROPY_UNITS: dict["Unit", astropy.units.UnitBase] = {
     Unit.MM: astropy.units.mm,
 }
 
-__all__ = ["ModuleState", "ExposureStatus", "ImageType", "ImageFormat", "MotionStatus", "WeatherSensors", "Unit"]
+
+class OffsetFrame(StrEnum):
+    """Coordinate frame an offset is expressed in, whichever the mount supports.
+
+    Shared by IAcquisition, IAutoGuiding, and pyobs.utils.offsets.
+    """
+
+    RA_DEC = "radec"
+    ALT_AZ = "altaz"
+
+
+__all__ = [
+    "ModuleState",
+    "ExposureStatus",
+    "ImageType",
+    "ImageFormat",
+    "MotionStatus",
+    "WeatherSensors",
+    "Unit",
+    "OffsetFrame",
+]

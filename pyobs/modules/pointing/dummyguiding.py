@@ -5,7 +5,7 @@ import logging
 import random
 from typing import Any
 
-from pyobs.interfaces import GuidingState, IAutoGuiding, IExposureTime, IRunning
+from pyobs.interfaces import GuidingState, IAutoGuiding, IExposureTime, IRunning, OffsetFrame
 from pyobs.interfaces.IExposureTime import ExposureTimeState
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
@@ -30,7 +30,7 @@ class DummyAutoGuiding(Module, IAutoGuiding):
         self._running = False
         self._exposure_time = exposure_time
         self._interval = interval
-        self._last_offset: tuple[float, float] | None = None
+        self._last_offset: tuple[float, float] | None = None  # (lon, lat) in degrees
 
         self.add_background_task(self._guide_loop)
 
@@ -64,8 +64,9 @@ class DummyAutoGuiding(Module, IAutoGuiding):
             IAutoGuiding,
             GuidingState(
                 loop_closed=loop_closed,
-                last_offset_x=self._last_offset[0] if self._last_offset is not None else None,
-                last_offset_y=self._last_offset[1] if self._last_offset is not None else None,
+                offset_frame=OffsetFrame.RA_DEC if self._last_offset is not None else None,
+                offset_lon=self._last_offset[0] if self._last_offset is not None else None,
+                offset_lat=self._last_offset[1] if self._last_offset is not None else None,
             ),
         )
 
@@ -77,10 +78,11 @@ class DummyAutoGuiding(Module, IAutoGuiding):
             if not self._running:
                 continue
 
-            # occasionally simulate a lost guide star (open loop)
+            # occasionally simulate a lost guide star (open loop); offsets are a ~1 arcsec-stddev
+            # correction in degrees, matching the scale of a real ApplyOffsets-computed delta
             loop_closed = random.random() > 0.1
             if loop_closed:
-                self._last_offset = (random.gauss(0.0, 0.5), random.gauss(0.0, 0.5))
+                self._last_offset = (random.gauss(0.0, 1.0 / 3600), random.gauss(0.0, 1.0 / 3600))
             await self._publish_guiding_state(loop_closed)
 
 

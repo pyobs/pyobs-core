@@ -11,8 +11,9 @@ implement :class:`~pyobs.interfaces.ICamera`.
 
 __title__ = "Interfaces"
 
+from ..utils.enums import OffsetFrame
 from .IAbortable import IAbortable
-from .IAcquisition import AcquisitionAttempt, AcquisitionResult, AcquisitionState, IAcquisition, OffsetFrame
+from .IAcquisition import AcquisitionAttempt, AcquisitionResult, AcquisitionState, IAcquisition
 from .IAutoFocus import AutoFocusPoint, AutoFocusResult, AutoFocusState, IAutoFocus
 from .IAutoGuiding import GuidingState, IAutoGuiding
 from .IAutonomous import IAutonomous

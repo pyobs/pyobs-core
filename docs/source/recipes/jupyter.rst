@@ -142,75 +142,77 @@ address below, with your own address.
 Usage
 -----
 
+The module can now be used to control other modules on the network.
+``comm.proxy(...)`` needs the "username" of the module it is proxying
+(in this case, the name of the telescope or camera), and returns an
+async context manager rather than a usable object directly — a proxy
+is always obtained as ``async with comm.proxy(...) as x:``, resolved
+fresh in whichever cell needs it, rather than held in a variable across
+cells: the remote module can reconnect between cells, and a proxy
+resolved just before use is guaranteed to be the current one.
+
 Telescope
 ~~~~~~~~~
 
-The module can now be used to control other modules on the network.
-First we create a proxy object for a telescope. The proxy object is a
-local representation of the remote module, but can be controlled using
-its usual methods. The ``proxy`` method needs the “username” of the
-module which it is proxying, in this case, the name of the telescope.
-
 .. code:: ipython3
 
-    from pyobs.interfaces import ITelescope
-    
+    from pyobs.interfaces import ITelescope, IPointingRaDec, IPointingAltAz
+
     TELESCOPE_NAME = "telescope"
-    telescope = await comm.proxy(TELESCOPE_NAME, ITelescope)
 
-The proxy telescope then can be used to get the orientation of the
-telescope…
+The telescope's orientation is published as live state rather than
+fetched via a method call. ``wait_for_state`` returns the last known
+value immediately if one has already arrived, otherwise it waits (up
+to a timeout) for the first update.
 
 .. code:: ipython3
 
-    await telescope.get_radec(), await telescope.get_altaz()
+    async with comm.proxy(TELESCOPE_NAME, ITelescope) as telescope:
+        radec = await telescope.wait_for_state(IPointingRaDec)
+        altaz = await telescope.wait_for_state(IPointingAltAz)
+
+    radec, altaz
 
 and to move it in altaz coordinates…
 
 .. code:: ipython3
 
-    await telescope.move_altaz(alt=60, az=180)
+    async with comm.proxy(TELESCOPE_NAME, ITelescope) as telescope:
+        await telescope.move_altaz(alt=60, az=180)
 
 or radec coordiantes (both in degrees).
 
 .. code:: ipython3
 
-    await telescope.move_radec(ra=60, dec=25)
+    async with comm.proxy(TELESCOPE_NAME, ITelescope) as telescope:
+        await telescope.move_radec(ra=60, dec=25)
 
 Camera
 ~~~~~~
 
-A camera can be used in the same way, as a telescope. First, we create a
-proxy for a module with the “username” ``"sbig6303e"`` as the camera.
+A camera can be used in the same way as a telescope. Here, we use a
+module with the "username" ``"sbig6303e"`` as the camera. Setting the
+exposure time and image type, then taking the exposure, all happen
+against the same resolved proxy, so this all lives in one cell.
+``grab_data`` returns the path to the image in the virtual filesystem,
+which is then supplied to the ``vfs`` module to retrieve the image.
 
 .. code:: ipython3
 
-    from pyobs.interfaces import ICamera
-    
-    CAMERA_NAME = "sbig6303e"
-    camera = await comm.proxy(CAMERA_NAME, ICamera)
-
-With the proxy object, we then can set the exposure time and image type.
-
-.. code:: ipython3
-
-    from pyobs.interfaces import IExposureTime
-    from pyobs.interfaces import IImageType
+    from pyobs.interfaces import ICamera, IExposureTime, IImageType
     from pyobs.utils.enums import ImageType
-    
-    if isinstance(camera, IExposureTime):
-        await camera.set_exposure_time(2)
-        
-    if isinstance(camera, IImageType):
-        await camera.set_image_type(ImageType.OBJECT)
 
-``grab_data`` then starts the exposure and returns the path to the image
-in the virtual filesystem. This path is then supplied to the ``vfs``
-module to retrieve the image.
+    CAMERA_NAME = "sbig6303e"
 
-.. code:: ipython3
+    async with comm.proxy(CAMERA_NAME, ICamera) as camera:
+        if isinstance(camera, IExposureTime):
+            await camera.set_exposure_time(2)
 
-    image_name = await camera.grab_data(broadcast=False)
+        if isinstance(camera, IImageType):
+            await camera.set_image_type(ImageType.OBJECT)
+
+        image_name = await camera.grab_data(broadcast=False)
+
     img = await vfs.read_image(image_name)
 
 Now we can look at the header…

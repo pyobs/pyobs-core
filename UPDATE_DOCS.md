@@ -78,33 +78,42 @@ Both are real, *intentional*, already-committed code removals (confirmed via
 All four confirmed clean via `rm -rf` + `sphinx-build -E`: zero `ModuleNotFoundError`/
 `AttributeError`/dangling `ref.class` warnings remain from any 2.0-era rename or removal.
 
-## Priority 2 — stale `Proxy` usage (teaches code that no longer works)
+## Priority 2 — stale `Proxy` usage (teaches code that no longer works) — ✅ done
 
-Not yet started. `Proxy` is `async with`-only now (see `docs/source/whatsnew-2.0.rst`);
-`await self.proxy(...)` / `await self.comm.proxy(...)` returning a usable object is gone.
+`Proxy` is `async with`-only now (see `docs/source/whatsnew-2.0.rst`); `await self.proxy(...)` /
+`await self.comm.proxy(...)` returning a usable object is gone.
 
-- [ ] `docs/source/api/comm.rst` — lines 40, 43, 50–54 (`telescope = await self.proxy(...)`,
-  `safe_proxy` example)
-- [ ] `docs/source/api/module.rst` — lines 87, 101
-- [ ] `docs/source/overview.rst` — line 100 (the rest of this page, notably the whole "Access
-  control" section, is already up to date — this looks like a leftover missed during that pass)
-- [x] `docs/source/api/robotic/scripts.rst` — the `can_run`/`run` example (was lines 34–35,
-  44–45) — fixed as part of the Priority 1 pass on this file since it was in the same block as
-  the script renames; converted to `has_proxy`/`AsyncExitStack`, matching the pattern already
-  used in `recipes/robotic.rst`.
-- [ ] `docs/source/api/robotic/serialization.rst` — line 100 (single instance, otherwise this
-  page is current — already uses `PolymorphicBaseModel`, not the old `SubClassBaseModel` name)
-- [x] `docs/source/recipes/robotic.rst` — fixed (was lines 108–109, 118–119): `can_run` now uses
-  `self.comm.has_proxy(...)`, `run` uses `AsyncExitStack` since both proxies are used together
-  for the rest of the method (matches the pattern documented in `whatsnew-2.0.rst`).
-- [ ] `docs/source/recipes/jupyter.rst` — the whole "Usage" section (lines ~148–235) needs a
-  rewrite, not just a proxy-pattern fix: it also calls `telescope.get_radec()` /
-  `telescope.get_altaz()` (line 166), both **removed** methods (replaced by
-  `IPointingRaDec.state`/`IPointingAltAz.state`). This is the most out-of-date single doc in
-  the tree — every code cell from "Telescope" onward assumes 1.x semantics.
+- [x] `docs/source/api/comm.rst` — the `self.proxy(...)`/`await telescope.move_radec(...)` example
+  and the `safe_proxy` example both converted to `async with ... as x:`. `safe_proxy` now yields
+  `None` inside the block rather than returning `None` directly (verified against
+  `Comm.safe_proxy`'s actual docstring: "Same as proxy(), but yields None inside the block instead
+  of raising").
+- [x] `docs/source/api/module.rst` — both examples converted (the `MyCamera`/`grab_data` one and
+  the `open()`/`move_radec` one).
+- [x] `docs/source/overview.rst` — the "Communication between modules" example converted.
+- [x] `docs/source/api/robotic/scripts.rst` — the `can_run`/`run` example — fixed as part of the
+  Priority 1 pass on this file since it was in the same block as the script renames; converted to
+  `has_proxy`/`AsyncExitStack`, matching the pattern already used in `recipes/robotic.rst`.
+- [x] `docs/source/api/robotic/serialization.rst` — the `PrivateAttrMixin` example converted.
+- [x] `docs/source/recipes/robotic.rst` — `can_run` now uses `self.comm.has_proxy(...)`, `run`
+  uses `AsyncExitStack` since both proxies are used together for the rest of the method (matches
+  the pattern documented in `whatsnew-2.0.rst`).
+- [x] `docs/source/recipes/jupyter.rst` — full rewrite of the "Usage" section, not just a
+  proxy-pattern fix. It also called `telescope.get_radec()`/`telescope.get_altaz()`, both
+  **removed** methods — replaced with `await telescope.wait_for_state(IPointingRaDec)` /
+  `wait_for_state(IPointingAltAz)` (verified `RaDecState`/`AltAzState` field names against
+  `pyobs/interfaces/IPointingRaDec.py`/`IPointingAltAz.py`). Also restructured so each cell
+  re-resolves its proxy via a fresh `async with` block rather than holding `telescope =`/
+  `camera =` across cells — added a short prose note explaining why (a held reference can go
+  stale across a reconnect between cells; a proxy resolved just before use is guaranteed current).
+  The camera cell now does exposure-time/image-type setup and `grab_data` inside one `async with`
+  block since they're used together; `img = await vfs.read_image(...)` stays outside it, unrelated
+  to the proxy.
 
-(The `recipes/robotic.rst` and `api/robotic/scripts.rst` proxy fixes got done opportunistically
-while both files were open for Priority 1 edits — not a signal to start Priority 2 broadly yet.)
+Verified via clean `sphinx-build -E`: no rendering regressions in the edited files (RST literal
+blocks with nested `async with`/indentation all render correctly), and no remaining
+`await self.proxy(...)`/`await self.comm.proxy(...)`/`await comm.proxy(...)` in any doc page except
+`whatsnew-2.0.rst`, where it's intentionally shown as the old, no-longer-working pattern.
 
 ## Priority 3 — pre-existing (non-2.0) staleness surfaced along the way — ✅ done
 
@@ -124,15 +133,15 @@ while both files were open for Priority 1 edits — not a signal to start Priori
 ## Confirmed NOT stale — already updated for 2.0, no action needed
 
 - `docs/source/overview.rst` — has a full, accurate "Access control" section describing the
-  `acl:` block (matches current `Module._parse_acl` exactly). Only the one proxy-pattern leftover
-  above needs fixing.
+  `acl:` block (matches current `Module._parse_acl` exactly); the one proxy-pattern leftover it
+  had is fixed now too (Priority 2).
 - `docs/source/installing.rst`, `docs/source/cli.rst` — already document the `pyobs.yaml` config
   file lookup order and `--syslog`.
 - `docs/source/development.rst` — already states Python 3.11 as the base version.
 - `docs/source/quickstart.rst` — no proxy calls, no removed interfaces touched.
 - `docs/source/api/object.rst` — no proxy usage, unaffected by any of the 2.0 changes.
 - `docs/source/api/robotic/serialization.rst` — `PolymorphicBaseModel` rename already applied
-  correctly (aside from the one proxy line above).
+  correctly; the one proxy line it had is fixed now too (Priority 2).
 - `docs/source/api/interfaces.rst`, `docs/source/api/events.rst` — pure autodoc listings; content
   is pulled from current docstrings automatically, so nothing to hand-edit beyond the `ILatLon`
   removal already done.

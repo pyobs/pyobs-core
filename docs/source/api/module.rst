@@ -84,8 +84,8 @@ implementing :class:`~pyobs.interfaces.ICamera`, for example, advertises that it
 Other modules can then obtain a proxy to ``MyCamera`` and call ``grab_data`` remotely, without knowing
 which machine the camera is running on::
 
-    camera = await self.proxy("camera", ICamera)
-    filename = await camera.grab_data()
+    async with self.proxy("camera", ICamera) as camera:
+        filename = await camera.grab_data()
 
 See :doc:`interfaces` for the full list of available interfaces.
 
@@ -98,8 +98,8 @@ Modules communicate via the :attr:`~pyobs.object.Object.comm` property, which pr
 
     async def open(self) -> None:
         await Module.open(self)
-        telescope = await self.proxy("telescope", ITelescope)
-        await telescope.move_radec(ra=83.8, dec=-5.4)
+        async with self.proxy("telescope", ITelescope) as telescope:
+            await telescope.move_radec(ra=83.8, dec=-5.4)
 
 Modules can also subscribe to and emit :doc:`events`::
 

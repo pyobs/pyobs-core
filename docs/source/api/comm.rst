@@ -31,27 +31,27 @@ Proxies and remote method calls
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A :class:`~pyobs.comm.Proxy` is a local stand-in for a remote module. It exposes the same interface
-methods as the real module, but executes them remotely over the network. Obtain one with
-:meth:`~pyobs.object.Object.proxy` (available on every ``Object`` and ``Module``)::
+methods as the real module, but executes them remotely over the network. :meth:`~pyobs.object.Object.proxy`
+(available on every ``Object`` and ``Module``) returns an async context manager, so a proxy is only ever
+used as::
 
     from pyobs.interfaces import ITelescope, ICamera
 
     # get a proxy to the telescope module
-    telescope = await self.proxy("telescope", ITelescope)
-
-    # call its methods just like local ones
-    await telescope.move_radec(ra=83.8, dec=-5.4)
+    async with self.proxy("telescope", ITelescope) as telescope:
+        # call its methods just like local ones
+        await telescope.move_radec(ra=83.8, dec=-5.4)
 
 The second argument is the expected interface. If the named module does not implement that interface,
-:meth:`~pyobs.object.Object.proxy` raises a ``ValueError``, which makes type errors visible immediately
-rather than at the point of the actual call.
+:meth:`~pyobs.object.Object.proxy` raises a ``ValueError`` on entering the ``async with`` block, which
+makes type errors visible immediately rather than at the point of the actual call.
 
 For cases where a module might or might not be present, use
-:meth:`~pyobs.comm.Comm.safe_proxy`, which returns ``None`` instead of raising::
+:meth:`~pyobs.comm.Comm.safe_proxy`, which yields ``None`` inside the block instead of raising::
 
-    focuser = await self.comm.safe_proxy("focuser", IFocuser)
-    if focuser is not None:
-        await focuser.set_focus(focus_value)
+    async with self.comm.safe_proxy("focuser", IFocuser) as focuser:
+        if focuser is not None:
+            await focuser.set_focus(focus_value)
 
 To find all currently connected modules that implement a given interface::
 

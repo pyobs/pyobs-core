@@ -2,12 +2,20 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Annotated, Any
 
 from ..utils.enums import Unit
 from ..utils.time import Time
 from .IAbortable import IAbortable
 from .IRunning import IRunning
+
+
+class OffsetFrame(StrEnum):
+    """Coordinate frame an acquisition offset is expressed in, whichever the mount supports."""
+
+    RA_DEC = "radec"
+    ALT_AZ = "altaz"
 
 
 @dataclass
@@ -17,10 +25,10 @@ class AcquisitionResult:
     dec: Annotated[float, Unit.DEGREES]
     alt: Annotated[float, Unit.DEGREES]
     az: Annotated[float, Unit.DEGREES]
-    off_ra: Annotated[float, Unit.DEGREES] | None = None
-    off_dec: Annotated[float, Unit.DEGREES] | None = None
-    off_alt: Annotated[float, Unit.DEGREES] | None = None
-    off_az: Annotated[float, Unit.DEGREES] | None = None
+    offset_frame: OffsetFrame | None = None
+    # (ra, dec) if offset_frame is RA_DEC, (alt, az) if ALT_AZ
+    offset_lon: Annotated[float, Unit.DEGREES] | None = None
+    offset_lat: Annotated[float, Unit.DEGREES] | None = None
 
 
 @dataclass
@@ -28,11 +36,10 @@ class AcquisitionAttempt:  # AcquisitionState.attempts element
     attempt: int
     distance: Annotated[float, Unit.ARCSEC]
     offset_applied: bool
-    # accumulated telescope offset after this attempt, whichever pair the mount supports
-    offset_ra: Annotated[float, Unit.DEGREES] | None = None
-    offset_dec: Annotated[float, Unit.DEGREES] | None = None
-    offset_alt: Annotated[float, Unit.DEGREES] | None = None
-    offset_az: Annotated[float, Unit.DEGREES] | None = None
+    # accumulated telescope offset after this attempt; (ra, dec) if offset_frame is RA_DEC, (alt, az) if ALT_AZ
+    offset_frame: OffsetFrame | None = None
+    offset_lon: Annotated[float, Unit.DEGREES] | None = None
+    offset_lat: Annotated[float, Unit.DEGREES] | None = None
 
 
 @dataclass
@@ -57,7 +64,7 @@ class IAcquisition(IRunning, IAbortable, metaclass=ABCMeta):
         coordinates.
 
         Returns:
-            Result with time, ra, dec, alt, az, and either off_ra/off_dec or off_alt/off_az offsets.
+            Result with time, ra, dec, alt, az, and an offset in whichever frame the mount supports.
 
         Raises:
             ValueError: If target could not be acquired.
@@ -65,4 +72,4 @@ class IAcquisition(IRunning, IAbortable, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["AcquisitionResult", "AcquisitionAttempt", "AcquisitionState", "IAcquisition"]
+__all__ = ["AcquisitionResult", "AcquisitionAttempt", "AcquisitionState", "OffsetFrame", "IAcquisition"]

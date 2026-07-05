@@ -146,6 +146,7 @@ class Unit(StrEnum):
 
     Attributes:
         DEGREES: Angle, in degrees.
+        ARCSEC: Angle, in arcseconds.
         CELSIUS: Temperature, in degrees Celsius.
         SECONDS: Duration, in seconds.
         PERCENT: Percentage, 0-100.
@@ -155,6 +156,7 @@ class Unit(StrEnum):
     """
 
     DEGREES = "deg"
+    ARCSEC = "arcsec"
     CELSIUS = "celsius"
     SECONDS = "seconds"
     PERCENT = "percent"
@@ -169,6 +171,7 @@ class Unit(StrEnum):
 
 _ASTROPY_UNITS: dict["Unit", astropy.units.UnitBase] = {
     Unit.DEGREES: astropy.units.deg,
+    Unit.ARCSEC: astropy.units.arcsec,
     Unit.CELSIUS: astropy.units.deg_C,
     Unit.SECONDS: astropy.units.s,
     Unit.PERCENT: astropy.units.percent,

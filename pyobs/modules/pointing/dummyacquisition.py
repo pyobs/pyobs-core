@@ -6,7 +6,14 @@ import math
 import random
 from typing import Any
 
-from pyobs.interfaces import AcquisitionAttempt, AcquisitionResult, AcquisitionState, IAcquisition, IRunning
+from pyobs.interfaces import (
+    AcquisitionAttempt,
+    AcquisitionResult,
+    AcquisitionState,
+    IAcquisition,
+    IRunning,
+    OffsetFrame,
+)
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
@@ -64,7 +71,7 @@ class DummyAcquisition(Module, IAcquisition):
         coordinates.
 
         Returns:
-            Result with time, ra, dec, alt, az, and either off_ra/off_dec or off_alt/off_az offsets.
+            Result with time, ra, dec, alt, az, and an offset in whichever frame the mount supports.
 
         Raises:
             ValueError: If target could not be acquired.
@@ -92,16 +99,17 @@ class DummyAcquisition(Module, IAcquisition):
 
             acquired = distance < self._tolerance
             offset_deg = distance / 3600.0
-            offset_ra = offset_deg * math.cos(bearing)
-            offset_dec = offset_deg * math.sin(bearing)
+            offset_lon = offset_deg * math.cos(bearing)
+            offset_lat = offset_deg * math.sin(bearing)
             log.info("Attempt %d: distance to target %.2f arcsec.", a, distance)
             attempts = attempts + [
                 AcquisitionAttempt(
                     attempt=a,
                     distance=distance,
                     offset_applied=not acquired,
-                    offset_ra=offset_ra,
-                    offset_dec=offset_dec,
+                    offset_frame=OffsetFrame.RA_DEC,
+                    offset_lon=offset_lon,
+                    offset_lat=offset_lat,
                 )
             ]
             await self.comm.set_state(IAcquisition, AcquisitionState(attempts=attempts))
@@ -111,7 +119,14 @@ class DummyAcquisition(Module, IAcquisition):
             if acquired:
                 log.info("Target successfully acquired.")
                 result = AcquisitionResult(
-                    time=Time.now(), ra=0.0, dec=0.0, alt=0.0, az=0.0, off_ra=offset_ra, off_dec=offset_dec
+                    time=Time.now(),
+                    ra=0.0,
+                    dec=0.0,
+                    alt=0.0,
+                    az=0.0,
+                    offset_frame=OffsetFrame.RA_DEC,
+                    offset_lon=offset_lon,
+                    offset_lat=offset_lat,
                 )
                 await self.comm.set_state(IAcquisition, AcquisitionState(attempts=attempts, result=result))
                 return result

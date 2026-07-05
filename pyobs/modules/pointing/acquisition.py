@@ -22,6 +22,7 @@ from pyobs.interfaces import (
     IPointingAltAz,
     IPointingRaDec,
     IRunning,
+    OffsetFrame,
     RaDecOffsetState,
     RaDecState,
 )
@@ -121,7 +122,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         coordinates.
 
         Returns:
-            Result with time, ra, dec, alt, az, and either off_ra/off_dec or off_alt/off_az offsets.
+            Result with time, ra, dec, alt, az, and an offset in whichever frame the mount supports.
 
         Raises:
             ValueError: If target could not be acquired.
@@ -213,11 +214,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             async with self.proxy(self._telescope, ITelescope) as telescope:
                 if await self._apply(image, telescope, self._location):
                     log.info("Finished image.")
-                    off_ra, off_dec, off_alt, off_az = await self._get_offsets()
-                    self._attempts_log[-1].offset_ra = off_ra
-                    self._attempts_log[-1].offset_dec = off_dec
-                    self._attempts_log[-1].offset_alt = off_alt
-                    self._attempts_log[-1].offset_az = off_az
+                    frame, lon, lat = await self._get_offsets()
+                    self._attempts_log[-1].offset_frame = frame
+                    self._attempts_log[-1].offset_lon = lon
+                    self._attempts_log[-1].offset_lat = lat
                     await self.comm.set_state(IAcquisition, AcquisitionState(attempts=self._attempts_log))
                 else:
                     log.warning("Could not apply offsets.")
@@ -234,29 +234,24 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # could not acquire target
         raise exc.AcquisitionError("Could not acquire target within given tolerance.")
 
-    async def _get_offsets(self) -> tuple[float | None, float | None, float | None, float | None]:
+    async def _get_offsets(self) -> tuple[OffsetFrame | None, float | None, float | None]:
         """Fetch the telescope's current RA/Dec or Alt/Az offset, whichever it supports.
 
         Returns:
-            Tuple of (off_ra, off_dec, off_alt, off_az), with the unsupported pair left as None.
+            Tuple of (frame, lon, lat), or (None, None, None) if neither is supported.
         """
-        off_ra: float | None = None
-        off_dec: float | None = None
-        off_alt: float | None = None
-        off_az: float | None = None
-
         async with self.safe_proxy(self._telescope, IOffsetsRaDec) as telescope:
             if telescope:
                 s: RaDecOffsetState | None = telescope.get_state(IOffsetsRaDec)
                 if s is not None:
-                    off_ra, off_dec = s.ra, s.dec
+                    return OffsetFrame.RA_DEC, s.ra, s.dec
         async with self.safe_proxy(self._telescope, IOffsetsAltAz) as telescope:
             if telescope:
                 s2: AltAzOffsetState | None = telescope.get_state(IOffsetsAltAz)
                 if s2 is not None:
-                    off_alt, off_az = s2.alt, s2.az
+                    return OffsetFrame.ALT_AZ, s2.alt, s2.az
 
-        return off_ra, off_dec, off_alt, off_az
+        return None, None, None
 
     async def _create_log_and_return(self) -> AcquisitionResult:
         # get current Alt/Az
@@ -270,7 +265,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         result = AcquisitionResult(time=Time.now(), ra=cur_ra, dec=cur_dec, alt=cur_alt, az=cur_az)
 
         # Alt/Az or RA/Dec?
-        result.off_ra, result.off_dec, result.off_alt, result.off_az = await self._get_offsets()
+        result.offset_frame, result.offset_lon, result.offset_lat = await self._get_offsets()
 
         # write log
         if self._publisher is not None:
@@ -280,10 +275,9 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 dec=result.dec,
                 alt=result.alt,
                 az=result.az,
-                off_ra=result.off_ra,
-                off_dec=result.off_dec,
-                off_alt=result.off_alt,
-                off_az=result.off_az,
+                offset_frame=result.offset_frame,
+                offset_lon=result.offset_lon,
+                offset_lat=result.offset_lat,
             )
 
         # publish final state, with result set

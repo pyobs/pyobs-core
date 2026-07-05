@@ -213,6 +213,12 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             async with self.proxy(self._telescope, ITelescope) as telescope:
                 if await self._apply(image, telescope, self._location):
                     log.info("Finished image.")
+                    off_ra, off_dec, off_alt, off_az = await self._get_offsets()
+                    self._attempts_log[-1].offset_ra = off_ra
+                    self._attempts_log[-1].offset_dec = off_dec
+                    self._attempts_log[-1].offset_alt = off_alt
+                    self._attempts_log[-1].offset_az = off_az
+                    await self.comm.set_state(IAcquisition, AcquisitionState(attempts=self._attempts_log))
                 else:
                     log.warning("Could not apply offsets.")
 
@@ -228,6 +234,30 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # could not acquire target
         raise exc.AcquisitionError("Could not acquire target within given tolerance.")
 
+    async def _get_offsets(self) -> tuple[float | None, float | None, float | None, float | None]:
+        """Fetch the telescope's current RA/Dec or Alt/Az offset, whichever it supports.
+
+        Returns:
+            Tuple of (off_ra, off_dec, off_alt, off_az), with the unsupported pair left as None.
+        """
+        off_ra: float | None = None
+        off_dec: float | None = None
+        off_alt: float | None = None
+        off_az: float | None = None
+
+        async with self.safe_proxy(self._telescope, IOffsetsRaDec) as telescope:
+            if telescope:
+                s: RaDecOffsetState | None = telescope.get_state(IOffsetsRaDec)
+                if s is not None:
+                    off_ra, off_dec = s.ra, s.dec
+        async with self.safe_proxy(self._telescope, IOffsetsAltAz) as telescope:
+            if telescope:
+                s2: AltAzOffsetState | None = telescope.get_state(IOffsetsAltAz)
+                if s2 is not None:
+                    off_alt, off_az = s2.alt, s2.az
+
+        return off_ra, off_dec, off_alt, off_az
+
     async def _create_log_and_return(self) -> AcquisitionResult:
         # get current Alt/Az
         async with self.proxy(self._telescope, IPointingAltAz) as telescope:
@@ -240,16 +270,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         result = AcquisitionResult(time=Time.now(), ra=cur_ra, dec=cur_dec, alt=cur_alt, az=cur_az)
 
         # Alt/Az or RA/Dec?
-        async with self.safe_proxy(self._telescope, IOffsetsRaDec) as telescope:
-            if telescope:
-                s: RaDecOffsetState | None = telescope.get_state(IOffsetsRaDec)
-                if s is not None:
-                    result.off_ra, result.off_dec = s.ra, s.dec
-        async with self.safe_proxy(self._telescope, IOffsetsAltAz) as telescope:
-            if telescope:
-                s2: AltAzOffsetState | None = telescope.get_state(IOffsetsAltAz)
-                if s2 is not None:
-                    result.off_alt, result.off_az = s2.alt, s2.az
+        result.off_ra, result.off_dec, result.off_alt, result.off_az = await self._get_offsets()
 
         # write log
         if self._publisher is not None:

@@ -28,6 +28,11 @@ class AcquisitionAttempt:  # AcquisitionState.attempts element
     attempt: int
     distance: Annotated[float, Unit.ARCSEC]
     offset_applied: bool
+    # accumulated telescope offset after this attempt, whichever pair the mount supports
+    offset_ra: Annotated[float, Unit.DEGREES] | None = None
+    offset_dec: Annotated[float, Unit.DEGREES] | None = None
+    offset_alt: Annotated[float, Unit.DEGREES] | None = None
+    offset_az: Annotated[float, Unit.DEGREES] | None = None
 
 
 @dataclass

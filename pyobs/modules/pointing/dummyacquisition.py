@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import random
 from typing import Any
 
@@ -84,25 +85,40 @@ class DummyAcquisition(Module, IAcquisition):
         await self.comm.set_state(IAcquisition, AcquisitionState(attempts=attempts))
 
         distance = self._start_distance
+        bearing = random.uniform(0.0, 2 * math.pi)  # direction of the offset, wanders a bit each attempt
         for a in range(1, self._max_attempts + 1):
             if self._abort.is_set():
                 raise exc.AbortedError()
 
             acquired = distance < self._tolerance
+            offset_deg = distance / 3600.0
+            offset_ra = offset_deg * math.cos(bearing)
+            offset_dec = offset_deg * math.sin(bearing)
             log.info("Attempt %d: distance to target %.2f arcsec.", a, distance)
-            attempts = attempts + [AcquisitionAttempt(attempt=a, distance=distance, offset_applied=not acquired)]
+            attempts = attempts + [
+                AcquisitionAttempt(
+                    attempt=a,
+                    distance=distance,
+                    offset_applied=not acquired,
+                    offset_ra=offset_ra,
+                    offset_dec=offset_dec,
+                )
+            ]
             await self.comm.set_state(IAcquisition, AcquisitionState(attempts=attempts))
 
             await asyncio.sleep(self._wait_secs)
 
             if acquired:
                 log.info("Target successfully acquired.")
-                result = AcquisitionResult(time=Time.now(), ra=0.0, dec=0.0, alt=0.0, az=0.0, off_ra=0.0, off_dec=0.0)
+                result = AcquisitionResult(
+                    time=Time.now(), ra=0.0, dec=0.0, alt=0.0, az=0.0, off_ra=offset_ra, off_dec=offset_dec
+                )
                 await self.comm.set_state(IAcquisition, AcquisitionState(attempts=attempts, result=result))
                 return result
 
-            # converge towards the tolerance, with a bit of noise
+            # converge towards the tolerance, with a bit of noise, and let the bearing wander a little
             distance = max(self._tolerance * 0.5, distance / 3 + random.gauss(0.0, distance * 0.05))
+            bearing += random.gauss(0.0, 0.4)
 
         raise exc.AcquisitionError("Could not acquire target within given tolerance.")
 

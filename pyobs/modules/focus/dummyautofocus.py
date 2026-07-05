@@ -24,7 +24,7 @@ class DummyAutoFocus(Module, IAutoFocus):
         wait_time: float = 0.5,
         best_focus: float = 10.0,
         min_value: float = 3.0,
-        curve_width: float = 0.076,
+        curve_width: float = 0.0253,
         **kwargs: Any,
     ):
         """Create a new dummy auto-focus.

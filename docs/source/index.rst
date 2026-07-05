@@ -112,7 +112,7 @@ Introduction
 .. toctree::
    :maxdepth: 1
 
-   whatsnew
+   whatsnew-2.0
    quickstart
    installing
    development

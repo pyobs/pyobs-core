@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 from typing import Any
 
-from pyobs.interfaces import AcquisitionResult, IAcquisition
+from pyobs.interfaces import AcquisitionAttempt, AcquisitionResult, AcquisitionState, IAcquisition, IRunning
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module, timeout
+from pyobs.utils import exceptions as exc
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -16,13 +19,37 @@ class DummyAcquisition(Module, IAcquisition):
 
     __module__ = "pyobs.modules.acquisition"
 
-    def __init__(self, wait_secs: float = 5.0, **kwargs: Any):
-        """Create a new dummy acquisition."""
+    def __init__(
+        self,
+        wait_secs: float = 1.0,
+        start_distance: float = 60.0,
+        tolerance: float = 1.0,
+        max_attempts: int = 5,
+        **kwargs: Any,
+    ):
+        """Create a new dummy acquisition.
+
+        Args:
+            wait_secs: Time to wait between attempts, in seconds.
+            start_distance: Simulated initial distance to target, in arcsec.
+            tolerance: Distance within which the target counts as acquired, in arcsec.
+            max_attempts: Number of attempts before giving up.
+        """
         Module.__init__(self, **kwargs)
 
         # store
         self._wait_secs = wait_secs
+        self._start_distance = start_distance
+        self._tolerance = tolerance
+        self._max_attempts = max_attempts
         self._is_running = False
+        self._abort = asyncio.Event()
+
+    async def open(self) -> None:
+        """Open module."""
+        await Module.open(self)
+        await self.comm.set_state(IAcquisition, AcquisitionState())
+        await self.comm.set_state(IRunning, RunningState(running=False))
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
@@ -44,27 +71,43 @@ class DummyAcquisition(Module, IAcquisition):
 
         try:
             self._is_running = True
+            self._abort = asyncio.Event()
+            await self.comm.set_state(IRunning, RunningState(running=True))
             return await self._acquire()
         finally:
             self._is_running = False
+            await self.comm.set_state(IRunning, RunningState(running=False))
 
     async def _acquire(self) -> AcquisitionResult:
         """Actually acquire target."""
-        log.info("Acquiring target.")
-        await asyncio.sleep(self._wait_secs)
-        log.info("Finished.")
-        return AcquisitionResult(
-            time=Time.now(),
-            ra=0.0,
-            dec=0.0,
-            alt=0.0,
-            az=0.0,
-            off_ra=0.0,
-            off_dec=0.0,
-        )
+        attempts: list[AcquisitionAttempt] = []
+        await self.comm.set_state(IAcquisition, AcquisitionState(attempts=attempts))
+
+        distance = self._start_distance
+        for a in range(1, self._max_attempts + 1):
+            if self._abort.is_set():
+                raise exc.AbortedError()
+
+            acquired = distance < self._tolerance
+            log.info("Attempt %d: distance to target %.2f arcsec.", a, distance)
+            attempts = attempts + [AcquisitionAttempt(attempt=a, distance=distance, offset_applied=not acquired)]
+            await self.comm.set_state(IAcquisition, AcquisitionState(attempts=attempts))
+
+            await asyncio.sleep(self._wait_secs)
+
+            if acquired:
+                log.info("Target successfully acquired.")
+                result = AcquisitionResult(time=Time.now(), ra=0.0, dec=0.0, alt=0.0, az=0.0, off_ra=0.0, off_dec=0.0)
+                await self.comm.set_state(IAcquisition, AcquisitionState(attempts=attempts, result=result))
+                return result
+
+            # converge towards the tolerance, with a bit of noise
+            distance = max(self._tolerance * 0.5, distance / 3 + random.gauss(0.0, distance * 0.05))
+
+        raise exc.AcquisitionError("Could not acquire target within given tolerance.")
 
     async def abort(self, **kwargs: Any) -> None:
-        pass
+        self._abort.set()
 
 
 __all__ = ["DummyAcquisition"]

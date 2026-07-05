@@ -8,7 +8,9 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 
 from pyobs.images import Image
-from pyobs.interfaces import FitsHeaderEntry, IAutoGuiding, IFitsHeaderAfter, IFitsHeaderBefore
+from pyobs.images.meta import PixelOffsets
+from pyobs.interfaces import FitsHeaderEntry, GuidingState, IAutoGuiding, IFitsHeaderAfter, IFitsHeaderBefore, IRunning
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.utils.time import Time
 
 from ...interfaces import ITelescope
@@ -60,6 +62,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._reset_at_focus = reset_at_focus
         self._reset_at_filter = reset_at_filter
         self._loop_closed = False
+        self._last_offset: tuple[float, float] | None = None
 
         # headers of last and of reference image
         self._last_header = None
@@ -72,15 +75,23 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._statistics = get_object(guiding_statistic, GuidingStatistics)
         self._uptime = GuidingStatisticsUptime()
 
+    async def open(self) -> None:
+        """Open module."""
+        await BasePointing.open(self)
+        await self.comm.set_state(IRunning, RunningState(running=False))
+        await self.comm.set_state(IAutoGuiding, GuidingState())
+
     async def start(self, **kwargs: Any) -> None:
         """Starts/resets auto-guiding."""
         log.info("Start auto-guiding...")
         await self._reset_guiding(enabled=True)
+        await self.comm.set_state(IRunning, RunningState(running=True))
 
     async def stop(self, **kwargs: Any) -> None:
         """Stops auto-guiding."""
         log.info("Stopping auto-guiding...")
         await self._reset_guiding(enabled=False)
+        await self.comm.set_state(IRunning, RunningState(running=False))
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether auto-guiding is running.
@@ -142,7 +153,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             image: If given, new reference image.
         """
         self._enabled = enabled
-        self._set_loop_state(False)
+        await self._set_loop_state(False)
         self._ref_header = None if image is None else image.header
         self._last_header = None if image is None else image.header
 
@@ -152,9 +163,19 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             # if image is given, process it
             await self.run_pipeline(image)
 
-    def _set_loop_state(self, state: bool) -> None:
+    async def _set_loop_state(self, state: bool, offset: tuple[float, float] | None = None) -> None:
         self._uptime.add_data(state)
         self._loop_closed = state
+        if offset is not None:
+            self._last_offset = offset
+        await self.comm.set_state(
+            IAutoGuiding,
+            GuidingState(
+                loop_closed=state,
+                last_offset_x=self._last_offset[0] if self._last_offset is not None else None,
+                last_offset_y=self._last_offset[1] if self._last_offset is not None else None,
+            ),
+        )
 
     async def _process_image(self, image: Image) -> Image | None:
         """Processes a single image and offsets telescope.
@@ -228,7 +249,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         # exposure time too large?
         if self._max_exposure_time is not None and image.header["EXPTIME"] > self._max_exposure_time:
             log.warning("Exposure time too large, skipping auto-guiding for now...")
-            self._set_loop_state(False)
+            await self._set_loop_state(False)
             return None
 
         # remember header
@@ -243,21 +264,25 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         # get telescope
         if not await self.has_proxy(self._telescope, ITelescope):
             log.error("Given telescope does not exist or is not of correct type.")
-            self._set_loop_state(False)
+            await self._set_loop_state(False)
             return image
 
         # apply offsets
         try:
             async with self.proxy(self._telescope, ITelescope) as telescope:
                 if await self._apply(image, telescope, self._location):
-                    self._set_loop_state(True)
+                    offset = None
+                    if image.has_meta(PixelOffsets):
+                        po = image.get_meta(PixelOffsets)
+                        offset = (po.dx, po.dy)
+                    await self._set_loop_state(True, offset)
                     log.info("Finished image.")
                 else:
                     log.info("Could not apply offsets.")
-                    self._set_loop_state(False)
+                    await self._set_loop_state(False)
         except ValueError as e:
             log.info("Could not apply offsets: %s", e)
-            self._set_loop_state(False)
+            await self._set_loop_state(False)
 
         # return image, in case we added important data
         return image

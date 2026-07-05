@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated, Any
 
 from ..utils.enums import Unit
@@ -23,10 +23,26 @@ class AcquisitionResult:
     off_az: Annotated[float, Unit.DEGREES] | None = None
 
 
+@dataclass
+class AcquisitionAttempt:  # AcquisitionState.attempts element
+    attempt: int
+    distance: Annotated[float, Unit.ARCSEC]
+    offset_applied: bool
+
+
+@dataclass
+class AcquisitionState:  # growing log of attempts during an acquisition run
+    attempts: list[AcquisitionAttempt] = field(default_factory=list)
+    result: AcquisitionResult | None = None
+    time: Time = field(default_factory=Time.now)
+
+
 class IAcquisition(IRunning, IAbortable, metaclass=ABCMeta):
     """The module can acquire a target, usually by accessing a telescope and a camera."""
 
     __module__ = "pyobs.interfaces"
+
+    state = AcquisitionState
 
     @abstractmethod
     async def acquire_target(self, **kwargs: Any) -> AcquisitionResult:
@@ -44,4 +60,4 @@ class IAcquisition(IRunning, IAbortable, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["AcquisitionResult", "IAcquisition"]
+__all__ = ["AcquisitionResult", "AcquisitionAttempt", "AcquisitionState", "IAcquisition"]

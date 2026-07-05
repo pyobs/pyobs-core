@@ -11,7 +11,9 @@ import pyobs.utils.exceptions as exc
 from pyobs.images.meta import OnSkyDistance
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.interfaces import (
+    AcquisitionAttempt,
     AcquisitionResult,
+    AcquisitionState,
     AltAzOffsetState,
     AltAzState,
     IAcquisition,
@@ -19,9 +21,11 @@ from pyobs.interfaces import (
     IOffsetsRaDec,
     IPointingAltAz,
     IPointingRaDec,
+    IRunning,
     RaDecOffsetState,
     RaDecState,
 )
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import Module, raises, timeout
 from pyobs.utils.enums import ImageType
@@ -82,6 +86,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         self._abort_event = asyncio.Event()
         self._oneshot = oneshot
         self._broadcast = broadcast
+        self._attempts_log: list[AcquisitionAttempt] = []
 
         # init log file
         self._publisher = CsvPublisher(log_file) if log_file is not None else None
@@ -98,6 +103,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             log.warning("Telescope does not exist or is not of correct type at the moment.")
         if not await self.has_proxy(self._camera, ICamera):
             log.warning("Camera does not exist or is not of correct type at the moment.")
+
+        # publish initial states
+        await self.comm.set_state(IAcquisition, AcquisitionState())
+        await self.comm.set_state(IRunning, RunningState(running=False))
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
@@ -121,9 +130,12 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         try:
             self._is_running = True
             self._abort_event = asyncio.Event()
+            self._attempts_log = []
+            await self.comm.set_state(IRunning, RunningState(running=True))
             return await self._acquire(self._default_exposure_time)
         finally:
             self._is_running = False
+            await self.comm.set_state(IRunning, RunningState(running=False))
 
     async def _acquire(self, exposure_time: float) -> AcquisitionResult:
         """Actually acquire target."""
@@ -178,6 +190,13 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 log.warning("On-sky distance found in meta is None or NaN.")
                 continue
             log.info("Found a distance to target of %.2f arcsec.", osd.distance.arcsec)
+
+            # publish attempt telemetry (offset only gets applied if within max_offset but outside tolerance)
+            offset_applied = self._tolerance <= osd.distance <= self._max_offset
+            self._attempts_log.append(
+                AcquisitionAttempt(attempt=a + 1, distance=float(osd.distance.arcsec), offset_applied=offset_applied)
+            )
+            await self.comm.set_state(IAcquisition, AcquisitionState(attempts=self._attempts_log))
 
             # get distance
             if osd.distance < self._tolerance:
@@ -245,6 +264,9 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 off_alt=result.off_alt,
                 off_az=result.off_az,
             )
+
+        # publish final state, with result set
+        await self.comm.set_state(IAcquisition, AcquisitionState(attempts=self._attempts_log, result=result))
 
         return result
 

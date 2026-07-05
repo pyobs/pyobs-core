@@ -109,9 +109,6 @@ Implementations
      - Production use. Requires an XMPP server (e.g. ejabberd). All modules connect to the server and
        communicate via XMPP's RPC and publish-subscribe extensions. This is the standard choice for
        real observatories.
-   * - :class:`~pyobs.comm.dbus.DbusComm`
-     - Single-machine setups on Linux using D-Bus for inter-process communication. No external server
-       required, but modules must run on the same machine.
    * - :class:`~pyobs.comm.local.LocalComm`
      - In-process communication for use in :class:`~pyobs.modules.MultiModule` setups and tests.
        All modules share the same Python process.
@@ -133,6 +130,10 @@ API reference
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.comm.dbus.DbusComm
+.. autoclass:: pyobs.comm.local.LocalComm
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.comm.dummy.DummyComm
    :members:
    :show-inheritance:

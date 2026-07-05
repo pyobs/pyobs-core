@@ -190,9 +190,9 @@ Modules used for automatic flat-fielding
 
   # definition of the flat fielder
   flat_fielder:
-    class: pyobs.utils.skyflats.FlatFielder
+    class: pyobs.robotic.utils.skyflats.FlatFielder
     pointing:
-      class: pyobs.utils.skyflats.pointing.SkyFlatsStaticPointing
+      class: pyobs.robotic.utils.skyflats.pointing.SkyFlatsStaticPointing
     combine_binnings: False
     functions:
       1x1:
@@ -222,9 +222,9 @@ Modules used for automatic flat-fielding
   for the camera and the same for module for the filter wheel, since it is integrated into the camera (lines 4-6).
 * A log file is created containing the exposure times, which can help refine the functions for the exposure times
   (line 9).
-* The flat-fielding itself is done using the :class:`~pyobs.utils.skyflats.FlatFielder` class (lines 12-13).
+* The flat-fielding itself is done using the :class:`~pyobs.robotic.utils.skyflats.FlatFielder` class (lines 12-13).
 * The ``pointing`` keyword defines where to point in the sky, for which
-  :class:`~pyobs.utils.skyflats.pointing.SkyFlatsStaticPointing` is used (lines 14-15).
+  :class:`~pyobs.robotic.utils.skyflats.pointing.SkyFlatsStaticPointing` is used (lines 14-15).
 * The ``combine_binning`` flag is set to ``False``, so that the ``functions`` (see below) need to include binnings
   (line 16).
 * The functions for calculating the exposure time as a function of ``h`` (solar elevation in degrees) are defined,
@@ -360,7 +360,7 @@ Module for full robotic mode
   class: pyobs.modules.robotic.Mastermind
 
   schedule:
-    class: pyobs.robotic.lco.LcoTaskSchedule
+    class: pyobs.robotic.storage.lco.LcoObservationArchive
     url: ...
     token: ...
     site: ...
@@ -369,13 +369,13 @@ Module for full robotic mode
     class: pyobs.robotic.TaskRunner
     scripts:
       BIAS:
-        class: pyobs.robotic.lco.scripts.LcoDefaultScript
+        class: pyobs.robotic.storage.lco.scripts.LcoDefaultScript
         camera: sbig6303e
       DARK:
-        class: pyobs.robotic.lco.scripts.LcoDefaultScript
+        class: pyobs.robotic.storage.lco.scripts.LcoDefaultScript
         camera: sbig6303e
       EXPOSE:
-        class: pyobs.robotic.lco.scripts.LcoDefaultScript
+        class: pyobs.robotic.storage.lco.scripts.LcoDefaultScript
         telescope: telescope
         filters: sbig6303e
         camera: sbig6303e
@@ -383,7 +383,7 @@ Module for full robotic mode
         acquisition: acquisition
         autoguider: autoguider
       REPEAT_EXPOSE:
-        class: pyobs.robotic.lco.scripts.LcoDefaultScript
+        class: pyobs.robotic.storage.lco.scripts.LcoDefaultScript
         telescope: telescope
         filters: sbig6303e
         camera: sbig6303e
@@ -391,17 +391,17 @@ Module for full robotic mode
         acquisition: acquisition
         autoguider: autoguider
       AUTO_FOCUS:
-        class: pyobs.robotic.lco.scripts.LcoAutoFocusScript
+        class: pyobs.robotic.storage.lco.scripts.LcoAutoFocusScript
         telescope: telescope
         filters: sbig6303e
         camera: sbig6303e
         roof: dome
         autofocus: autofocus
       SCRIPT:
-        class: pyobs.robotic.lco.scripts.LcoScript
+        class: pyobs.robotic.storage.lco.scripts.LcoScript
         scripts:
           skyflats:
-            class: pyobs.robotic.scripts.SkyFlats
+            class: pyobs.robotic.scripts.calibration.skyflats.SkyFlatsScript
             roof: dome
             telescope: telescope
             flatfield: flatfield
@@ -422,9 +422,9 @@ Module for full robotic mode
                 Green: exp(-1.23137*(h+3.37692))
                 Blue: exp(-1.13074*(h+3.47531))
             priorities:
-              class: pyobs.utils.skyflats.priorities.ArchiveSkyflatPriorities
+              class: pyobs.robotic.utils.skyflats.priorities.ArchiveSkyflatPriorities
               archive:
-                class: pyobs.utils.archive.PyobsArchive
+                class: pyobs.robotic.utils.archive.PyobsArchive
                 url: ...
                 token: ...
               site: ...
@@ -434,10 +434,10 @@ Module for full robotic mode
 
 * The class :class:`~pyobs.modules.robotic.Mastermind` provides the functionality for the full robotic mode (line 1).
 * It requires a schedule to fetch its tasks from. Since we use the LCO observation portal, an object of type
-  :class:`~pyobs.robotic.lco.LcoTaskSchedule` is used for this. The parameters given are for the connection to
+  :class:`~pyobs.robotic.storage.lco.LcoObservationArchive` is used for this. The parameters given are for the connection to
   the portal (lines 3-7).
 * The actual task runner is :class:`~pyobs.robotic.TaskRunner`, which is based on scripts that handle different kinds
-  of request. For every type a class is given to handle it (mostly :class:`~pyobs.robotic.lco.scripts.LcoDefaultScript`)
+  of request. For every type a class is given to handle it (mostly ``pyobs.robotic.storage.lco.scripts.LcoDefaultScript``)
   together with all the modules that this class needs to do its job (lines 9-74).
 
 
@@ -457,13 +457,13 @@ Module for calculating the schedule
   safety_time: 600
 
   tasks:
-    class: pyobs.robotic.lco.LcoTaskArchive
+    class: pyobs.robotic.storage.lco.LcoTaskArchive
     url: ...
     token: ...
     instrument_type: ...
 
   schedule:
-    class: pyobs.robotic.lco.LcoTaskSchedule
+    class: pyobs.robotic.storage.lco.LcoObservationArchive
     url: ...
     token: ...
     site: ...
@@ -479,9 +479,9 @@ Module for calculating the schedule
 * The ``safety_time`` is the estimated maximum number of seconds that the scheduler will run. That means that the
   scheduler will always only schedule tasks starting at ``now+safety_time`` (line 7).
 * A task archive is needed to fetch schedulable tasks from, in this case handled by
-  :class:`~pyobs.robotic.lco.LcoTaskArchive` (lines 9-13).
+  :class:`~pyobs.robotic.storage.lco.LcoTaskArchive` (lines 9-13).
 * Finally, the scheduler needs to write the calculated schedule somewhere, which in this case is an object of type
-  :class:`~pyobs.robotic.lco.LcoTaskSchedule` (lines 15-23).
+  :class:`~pyobs.robotic.storage.lco.LcoObservationArchive` (lines 15-23).
 
 
 sfag

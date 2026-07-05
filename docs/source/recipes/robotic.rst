@@ -86,6 +86,7 @@ A :class:`~pyobs.robotic.scripts.Script` is a pydantic model that implements the
 observing logic. Create ``myobs/scripts.py``::
 
     import logging
+    from contextlib import AsyncExitStack
     from typing import TYPE_CHECKING
 
     from pyobs.interfaces import ICamera, IPointingRaDec
@@ -104,32 +105,30 @@ observing logic. Create ``myobs/scripts.py``::
         num_exposures: int = 1
 
         async def can_run(self, data: TaskData | None) -> bool:
-            try:
-                await self.comm.proxy(self.camera, ICamera)
-                await self.comm.proxy(self.telescope, IPointingRaDec)
-            except ValueError:
-                return False
-            return True
+            return await self.comm.has_proxy(self.camera, ICamera) and await self.comm.has_proxy(
+                self.telescope, IPointingRaDec
+            )
 
         async def run(self, data: TaskData | None) -> None:
             if data is None or data.task.target is None:
                 raise ValueError("No target.")
 
-            camera = await self.comm.proxy(self.camera, ICamera)
-            telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
+            async with AsyncExitStack() as stack:
+                camera = await stack.enter_async_context(self.comm.proxy(self.camera, ICamera))
+                telescope = await stack.enter_async_context(self.comm.proxy(self.telescope, IPointingRaDec))
 
-            from pyobs.utils.time import Time
-            target = data.task.target.coordinates(Time.now())
+                from pyobs.utils.time import Time
+                target = data.task.target.coordinates(Time.now())
 
-            log.info("Moving telescope to %s...", data.task.target.name)
-            await telescope.move_radec(target.ra.deg, target.dec.deg)
+                log.info("Moving telescope to %s...", data.task.target.name)
+                await telescope.move_radec(target.ra.deg, target.dec.deg)
 
-            for i in range(self.num_exposures):
-                log.info("Taking exposure %d/%d...", i + 1, self.num_exposures)
-                await camera.set_exposure_time(self.exposure_time)
-                await camera.grab_data(broadcast=True)
+                for i in range(self.num_exposures):
+                    log.info("Taking exposure %d/%d...", i + 1, self.num_exposures)
+                    await camera.set_exposure_time(self.exposure_time)
+                    await camera.grab_data(broadcast=True)
 
-            log.info("Done.")
+                log.info("Done.")
 
 Two things worth noting:
 
@@ -168,11 +167,11 @@ The :class:`~pyobs.modules.robotic.Scheduler` module runs the scheduling loop. S
           max_solar_elevation: -12.0
 
     tasks:
-      class: pyobs.robotic.filesystem.YamlTaskArchive
+      class: pyobs.robotic.storage.filesystem.YamlTaskArchive
       path: /robotic/tasks/
 
     schedule:
-      class: pyobs.robotic.filesystem.YamlObservationArchive
+      class: pyobs.robotic.storage.filesystem.YamlObservationArchive
       path: /opt/pyobs/robotic/observations/
 
     schedule_range: 8.0
@@ -206,14 +205,14 @@ observation when its time comes. Save as ``mastermind.yaml``::
           root: /opt/pyobs/robotic/
 
     schedule:
-      class: pyobs.robotic.filesystem.YamlObservationArchive
+      class: pyobs.robotic.storage.filesystem.YamlObservationArchive
       path: /opt/pyobs/robotic/observations/
 
     runner:
       class: pyobs.robotic.TaskRunner
 
     tasks:
-      class: pyobs.robotic.filesystem.YamlTaskArchive
+      class: pyobs.robotic.storage.filesystem.YamlTaskArchive
       path: /robotic/tasks/
 
     allowed_late_start: 120
@@ -249,8 +248,8 @@ Where to go next
   types (flat fields, focus runs, spectroscopy) — see :doc:`/api/robotic/scripts` for the full
   list of built-in scripts and the writing guide.
 - Replace ``YamlTaskArchive`` and ``YamlObservationArchive`` with
-  :class:`~pyobs.robotic.backend.BackendTaskArchive` and
-  :class:`~pyobs.robotic.backend.BackendObservationArchive` to use the *pyobs-robotic-backend*
+  :class:`~pyobs.robotic.storage.backend.BackendTaskArchive` and
+  :class:`~pyobs.robotic.storage.backend.BackendObservationArchive` to use the *pyobs-robotic-backend*
   web service for multi-telescope coordination — see :doc:`/api/robotic/scheduling`.
 - Add :class:`~pyobs.robotic.scheduler.merits.TransitMerit` or
   :class:`~pyobs.robotic.scheduler.merits.TimeWindowMerit` to the task YAML files for more

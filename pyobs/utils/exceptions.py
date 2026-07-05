@@ -123,6 +123,15 @@ class InvocationError(RemoteError, metaclass=_Meta):
         return msg
 
 
+class ForbiddenError(RemoteError, metaclass=_Meta):
+    """Raised when a caller is not permitted to invoke a method under the target module's ACL policy."""
+
+    def __init__(self, sender: str, method: str):
+        RemoteError.__init__(self, sender, f"Caller '{sender}' is not permitted to invoke '{method}'.")
+        self.sender = sender
+        self.method = method
+
+
 #######################################
 
 

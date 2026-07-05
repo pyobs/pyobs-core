@@ -33,7 +33,6 @@ async def test_init(mocker) -> None:
     await roof.init()
 
     roof._change_motion_status.assert_awaited_with(MotionStatus.IDLE)
-    roof._comm.send_event(RoofOpenedEvent())
 
 
 @pytest.mark.asyncio

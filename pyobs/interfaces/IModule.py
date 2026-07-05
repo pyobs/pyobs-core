@@ -25,5 +25,10 @@ class IModule(Interface, metaclass=ABCMeta):
         """Reset error of module, if any."""
         ...
 
+    @abstractmethod
+    async def get_permitted_methods(self, **kwargs: Any) -> list[str]:
+        """Returns names of all methods the calling module is allowed to invoke on this module."""
+        ...
+
 
 __all__ = ["IModule", "ModuleCapabilities"]

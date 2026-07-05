@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import warnings
 from copy import copy
 from typing import Any
 
-from astropy.wcs import WCS
+from astropy.wcs import WCS, FITSFixedWarning
 
 import pyobs.utils.exceptions as exc
 from pyobs.images import Image
@@ -53,7 +54,10 @@ class _ResponseImageWriter:
             del self._image.header[keyword]
 
     def _generate_image_wcs(self) -> None:
-        self._image_wcs = WCS(self._image.header)
+        # astrometry.net's CD matrix is sometimes under-constrained, which astropy silently repairs
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FITSFixedWarning)
+            self._image_wcs = WCS(self._image.header)
 
     def _add_plate_solution_to_catalog(self) -> None:
         if self._image_wcs is None:

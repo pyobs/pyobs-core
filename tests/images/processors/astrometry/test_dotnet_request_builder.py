@@ -7,7 +7,7 @@ def test_filter_catalog():
 
     catalog = mock_catalog(2)
     pandas_catalog = catalog.to_pandas()
-    pandas_catalog.iloc[0]["peak"] = 60001
+    pandas_catalog.loc[0, "peak"] = 60001
     request_builder._catalog = pandas_catalog
     request_builder._filter_catalog()
 

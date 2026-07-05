@@ -3,6 +3,30 @@ Command Line Interface
 *pyobs* comes with two different command line tools, :program:`pyobs` and :program:`pyobsd`, which can run a single
 module or start multiple ones, respectively.
 
+.. _cli-config-file:
+
+Default parameters via config file
+-----------------------------------
+Instead of passing parameters on the command line every time, both :program:`pyobs` and :program:`pyobsd` can read
+their default values from a YAML config file. The first of the following locations that exists is used:
+
+1. :file:`~/.config/pyobs.yaml`
+2. :file:`/etc/pyobs.yaml`
+3. :file:`/opt/pyobs/storage/pyobs.yaml`
+
+Within that file, parameters go into a section named after the tool, e.g.::
+
+    pyobs:
+      log_level: debug
+
+    pyobsd:
+      path: /opt/pyobs
+      chuid: pyobs:pyobs
+
+Only a fixed set of parameters can be set this way (roughly those without a value that changes between runs, such as
+the module config file itself). Command line parameters always take precedence over values from the config file.
+Which config file was picked, if any, is logged on startup.
+
 .. _cli-pyobs:
 
 Module launcher *pyobs*
@@ -29,6 +53,9 @@ The command accepts the following optional parameters:
 :--log-rotate:
     Only valid in combination with **-l/--log-file**. Requests an automated rotation of log files to avoid
     large files.
+
+:--syslog:
+    If given, log messages are also sent to the systemd journal, tagged with the module name.
 
 :-p/--pid-file <file>:
     If given, *pyobs* writes its process ID into the given file and starts in the background.
@@ -108,6 +135,10 @@ The command accepts the following optional parameters:
 
 :--log-level <level>:
     One of critical, error, warning, info, debug. Indicates the level of logging.
+
+:--syslog:
+    If given, forwards **--syslog** to every started module, so their log messages are also sent to the
+    systemd journal.
 
 :--chuid <user>\:<group>:
     Switches user to the given user in the given group when starting/stopping a module, defaults to **pyobs**.

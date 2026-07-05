@@ -27,22 +27,8 @@ from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
 
 from .rpc import RPC
-from .serializer import _dataclass_to_xml, _xml_to_dataclass
+from .serializer import _dataclass_to_xml, _event_schema_to_xml, _interface_schema_to_xml, _xml_to_dataclass
 from .xmppclient import XmppClient
-
-_CAPABILITY_NS = "urn:pyobs:capability:1"
-
-
-def _capability_type(value: object) -> str:
-    """Map a Python value to a pyobs wire type string for capability elements."""
-    if isinstance(value, bool):
-        return "bool"
-    if isinstance(value, int):
-        return "int32"
-    if isinstance(value, float):
-        return "float64"
-    return "string"
-
 
 if TYPE_CHECKING:
     from pyobs.modules import Module
@@ -216,6 +202,13 @@ class XmppComm(Comm):
         await Comm.open(self)
 
     async def _connect(self) -> None:
+        # abort any previous client instead of just dropping the reference —
+        # otherwise its socket/tasks keep running in the background and it
+        # can still try to reconnect itself, fighting the new client below
+        # for the same JID resource
+        if self._xmpp is not None:
+            self._xmpp.abort()
+
         # create client
         self._xmpp = XmppClient(self._jid, self._password)
 
@@ -239,7 +232,7 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("changed_status", self._got_presence_update)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
-        self._xmpp.add_event_handler("disconnected", self._disconnected)
+        self._xmpp.add_event_handler("disconnected", functools.partial(self._disconnected, client=self._xmpp))
 
         # server given?
         server: str = "localhost"
@@ -257,6 +250,8 @@ class XmppComm(Comm):
         if self._module is not None:
             for i in self._module.interfaces:
                 self._xmpp["xep_0030"].add_feature(f"urn:pyobs:interface:{i.__name__}:{i.version}")
+                if i.has_own_state():
+                    self._xmpp["xep_0030"].add_feature(f"urn:pyobs:state:{i.__name__}:{i.version}")
 
         # register custom disco#info handler to inject <capability> elements
         if self._module is not None:
@@ -304,16 +299,29 @@ class XmppComm(Comm):
         await asyncio.sleep(2)
         await self._connect()
 
-    def _disconnected(self, event: Any) -> None:
+    def _disconnected(self, event: Any, client: XmppClient) -> None:
         """Reset connection after disconnect."""
         if self._closing.is_set():
             return
-        log.info("Disconnected from server, waiting for reconnect...")
+        if client is not self._xmpp:
+            # stale event from a client that's already been replaced/aborted
+            return
         self._capabilities = {}  # clear capabilities on reconnect
 
         # disconnect all clients
         for jid in self._online_clients:
             self._jid_got_offline(jid)
+
+        if client.kicked_by_conflict:
+            # another session took over our JID/resource -- reconnecting would just
+            # race that session for the resource again, so shut down instead
+            reason = client.conflict_reason or "conflict, no reason given"
+            log.error("Kicked from server (%s), shutting down module.", reason)
+            if self._module is not None:
+                self._module.quit()
+            return
+
+        log.info("Disconnected from server, waiting for reconnect...")
 
         # reconnect
         asyncio.create_task(self._reconnect())
@@ -489,7 +497,12 @@ class XmppComm(Comm):
         # call
         try:
             return await self._rpc.call(jid, method, annotation, *args)
-        except slixmpp.exceptions.IqError:
+        except slixmpp.exceptions.IqError as e:
+            # slixmpp's own Iq.send() future resolves on the reply's stanza id before the
+            # RPC layer's jabber_rpc_error event handling ever gets a chance to act on it,
+            # so the IQ-level "forbidden" condition (see Module ACLs) has to be read here.
+            if e.iq["error"]["condition"] == "forbidden":
+                raise exc.RemoteError(client, f"Forbidden to invoke {method} on {client}.")
             raise exc.RemoteError(client, f"Could not call {method} on {client}.")
         except slixmpp.exceptions.IqTimeout:
             raise exc.RemoteTimeoutError(client, f"Call to {method} on {client} timed out.")
@@ -520,6 +533,11 @@ class XmppComm(Comm):
         if len(interface_names) == 0:
             module = jid[: jid.index("@")]
             log.debug("Module %s does not seem to implement IModule, ignoring.", module)
+            # resolve the future we created above, otherwise it's left pending forever and
+            # any later get_interfaces()/proxy() call for this JID hangs indefinitely
+            future = self._interface_cache.get(jid)
+            if future is not None and not future.done():
+                future.set_result([])
             return
 
         # store interfaces — guard against a second _got_online for the same JID
@@ -541,8 +559,7 @@ class XmppComm(Comm):
 
         # fire presence callbacks
         module_name = jid[: jid.index("@")]
-        for cb in self._presence_callbacks.get(module_name, []):
-            cb(client_state, status)
+        self._fire_presence_callbacks(module_name, client_state, status)
 
         # append to list
         if jid not in self._online_clients:
@@ -550,6 +567,21 @@ class XmppComm(Comm):
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
+
+    def _fire_presence_callbacks(self, module_name: str, state: ModuleState, status: str) -> None:
+        """Call every presence callback registered for a module, isolating failures.
+
+        A callback belongs to whoever subscribed (e.g. a GUI widget) and may be stale --
+        subscribers are expected to unsubscribe on disconnect, but a callback raising here
+        must never abort the caller: this runs inline inside got_online/got_offline presence
+        handling, and an uncaught exception here previously meant the module's reconnect was
+        silently dropped (online_clients never updated, ModuleOpenedEvent never sent).
+        """
+        for cb in list(self._presence_callbacks.get(module_name, [])):
+            try:
+                cb(state, status)
+            except Exception:
+                log.exception("Presence callback for module %s raised, ignoring.", module_name)
 
     def _get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
         """Return cached presence state for a connected module."""
@@ -575,8 +607,7 @@ class XmppComm(Comm):
 
         # fire presence callbacks
         module_name = jid[: jid.index("@")]
-        for cb in self._presence_callbacks.get(module_name, []):
-            cb(client_state, status)
+        self._fire_presence_callbacks(module_name, client_state, status)
 
     def _got_offline(self, msg: Any) -> None:
         """If a new client disconnects, remove it from list.
@@ -600,8 +631,7 @@ class XmppComm(Comm):
 
         # notify presence subscribers that the module is gone
         module_name = jid[: jid.find("@")]
-        for cb in self._presence_callbacks.get(module_name, []):
-            cb(ModuleState.CLOSED, "")
+        self._fire_presence_callbacks(module_name, ModuleState.CLOSED, "")
 
         # clear interface cache
         if jid in self._interface_cache:
@@ -651,7 +681,7 @@ class XmppComm(Comm):
         await self._safe_send(
             self.client["xep_0163"].publish,
             stanza,
-            node=f"pyobs:event:{event.__class__.__name__}",
+            node=f"urn:pyobs:event:{event.__class__.__name__}:{event.version}",
             callback=functools.partial(self._send_event_callback, event=event),
         )
 
@@ -675,12 +705,12 @@ class XmppComm(Comm):
         # loop events
         for ev in events:
             # register event at XMPP
-            self.client["xep_0030"].add_feature(f"pyobs:event:{ev.__name__}")
+            self.client["xep_0030"].add_feature(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
 
             # if we have a handler, we're also interested in receiving such events
             if handler:
                 # add interest
-                self.client["xep_0163"].add_interest(f"pyobs:event:{ev.__name__}")
+                self.client["xep_0163"].add_interest(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
 
         # update caps and send presence
         await self._safe_send(self.client["xep_0115"].update_caps)
@@ -828,19 +858,34 @@ class XmppComm(Comm):
 
             info = DiscoInfo()
 
-        # Remove any previously appended capability elements (info.xml is cached
-        # by slixmpp and reused across calls — without this, each query appends
-        # another copy of every capability element)
-        _CAP_TAG = "capabilities"
-        for old_cap in list(info.xml):
-            if old_cap.tag.split("}")[-1] == _CAP_TAG:
-                info.xml.remove(old_cap)
+        # Remove any previously appended capability and interface schema elements
+        # (info.xml is cached by slixmpp and reused across calls — without this,
+        # each query appends another copy of every element)
+        for old_elem in list(info.xml):
+            local = old_elem.tag.split("}")[-1]
+            ns = old_elem.tag[1 : old_elem.tag.index("}")] if "}" in old_elem.tag else ""
+            if local == "capabilities":
+                info.xml.remove(old_elem)
+            elif local == "interface" and ns.startswith("urn:pyobs:interface:"):
+                info.xml.remove(old_elem)
+            elif local == "event" and ns.startswith("urn:pyobs:event:"):
+                info.xml.remove(old_elem)
 
         # Append current capabilities
         for interface, caps in self._capabilities.items():
             ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
             cap_xml = _dataclass_to_xml(caps, ns, tag="capabilities")
             info.xml.append(cap_xml)
+
+        # Append interface schemas (<command>, <state>, <types> blocks)
+        if self._module is not None:
+            for interface in self._module.interfaces:
+                info.xml.append(_interface_schema_to_xml(interface))
+
+        # Append event schemas
+        for ev_cls in sorted(self._registered_events, key=lambda e: e.__name__):
+            if not ev_cls.local:
+                info.xml.append(_event_schema_to_xml(ev_cls))
 
         return info
 
@@ -898,6 +943,11 @@ class XmppComm(Comm):
         result = self._get_client_state(module)
         if result is not None:
             callback(*result)
+
+    async def _unsubscribe_presence(self, module: str, callback: Callable[[ModuleState, str], None]) -> None:
+        callbacks = self._presence_callbacks.get(module)
+        if callbacks is not None and callback in callbacks:
+            callbacks.remove(callback)
 
     async def _subscribe_with_retry(self, node: str, interface: type[Interface]) -> None:
         """Subscribe to a pubsub node, retrying until the node exists.

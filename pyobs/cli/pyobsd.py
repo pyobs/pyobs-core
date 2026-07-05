@@ -31,6 +31,7 @@ class PyobsDaemonCLI(CLI):
         "run_path",
         "log_path",
         "log_level",
+        "syslog",
         "chuid",
     ]
 
@@ -45,6 +46,12 @@ class PyobsDaemonCLI(CLI):
             type=str,
             choices=["critical", "error", "warning", "info", "debug"],
             default=self._config.get("log-level", "info"),
+        )
+        self._parser.add_argument(
+            "--syslog",
+            action="store_true",
+            help="send module logs to systemd journal",
+            default=self._config.get("syslog", False),
         )
         self._parser.add_argument("--chuid", type=str, default=self._config.get("chuid", "pyobs:pyobs"))
         self._parser.add_argument("-v", "--verbose", action="store_true")
@@ -64,6 +71,7 @@ class PyobsDaemonCLI(CLI):
             str(os.path.join(self._config["path"], self._config["run_path"])),
             str(os.path.join(self._config["path"], self._config["log_path"])),
             log_level=self._config["log_level"],
+            syslog=self._config["syslog"],
             chuid=self._config["chuid"],
             verbose=self._config["verbose"],
         )
@@ -89,6 +97,7 @@ class PyobsDaemon:
         run_path: str,
         log_path: str,
         log_level: str = "info",
+        syslog: bool = False,
         chuid: str | None = None,
         verbose: bool = False,
         **kwargs: Any,
@@ -97,6 +106,7 @@ class PyobsDaemon:
         self._run_path = run_path
         self._log_path = log_path
         self._log_level = log_level
+        self._syslog = syslog
         self._verbose = verbose
 
         # parse optional user/group from chuid (format: "user:group" or "user")
@@ -298,6 +308,8 @@ class PyobsDaemon:
             self._log_level,
             self._config_file(module),
         ]
+        if self._syslog:
+            cmd.append("--syslog")
 
         if self._verbose:
             print(f"[DEBUG] Executing: {' '.join(cmd)}")

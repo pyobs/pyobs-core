@@ -17,6 +17,7 @@ from numpy.typing import NDArray
 
 from pyobs.images import Image
 from pyobs.interfaces import (
+    Binning,
     BinningCapabilities,
     BinningState,
     CoolingState,
@@ -134,7 +135,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         )
         await self.comm.set_capabilities(
             IBinning,
-            BinningCapabilities(binnings=[BinningState(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]]),
+            BinningCapabilities(binnings=[Binning(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]]),
         )
         await self.comm.set_capabilities(
             IImageFormat, ImageFormatCapabilities(image_formats=[ImageFormat.INT8, ImageFormat.INT16])
@@ -159,7 +160,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
     async def _cooling_thread(self) -> None:
         while True:
             temps = dict(self._cooling.temperatures)
-            temps["CCD"] -= (temps["CCD"] - self._cooling.set_point) * 0.05
+            if self._cooling.enabled and self._cooling.set_point is not None:
+                temps["CCD"] -= (temps["CCD"] - self._cooling.set_point) * 0.05
             power = (60.0 - temps["CCD"]) / 70.0 * 100.0
             self._cooling = CoolingStatus(
                 enabled=self._cooling.enabled,

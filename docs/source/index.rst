@@ -1,5 +1,5 @@
-Welcome to *pyobs*!
-===================
+Welcome to *pyobs* |release|!
+==============================
 
 Overview
 --------

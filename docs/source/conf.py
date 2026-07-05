@@ -16,6 +16,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../../"))
 
+from pyobs.version import __version__ as _pyobs_version  # noqa: E402
 
 # -- Project information -----------------------------------------------------
 
@@ -24,9 +25,9 @@ copyright = "2021, Tim-Oliver Husser"
 author = "Tim-Oliver Husser"
 
 # The short X.Y version
-version = "0.15"
+version = _pyobs_version
 # The full version, including alpha/beta/rc tags
-release = "0.15alpha20"
+release = _pyobs_version
 
 
 # -- General configuration ---------------------------------------------------

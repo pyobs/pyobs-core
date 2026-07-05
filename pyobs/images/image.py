@@ -423,7 +423,8 @@ class Image:
         data[data < vmin] = vmin
 
         # Scale data to range [0, 1]
-        data = (data - vmin) / (vmax - vmin)
+        value_range = vmax - vmin
+        data = (data - vmin) / value_range if value_range != 0 else np.zeros_like(data)
 
         # Convert to 8-bit integer
         data = (255 * data).astype(np.uint8)

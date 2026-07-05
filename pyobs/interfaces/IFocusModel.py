@@ -7,7 +7,7 @@ from .interface import Interface
 
 
 @dataclass
-class OptimalFocusState:  # 2.0 adds focus_err alongside the existing focus value
+class OptimalFocusState:
     focus: float
     time: Time = field(default_factory=Time.now)
 

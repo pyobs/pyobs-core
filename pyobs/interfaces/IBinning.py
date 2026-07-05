@@ -9,6 +9,12 @@ from .interface import Interface
 
 
 @dataclass
+class Binning:
+    x: int
+    y: int
+
+
+@dataclass
 class BinningState:
     x: int
     y: int
@@ -17,7 +23,7 @@ class BinningState:
 
 @dataclass
 class BinningCapabilities:
-    binnings: list[BinningState] = field(default_factory=list)
+    binnings: list[Binning] = field(default_factory=list)
 
 
 class IBinning(Interface, metaclass=ABCMeta):
@@ -42,4 +48,4 @@ class IBinning(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IBinning", "BinningState", "BinningCapabilities"]
+__all__ = ["Binning", "IBinning", "BinningState", "BinningCapabilities"]

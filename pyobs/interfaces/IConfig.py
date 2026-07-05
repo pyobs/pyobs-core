@@ -6,6 +6,9 @@ from typing import Any
 
 from .interface import Interface
 
+ConfigScalar = bool | int | float | str
+ConfigValue = ConfigScalar | list[ConfigScalar] | dict[str, ConfigScalar]
+
 
 @dataclass
 class ConfigCapabilities:
@@ -20,7 +23,7 @@ class IConfig(Interface, metaclass=ABCMeta):
     capabilities = ConfigCapabilities
 
     @abstractmethod
-    async def get_config_value(self, name: str, **kwargs: Any) -> Any:
+    async def get_config_value(self, name: str, **kwargs: Any) -> ConfigValue:
         """Returns current value of config item with given name.
 
         Args:
@@ -35,7 +38,7 @@ class IConfig(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
+    async def set_config_value(self, name: str, value: ConfigValue, **kwargs: Any) -> None:
         """Sets value of config item with given name.
 
         Args:
@@ -48,4 +51,4 @@ class IConfig(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IConfig", "ConfigCapabilities"]
+__all__ = ["IConfig", "ConfigCapabilities", "ConfigScalar", "ConfigValue"]

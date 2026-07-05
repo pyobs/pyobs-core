@@ -1,8 +1,8 @@
-# Towards pyobs 2.0 — v0.47 (2026-07-01, 20:00)
+# Towards pyobs 2.0 — v0.60 (2026-07-03, 17:05)
 
 ## Status
 
-Design exploration turned implementation log. Most of what this document proposed is now built and merged to `develop` (version, state, capabilities, presence, disco#info schema publication, RPC payload encoding 2.0, the `async with`-only `Proxy` redesign, the mixed-version-fleet diagnostic) — checked directly against the code while revising this pass, not just against the document's own earlier self-reported notes, several of which had gone stale. ✅ marks a point confirmed implemented; remaining unmarked items are genuinely still open. Two corrections surfaced during this pass, noted where relevant: there is no D-Bus `Comm` backend in `pyobs-core` (only `xmpp`, `local`, `dummy`), and `ILatLon`/`LatLonCapabilities` no longer exist in `pyobs.interfaces` — both are left as historical context where the reasoning still applies, corrected where it was stated as current fact.
+Design exploration turned implementation log. Most of what this document proposed is now built and merged to `develop` (version, state, capabilities, presence, disco#info schema publication, RPC payload encoding 2.0, the `async with`-only `Proxy` redesign, the mixed-version-fleet diagnostic) — checked directly against the code while revising this pass, not just against the document's own earlier self-reported notes, several of which had gone stale. ✅ marks a point confirmed implemented; remaining unmarked items are genuinely still open. One correction surfaced in an earlier pass, noted where relevant: `ILatLon`/`LatLonCapabilities` no longer exist in `pyobs.interfaces` — left as historical context where the reasoning still applies, corrected where it was stated as current fact. This pass removes all D-Bus references throughout the document — `pyobs-core` never had a D-Bus `Comm` backend, and D-Bus is not in use or planned, so the earlier speculative analysis of it as a hypothetical future backend has been dropped rather than kept as unused historical context. A later pass found event feature versioning and event schema publication in disco#info — flagged 🔵 throughout an earlier revision — were actually already implemented, landed in `9c19e512` before this doc was last edited; verified directly against `pyobs/comm/xmpp/xmppcomm.py` and `serializer.py` rather than trusting the doc's own prior notes. **This pass: Phase 6 (external hardware-module repos) checked for the first time** — all 11 repos exist locally alongside `pyobs-core` and were audited for `comm.set_state` migration; 9/11 fully migrated, and the 2 exceptions (`pyobs-aravis`, `pyobs-v4l`) traced to one real `pyobs-core` bug (`BaseVideo.set_image_type` never called `comm.set_state`, unlike `BaseCamera.set_image_type`), not a per-module gap — see [Phase 6](#phase-6--external-official-pyobs--hardware-modules). ✅ **Fixed in this pass**: `BaseVideo` now publishes `IImageType` state on `open()` and on every `set_image_type()` call, matching `BaseCamera`'s pattern exactly (`pyobs/modules/camera/basevideo.py`). **Also this pass: Phase 7 (`pyobs-web-client`) checked for the first time**, against `../pyobs-web-client`'s own code and its own detailed `DEVELOPMENT.md` — it turned out to be fully ported to the 2.0 wire protocol already, verified end-to-end against a live server, not merely "status unknown" as this document previously assumed. One genuine cross-repo RPC-serialization bug it surfaced was already independently fixed on the `pyobs-core` side (`d170fd5e`, this session). See [Phase 7](#phase-7--pyobs-web-client-catch-up). **This pass adds a new, not-yet-implemented design section: [Access Control (ACLs)](#access-control-acls) / [Phase 8](#phase-8--access-control-acls)** — everything up to this point assumed a closed, mutually-trusting fleet, and this is the first design work on restricting which clients may call which methods on which other clients. **This pass adds a `deny` mode alongside the original `allow` mode** — `allow` alone can't express "everyone except this one caller" without enumerating the whole fleet by hand, so an `acl:` block now picks exactly one of `allow` (least-privilege, method-level) or `deny` (quarantine, whole-caller, coarse) rather than only supporting allowlisting. **This pass also adds a `mode: enforce | log` key** — `log` runs the same allow/deny decision but only logs what would have been denied and lets the call through, so a new policy can be validated against real traffic before it's ever capable of blocking a legitimate caller. **This pass adds `IModule.get_permitted_methods()`** — a caller-specific, always-permitted introspection query answering "am I allowed to call this" proactively, so a UI (`pyobs-gui`, `pyobs-web-client`) can hide or grey out actions an operator can't use instead of only learning via `ForbiddenError` on an actual attempt. **This pass also adds a cross-repo pointer**: `acl:` rules living one-per-module-config is a real fleet-wide visibility gap once there are many modules — see [Fleet-wide visibility](#fleet-wide-visibility-cross-repo-pyobs-web-admin), which keeps storage/enforcement exactly as designed and points at a new `pyobs-web-admin`-side matrix UI (its own `DEVELOPMENT.md`) for the actual fix. **This pass adds a similar cross-repo pointer for `pyobs-gui`/`pyobs-web-client`**: both already handle a denied call reactively today with zero changes needed (confirmed by reading their actual error-handling code), and both have an open item, tracked in their own `DEVELOPMENT.md`s, for the proactive half once `get_permitted_methods()` lands. **This pass implements Phase 8 in full** (`exc.ForbiddenError`, `acl:` config parsing, the `Module.execute()` check, `IModule.get_permitted_methods()`, the XMPP `forbidden`-condition mapping, unit and integration test coverage, and config docs) — see [Phase 8](#phase-8--access-control-acls) for the checklist and, notably, two real pre-existing bugs in the XMPP client-side error path (unrelated to this design, dating back to the original project rename) that were found and fixed in order to make the `forbidden` condition actually observable end-to-end, verified against a live ejabberd server rather than assumed from a unit test alone. **This pass also implements the interface-name sugar follow-up** for `acl: allow` entries (an entry may name an interface as shorthand for all of that interface's own methods), and fixes one more pre-existing, unrelated test bug found along the way (`test_background_task` comparing a bound method against a list of `(BackgroundTask, bool)` tuples, so it could never actually catch a regression) — see [Phase 8](#phase-8--access-control-acls) for both. With ACLs done, [Open Questions / Next Steps](#open-questions--next-steps) has no remaining 🔵 items.
 
 ## Table of Contents
 
@@ -25,6 +25,12 @@ Design exploration turned implementation log. Most of what this document propose
   - [Units](#units)
   - [Versioning](#versioning)
   - [Thought experiment: a client in a fixed-type language (C/Java)](#thought-experiment-a-client-in-a-fixed-type-language-cjava)
+- [Access Control (ACLs)](#access-control-acls)
+  - [What's already in place to build on](#whats-already-in-place-to-build-on)
+  - [Design](#design)
+  - [Follow-ups (not required for v1)](#follow-ups-not-required-for-v1)
+  - [Fleet-wide visibility (cross-repo: `pyobs-web-admin`)](#fleet-wide-visibility-cross-repo-pyobs-web-admin)
+  - [Client-side follow-up (cross-repo: `pyobs-gui`, `pyobs-web-client`)](#client-side-follow-up-cross-repo-pyobs-gui-pyobs-web-client)
 - [Impact Analysis](#impact-analysis)
   - [By Comm backend](#by-comm-backend)
   - [The one genuine cross-backend change](#the-one-genuine-cross-backend-change)
@@ -50,6 +56,7 @@ Design exploration turned implementation log. Most of what this document propose
   - [Phase 5 — `pyobs-gui`](#phase-5--pyobs-gui)
   - [Phase 6 — External official `pyobs-*` hardware modules](#phase-6--external-official-pyobs--hardware-modules)
   - [Phase 7 — `pyobs-web-client` catch-up](#phase-7--pyobs-web-client-catch-up)
+  - [Phase 8 — Access Control (ACLs)](#phase-8--access-control-acls)
 - [Appendix: `get_*` to State Survey](#appendix-get_-to-state-survey)
 - [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue)
 
@@ -196,7 +203,7 @@ XEP-0030 is extensible via custom namespaces, so this introspection can sit dire
       <command name="set_gain">
         <parameter name="gain" type="float64"/>
       </command>
-      <state name="State" node="state/IGain/1">
+      <state node="state/IGain/1">
         <field name="gain" type="float64"/>
         <field name="offset" type="float64"/>
       </state>
@@ -215,7 +222,7 @@ XEP-0030 is extensible via custom namespaces, so this introspection can sit dire
       <command name="set_image_format">
         <parameter name="format" type="enum(ImageFormat)"/>
       </command>
-      <state name="State" node="state/IImageFormat/1">
+      <state node="state/IImageFormat/1">
         <field name="format" type="enum(ImageFormat)"/>
       </state>
     </pyobs:interface>
@@ -225,7 +232,7 @@ XEP-0030 is extensible via custom namespaces, so this introspection can sit dire
         <parameter name="enabled" type="bool"/>
         <parameter name="setpoint" type="float64" unit="celsius"/>
       </command>
-      <state name="State" node="state/ICooling/1">
+      <state node="state/ICooling/1">
         <field name="enabled" type="bool"/>
         <field name="setpoint" type="float64" unit="celsius"/>
         <field name="power" type="float64" unit="percent"/>
@@ -378,7 +385,7 @@ class NewImageEvent(Event):
 
 `urn:pyobs:event:NewImageEvent:{version}` derives from the event class itself — mechanically identical to `Interface.version`, just answering a question ("what changed about this event's schema") that's genuinely independent of any one interface's command/state contract, because the event was never that interface's to version in the first place.
 
-✅ `Event.version: int = 1` exists on `develop`, same as `Interface.version`. 🔵 **Still not done:** the wire side — `add_feature(f"pyobs:event:{ev.__name__}")` in `xmppcomm.py` still publishes the bare pre-2.0 form, not `urn:pyobs:event:{name}:{version}`. Event schema publication in disco#info hasn't started either. This was deliberately left out of scope when the interface-feature versioning landed (see the mixed-version-fleet fix in Open Questions below) and is still open — see Phase 0/Phase 3 in the Work Plan.
+✅ `Event.version: int = 1` exists on `develop`, same as `Interface.version`. ✅ Wire side done: `add_feature`/`add_interest`/PubSub node all use `urn:pyobs:event:{name}:{version}`; `_event_schema_to_xml` in `serializer.py` emits typed `<{ns}event>` blocks (with `<field>` and `<types>/<enum>` elements) in disco#info responses.
 
 ## Wire Protocol
 
@@ -529,7 +536,7 @@ Two things this surfaced that the original illustrative list didn't account for:
 
 ### Enums in RPC and State
 
-✅ Premise already true (all enums are `StrEnum`). 🔵 The `<types>` disco#info block itself is not yet implemented.
+✅ Premise already true (all enums are `StrEnum`). ✅ The full `<pyobs:interface>` schema (commands, state, types/enums) is now emitted in disco#info responses.
 
 The type vocabulary above includes `enum(CameraStatus)`, but an enum reference is only half the story — the set of valid values has to be declared somewhere too. Inlining the full value list at every command parameter and state field that uses it would duplicate information within a single discovery reply and make the schema harder to keep consistent.
 
@@ -562,7 +569,7 @@ What it deliberately does **not** do is de-duplicate enum definitions *across* i
 
 ### Units
 
-✅ `Unit(StrEnum)` implemented in `pyobs/utils/enums.py`. 🔵 Annotation rollout in progress — 12 of ~19 applicable interface files annotated as of this pass.
+✅ `Unit(StrEnum)` implemented in `pyobs/utils/enums.py`. ✅ Annotation rollout complete — all applicable interface files annotated. `Unit.MM` added for `IFocuser`.
 
 `float64` doesn't distinguish degrees from radians, or Celsius from Kelvin — surfaced by the C/Java thought experiment below, where there's no human reading every field to absorb a docstring's "RA in deg."
 
@@ -635,7 +642,7 @@ class Unit(StrEnum):
 
 So `ra * Unit.DEGREES.to_astropy()` replaces `ra * u.deg` wherever a module is already doing that construction, without inventing a second, disconnected unit vocabulary that could drift from what astropy actually means by `"deg"`. One real wrinkle worth flagging for whoever eventually uses this for conversion, not just construction: astropy treats `deg_C` as a non-multiplicative unit — `(20 * u.deg_C).to(u.K)` raises `UnitConversionError` unless called with `equivalencies=u.temperature()`. Doesn't affect the tagging design here, but would bite silently if `to_astropy()`'s result were later fed into naive `.to()` conversion code without that equivalency.
 
-One thing this surfaced rather than fixed: `WeatherSensors.RAIN` is a 0/1 flag encoded as `float` — not a physical quantity with a unit at all, a `bool` wearing a `float`'s clothes. Annotating it with a unit would paper over the real issue. 🔵 **Still unfixed now that `IWeather.state = WeatherState` exists**: `WeatherSensorReading.unit` for `RAIN` is just `""` (see `SENSOR_UNITS` in `weather.py`) — a placeholder, not a real answer to what this field should be.
+One thing this surfaced rather than fixed: `WeatherSensors.RAIN` is a 0/1 flag encoded as `float` — not a physical quantity with a unit at all, a `bool` wearing a `float`'s clothes. ✅ **Resolved**: value stays `float` (stored that way internally); `SENSOR_UNITS[RAIN]` is now `"bool"` to document the flag interpretation.
 
 **Optional convenience: automating the `to_astropy()` call itself, not just providing it.** Manually writing `ra * Unit.DEGREES.to_astropy()` repeats a unit that's already declared once, on the interface signature — the same kind of duplication this whole document has otherwise tried to design out. Since the unit only ever needs to be looked up, not re-specified, that lookup can be automated with a decorator on the concrete implementation:
 
@@ -681,11 +688,11 @@ class Telescope(BaseTelescope):
 
 Deliberately stops at opt-in, not automatic for every method on every module (e.g. via `__init_subclass__`/metaclass wrapping), for three reasons: most of the 92 `**kwargs`-bearing methods never touch astropy at all and shouldn't be forced to unwrap a `Quantity` they didn't ask for; implicit, invisible type transformation is exactly the kind of magic this document has otherwise avoided in favor of explicit mechanisms (`Comm.set_state()` over auto-detection, `async with` over implicit cleanup); and an automatically-`Quantity`'d value that later gets passed on to another module's RPC call would need unwrapping again before re-serialization, which is easy to get right when it's one visible decorator and easy to get subtly wrong if it's invisible everywhere.
 
-🔵 Not implemented — `with_units`/`_interface_unit_hints` don't exist in `pyobs-core` yet. Flagged here as still optional, not a gap.
+✅ Implemented in `pyobs/utils/units.py`. No call sites applied yet — opt-in per method.
 
 ### Versioning
 
-✅ `Interface.version`/`Event.version` implemented; interface disco#info features versioned. 🔵 Event disco#info features and PubSub node paths for events are not yet.
+✅ `Interface.version`/`Event.version` implemented; interface disco#info features versioned. ✅ Event disco#info features and PubSub node paths are versioned too — `urn:pyobs:event:{name}:{version}`, landed in `9c19e512`.
 
 Where the version number actually lives: everything above settled the *shape* of versioned namespaces (`urn:pyobs:interface:ICamera:2`, with state and PubSub node paths inheriting the same number) but not where that number actually comes from. On `1.x` — the baseline this document describes and migrates from — nothing in `Interface` carries a version at all, so there's nowhere for a developer to even put a bump. (`develop` already has exactly this added, confirming the direction independently of this document.)
 
@@ -734,7 +741,7 @@ Everything so far has been validated against a Python server, a Python proxy abs
 
 **The core mismatch isn't the wire format, it's `Proxy` itself.** `Proxy.__init__` synthesizes a brand-new Python class at runtime — `self.__class__ = cls.__class__("Proxy", tuple([cls] + interfaces), {})` — mixing in whatever interfaces the remote module happens to support, discovered live via disco#info. There's no equivalent in C, and while Java's `java.lang.reflect.Proxy` could technically fake it, nobody writing a real Java client wants a dynamically-synthesized interface implementation discovered at runtime — they want `ICamera camera = manager.get("camera", ICamera.class)` with `ICamera` a real, compile-time-known Java interface.
 
-**The realistic answer is codegen, not runtime introspection** — the same split gRPC, D-Bus bindings, and SOAP/WSDL clients all use: a build-time tool walks the schema and emits typed bindings, and a thin generic transport underneath handles the actual IQ/PubSub mechanics. The schema this design already produces via extended disco#info — interface name+version, typed commands, state shape, event shape, the `<types>` enum block — is already the right shape of artifact for that; it's structurally the same job `generate-interfaces.py` does for `pyobs-web-client` today, just emitting Java classes or C structs instead of a TS const.
+**The realistic answer is codegen, not runtime introspection** — the same split gRPC and SOAP/WSDL clients all use: a build-time tool walks the schema and emits typed bindings, and a thin generic transport underneath handles the actual IQ/PubSub mechanics. The schema this design already produces via extended disco#info — interface name+version, typed commands, state shape, event shape, the `<types>` enum block — is already the right shape of artifact for that; it's structurally the same job `generate-interfaces.py` does for `pyobs-web-client` today, just emitting Java classes or C structs instead of a TS const.
 
 Walking the vocabulary through that lens is where some choices age well and one gap shows up clearly:
 
@@ -748,11 +755,115 @@ Walking the vocabulary through that lens is where some choices age well and one 
 
 State and events translate more cleanly than RPC does. `.../state/ICooling/{version}` PubSub subscription and "deliver the last item on subscribe" are plain XMPP semantics, not Python-specific, and mature XMPP libraries exist for both Java (Smack) and C (libstrophe, same lineage as the Strophe.js already used by `pyobs-web-client`).
 
+## Access Control (ACLs)
+
+✅ **Implemented, see [Phase 8](#phase-8--access-control-acls) for the checklist.** Everything below the wire protocol had assumed a closed, mutually-trusting fleet: any authenticated client could call any method on any client that exposes it. That's fine for a single-team observatory, but stops being fine once a fleet has multiple operators/scripts with different privilege levels (e.g. a GUI operator who should be able to move the telescope but not reset camera firmware, or a scheduler that should only ever call `expose`/`abort` on a camera, never its cooling controls).
+
+### What's already in place to build on
+
+Identity already flows through the one function every backend funnels into, `Module.execute(method, *args, **kwargs)` (`pyobs/modules/module.py:277`), without any new plumbing:
+
+- `XmppComm`'s inbound dispatch, `RPC._on_jabber_rpc_method_call` (`pyobs/comm/xmpp/rpc.py:211`), already calls `await self._handler.execute(pmethod, *params, sender=iq["from"].user)` — the caller's JID local part, i.e. exactly the client-name string used everywhere else (`self.proxy("telescope", ...)`).
+- `LocalComm.execute` (`pyobs/comm/local/localcomm.py:55`) already calls `await remote_client.module.execute(method, *args, sender=self.name)` — same `sender` kwarg, same meaning, in-process.
+
+So the trust anchor already exists and is backend-agnostic; ACL work is authorization only, layered on top of transport-level authentication (XMPP SASL login) that's assumed to already vouch for the JID a `sender` string is derived from.
+
+The wire-level rejection vocabulary is also already half-built and simply unused: `RPC._on_jabber_rpc_error` (`rpc.py:281-299`) already maps an XMPP `forbidden` stanza condition to `exc.RemoteError(sender, f"Forbidden to invoke {pmethod} at {iq['from']}!")` on the client side — nothing server-side has ever sent that condition, since nothing today can be forbidden.
+
+### Design
+
+**Enforce on the callee, not the caller.** A caller-side "who am I allowed to talk to" allowlist was considered and rejected: it's just the caller's own code, and a bug or a compromised process routes around it trivially. The module being called is the only party that can actually make the check stick, so the policy is declared on — and enforced by — the target.
+
+**Policy lives next to the target's own `comm:` config, under one of two mutually exclusive keys — `allow` or `deny` — a module picks exactly one:**
+
+```yaml
+class: pyobs.modules.camera.MyCamera
+comm:
+  class: pyobs.comm.xmpp.XmppComm
+  jid: camera@example.com/pyobs
+
+acl:
+  allow:
+    scheduler: [expose, abort]   # scheduler may call only these two methods here
+    mastermind: "*"              # mastermind may call anything
+    # anyone else -> denied
+```
+
+No `acl:` key at all → fully open, identical to today's behavior — additive and backward-compatible for existing fleets/tests, the same migration shape used everywhere else in this document (`Interface.version` defaulting to `1` is the closest precedent). The moment a module declares an `acl:` block, `allow` flips it to default-deny for any caller not listed in it. "Client A only has access to B and C, and only to method X on B" is then just: B's config has `allow: {A: [X]}`, C's config has `allow: {A: "*"}` (or whatever it needs), and no other module's config mentions A at all.
+
+Method-level granularity requires no new abstraction — `self._methods[method]` (`module.py:303`, and the equivalent `self._methods[pmethod]` in `rpc.py:178`) is already the dispatch key both layers use; the ACL check is a lookup against the same key, immediately before it's used.
+
+**`allow` can't express "everyone except this one," so `deny` exists as the other mode — coarse, whole-caller, no method granularity:**
+
+```yaml
+acl:
+  deny: [legacy_gui]   # everyone else keeps full access; legacy_gui is blocked entirely
+```
+
+`allow` and `deny` solve different problems and don't mix on one module. `allow` is least-privilege: lock a sensitive module down to a short, known list of callers, default-deny everyone else — the right shape when the set of legitimate callers is small and stable. `deny` is quarantine: keep a module open to the whole fleet (including callers that don't exist yet) and block one known-bad or untrusted client by name — the right shape when the set of *illegitimate* callers is small and the legitimate set is everyone else, including modules added later. Enumerating "everyone" under `allow` to approximate `deny` doesn't work in a fleet that grows over time: every new module would need every other module's config updated to add it to the allowlist, which is exactly the fragility `deny` avoids. Method-level granularity is deliberately not offered under `deny` — "denied except this caller may only call these methods" is a hybrid nobody has asked for and blurs the two modes' distinct purposes; a caller that needs partial access to an otherwise-open module is better expressed by switching that module to `allow` and listing every legitimate caller instead.
+
+**A third key, `mode`, answers a different question than `allow`/`deny` do — not "who's allowed" but "does a computed denial actually take effect" — so it sits alongside either policy rather than being a third policy:**
+
+```yaml
+acl:
+  mode: log   # "enforce" (default) | "log"
+  allow:
+    scheduler: [expose, abort]
+```
+
+`mode: enforce` (the default, so existing `allow`/`deny` examples above are unchanged) behaves exactly as described — a denied call raises `exc.ForbiddenError`. `mode: log` runs the identical decision logic but, on what would have been a denial, only logs a warning (`sender`, `method`, and which rule matched) and lets the call proceed as if no `acl:` block existed at all. This is what makes writing a new `allow`/`deny` block safe to roll out: attach it in `log` mode, watch real traffic against it for as long as needed, confirm nothing legitimate would have been blocked, then flip to `mode: enforce` (or delete the line) with actual confidence instead of guessing from a static read of who's supposed to call what. It's deliberately per-module rather than a fleet-wide dry-run flag — consistent with the per-module-opt-in decision below, and it means a module's current enforcement posture is fully legible from its own one config file, same as everything else in this design.
+
+**Enforcement point:** inside `Module.execute()`, right after `func, signature, type_hints = self._methods[method]` (`module.py:303`) and before binding/calling — a single check protects every `Comm` backend (XMPP, Local, and any future one) rather than duplicating logic per-backend. On denial, raise a new `exc.ForbiddenError(RemoteError)` (matching the existing `RemoteError`/`InvocationError` family in `pyobs/utils/exceptions.py`), carrying `sender` and `method`.
+
+**Backend-specific mapping of that exception:** `rpc.py`'s existing generic `except Exception as e` block around the call (`rpc.py:218-223`, today always producing a Jabber-RPC `<fault>`) gets one special case: `exc.ForbiddenError` maps to the XMPP IQ-level `forbidden` condition instead of a `<fault>`, so it round-trips through the client-side handling that already exists in `_on_jabber_rpc_error` — no new wire vocabulary, just wiring up a path that was already built for this and never used. `LocalComm` needs no mapping at all; the raised `ForbiddenError` just propagates as a normal Python exception in-process.
+
+**Discovery is unaffected.** disco#info keeps describing a module's full interface contract regardless of who's asking — hiding methods per-requester would mean per-JID introspection responses, real added complexity for little benefit. An unauthorized caller sees the method in discovery and gets a clear `forbidden` on the call, the same "404 vs 403" distinction any REST API makes.
+
+**Finding out proactively: `IModule.get_permitted_methods()`.** Discovery being caller-independent means it can't answer "am I, specifically, allowed to call this" — today the only way to learn that is to attempt the call and catch `exc.ForbiddenError`, which is fine for a script but bad UX for `pyobs-gui`/`pyobs-web-client`, which want to grey out or hide actions an operator can't use rather than let them click into a wall. The fix is one dedicated, caller-specific query, separate from disco#info rather than folded into it — disco#info stays uniform for every caller, and only this one new surface varies by identity:
+
+- `IModule.get_permitted_methods() -> list[str]`, resolved server-side using the same `sender` and the same `acl:` block the actual check uses, but returning a concrete method list instead of raising: no `acl:` block or `allow: {sender: "*"}` → every method name; `allow` with an explicit list → that list; `deny` → every method name unless `sender` is listed, in which case `[]`.
+- **Exempt from ACL enforcement itself** — otherwise a denied caller couldn't even ask what it's denied from doing. This adds no new information leak: discovery already hands every caller the full schema regardless of identity, so this only ever narrows what's already public.
+- **On-demand, not prefetched at proxy construction.** Capabilities are fetched eagerly in `Comm._get_client` because every proxy needs them; permitted-methods would add an RPC round trip to every proxy construction for a need only UI consumers have. `Proxy.get_permitted_methods()` stays a plain method a caller invokes when it's actually about to render a menu.
+- **Reflects real enforcement, not policy intent.** In `mode: log`, this returns every method name — the same as no `acl:` block at all — because nothing is actually being blocked yet; it answers "would this call succeed right now," not "what will this rule do once switched to `enforce`." An operator validating a new policy in `log` mode reads the warning logs for that, rather than the UI silently hiding a button for a rule with no actual effect yet — one query, one unambiguous meaning.
+
+**✅ Decided: per-module opt-in, no global default-deny switch.** ACLs are opt-in per module (no `acl:` key = open) and stay that way — no fleet-wide `acl_default: deny` flag. A global switch would mean `Module.execute()` needs to consult fleet-wide config it doesn't otherwise depend on, and would force every module in an observatory to carry an `acl:` block the moment one module anywhere needs one — a bigger, coupled rollout for a need that hasn't materialized. Per-module opt-in keeps the mechanism additive (same shape as `Interface.version` defaulting to `1`) and keeps a module's reachability entirely legible from its own config file, with no fleet-level setting to check first.
+
+**✅ Decided: ACL scope is RPC only — presence, discovery, and state are explicitly unaffected.** An `acl:` block gates `Module.execute()` and nothing else. Discovery was already settled above ("Discovery is unaffected"); presence and state PubSub get the same treatment and for the same reason — a module's disco#info contract, its lifecycle presence, and its published state are all descriptive ("what can you do / are you up / what's true right now"), not actions with side effects, and restricting who may *see* them would mean per-subscriber-filtered PubSub and per-requester-filtered disco#info — real new machinery this design deliberately avoids for a need that hasn't been raised. Only RPC calls — things that actually *do* something on the target — get gated. Today's PubSub node ACLs are ejabberd's own default (see `pubsub.{domain}` in the XMPP backend implementation notes below), untouched by this design.
+
+### Follow-ups (not required for v1)
+
+- ✅ **Interface-name sugar** — an `acl: allow:` entry may name an interface (e.g. `ICooling`) as shorthand for all of that interface's own methods, instead of listing them individually; unrecognized entries are kept as plain method names, and `"*"` is left untouched. Expansion happens once, at `acl:` parse time in `Module._parse_acl`/`_expand_acl_entries`, against the module's own `_interface_methods` map (built alongside `_methods` in `_get_interfaces_and_methods`, which now runs before acl parsing rather than after) — so `_acl_allow` always ends up holding fully-resolved method lists, and the `Module.execute()` check itself is unchanged. Covered by unit tests in `tests/modules/test/standalone.py` and an XMPP integration test (`tests/integration/test_xmpp_acl.py::test_acl_allow_interface_name_sugar`) confirming a method from an unlisted interface on the same module is still denied.
+
+### Fleet-wide visibility (cross-repo: `pyobs-web-admin`)
+
+Per-module opt-in was decided deliberately (see above) — a module's reachability is legible from its own config file, and `Module.execute()` never depends on fleet-wide state. The cost of that decision: once a real fleet has a dozen modules each with their own `acl:` block, "who can reach the telescope, and with what" is scattered across a dozen files with no single place to read it back. That's a real problem, but it's a *visibility* problem, not an *enforcement* one — the fix has to add a way to see and edit the distributed files, not centralize the files themselves. Centralizing storage (a shared ACL service/database every module reads at startup or, worse, queries live) would reopen exactly the coupling the per-module-opt-in decision avoided: a new fleet-wide runtime dependency and single point of failure for something that's currently a pure per-process, per-config-file concern.
+
+Two complementary moves, both keeping storage and enforcement exactly as designed above:
+
+1. **De-duplicate at the config level, with a mechanism that already exists.** `pyobs.utils.config.pre_process_yaml` (`pyobs/utils/config.py`) already resolves `{include <file> <key>}` directives, and `pyobs-web-admin` already has first-class `*.shared.yaml` fragments in its UI. A rule like "mastermind may call anything" that would otherwise be copy-pasted into every module's `acl:` block can instead live once in a shared fragment (e.g. `acl.shared.yaml`) and be `{include}`d wherever it's needed — no new pyobs-core mechanism, just using the existing templating for what it's already for.
+2. **Add a fleet-wide ACL matrix page to `pyobs-web-admin`** — checked directly against `../pyobs-web-admin` for this pass: it manages per-module config today (`modules/services.py`'s `get_config`/`save_config`) purely as **opaque text** — no YAML parsing happens server-side at all (confirmed: no `yaml` import anywhere in `modules/services.py`, no `pyyaml` in `pyproject.toml`; the `{include}` links shown in its Config tab are a display-only affordance, not an actual resolve step). A matrix view (rows = target modules, columns = callers, cells = permission) is real new work there, not a small tweak — see [`pyobs-web-admin`'s own `DEVELOPMENT.md`](../pyobs-web-admin/DEVELOPMENT.md) for that design. The one thing worth fixing on this side of the repo boundary: `pre_process_yaml` (`pyobs/utils/config.py`) has zero dependency on the rest of `pyobs-core` (only `os`, `re`, `yaml`, `io.StringIO`, `typing`) specifically so a tool like `pyobs-web-admin` — which advertises "No pyobs-core dependency" as a feature — can vendor or reuse it directly to resolve `{include}`s the same way a running module would, rather than reimplementing (and risking drifting from) that resolution logic independently.
+
+Out of scope for `pyobs-core` itself: this section exists here only as the cross-repo pointer, matching how Phase 6/7 already track sibling-repo work from this document. No Phase 8 checklist item changes as a result — the matrix page reads/writes the same `acl:` YAML this design already specifies, it doesn't change what that YAML means.
+
+### Client-side follow-up (cross-repo: `pyobs-gui`, `pyobs-web-client`)
+
+Checked directly against both repos for this pass, since both are exactly the UIs [the proactive `get_permitted_methods()` design](#design) above is for.
+
+**The reactive half needs no client-side changes in either — confirmed by reading the actual error-handling code, not assumed:**
+
+- `pyobs-gui`'s `BaseWidget._background_task` (`pyobs_gui/base.py:271-277`) already catches `exc.PyObsError` generically around every RPC call it makes and routes it to `show_error` (`base.py:282-285`), which just pops a message box with the exception's own text. Since the designed `exc.ForbiddenError` is a `RemoteError` is a `PyObsError`, a denied call already surfaces as a normal error dialog today, with zero pyobs-gui changes required.
+- `pyobs-web-client`'s `executeMethod` (`src/composables/useXmpp.ts:286-295`) already catches any XMPP IQ-level error generically — its own existing code comment literally reads `// XMPP-level error (item-not-found, forbidden, …)` — and returns it as a plain `{success: false, value: msg}` result. The `forbidden` condition this design routes `exc.ForbiddenError` through (see [Backend-specific mapping](#design) above) is already one of the cases that comment anticipates; nothing new needs to be built to display it.
+
+**The proactive half is real, open work in both, blocked on `IModule.get_permitted_methods()` landing in `pyobs-core` first** (Phase 8, not yet implemented):
+
+- `pyobs-gui`: widgets already have a disable/enable mechanism built for a different purpose — `_enable_buttons.emit(disable, False)` / `w.setEnabled(enable)` (`base.py:268,287-289`) currently disables buttons only while their own background task is running. The natural hook is to disable them for the ACL reason too, fetched once per widget alongside the capabilities/state a widget already pulls from its target proxy at setup (per the Phase 5 audit above).
+- `pyobs-web-client`: `ShellView.vue`'s RPC method forms are already built from each module's live command schema, fetched via `fetchModuleInfo` (one disco#info query per module, `useXmpp.ts`). Once `get_permitted_methods()` exists, the same per-module fetch step is the natural place to also grey out or hide forms for methods the connected identity can't call.
+
+See each repo's own `DEVELOPMENT.md` for the item tracked on that side; this note exists here only as the cross-repo pointer, same pattern as [Fleet-wide visibility](#fleet-wide-visibility-cross-repo-pyobs-web-admin) above.
+
 ## Impact Analysis
 
-A key design goal is that these changes should be **mostly isolated to the XMPP communication layer** (`pyobs.comm.xmpp`), leaving module implementations and other `Comm` backends largely untouched.
-
-**Correction from the original draft: `pyobs-core` has no D-Bus `Comm` backend.** `pyobs/comm/` contains only `xmpp`, `local`, and `dummy` — D-Bus was analyzed here as a plausible future backend given how closely its native introspection/properties/signals map onto this design, not as an existing one. The analysis is left below since the reasoning still holds if a D-Bus backend is ever built, but there is nothing to migrate today; treat it as speculative, not a tracked work item.
+A key design goal is that these changes should be **mostly isolated to the XMPP communication layer** (`pyobs.comm.xmpp`), leaving module implementations and other `Comm` backends largely untouched. `pyobs/comm/` contains only `xmpp`, `local`, and `dummy`.
 
 ```
 ICamera / ICooling / IModule        ← core interfaces: define what exists
@@ -775,12 +886,8 @@ ICamera / ICooling / IModule        ← core interfaces: define what exists
 **XMPP backend** ✅ implemented
 - Interface discovery: extended introspection lives entirely in the disco#info handling.
 - RPC: no changes — `await camera.expose(10)` still becomes an IQ round-trip unchanged.
-- Events: no changes to delivery; 🔵 discovery-time schema publication for events is still not done (see [Events](#4-events--unchanged-at-the-api-level)).
+- Events: no changes to delivery; ✅ discovery-time schema publication for events is done (see [Events](#4-events--unchanged-at-the-api-level)).
 - State: a PubSub node per interface/module, with native XML payloads generated from the dataclass (see [Payload Encoding](#payload-encoding) and the [concrete implementation](#xmpp-backend-concrete-implementation)), pushed on update.
-
-**D-Bus backend — hypothetical, does not exist in `pyobs-core`** (see correction above)
-- Almost nothing would change — D-Bus already has native introspection XML, method signatures, and signals (its equivalent of events). D-Bus is, in some ways, already closer to the proposed model than XMPP is; pyobs interfaces could map onto D-Bus introspection nearly 1:1.
-- State would map naturally onto **D-Bus properties** (or the `PropertiesChanged` signal pattern) — both are well-established, idiomatic D-Bus concepts.
 
 **Local backend** ✅ implemented — `LocalComm` already has `_set_state`, `_subscribe_state`, `_set_capabilities`, `_set_presence`, direct in-memory, no serialization.
 
@@ -793,7 +900,7 @@ Comm.set_state(state)
 Comm.subscribe_state(interface, callback)
 ```
 
-Each backend implements this differently (PubSub for XMPP, in-memory updates for Local; properties/signals if a D-Bus backend is ever built), but the abstraction itself — alongside the existing `call()`, `emit()`, `subscribe()` — needs to grow by exactly this much. ✅ Done: `Comm.set_state`/`subscribe_state`/`unsubscribe_state` exist on `develop`, exactly as sketched.
+Each backend implements this differently (PubSub for XMPP, in-memory updates for Local), but the abstraction itself — alongside the existing `call()`, `emit()`, `subscribe()` — needs to grow by exactly this much. ✅ Done: `Comm.set_state`/`subscribe_state`/`unsubscribe_state` exist on `develop`, exactly as sketched.
 
 ### Important constraint
 
@@ -858,10 +965,9 @@ Each backend maps these onto its native mechanism, exactly as outlined in [Impac
 | Backend | `set_state` | `subscribe_state` | `unsubscribe_state` |
 |---|---|---|---|
 | XMPP | publish to a PubSub node, e.g. `module@obs/state/ICooling/1` | PubSub subscribe; request the last published item on subscribe, so a new subscriber gets the current value immediately rather than waiting for the next change | send a PubSub unsubscribe IQ for the node — without this, repeated connect/disconnect cycles leave stale subscriptions accumulating server-side |
-| D-Bus | set a D-Bus property | listen for `PropertiesChanged`, fetch the current property value on subscribe | remove the signal match rule / disconnect the signal receiver |
 | Local | write to an in-memory cache | register a direct callback, fire it immediately with the current cached value if one already exists | remove the callback from the in-memory registry |
 
-"Deliver the current value immediately on subscribe" is worth treating as a hard requirement across all three backends rather than an XMPP-specific nicety — it's what lets `Proxy.state` (below) be populated as soon as a proxy is created, instead of sitting at `None` until the next state publish happens to occur.
+"Deliver the current value immediately on subscribe" is worth treating as a hard requirement across both backends rather than an XMPP-specific nicety — it's what lets `Proxy.state` (below) be populated as soon as a proxy is created, instead of sitting at `None` until the next state publish happens to occur.
 
 The PubSub node path carries the same version segment as the interface namespace, for the same reason: a subscriber learns which node to subscribe to from disco#info (`urn:pyobs:interface:ICooling:1` → node `.../state/ICooling/1`), so if a module moves to `ICooling:2` it publishes to `.../state/ICooling/2` instead. Old subscribers still pointed at `/1` simply stop receiving updates rather than receiving a payload shaped for a contract they don't understand — the same graceful-degradation property the interface namespace already gives for free.
 
@@ -1011,7 +1117,7 @@ The original sketch above proposed an explicit `Proxy.close()` (or turning `Prox
 Checking the actual `Comm`/`Proxy` implementation in pyobs-core shows this isn't necessary. Two things already exist:
 
 - `Comm` already caches one `Proxy` per client name (`self._proxies: dict[str, Proxy]`), reused across repeated `self.proxy(...)` calls.
-- `Comm` already listens for `ModuleClosedEvent` and evicts the cached proxy in `_client_disconnected` when the *remote* module disconnects — and both the XMPP and D-Bus backends already emit that event on disconnect.
+- `Comm` already listens for `ModuleClosedEvent` and evicts the cached proxy in `_client_disconnected` when the *remote* module disconnects — and the XMPP backend already emits that event on disconnect.
 
 In other words, proxy lifecycle is already owned by `Comm`, tied to the remote module's connection state, not to the calling code's local scope — which is exactly the assumption both `close()` and `async with` would have broken. State-subscription teardown can ride on that same existing hook. `unsubscribe_state` (above) is the method that does the actual teardown; `Comm` just needs to remember which `(interface, callback)` pairs belong to which client so it knows what to call when that client disconnects:
 
@@ -1043,11 +1149,11 @@ class Comm:
 
 `Proxy` stays simple from the consuming side's point of view — `subscribe_state` gets called once per State-bearing interface (`Comm._get_client` does the calling, not `Proxy.__init__`), and `Proxy` never calls `unsubscribe_state` itself, directly or indirectly. `Comm`'s abstract surface grows by three methods (`set_state`, `subscribe_state`, `unsubscribe_state`), each backend has to implement all three, and `Comm._client_disconnected` gets a few new lines. What stays at zero is `Proxy`'s public surface and every existing `self.proxy(...)` call site.
 
-**`cache_proxies` was real on `1.x`, already removed on `develop`** — `Comm.__init__()` takes no parameters there, the conditional is just `if client not in self._proxies:`, matching this document's Phase 0 direction. ✅ **Update from later in this pass: the rest of this paragraph, as originally written, is now out of date.** It previously said none of the `State`/`Comm` work or the `async with`-only `Proxy` redesign existed yet on any branch — checked directly against `develop` during this revision, and all of it is there now: `Comm.set_state`/`subscribe_state`/`unsubscribe_state`, `Proxy.get_state`/`get_capabilities`/`wait_for_state`, `_ProxyContext`-based `proxy()`/`safe_proxy()` with `has_proxy()`, and interface-feature versioning (🔵 event-feature versioning is the one piece still open — see [Versioning](#versioning) and the Work Plan).
+**`cache_proxies` was real on `1.x`, already removed on `develop`** — `Comm.__init__()` takes no parameters there, the conditional is just `if client not in self._proxies:`, matching this document's Phase 0 direction. ✅ **Update from later in this pass: the rest of this paragraph, as originally written, is now out of date.** It previously said none of the `State`/`Comm` work or the `async with`-only `Proxy` redesign existed yet on any branch — checked directly against `develop` during this revision, and all of it is there now: `Comm.set_state`/`subscribe_state`/`unsubscribe_state`, `Proxy.get_state`/`get_capabilities`/`wait_for_state`, `_ProxyContext`-based `proxy()`/`safe_proxy()` with `has_proxy()`, and interface-feature versioning (✅ event-feature versioning landed too, in `9c19e512` — see [Versioning](#versioning) and the Work Plan).
 
 ### Reconnect with a different interface set
 
-✅ Disconnect/reconnect handling implemented. 🔵 The stale-reference `callback(None)` refinement below is not.
+✅ Disconnect/reconnect handling implemented. The `callback(None)` refinement below was assessed as not needed — see note.
 
 Tracing the actual disconnect/reconnect chain in the XMPP backend shows this is already handled by composing two existing mechanisms, with no new code needed beyond what's sketched above:
 
@@ -1061,7 +1167,7 @@ So a module that disconnects and reconnects with a different capability set reso
 
 The fix is small: have `unsubscribe_state`'s teardown push one final `callback(None)` before discarding it. For `Proxy.update_state`, that means an orphaned proxy's `.state` collapses to `None` — an explicit "I don't know anymore" — instead of quietly going stale. This costs nothing on the `subscribe_state` side and only touches the teardown path already being added.
 
-🔵 **Not implemented.** `XmppComm._unsubscribe_state` on `develop` removes the callback and (on last-subscriber) sends the PubSub unsubscribe IQ, but does not push a final `callback(None)`. A `Proxy` held past its module's disconnect currently keeps returning its last-known state rather than collapsing to `None` — the gap this paragraph describes is real and still open, not yet a solved edge case.
+✅ **Not needed in practice.** `_client_disconnected` already calls `proxy.clear_state()` before eviction, so `get_state()` returns `None` immediately on disconnect. The `async with`-only proxy design closes off long-lived proxy references entirely. Direct `Comm.subscribe_state()` callers stop receiving updates on disconnect (via `unsubscribe_state`) but don't get an explicit `callback(None)` — acceptable since no current code relies on that signal.
 
 ### Final decision: `async with` only — `await self.proxy()` is removed
 
@@ -1512,30 +1618,21 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 - ✅ The one missing concept was **state**: continuously-published, cached, "what is true right now" data, distinct from both RPC-polled values and immutable events. Implemented for 23 of ~26 State-bearing interfaces (see the Work Plan).
 - ✅ State uses **extensible, typed collections** (not fixed per-sensor fields) where hardware varies between installations — `ITemperatures.state = TemperaturesState(readings: list[SensorReading])` matches this exactly.
 - ✅ Encoding leans into XMPP-native **XML**, generated automatically from dataclass schemas (`pyobs/comm/xmpp/serializer.py`) — not hand-maintained in parallel.
-- Exposing interface/state/event schemas over the wire effectively turns pyobs's Python interfaces into a **language-neutral IDL**, directly enabling `pyobs-web-client` and any future non-Python bindings, and removing the need for a separate interface-extraction script. Interface/state/capability schemas are live in disco#info; 🔵 **event schema publication is not yet done** (see Events above), so the IDL is not fully complete on the wire yet.
-- Almost all of this is isolated to `pyobs.comm.xmpp`; Local backend required little to no change (✅ done). There is no D-Bus backend in `pyobs-core` to migrate — see the correction in Impact Analysis.
+- Exposing interface/state/event schemas over the wire effectively turns pyobs's Python interfaces into a **language-neutral IDL**, directly enabling `pyobs-web-client` and any future non-Python bindings, and removing the need for a separate interface-extraction script. ✅ Interface/state/capability *and* event schemas are all live in disco#info now — the IDL is complete on the wire.
+- Almost all of this is isolated to `pyobs.comm.xmpp`; Local backend required little to no change (✅ done).
 - ✅ `await self.proxy(...)` is removed in favor of `async with self.proxy(...) as x:` as the only way to obtain a proxy, closing off the long-held-reference pattern that causes stale state at its source rather than just discouraging it. `cache_proxies` (real, on `1.x`) is gone. `has_proxy()` (plain `async def`, not `async with` — it returns `bool`, never a `Proxy`) covers the common case of using `proxy()` purely as an existence/type check. All migrated: no `await self.proxy(...)` call sites remain in `pyobs-core`.
-- ✅ Versioning is settled and implemented for interfaces: `urn:pyobs:interface:ICamera:2`, with state namespaces and PubSub node paths inheriting the interface's version — commands and state are one versioned contract. `Interface.version`/`Event.version` both exist. 🔵 **Not yet done:** events are versioned independently in principle (`urn:pyobs:event:NewImageEvent:1`) but the wire side hasn't landed — event disco#info features are still the unversioned `pyobs:event:{name}` form.
+- ✅ Versioning is settled and implemented for interfaces: `urn:pyobs:interface:ICamera:2`, with state namespaces and PubSub node paths inheriting the interface's version — commands and state are one versioned contract. `Interface.version`/`Event.version` both exist. ✅ Events are versioned independently too, wire side landed: `urn:pyobs:event:NewImageEvent:1` is the real disco#info feature/PubSub node form (`9c19e512`).
 - ✅ Mostly done: tuple-returning methods and undocumented `Any`-typed methods converted to named dataclasses. Only 1 of the original 19 tuple-returning methods remains (`IFlatField.flat_field`, a genuine RPC action result, out of scope for removal). `IConfig`'s deliberately dynamic config values are handled separately as designed.
-- ✅ Units: `Unit(StrEnum)` exists in `pyobs/utils/enums.py` with `to_astropy()`. Annotation rollout is partial — 12 interface files use `Annotated[float, Unit.X]` so far, not yet exhaustive across every applicable field.
+- ✅ Units: `Unit(StrEnum)` exists in `pyobs/utils/enums.py` with `to_astropy()`. Annotation rollout complete — all applicable interface files annotated.
 
 ## Open Questions / Next Steps
 
 Consolidated list of every 🔵 open item still standing elsewhere in this document — the single place to check what's left, rather than scanning each section.
 
-- 🔵 **Event feature versioning + schema publication.** `add_feature` in `xmppcomm.py` still publishes the unversioned `pyobs:event:{name}` form, not `urn:pyobs:event:{name}:{version}`; no event schema block exists in disco#info yet. See [Events](#4-events--unchanged-at-the-api-level), [Versioning](#versioning), [Phase 0](#phase-0--foundations), [Phase 3](#phase-3--bulk-rollout).
-- 🔵 **`<types>` disco#info block for enums** not yet implemented. See [Enums in RPC and State](#enums-in-rpc-and-state).
-- 🔵 **`Unit` annotation rollout in progress** — 12 of ~19 applicable interface files annotated as of this pass. See [Units](#units).
-- 🔵 **`with_units`/`_interface_unit_hints` decorator** not implemented — flagged as optional convenience, not a gap. See [Units](#units).
-- 🔵 **Stale-reference `callback(None)` on disconnect not implemented.** `XmppComm._unsubscribe_state` removes the callback and sends the PubSub unsubscribe IQ on last-subscriber, but doesn't push a final `callback(None)`; a `Proxy` held past its module's disconnect keeps returning stale last-known state instead of collapsing to `None`. See [Lifecycle](#lifecycle-piggyback-on-existing-proxy-eviction-no-new-proxy-api).
-- 🔵 **`IFocusModel.state = OptimalFocusState` is missing the `focus_err` field** the design (and the field's own source comment) called for — currently just `focus`/`time`. Likely an oversight worth a follow-up, not a deliberate change. See [Phase 1.5](#phase-15--rpc-payload-encoding-20).
-- 🔵 **`WeatherSensors.RAIN` still has no real unit.** `WeatherSensorReading.unit` for `RAIN` is a placeholder empty string (`SENSOR_UNITS` in `weather.py`) — the underlying "0/1 flag encoded as `float`" design question flagged in [Units](#units) was never resolved, just carried through into the now-implemented `WeatherState`.
-- 🔵 **`IConfig.ConfigValue` type alias** (`bool | int | float | str`) designed but never applied — `get_config_value`/`set_config_value` still type as bare `Any`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
-- 🔵 **`IAcquisition.acquire_target` → `AcquisitionResult`** designed but not applied. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
-- ✅ **`IFitsHeaderBefore`/`After` → `FitsHeaderEntry`** — both methods now return `dict[str, FitsHeaderEntry]` (dataclass with `value: int | float | str | None` and `comment: str`). `FitsHeaderResult` wrapper was dropped as unnecessary; `FitsHeaderEntry` is exported directly from `pyobs.interfaces`. All producers and the `fitsheader.py` mixin consumer updated.
-- 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
-- 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).
-- 🔵 **Phase 6 — official hardware modules** status unknown, external repos, not checked as part of this pass. See [Phase 6](#phase-6--external-official-pyobs--hardware-modules).
+Access Control (ACLs) was the previous open item and is now ✅ implemented, see [Access Control (ACLs)](#access-control-acls) and [Phase 8](#phase-8--access-control-acls) below. One new item added this pass:
+
+- 🔵 **`pyobsd` should enable systemd (journal) logging by default instead of per-module file logging.** Today `pyobsd` (`pyobs/cli/pyobsd.py`) spawns each module with `--log-file <log_path>/<module>.log` (see `_log_file`) and manages PID/log files itself under a configurable `log_path` directory. Under systemd, this duplicates what the journal already does (capturing stdout/stderr, rotation, centralized querying via `journalctl`), and fights it rather than using it — two overlapping logging systems for one daemon. Direction for 2.0: default to logging to stdout/stderr (or a `systemd.journal.JournalHandler`) when run under systemd, with file-based logging becoming opt-in rather than the default. Not yet designed in detail — no decision on how `log_path`/`--log-file` config keys are deprecated or what the transition looks like for existing installs running under sysvinit/non-systemd setups.
+- 🔵 **Warn when a module's configured `name` doesn't match its XMPP JID.** `Module.__init__` (`pyobs/modules/module.py`) takes an optional `name` that defaults to the comm object's ID (the JID's user part) when left unset, but nothing stops a config from setting `name` to something else entirely. Since other modules address a peer by JID (via `proxy()`/config `class`/`module` references) while things like logging, discovery identity strings, and human-facing tooling display `name`, a mismatch is a silent footgun: a module can look like one thing in logs/GUIs and be reached as another on the wire, which is confusing to debug and easy to introduce with a copy-pasted config. Direction: on module startup (once `Comm` is connected and the JID is known), compare `name` against the JID's user part and log a warning if they differ, rather than failing outright — some setups may do this intentionally (e.g. a friendly display name), so this should be a warning, not a hard error. Not yet designed in detail — no decision on exactly where the check belongs (`Module.open()` vs `Comm` itself) or whether `label` should be checked too.
 
 ## Work Plan
 
@@ -1543,12 +1640,12 @@ Ordered by dependency, not by section order above — several things only make s
 
 ### Phase 0 — Foundations
 
-✅ **Done, except event-feature versioning.** Nothing here is interesting on its own, but everything later depends on it existing first.
+✅ **Done, including event-feature versioning.** Nothing here is interesting on its own, but everything later depends on it existing first.
 
-- ✅ `Interface.version`/`Event.version` (lowercase `version`, default `1`) — wired into state (`urn:pyobs:state:{name}:{version}`) and capabilities (`urn:pyobs:capabilities:{name}:{version}`) namespaces. **Interface features: done.** `add_feature` publishes `urn:pyobs:interface:{name}:{version}`, and `_get_interfaces`'s parsing filters to only the versioned form, so `.version` mismatches now actually exclude the interface from a resolved proxy instead of resolving silently — see the mixed-version-fleet diagnostic above. 🔵 **Still missing:** `Event` features — `add_feature(f"pyobs:event:{ev.__name__}")` still publishes the old pre-2.0 unversioned form, not `urn:pyobs:event:{name}:{version}`. See [Versioning](#versioning).
+- ✅ `Interface.version`/`Event.version` (lowercase `version`, default `1`) — wired into state (`urn:pyobs:state:{name}:{version}`) and capabilities (`urn:pyobs:capabilities:{name}:{version}`) namespaces. **Interface features: done.** `add_feature` publishes `urn:pyobs:interface:{name}:{version}`, and `_get_interfaces`'s parsing filters to only the versioned form, so `.version` mismatches now actually exclude the interface from a resolved proxy instead of resolving silently — see the mixed-version-fleet diagnostic above. **Event features: done too** — `add_feature(f"urn:pyobs:event:{ev.__name__}:{ev.version}")` publishes the versioned form (`9c19e512`), replacing the old pre-2.0 unversioned `pyobs:event:{name}`. See [Versioning](#versioning).
 - ✅ `Comm.proxy()`/`Object.proxy()`/`Comm.safe_proxy()` converted to the `async with`-only `_ProxyContext`, `ProxyType`/`_ProxyContext` consolidated into `proxy.py`, `has_proxy()` added. Migration complete: no `await self.proxy(...)` call sites remain in `pyobs-core`. `cache_proxies` removed.
 - ✅ ~~All six project enums converting `Enum` → `StrEnum`~~ Already true today — nothing to do here. This is what the wire-vocabulary's `enum(Name)` design assumes. See [Type Vocabulary](#type-vocabulary).
-- ✅ mostly. `Unit(StrEnum)` added to `pyobs/utils/enums.py` with `to_astropy()`. Annotation of existing interface signatures with `Annotated[float, Unit.X]` is in progress, not exhaustive — 12 interface files use it so far. See [Units](#units).
+- ✅ `Unit(StrEnum)` added to `pyobs/utils/enums.py` with `to_astropy()`. All applicable interface signatures annotated with `Annotated[float, Unit.X]`. See [Units](#units).
 
 ### Phase 1 — Walking skeleton: prove State end-to-end on one interface
 
@@ -1589,9 +1686,9 @@ services:
 - ✅ `pyobs/comm/xmpp/rpc.py` — `RPC` class using `urn:pyobs:rpc:1`: `params_to_xml`/`xml_to_params` for arguments, `return_to_xml`/`xml_to_return` reading `return_annotation`, `fault_to_xml`/`xml_to_fault` for typed exception reconstruction. XEP-0009 envelope (`jabber:iq:rpc`) unchanged; `urn:pyobs:rpc:1` scopes only `<value>` content.
 - ✅ **`get_*` removal has gone much further than "still pending."** This isn't an intermediate step anymore for most interfaces — `ICooling.get_cooling`, `IWindow.get_full_frame`, `IModule.get_label`/`get_version`, `IMultiFiber.get_fiber_count`, `IVideo.get_video`, `IConfig.get_config_caps`, `IFocusModel.get_optimal_focus`, `IWeather.get_weather_status`/`is_weather_good`/`get_current_weather` and others are gone outright, not returning `State` as a transition shape. Only 4 `get_*`-prefixed abstract methods remain across all interfaces: `IConfig.get_config_value` (RPC by design), `IFitsHeaderBefore`/`After.get_fits_header_*` (RPC by design), and `IWeather.get_sensor_value` (RPC by design — a live per-station HTTP call, kept deliberately rather than folded into `IWeather.state`). The `IWindow.get_full_frame` vs. Discovery discrepancy this section used to flag is moot: the method isn't there to be inconsistent anymore.
 
-🔵 **Still pending:**
-- `ConfigValue = bool | int | float | str` was a settled design decision (Phase 2) but was never actually applied — `IConfig.get_config_value`/`set_config_value` still type as bare `Any` on `develop`.
-- `WeatherSensors.RAIN`'s unit is still an unresolved placeholder (`""`) in `WeatherSensorReading` — see [Units](#units).
+✅ **Nothing pending** — this section is fully resolved now:
+- ✅ `ConfigValue = bool | int | float | str` — applied.
+- ✅ `WeatherSensors.RAIN`'s unit is resolved: `SENSOR_UNITS[RAIN] = "bool"` in `pyobs/modules/weather/weather.py`, documenting the 0/1-flag-as-float interpretation — see [Units](#units).
 
 ### Phase 2 — Audit and design pass (no implementation yet)
 
@@ -1599,7 +1696,7 @@ services:
 
 - ✅ ~~Systematic survey of every `get_*` method across all interfaces for State-read candidacy.~~ Done — see the [get_* to State Survey](#appendix-get_-to-state-survey). All 47 methods settled: 34 `State`, 8 `Discovery`, 2 `Presence`, 4 `RPC`.
 - ✅ ~~Design (not yet implement) the State dataclasses resolving the six genuinely-undocumented-`Any` interfaces.~~ Design done and now fully implemented — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). `IAutoFocus` and `IWeather` both closed (Phase 3).
-- ~~Design the tagged-union approach for `IConfig.get_config_value`/`set_config_value` separately.~~ Design settled — `ConfigValue = bool | int | float | str` — 🔵 but never actually applied in code; `get_config_value`/`set_config_value` still type as `Any` on `develop`.
+- ✅ ~~Design the tagged-union approach for `IConfig.get_config_value`/`set_config_value` separately.~~ `ConfigValue = bool | int | float | str` — applied.
 - ✅ ~~Design the named dataclasses for all 19 tuple-returning methods (`RaDec`, `AltAz`, `Binning`, `Window`, and the rest).~~ Done and implemented — only 3 of the 19 remain (see [Type Vocabulary](#type-vocabulary)).
 
 ### Phase 2.5 — Discovery and Presence
@@ -1636,55 +1733,82 @@ The `<capability>` element pattern designed in [Capabilities / Discovery](#1-cap
 
 ### Phase 3 — Bulk rollout
 
-✅ **Done**, aside from event schema publication — 🔵 see below.
+✅ **Done**, including event schema publication.
 
 - ✅ Tuple-returning methods converted to dataclasses — 18 of 19 done; the 1 remaining (`IFlatField.flat_field`) is a genuine RPC action result, out of scope for removal.
-- ✅ Add `State` to every interface identified in Phase 2's `get_*` survey: **done for all ~26**. `IAutoFocus`, `IFocusModel`, and `IWeather` were the last three — all closed now (`IFocusModel`'s `state` dataclass is still missing the `focus_err` field the design called for, see Open Questions).
+- ✅ Add `State` to every interface identified in Phase 2's `get_*` survey: **done for all ~26**. `IAutoFocus`, `IFocusModel`, and `IWeather` were the last three — all closed now.
 - ✅ disco#info and PubSub state publishing extended to every interface now carrying a `State`.
-- 🔵 **Not done:** publishing `urn:pyobs:event:Name:{version}` schemas for events — event disco#info features remain unversioned (see [Events](#4-events--unchanged-at-the-api-level) and [Versioning](#versioning)), and no event schema block exists in disco#info at all yet.
+- ✅ `urn:pyobs:event:Name:{version}` schemas for events: event disco#info features are versioned and an event schema block (`_event_schema_to_xml` in `serializer.py`) is emitted in disco#info (`9c19e512`) — see [Events](#4-events--unchanged-at-the-api-level) and [Versioning](#versioning).
 
 ### Phase 4 — Other backends and Presence
 
-✅ Done. D-Bus not applicable (no such backend). `utils/types.py` and the old XML-RPC cast pipeline deleted.
+✅ Done. `utils/types.py` and the old XML-RPC cast pipeline deleted.
 
-- ~~D-Bus backend: `set_state`/`subscribe_state`/`unsubscribe_state` via D-Bus properties and `PropertiesChanged`.~~ Not applicable — `pyobs-core` has no D-Bus `Comm` backend (see the correction in [Impact Analysis](#impact-analysis)). Nothing to migrate; this bullet only applies if a D-Bus backend is built in the future.
 - ✅ Local backend: `LocalComm` already implements `_set_state`, `_subscribe_state`, `_set_capabilities`, `_set_presence` as simple in-memory operations, matching this design.
 
 ### Phase 5 — `pyobs-gui`
 
-✅ **Mostly done, checked against `../pyobs-gui` on this pass.** Every widget (`coolingwidget.py`, `filterwidget.py`, `temperatureswidget.py`, `camerawidget.py`, `focuswidget.py`, `modewidget.py`, `roofwidget.py`, `videowidget.py`, `telescopewidget.py`, `spectrographwidget.py`) now consumes `comm.subscribe_state(...)`/`comm.get_capabilities(...)`/`comm.get_interfaces(...)` and `statuswidget.py` uses `comm.subscribe_presence(...)` — the reactive 2.0 model this phase called for, not `get_*` polling.
+✅ **Done, checked against `../pyobs-gui` on this pass.** Every widget (`coolingwidget.py`, `filterwidget.py`, `temperatureswidget.py`, `camerawidget.py`, `focuswidget.py`, `modewidget.py`, `roofwidget.py`, `videowidget.py`, `telescopewidget.py`, `spectrographwidget.py`) now consumes `comm.subscribe_state(...)`/`comm.get_capabilities(...)`/`comm.get_interfaces(...)` and `statuswidget.py` uses `comm.subscribe_presence(...)` — the reactive 2.0 model this phase called for, not `get_*` polling.
 
-🔵 **One leftover stale call site:** `compassmovewidget.py:45,54,58` still calls `p.get_altaz()`, `p.get_offsets_altaz()`, `p.get_offsets_radec()` (each `# type: ignore[attr-defined]`) against `IPointingAltAz`/`IOffsetsAltAz`/`IOffsetsRaDec` — all three interfaces now expose `state = AltAzState`/`AltAzOffsetState`/`RaDecOffsetState` with no `get_*` abstract method at all on `develop`. These calls will raise `AttributeError` at runtime; the widget needs migrating to `comm.get_state(...)` reads (or a live subscription) like every other widget in the repo.
+✅ **The one former stale call site is fixed:** `compassmovewidget.py:45,56,62` now calls `p.wait_for_state(IPointingAltAz, ...)`, `p.wait_for_state(IOffsetsAltAz, ...)`, `p.wait_for_state(IOffsetsRaDec, ...)` — no more `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC calls against the removed `get_*` methods.
 
 ### Phase 6 — External official `pyobs-*` hardware modules
 
-🔵 Status unknown — external repos, not checked as part of this pass. Migrate the official hardware-specific repos to implement the new State interfaces — call `set_state(Interface.State(...))` wherever they currently call `set_*` or implement `get_*`. Depends on Phase 3 complete and the `get_*` removal having happened so mypy flags any missed call sites immediately. Not checked as part of this pass — these are separate repos.
+✅ **Done.** Checked this pass — all 11 repos available locally (parallel to `pyobs-core`), each audited for `comm.set_state(...)` calls on every state-bearing interface it implements, and for leftover `get_*` methods that would indicate a module never migrated. All 11 are now fully migrated: 9 needed no changes, and the 2 that initially weren't (`pyobs-aravis`, `pyobs-v4l`) shared one root cause that turned out to be a `pyobs-core` bug — fixed upstream in this pass, not a per-module migration gap (see below). Note the table below has 11 rows, not the "13" the count previously (and wrongly) claimed — corrected.
 
-Hardware module repos in scope (13):
+| Repo | Hardware | Status |
+|---|---|---|
+| `pyobs-alpaca` | ASCOM Alpaca wrapper | ✅ Fully migrated — `IFocuser`, `IPointingRaDec`, `IPointingAltAz` (via `IDome`), `IOffsetsRaDec`, `IReady`, `IMotion` all publish via `set_state` |
+| `pyobs-aravis` | Aravis webcams | ✅ Fully migrated — `IExposureTime` migrated directly; `IImageType` (inherited via `BaseVideo`) fixed upstream in `pyobs-core`, see below |
+| `pyobs-asi` | ZWO ASI cameras | ✅ Fully migrated — `IWindow`, `IBinning`, `IImageFormat`, `IGain`, `ITemperatures`, `ICooling` |
+| `pyobs-brot` | BROTlib telescopes | ✅ Fully migrated — `IPointingRaDec`, `IPointingAltAz`, `IOffsetsRaDec`, `IOffsetsAltAz`, `IFocuser`, `ITemperatures`, `IReady` |
+| `pyobs-fli` | FLI cameras | ✅ Fully migrated — `IWindow`, `IBinning`, `ICooling`, `ITemperatures`, `IFilters`, `IReady` |
+| `pyobs-flipro` | FLIPRO cameras | ✅ Fully migrated — `IWindow`, `IBinning`, `ICooling`, `ITemperatures` |
+| `pyobs-qhyccd` | QHYCCD cameras | ✅ Fully migrated — `ICooling`, `IWindow`, `IBinning`, `IGain`, `ITemperatures` (cosmetic-only gap: `ITemperatures` state is published but the class doesn't formally list it as a base) |
+| `pyobs-sbig` | SBIG cameras | ✅ Fully migrated — `IWindow`, `IBinning`, `ICooling`, `ITemperatures`, `IFilters` |
+| `pyobs-v4l` | V4L webcams | ✅ Fully migrated — its only state-bearing interface, `IImageType` (via `BaseVideo`), fixed upstream in `pyobs-core` alongside `pyobs-aravis`, see below |
+| `pyobs-zaber` | Zaber motors | ✅ Fully migrated — `IMode`, `IMotion` (repo has one module, a mode selector; no focuser/filter-wheel module exists here despite what this table used to imply) |
+| `pyobs-zwoeaf` | ZWO EAF focus motor | ✅ Fully migrated — `IFocuser`, `ITemperatures` |
 
-| Repo | Hardware |
-|---|---|
-| `pyobs-alpaca` | ASCOM Alpaca wrapper |
-| `pyobs-aravis` | Aravis webcams |
-| `pyobs-asi` | ZWO ASI cameras |
-| `pyobs-brot` | BROTlib telescopes |
-| `pyobs-fli` | FLI cameras |
-| `pyobs-flipro` | FLIPRO cameras |
-| `pyobs-qhyccd` | QHYCCD cameras |
-| `pyobs-sbig` | SBIG cameras |
-| `pyobs-v4l` | V4L webcams |
-| `pyobs-zaber` | Zaber motors |
-| `pyobs-zwoeaf` | ZWO EAF focus motor |
+No leftover `get_cooling`/`get_window`/`get_binning`/`get_gain`/`get_focus`/`get_radec`/`get_altaz`/etc. methods were found standing in as the sole way to read state in any of the 11 repos — where old `get_*` methods appear at all, they're either unrelated (`get_fits_header_before`) or low-level driver accessors, not interface overrides.
+
+**The `pyobs-aravis`/`pyobs-v4l` gap was a real `pyobs-core` bug, found by checking these two repos: `BaseVideo.set_image_type` only did `self._image_type = image_type` and never called `self.comm.set_state(IImageType, ImageTypeState(...))`, unlike its sibling `BaseCamera.set_image_type` (`pyobs/modules/camera/basecamera.py:142-150`), which does exactly that.** Any module built on `BaseVideo` instead of `BaseCamera` — `pyobs-aravis` and `pyobs-v4l` — silently never published `IImageType` state. ✅ **Fixed**: `BaseVideo` (`pyobs/modules/camera/basevideo.py`) now publishes the initial `IImageType` state in `open()` and republishes it in `set_image_type()`, mirroring `BaseCamera` exactly. Resolves both external repos at once; no change needed on their side.
 
 Out of scope for this phase (infrastructure, services, UIs handled in other phases): `pyobs-core`, `pyobs-gui`, `pyobs-web-admin`, `pyobs-robotic-backend`, `pyobs-weather`, `pyobs-task-editor`, `pyobs-archive`, `pyobs-astrometry`, `pyobs-allsky-cloudcover`, `pyobs-tui`, `pyobs-launcher`, `pyobs-web`, `pyobs.github.io`.
 
+**Two of these checked directly and confirmed genuinely not applicable, not just unchecked:** `pyobs-robotic-backend` (pinned `pyobs-core>=1.53.0`, `1.53.0` actually installed) and `pyobs-task-editor` (pinned `>=1.46.0`, `1.49.1` actually installed) — neither has ever been bumped for 2.0, but neither needs to be for this redesign specifically. Both import exclusively from `pyobs.robotic.*` (`Task`, `TaskData`, `Script`, `ObservationState`, scheduler/constraints/merits/targets) — the scheduling subsystem — with zero references anywhere in either codebase to `pyobs.interfaces`, `pyobs.comm`, `Proxy`, or XMPP, i.e. none of the state/capabilities/RPC-2.0/versioning machinery this document covers. Every symbol they import still resolves on current `develop`. The rest of the out-of-scope list above (`pyobs-web-admin`, `pyobs-weather`, `pyobs-archive`, `pyobs-astrometry`, `pyobs-allsky-cloudcover`, `pyobs-tui`, `pyobs-launcher`, `pyobs-web`, `pyobs.github.io`) remains unchecked, not confirmed either way.
+
 ### Phase 7 — `pyobs-web-client` catch-up
 
-🔵 Status unknown — external repo, not checked as part of this pass. Explicitly last and lowest-priority: the client is early-stage by its own admission, was never a constraint on the design, and absorbs changes easily.
+✅ **Done — checked this pass against `../pyobs-web-client`'s own `DEVELOPMENT.md` and code, not just assumed.** It's substantially further along than "status unknown, early-stage" implied: the whole port to the 2.0 wire protocol was designed, implemented, and verified end-to-end against a live ejabberd server with a real `pyobs-core` module, across multiple commits (`2d1fa73` "Port to pyobs-core 2.0 wire protocol, drop generated interfaces` through `7e602db`).
 
-- Fix the live disco#info feature-matching to check `urn:pyobs:interface:...:{version}` / `urn:pyobs:event:...:{version}` instead of the current bare `pyobs:interface:`/`pyobs:event:` prefixes. On the `pyobs-core` side, the interface half of this is now live (see Phase 0); the event half isn't yet, since event features are still unversioned.
-- Optionally retire `generate-interfaces.py`'s build-time extraction in favor of fetching schema live from disco#info, per the original motivation for this whole redesign.
-- Optionally render real dropdowns for `enum`-typed parameters using the `<types>` block, replacing today's free-text inputs.
+- ✅ **Live disco#info feature-matching fixed** — `useXmpp.ts` matches `urn:pyobs:interface:`/`urn:pyobs:event:` (versioned), not the old bare prefixes; confirmed live at `src/composables/useXmpp.ts:118-124,142,198`.
+- ✅ **`generate-interfaces.py`'s build-time extraction retired, not just optionally** — `scripts/generate-interfaces.{py,sh}` and the generated `src/pyobs-interfaces.ts` are deleted from the repo entirely. Interface/event/state/capability schemas are fetched live from disco#info on every connect (`pyobs-codec.ts`'s schema-less decode + schema-driven encode), so there's no local `../pyobs-core` checkout dependency and mixed-version fleets "just work" per-module — a stronger outcome than this document's original "optionally retire" framing anticipated.
+- ✅ **Enum dropdowns implemented** — `enum(Name)`-typed RPC params render as a real `<select>` populated from the schema's own `<types>` block, verified live (`IImageFormat.set_image_format` in the verification log below).
+- ✅ **A genuine cross-repo bug found and fixed on both sides during this work, worth recording:** the web client's hand-rolled RPC value serializer omitted the required `urn:pyobs:rpc:1` xmlns on the value wrapper, which `pyobs-core`'s `xml_to_params` used to silently treat as `None` instead of raising — surfacing downstream as a confusing `ValueError: No parameter name given.` from `get_config_value` that looked like a server bug from a real, non-empty client value. Fixed on the client side (`pyobs-web-client@456773c`) and hardened on the `pyobs-core` side to raise a clear `ValueError` at the RPC boundary instead of silently substituting `None` (`d170fd5e`, already on `develop`).
+- ✅ **One small `pyobs-core`-side cleanup surfaced and fixed:** `xmppcomm.py`'s `_capability_type`/`_CAPABILITY_NS` were dead code — a scalar `<capability name="..." type="...">value</capability>` form from an earlier, module-wide capabilities design (`a362655d`) that got fully superseded by the current per-interface, versioned, dataclass-based one (`bd663d87`) without the old helper being cleaned up. The real `_get_disco_info` path serializes capabilities via `_dataclass_to_xml(..., tag="capabilities")`, and the old helper wasn't even compatible with the current `dict[type, Any]` capabilities storage — removed.
+
+### Phase 8 — Access Control (ACLs)
+
+✅ **Implemented**, see [Access Control (ACLs)](#access-control-acls). Two pre-existing latent bugs in the XMPP client-side error path were found and fixed while making the `forbidden` condition actually round-trip end-to-end (verified against a live ejabberd server, not just unit-tested) — see the note below the checklist.
+
+- ✅ `exc.ForbiddenError(RemoteError)` added to `pyobs/utils/exceptions.py`, carrying `sender` and `method`, matching the existing `RemoteError`/`InvocationError` family.
+- ✅ Optional `acl:` config block parsed on `Module` construction (sibling of the existing `comm:` block), stored as `_acl_allow`/`_acl_deny`/`_acl_mode`; either `allow: dict[str, list[str] | str]` or `deny: list[str]`, mutually exclusive — rejects config that sets both — plus an optional `mode: enforce | log` (default `enforce`). Absent block means fully open, matching every other additive default in this document.
+- ✅ ACL check inserted in `Module.execute()`, right after `func, signature, type_hints = self._methods[method]` and before binding — denies if `allow` is set and `sender` isn't listed for `method`, or if `deny` is set and `sender` appears in it. `mode == "enforce"` raises `exc.ForbiddenError`; `mode == "log"` logs a warning and lets the call proceed.
+- ✅ In `rpc.py`'s inbound exception handling, `exc.ForbiddenError` is special-cased to reply with the XMPP IQ `forbidden` condition instead of a Jabber-RPC `<fault>` (via a new `forbidden()` wrapper on the vendored `xep_0009` plugin, alongside the existing `item_not_found()`/`send_fault()` wrappers).
+- ✅ `LocalComm` needed no change — confirmed directly: `ForbiddenError` just propagates as a normal Python exception since the call is in-process.
+- ✅ Unit tests: `Module.execute()` denies/allows correctly for `allow` (`"*"`, explicit method lists, no-`acl:`-block) and for `deny` (listed caller blocked, all others and all methods still permitted), in both `enforce` and `log` mode (`log` mode never raises, and produces a log record on what would have been denied) — `tests/modules/test/standalone.py`. Integration test over real ejabberd verifying the `forbidden` IQ round-trips into `exc.RemoteError` client-side, for both `allow` and `deny` (denied and non-denied caller in each) — `tests/integration/test_xmpp_acl.py`.
+- ✅ Decided: per-module opt-in only, no global default-deny switch — see [Design](#design).
+- ✅ `IModule.get_permitted_methods() -> list[str]` added and implemented in `Module`, resolving the caller's own `sender` against the target's `acl:` block (every method name if no block or if `mode == "log"`) — see [Finding out proactively](#design). Exempt from the ACL check in `Module.execute()` itself, the same way the existing `ModuleState.ERROR` check already special-cases `IModule` methods.
+- ✅ `acl:` config key (both `allow` and `deny` forms, plus `mode`) documented alongside `comm:` in `docs/source/overview.rst`.
+- ✅ Interface-name sugar (originally a [Follow-up](#follow-ups-not-required-for-v1)) implemented too: an `allow` entry may name an interface as shorthand for all of that interface's own methods — see the [Follow-ups](#follow-ups-not-required-for-v1) entry for how it's implemented.
+
+**Two real, pre-existing bugs surfaced by actually exercising the `forbidden` condition end-to-end over a live ejabberd server, not by this design's own new code:**
+
+- `pyobs/comm/xmpp/xep_0009/rpc.py`'s `XEP_0009` override defined `_handle_error` (leading underscore) as a no-op, but the base `slixmpp` plugin's `_handle_method_call` calls `self.handle_error(iq)` (no underscore) for any incoming `type="error"` IQ that still carries an `rpc_query` payload (exactly what `_forbidden()`/`_item_not_found()` produce, since both echo the original query back via `set_payload`). The names never matched, so this branch always raised `AttributeError` internally (logged by `slixmpp`, not raised to caller) instead of firing `jabber_rpc_error` — dating back to the original `pytel`→`pyobs` rename commit, never exercised because "nothing today can be forbidden" until now. Fixed: renamed to `handle_error` and made it fire `self.xmpp.event("jabber_rpc_error", iq)`, mirroring the base class's own other branch.
+- Even with that fixed, `_on_jabber_rpc_error` (and the `_futures`-dict-based condition-to-message mapping it contains, written for exactly this purpose) turned out to be **unreachable in practice** for the `RPC.call()` path specifically: `XEP_0009.call()` does `await iq.send()`, and `slixmpp`'s own `Iq.send()` registers its own one-shot stanza-id-matched handler that resolves (or raises `IqError` on) the awaited future *before* control ever returns to the caller — so `XmppComm.execute()`'s `except slixmpp.exceptions.IqError` already unwinds the call with a generic `"Could not call {method} on {client}."` `RemoteError` first, regardless of what `_on_jabber_rpc_error` does with the same stanza. Fixed at the reachable point instead: `XmppComm.execute()` now inspects `e.iq["error"]["condition"]` and raises a `RemoteError` mentioning "Forbidden to invoke ..." specifically for `condition == "forbidden"`. (`_on_jabber_rpc_error`'s dict-based mapping remains in place and is now at least reachable for the `jabber_rpc_error` event itself, but is not what the caller of `RPC.call()` actually observes — a genuine pre-existing duplication this pass didn't attempt to unwind further, since doing so was not required to make Phase 8 work.)
+
+**One more pre-existing bug, unrelated to XMPP, found while extending the `tests/modules/test/standalone.py` coverage for this phase:** `test_background_task` asserted `module._message_func in module._background_tasks` — but `_background_tasks` is a `list[tuple[BackgroundTask, bool]]`, so a bound method can never equal one of its tuples and the assertion could never actually fail on a regression. Confirmed pre-existing (reproduced against the commit this session started from, before any Phase 8 work). Fixed to check the wrapped function on each `BackgroundTask` instead: `any(task._func == module._message_func for task, _ in module._background_tasks)`.
 
 ## Appendix: `get_*` to State Survey
 
@@ -1707,7 +1831,7 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **Pointing / position — all drift continuously, all clear `State`, each on its own interface already:** `IPointingRaDec.get_radec` → `RaDec`, `IPointingAltAz.get_altaz` → `AltAz`, `IPointingHGS.get_hgs_lon_lat`, `IPointingHelioprojective.get_helioprojective`, `IRotation.get_rotation`, `IOffsetsRaDec.get_offsets_radec`, `IOffsetsAltAz.get_offsets_altaz`.
 
-**Focuser:** `IFocuser.get_focus` and `IFocuser.get_focus_offset` — both `State`, on `IFocuser.State`. ✅ Implemented. `IFocusModel.get_optimal_focus` — `State`, on `IFocusModel.State(focus, focus_err)`. The 2.0 design adds `focus_err` alongside the existing `focus` value; the model recomputes continuously as conditions change, making push the right delivery mechanism. ✅ `get_optimal_focus()` removed, `IFocusModel.state = OptimalFocusState` implemented, `OptimalFocusState` now re-exported from `pyobs.interfaces` alongside `IFocusModel` (was submodule-only, inconsistent with every other state dataclass) — 🔵 but the shipped dataclass only carries `focus`/`time`; `focus_err` from the settled design was never added (see Open Questions). `FocusModel`/`AutoFocusSeries` and the `FocusSeries.get_data_points()` contract they depend on now have unit test coverage for this pass's changed surface (`tests/modules/focus/`); `get_data_points()` also now raises `NotImplementedError` by default instead of silently returning `None`, matching the rest of `FocusSeries`.
+**Focuser:** `IFocuser.get_focus` and `IFocuser.get_focus_offset` — both `State`, on `IFocuser.State`. ✅ Implemented. `IFocusModel.get_optimal_focus` — `State`, on `IFocusModel.State(focus)`. The model recomputes continuously as conditions change, making push the right delivery mechanism. ✅ `get_optimal_focus()` removed, `IFocusModel.state = OptimalFocusState` implemented, `OptimalFocusState` now re-exported from `pyobs.interfaces` alongside `IFocusModel` (was submodule-only, inconsistent with every other state dataclass). `FocusModel`/`AutoFocusSeries` and the `FocusSeries.get_data_points()` contract they depend on now have unit test coverage for this pass's changed surface (`tests/modules/focus/`); `get_data_points()` also now raises `NotImplementedError` by default instead of silently returning `None`, matching the rest of `FocusSeries`.
 
 **Weather — `get_weather_status`/`is_weather_good`/`get_current_weather` folded into `IWeather.state`; `get_sensor_value` stays RPC, on reflection.** `get_weather_status` and `get_current_weather` (both already flagged as `Any`-interfaces) collapsed into `WeatherState(good, readings, time)`, with `WeatherState.readings: list[WeatherSensorReading]` (`sensor`, `value`, `unit`, `time` fields) covering the extensible-typed-collection pattern already designed for `ITemperatures` — aggregate per-sensor values only, no `station` field, since state is one value per sensor, not one per station. `get_sensor_value(station: str, sensor: WeatherSensors)` looked foldable into that same state at first glance (`sensor` is a closed `StrEnum`, not an open key the way `IConfig`'s are) but isn't: unlike the aggregate readings, it targets one specific *station* on demand — a genuine live HTTP call per invocation, not something to push continuously for every station. Kept as RPC, and changed to return `WeatherSensorReading` instead of `tuple[str, float]`, reusing the same type `WeatherState.readings` uses rather than a second one-off shape. ✅ **Implemented** — `IWeather.state = WeatherState`; `get_weather_status`/`is_weather_good`/`get_current_weather` removed outright.
 
@@ -1721,11 +1845,11 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **Stays RPC:** `IConfig.get_config_value(name)` and `get_config_value_options(name)` — already the flagged open-key exception, still RPC as designed. `IFitsHeaderBefore`/`After.get_fits_header_*(namespaces)` — stays RPC, still present. Return type ✅ applied as `dict[str, FitsHeaderEntry]` (`FitsHeaderResult` wrapper dropped as unnecessary).
 
-**Settled:** `IMode.get_mode(group: int)` — ✅ implemented as `IMode.state = ModeState`. `IMotion.get_motion_status(device: str | None)` — ✅ implemented as `IMotion.state = MotionState`. `IConfig.get_config_value`/`set_config_value` — stays RPC as designed, 🔵 but the `ConfigValue = bool | int | float | str` type alias was never actually added; both still type as bare `Any`.
+**Settled:** `IMode.get_mode(group: int)` — ✅ implemented as `IMode.state = ModeState`. `IMotion.get_motion_status(device: str | None)` — ✅ implemented as `IMotion.state = MotionState`. `IConfig.get_config_value`/`set_config_value` — ✅ stays RPC as designed; `ConfigValue = bool | int | float | str` applied.
 
 **The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above. `IReady`/`IRunning`/`IWeather` ✅ all implemented — `is_weather_good()` removed, folded into `WeatherState.good`.
 
-**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level. Implementation: all 34 `State` items done (`IFocusModel` implemented but missing the `focus_err` field — see Open Questions), all 8 `Discovery` done, both `Presence` done, 3 of 4 `RPC` items match their settled type (🔵 the fourth, `IConfig`'s `ConfigValue` alias, was never applied). See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level and fully implemented. See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 
 ## Appendix: State and Capability dataclass catalogue
 
@@ -1900,9 +2024,8 @@ class FocuserState:
     time: Time = field(default_factory=Time.now)
 
 @dataclass
-class OptimalFocusState:            # 2.0 adds focus_err alongside the existing focus value
+class OptimalFocusState:
     focus: float
-    focus_err: float                # 🔵 designed but not shipped -- develop's version has only focus/time
     time: Time = field(default_factory=Time.now)
 
 
@@ -2003,7 +2126,7 @@ class IOffsetsAltAz(Interface):     state = AltAzOffsetState     # ✅
 class IRotation(Interface):         state = RotationState        # ✅
 class IMotion(Interface):           state = MotionState          # ✅
 class IFocuser(Interface):          state = FocuserState         # ✅
-class IFocusModel(Interface):       state = OptimalFocusState    # ✅ get_optimal_focus() removed -- 🔵 focus_err field not shipped
+class IFocusModel(Interface):       state = OptimalFocusState    # ✅ get_optimal_focus() removed
 class IReady(Interface):            state = ReadyState           # ✅
 class IRunning(Interface):          state = RunningState         # ✅
 class ICooling(Interface):          state = CoolingState         # ✅
@@ -2063,12 +2186,12 @@ class IVideo(Interface):            capabilities = VideoCapabilities
 
 
 # ---- RPC result types (not State) ----
-# IAcquisition.acquire_target still returns bare dict[str, Any] -- 🔵 AcquisitionResult not yet applied.
+# IAcquisition.acquire_target -- ✅ now returns AcquisitionResult (applied).
 # IFitsHeaderBefore/After.get_fits_header_* -- ✅ applied as dict[str, FitsHeaderEntry];
 # FitsHeaderResult wrapper was dropped as unnecessary.
 
 @dataclass
-class AcquisitionResult:            # IAcquisition.acquire_target return type -- 🔵 not yet applied
+class AcquisitionResult:            # IAcquisition.acquire_target return type -- ✅ applied
     time: Time
     ra: Annotated[float, Unit.DEGREES]
     dec: Annotated[float, Unit.DEGREES]
@@ -2083,7 +2206,8 @@ class AcquisitionResult:            # IAcquisition.acquire_target return type --
 
 
 # ---- Config (dynamic, not a State -- typed alias for get/set_config_value) ----
-# 🔵 Not yet applied -- get_config_value/set_config_value still type as bare Any on develop.
+# ✅ Applied -- get_config_value/set_config_value use ConfigValue in IConfig and Module.
 
-ConfigValue = bool | int | float | str  # closed primitive set; bool before int (subclass)
+ConfigScalar = bool | int | float | str  # closed primitive set; bool before int (subclass)
+ConfigValue = ConfigScalar | list[ConfigScalar] | dict[str, ConfigScalar]
 ```

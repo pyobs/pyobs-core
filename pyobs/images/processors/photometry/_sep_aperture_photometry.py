@@ -74,7 +74,12 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         background_flux = self._sum_ellipse(background, self._image, self._pos_x, self._pos_y)
         background_area = self._sum_ellipse(np.ones(shape=background.shape), self._image, self._pos_x, self._pos_y)
 
-        median_background = np.divide(background_flux, background_area, where=background_area != 0)
+        median_background = np.divide(
+            background_flux,
+            background_area,
+            out=np.zeros_like(background_flux),
+            where=background_area != 0,
+        )
         return cast(npt.NDArray[np.floating[Any]], median_background)
 
     @staticmethod

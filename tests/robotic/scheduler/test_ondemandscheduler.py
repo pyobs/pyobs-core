@@ -20,7 +20,7 @@ async def test_evaluate_merits() -> None:
     )
     data = DataProvider(observer)
     start = Time.now()
-    end = start + TimeDelta(5000 * u.second)
+    end = start + TimeDelta(5000 * u.day)
 
     tasks: list[Task] = [
         Task(id=1, name="1", duration=100, merits=[ConstantMerit(merit=10)]),
@@ -39,7 +39,7 @@ async def test_next_best_task() -> None:
     )
     data = DataProvider(observer)
     start = Time.now()
-    end = start + TimeDelta(5000)
+    end = start + TimeDelta(5000 * u.day)
 
     # two constant merits
     tasks: list[Task] = [
@@ -80,7 +80,7 @@ async def test_check_for_better_task() -> None:
     )
     data = DataProvider(observer)
     start = Time.now()
-    end = start + TimeDelta(5000)
+    end = start + TimeDelta(5000 * u.day)
 
     # at the beginning, tasks[1] will be better (5), but after 1000 seconds tasks[0] will beat it (10)
     tasks: list[Task] = [

@@ -3,6 +3,7 @@ import fnmatch
 import logging
 import os
 import time
+import warnings
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
@@ -163,9 +164,11 @@ class ImageWatcher(Module):
                 async with self.vfs.open_file(filename, "rb") as fd:
                     data = await fd.read()
 
-                # try to load as fits file
+                # try to load as fits file; data may well not be a FITS file at all
                 try:
-                    fits_file = fits.HDUList.fromstring(data)
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", fits.verify.VerifyWarning)
+                        fits_file = fits.HDUList.fromstring(data)
                 except Exception:
                     fits_file = None
 

@@ -3,7 +3,7 @@ from typing import Any
 
 from astropy.coordinates import SkyCoord
 
-from pyobs.interfaces import IAcquisition, IAutonomous, IPointingRaDec, IPointingSeries
+from pyobs.interfaces import AcquisitionResult, IAcquisition, IAutonomous, IPointingRaDec, IPointingSeries
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
 from pyobs.utils.grids.filters import GridFilter
@@ -111,7 +111,7 @@ class PointingSeries(Module, IAutonomous):
                 acq = await acquisition.acquire_target()
 
             #  process result
-            await self._process_acquisition(**acq)
+            await self._process_acquisition(acq)
 
             # if telescope implements IPointingSeries, let it know
             async with self.safe_proxy(self._telescope, IPointingSeries) as telescope:
@@ -124,31 +124,7 @@ class PointingSeries(Module, IAutonomous):
             log.info("Could not acquire position.")
             return False
 
-    async def _process_acquisition(
-        self,
-        datetime: str,
-        ra: float,
-        dec: float,
-        alt: float,
-        az: float,
-        off_ra: float | None = None,
-        off_dec: float | None = None,
-        off_alt: float | None = None,
-        off_az: float | None = None,
-    ) -> None:
-        """Process the result of the acquisition. Either ra_off/dec_off or alt_off/az_off must be given.
-
-        Args:
-            datetime: Date and time of observation.
-            ra: Right ascension without offsets at destination.
-            dec: Declination without offsets at destination.
-            alt: Altitude without offsets at destination.
-            az: Azimuth without offsets at destination.
-            off_ra: Found RA offset.
-            off_dec: Found Dec offset.
-            off_alt: Found Alt offset.
-            off_az: Found Az offset.
-        """
+    async def _process_acquisition(self, result: AcquisitionResult) -> None:
         pass
 
 

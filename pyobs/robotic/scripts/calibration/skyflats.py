@@ -96,7 +96,7 @@ class SkyFlatsScript(Script):
         for sched in scheduler:
             log.info("- %s", sched)
 
-        # total exposure time in ms
+        # total exposure time in seconds
         exptime_done = 0
 
         # do flat fields

@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import Any
 
-from pyobs.interfaces import IAcquisition
+from pyobs.interfaces import AcquisitionResult, IAcquisition
 from pyobs.modules import Module, timeout
 from pyobs.utils.time import Time
 
@@ -29,14 +29,14 @@ class DummyAcquisition(Module, IAcquisition):
         return self._is_running
 
     @timeout(120)
-    async def acquire_target(self, **kwargs: Any) -> dict[str, Any]:
+    async def acquire_target(self, **kwargs: Any) -> AcquisitionResult:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
         coordinates.
 
         Returns:
-            A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
+            Result with time, ra, dec, alt, az, and either off_ra/off_dec or off_alt/off_az offsets.
 
         Raises:
             ValueError: If target could not be acquired.
@@ -48,22 +48,20 @@ class DummyAcquisition(Module, IAcquisition):
         finally:
             self._is_running = False
 
-    async def _acquire(self) -> dict[str, Any]:
+    async def _acquire(self) -> AcquisitionResult:
         """Actually acquire target."""
         log.info("Acquiring target.")
         await asyncio.sleep(self._wait_secs)
         log.info("Finished.")
-        return {
-            "datetime": Time.now().isot,
-            "ra": 0.0,
-            "dec": 0.0,
-            "alt": 0.0,
-            "az": 0.0,
-            "off_ra": 0.0,
-            "off_dec": 0.0,
-            "off_alt": 0.0,
-            "off_az": 0.0,
-        }
+        return AcquisitionResult(
+            time=Time.now(),
+            ra=0.0,
+            dec=0.0,
+            alt=0.0,
+            az=0.0,
+            off_ra=0.0,
+            off_dec=0.0,
+        )
 
     async def abort(self, **kwargs: Any) -> None:
         pass

@@ -125,6 +125,14 @@ async def test_remote() -> None:
     assert isinstance(exc_info.value.exception.exception, exc.MotionError)
 
 
+def test_forbidden_error() -> None:
+    error = exc.ForbiddenError(sender="scheduler", method="reset_usb")
+    assert isinstance(error, exc.RemoteError)
+    assert error.sender == "scheduler"
+    assert error.method == "reset_usb"
+    assert error.module == "scheduler"
+
+
 def test_remote_module() -> None:
     # get triggered after 3 MotionErrors
     exc.register_exception(exc.MotionError, 1, module="test", throw=True)

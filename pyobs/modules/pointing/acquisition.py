@@ -11,6 +11,7 @@ import pyobs.utils.exceptions as exc
 from pyobs.images.meta import OnSkyDistance
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.interfaces import (
+    AcquisitionResult,
     AltAzOffsetState,
     AltAzState,
     IAcquisition,
@@ -104,14 +105,14 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
     @raises(exc.AbortedError, exc.AcquisitionError)
     @timeout(120)
-    async def acquire_target(self, **kwargs: Any) -> dict[str, Any]:
+    async def acquire_target(self, **kwargs: Any) -> AcquisitionResult:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
         coordinates.
 
         Returns:
-            A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
+            Result with time, ra, dec, alt, az, and either off_ra/off_dec or off_alt/off_az offsets.
 
         Raises:
             ValueError: If target could not be acquired.
@@ -124,7 +125,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         finally:
             self._is_running = False
 
-    async def _acquire(self, exposure_time: float) -> dict[str, Any]:
+    async def _acquire(self, exposure_time: float) -> AcquisitionResult:
         """Actually acquire target."""
 
         # do camera settings
@@ -208,7 +209,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # could not acquire target
         raise exc.AcquisitionError("Could not acquire target within given tolerance.")
 
-    async def _create_log_and_return(self) -> dict[str, Any]:
+    async def _create_log_and_return(self) -> AcquisitionResult:
         # get current Alt/Az
         async with self.proxy(self._telescope, IPointingAltAz) as telescope:
             altaz: AltAzState | None = telescope.get_state(IPointingAltAz)
@@ -217,27 +218,35 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             radec: RaDecState | None = telescope.get_state(IPointingRaDec)
             cur_ra, cur_dec = (radec.ra, radec.dec) if radec is not None else (0.0, 0.0)
 
-        # prepare log entry
-        log_entry = {"datetime": Time.now().isot, "ra": cur_ra, "dec": cur_dec, "alt": cur_alt, "az": cur_az}
+        result = AcquisitionResult(time=Time.now(), ra=cur_ra, dec=cur_dec, alt=cur_alt, az=cur_az)
 
         # Alt/Az or RA/Dec?
         async with self.safe_proxy(self._telescope, IOffsetsRaDec) as telescope:
             if telescope:
                 s: RaDecOffsetState | None = telescope.get_state(IOffsetsRaDec)
                 if s is not None:
-                    log_entry["off_ra"], log_entry["off_dec"] = s.ra, s.dec
+                    result.off_ra, result.off_dec = s.ra, s.dec
         async with self.safe_proxy(self._telescope, IOffsetsAltAz) as telescope:
             if telescope:
                 s2: AltAzOffsetState | None = telescope.get_state(IOffsetsAltAz)
                 if s2 is not None:
-                    log_entry["off_alt"], log_entry["off_az"] = s2.alt, s2.az
+                    result.off_alt, result.off_az = s2.alt, s2.az
 
         # write log
         if self._publisher is not None:
-            await self._publisher(**log_entry)
+            await self._publisher(
+                datetime=result.time.isot,
+                ra=result.ra,
+                dec=result.dec,
+                alt=result.alt,
+                az=result.az,
+                off_ra=result.off_ra,
+                off_dec=result.off_dec,
+                off_alt=result.off_alt,
+                off_az=result.off_az,
+            )
 
-        # finished
-        return log_entry
+        return result
 
     async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""

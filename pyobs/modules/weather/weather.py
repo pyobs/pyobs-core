@@ -31,14 +31,14 @@ FITS_HEADERS = {
 }
 
 # unit for each sensor's reading in WeatherState.readings -- reuses the canonical Unit enum where one
-# applies; RAIN/PARTICLES/SKYMAG have no canonical wire unit, so they carry a plain descriptive string
+# applies; RAIN is a 0/1 flag stored as float, interpreted as bool; PARTICLES/SKYMAG have no canonical unit
 SENSOR_UNITS = {
     WeatherSensors.TEMPERATURE: Unit.CELSIUS.value,
     WeatherSensors.HUMIDITY: Unit.PERCENT.value,
     WeatherSensors.PRESSURE: Unit.HPA.value,
     WeatherSensors.WINDDIR: Unit.DEGREES.value,
     WeatherSensors.WINDSPEED: Unit.KM_PER_HOUR.value,
-    WeatherSensors.RAIN: "",
+    WeatherSensors.RAIN: "bool",
     WeatherSensors.SKYTEMP: Unit.CELSIUS.value,
     WeatherSensors.DEWPOINT: Unit.CELSIUS.value,
     WeatherSensors.PARTICLES: "1/m3",

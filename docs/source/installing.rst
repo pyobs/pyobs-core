@@ -81,6 +81,16 @@ Change into the new user, and create some directories::
     mkdir -p /opt/pyobs/config
     mkdir -p /opt/pyobs/log
     mkdir -p /opt/pyobs/run
+    mkdir -p /opt/pyobs/storage
 
 Every configuration YAML file in the *config* directory will now automatically show up in the *pyobsd* tool.
 Logs will be written into the *log* directory, and PID files for each process into *run*.
+
+Instead of passing parameters like **--chuid** to :program:`pyobsd` on every call, you can instead put them into
+:file:`/opt/pyobs/storage/pyobs.yaml`, e.g.::
+
+    pyobsd:
+      chuid: pyobs:pyobs
+
+See :ref:`cli-config-file` for the full list of locations that :program:`pyobs` and :program:`pyobsd` check for such
+a config file.

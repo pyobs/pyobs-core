@@ -48,12 +48,13 @@ def xml_to_params(params_elem: ET.Element, names: list[str], types: dict[str, An
         type_hint = types.get(name, Any)
         value_elem = param_elem.find(f"{{{_NS}}}value")
         if value_elem is None:
-            result.append(None)
-            continue
+            raise ValueError(f"Malformed RPC param '{name}': missing <value> element.")
         pyobs_value = value_elem.find(f"{{{_PYOBS_NS}}}value")
         if pyobs_value is None:
-            result.append(None)
-            continue
+            raise ValueError(
+                f"Malformed RPC param '{name}': missing <value> element in namespace '{_PYOBS_NS}' "
+                f"(sender may have serialized it without the required xmlns)."
+            )
         children = list(pyobs_value)
         result.append(xml_to_value(children[0], type_hint) if children else None)
     return result
@@ -213,6 +214,10 @@ class RPC:
             return_type = hints.get("return", type(None))
             response_params = return_to_xml(return_value, return_type)
             self._client.plugin["xep_0009"].make_iq_method_response(iq["id"], iq["from"], response_params).send()
+
+        except exc.ForbiddenError as e:
+            e.log(log, "WARNING", f"Forbidden call to {pmethod}: {e}")
+            self._client.plugin["xep_0009"].forbidden(iq).send()
 
         except Exception as e:
             if isinstance(e, exc.PyObsError):

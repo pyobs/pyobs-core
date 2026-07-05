@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -202,6 +203,68 @@ def test_xmpp_get_client_state_error_module() -> None:
     assert result is not None
     assert result[0] == ModuleState.ERROR
     assert result[1] == "mount stalled"
+
+
+@pytest.mark.asyncio
+async def test_got_online_resolves_future_when_no_interfaces_found() -> None:
+    """_got_online must resolve the pending _interface_cache future even when the
+    peer never shows IModule in its disco#info (e.g. a module still starting up
+    right after reconnect) -- otherwise any later get_interfaces()/proxy() call
+    for that JID awaits a future that is never fulfilled and hangs forever, and
+    the peer can never be recognized again without another presence transition.
+    """
+    from pyobs.comm.xmpp.xmppcomm import XmppComm
+
+    comm = XmppComm.__new__(XmppComm)
+    comm._jid = "gui@localhost/pyobs"
+    comm._interface_cache = {}
+    comm._client_states = {}
+    comm._online_clients = []
+    comm._presence_callbacks = {}
+    comm._event_handlers = {}
+    comm._get_interfaces = AsyncMock(return_value=[])
+
+    msg = {"from": MagicMock(full="camera@localhost/pyobs", username="camera"), "show": "", "status": ""}
+
+    await comm._got_online(msg)
+
+    future = comm._interface_cache["camera@localhost/pyobs"]
+    assert future.done()
+    assert future.result() == []
+
+
+@pytest.mark.asyncio
+async def test_got_online_completes_despite_broken_presence_callback() -> None:
+    """A presence callback bound to an already-destroyed GUI widget (e.g. Qt's
+    "RuntimeError: Signal source has been deleted") must not abort _got_online --
+    otherwise the module's reconnect is silently dropped: online_clients is never
+    updated and ModuleOpenedEvent is never sent, so the module never reappears
+    anywhere in the GUI.
+    """
+    from pyobs.comm.xmpp.xmppcomm import XmppComm
+    from pyobs.events import ModuleOpenedEvent
+
+    received = []
+
+    async def handler(event: object, sender: str) -> bool:
+        received.append(sender)
+        return True
+
+    comm = XmppComm.__new__(XmppComm)
+    comm._jid = "gui@localhost/pyobs"
+    comm._interface_cache = {}
+    comm._client_states = {}
+    comm._online_clients = []
+    comm._presence_callbacks = {"camera": [MagicMock(side_effect=RuntimeError("Signal source has been deleted"))]}
+    comm._event_handlers = {ModuleOpenedEvent: [handler]}
+    comm._get_interfaces = AsyncMock(return_value=["IModule"])
+
+    msg = {"from": MagicMock(full="camera@localhost/pyobs", username="camera"), "show": "", "status": ""}
+    await comm._got_online(msg)
+    await asyncio.sleep(0)  # let the task spawned by _send_event_to_module run
+
+    assert "camera@localhost/pyobs" in comm._online_clients
+    assert received == ["camera"]
 
 
 def test_xmpp_presence_show_mapping() -> None:

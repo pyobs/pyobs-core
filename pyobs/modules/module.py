@@ -11,7 +11,7 @@ import packaging.version
 from py_expression_eval import Parser
 
 from pyobs.events import Event, ModuleOpenedEvent
-from pyobs.interfaces import ConfigCapabilities, IConfig, IModule, Interface, ModuleCapabilities
+from pyobs.interfaces import ConfigCapabilities, ConfigValue, IConfig, IModule, Interface, ModuleCapabilities
 from pyobs.object import Object
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
@@ -99,32 +99,42 @@ class Module(Object, IModule, IConfig):
 
     def __init__(
         self,
-        name: str | None = None,
         label: str | None = None,
         own_comm: bool = True,
         additional_config_variables: list[str] | None = None,
+        acl: dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """
         Args:
-            name: Name of module. If None, ID from comm object is used.
             label: Label for module. If None, name is used.
             own_comm: If True, module owns comm and opens/closes it.
             additional_config_variables: List of additional variable names available to remote config getter/setter.
+            acl: Access control config, with either an "allow" or a "deny" key (mutually exclusive), and an
+                optional "mode" key ("enforce", the default, or "log"). No acl block means fully open access.
         """
         Object.__init__(self, **kwargs)
 
         # get list of client interfaces
         self._interfaces: list[type[Interface]] = []
         self._methods: dict[str, tuple[Callable[..., Any], inspect.Signature, dict[Any, Any]]] = {}
+        self._interface_methods: dict[str, list[str]] = {}
         self._get_interfaces_and_methods()
+
+        # access control -- parsed after interfaces/methods, since "allow" entries may
+        # name an interface as shorthand for all of that interface's methods
+        self._acl_allow: dict[str, list[str] | str] | None = None
+        self._acl_deny: list[str] | None = None
+        self._acl_mode: str = "enforce"
+        self._parse_acl(acl)
 
         # get configuration caps, i.e. all parameters from c'tor
         self._additional_config_variables = additional_config_variables
         self._config_caps = self._get_config_caps()
 
-        # name and label
-        self._device_name = name if name is not None else self.comm.name
+        # name and label -- name always tracks the comm's own identity (e.g. XMPP JID),
+        # since other modules address us by that, not by any locally configured string
+        self._device_name = self.comm.name
         self._label = label if label is not None else self._device_name
 
         # state
@@ -211,6 +221,10 @@ class Module(Object, IModule, IConfig):
         # log it
         log.debug("Other module %s found, running on pyobs %s.", sender, module_version)
 
+        # no version reported, cannot compare
+        if not module_version:
+            return True
+
         # check version, only compare major and minor, ignore patch level
         v1, v2 = packaging.version.parse(version()), packaging.version.parse(module_version)
         msg = (
@@ -235,6 +249,52 @@ class Module(Object, IModule, IConfig):
         """List of methods."""
         return self._methods
 
+    def _parse_acl(self, acl: dict[str, Any] | None) -> None:
+        """Parse the optional "acl" config block into _acl_allow/_acl_deny/_acl_mode.
+
+        Args:
+            acl: Raw "acl" config dict, or None if no ACL block was given (fully open access).
+
+        Raises:
+            ValueError: If both "allow" and "deny" are set, or "mode" is neither "enforce" nor "log".
+        """
+        if acl is None:
+            return
+
+        allow = acl.get("allow")
+        deny = acl.get("deny")
+        mode = acl.get("mode", "enforce")
+
+        if allow is not None and deny is not None:
+            raise ValueError('acl config must set either "allow" or "deny", not both.')
+        if mode not in ("enforce", "log"):
+            raise ValueError(f'Invalid acl mode "{mode}", must be "enforce" or "log".')
+
+        if allow is not None:
+            allow = {sender: self._expand_acl_entries(entries) for sender, entries in allow.items()}
+
+        self._acl_allow = allow
+        self._acl_deny = deny
+        self._acl_mode = mode
+
+    def _expand_acl_entries(self, entries: list[str] | str) -> list[str] | str:
+        """Expand any interface names (e.g. "ICamera") in an "allow" entry list into that
+        interface's own method names, so listing an interface is shorthand for listing all
+        of its methods individually. Unrecognized entries are kept as-is (plain method names).
+
+        Args:
+            entries: Either "*" (kept as-is) or a list of method and/or interface names.
+        """
+        if entries == "*":
+            return entries
+
+        expanded = []
+        for entry in entries:
+            expanded.extend(self._interface_methods.get(entry, [entry]))
+
+        # de-duplicate while preserving order
+        return list(dict.fromkeys(expanded))
+
     def _get_interfaces_and_methods(self) -> None:
         """List interfaces and methods of this module."""
         import pyobs.interfaces
@@ -242,6 +302,7 @@ class Module(Object, IModule, IConfig):
         # get interfaces
         self._interfaces = []
         self._methods = {}
+        self._interface_methods = {}
         for _, interface in inspect.getmembers(pyobs.interfaces, predicate=inspect.isclass):
             # is module a sub-class of that class that inherits from Interface?
             if isinstance(self, interface) and issubclass(interface, pyobs.interfaces.Interface):
@@ -253,6 +314,7 @@ class Module(Object, IModule, IConfig):
                 self._interfaces += [interface]
 
                 # loop methods of that interface
+                method_names = []
                 for method_name, method in inspect.getmembers(interface, predicate=inspect.isfunction):
                     # get method and signature
                     func = getattr(self, method_name)
@@ -261,6 +323,31 @@ class Module(Object, IModule, IConfig):
 
                     # fill dict of name->(method, signature)
                     self._methods[method_name] = (func, signature, type_hints)
+                    method_names.append(method_name)
+
+                # remember method names per interface, for acl "allow" interface-name sugar
+                self._interface_methods[interface.__name__] = method_names
+
+    def _acl_denied(self, sender: str, method: str) -> bool:
+        """Whether the acl policy denies `sender` calling `method`, ignoring `mode` (enforce vs. log).
+
+        Args:
+            sender: Name of the calling module.
+            method: Name of the method being called.
+
+        Returns:
+            True if the configured "allow"/"deny" policy denies this call.
+        """
+        if self._acl_allow is not None:
+            allowed = self._acl_allow.get(sender)
+            if allowed is None:
+                return True
+            if allowed == "*":
+                return False
+            return method not in allowed
+        if self._acl_deny is not None:
+            return sender in self._acl_deny
+        return False
 
     def quit(self) -> None:
         """Quit module."""
@@ -297,6 +384,14 @@ class Module(Object, IModule, IConfig):
 
         # get method and signature (may raise KeyError)
         func, signature, type_hints = self._methods[method]
+
+        # check acl, exempting get_permitted_methods itself so a denied caller can still ask what it's denied from
+        sender = kwargs.get("sender", "")
+        if method != "get_permitted_methods" and self._acl_denied(sender, method):
+            if self._acl_mode == "enforce":
+                raise exc.ForbiddenError(sender, method)
+            else:
+                log.warning('Caller "%s" would be denied calling "%s" (acl mode=log, allowing).', sender, method)
 
         # bind parameters
         ba = signature.bind(*args, **kwargs)
@@ -356,13 +451,17 @@ class Module(Object, IModule, IConfig):
                 if name in ["self", "args", "kwargs"]:
                     continue
 
-                # add it
-                caps[name] = self._add_config_cap(name)
+                # only add if at least one capability flag is set
+                cap = self._add_config_cap(name)
+                if any(cap):
+                    caps[name] = cap
 
             # also add all additional config vars
             if self._additional_config_variables:
                 for name in self._additional_config_variables:
-                    caps[name] = self._add_config_cap(name)
+                    cap = self._add_config_cap(name)
+                    if any(cap):
+                        caps[name] = cap
 
         # finished
         return caps
@@ -391,7 +490,7 @@ class Module(Object, IModule, IConfig):
         """
         return self._config_caps
 
-    async def get_config_value(self, name: str, **kwargs: Any) -> Any:
+    async def get_config_value(self, name: str, **kwargs: Any) -> ConfigValue:
         """Returns current value of config item with given name.
 
         Args:
@@ -405,6 +504,8 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
+        if not name:
+            raise ValueError("No parameter name given.")
         if name not in self._config_caps:
             raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][0]:
@@ -428,6 +529,8 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
+        if not name:
+            raise ValueError("No parameter name given.")
         if name not in self._config_caps:
             raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][2]:
@@ -437,7 +540,7 @@ class Module(Object, IModule, IConfig):
         options = getattr(self, "_get_config_options_" + name)
         return cast(list[str], await options())
 
-    async def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
+    async def set_config_value(self, name: str, value: ConfigValue, **kwargs: Any) -> None:
         """Sets value of config item with given name.
 
         Args:
@@ -449,6 +552,8 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
+        if not name:
+            raise ValueError("No parameter name given.")
         if name not in self._config_caps:
             raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][1]:
@@ -488,6 +593,15 @@ class Module(Object, IModule, IConfig):
         self._state = ModuleState.READY
         self.set_error_string()
         return True
+
+    async def get_permitted_methods(self, **kwargs: Any) -> list[str]:
+        """Returns names of all methods the calling module is allowed to invoke on this module."""
+        # a rule that isn't actually enforced yet (mode=log) shouldn't be reflected here
+        if self._acl_mode == "log":
+            return list(self._methods.keys())
+
+        sender = kwargs.get("sender", "")
+        return [name for name in self._methods if not self._acl_denied(sender, name)]
 
     async def _default_remote_error_callback(self, exception: exc.PyObsError) -> None:
         """Called on severe errors.
@@ -532,7 +646,10 @@ class MultiModule(Module):
             modules: Dictionary with modules.
             shared: Shared objects between modules.
         """
-        Module.__init__(self, name="multi", **kwargs)
+        Module.__init__(self, **kwargs)
+        # MultiModule itself has no real comm identity (its children each have their own),
+        # so give it a fixed, recognizable tag for its own log lines
+        self._device_name = "multi"
 
         # create shared objects
         self._shared: dict[str, Module] = {}

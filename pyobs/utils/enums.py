@@ -151,6 +151,7 @@ class Unit(StrEnum):
         PERCENT: Percentage, 0-100.
         HPA: Pressure, in hectopascals.
         KM_PER_HOUR: Speed, in kilometers per hour.
+        MM: Length, in millimetres.
     """
 
     DEGREES = "deg"
@@ -159,6 +160,7 @@ class Unit(StrEnum):
     PERCENT = "percent"
     HPA = "hpa"
     KM_PER_HOUR = "km/h"
+    MM = "mm"
 
     def to_astropy(self) -> astropy.units.UnitBase:
         """The equivalent astropy.units unit, for code that needs to build a Quantity."""
@@ -172,6 +174,7 @@ _ASTROPY_UNITS: dict["Unit", astropy.units.UnitBase] = {
     Unit.PERCENT: astropy.units.percent,
     Unit.HPA: astropy.units.hPa,
     Unit.KM_PER_HOUR: astropy.units.km / astropy.units.h,
+    Unit.MM: astropy.units.mm,
 }
 
 __all__ = ["ModuleState", "ExposureStatus", "ImageType", "ImageFormat", "MotionStatus", "WeatherSensors", "Unit"]

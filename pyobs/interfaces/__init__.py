@@ -12,14 +12,14 @@ implement :class:`~pyobs.interfaces.ICamera`.
 __title__ = "Interfaces"
 
 from .IAbortable import IAbortable
-from .IAcquisition import IAcquisition
+from .IAcquisition import AcquisitionResult, IAcquisition
 from .IAutoFocus import AutoFocusPoint, AutoFocusResult, AutoFocusState, IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .IAutonomous import IAutonomous
-from .IBinning import BinningCapabilities, BinningState, IBinning
+from .IBinning import Binning, BinningCapabilities, BinningState, IBinning
 from .ICalibrate import ICalibrate
 from .ICamera import ICamera
-from .IConfig import ConfigCapabilities, IConfig
+from .IConfig import ConfigCapabilities, ConfigScalar, ConfigValue, IConfig
 from .ICooling import CoolingState, ICooling
 from .IData import IData
 from .IDome import IDome
@@ -63,6 +63,7 @@ from .IWindow import IWindow, WindowCapabilities, WindowState
 
 __all__ = [
     "IAbortable",
+    "AcquisitionResult",
     "IAcquisition",
     "IAutoFocus",
     "AutoFocusResult",
@@ -70,6 +71,7 @@ __all__ = [
     "AutoFocusState",
     "IAutoGuiding",
     "IAutonomous",
+    "Binning",
     "IBinning",
     "BinningCapabilities",
     "BinningState",
@@ -77,6 +79,8 @@ __all__ = [
     "ICamera",
     "IConfig",
     "ConfigCapabilities",
+    "ConfigScalar",
+    "ConfigValue",
     "ICooling",
     "CoolingState",
     "IDome",

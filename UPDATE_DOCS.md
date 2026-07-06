@@ -120,15 +120,44 @@ blocks with nested `async with`/indentation all render correctly), and no remain
 - [x] `docs/source/config_examples/iag50cm.rst` and `docs/source/api/utils/{archive,skyflats}.rst`
   — see Priority 1 above, folded in since they were mechanically identical fixes.
 
-## Priority 4 — documentation gap, not an error
+## Priority 4 — CHANGELOG.rst gap — ✅ done (backfilled)
 
-- [ ] `docs/source/project/changelog.rst` just does `.. include:: ../../../CHANGELOG.rst`, and
-  `CHANGELOG.rst` itself stopped being updated after **v1.47.0** (2025-06-07) — everything from
-  v1.48 through v1.53.x and the entire `v2.0.0.dev1`–`dev11` series (315 commits) has no
-  changelog entry at all. `whatsnew-2.0.rst` now covers the highlights of the 2.0 portion of that
-  gap, but the changelog itself is still silently frozen. Worth deciding whether to resume
-  updating `CHANGELOG.rst` per-release, backfill it, or intentionally deprecate it in favor of
-  `whatsnew-2.0.rst` + GitHub releases.
+`CHANGELOG.rst` had stopped being updated after **v1.47.0** (2025-06-07) — everything from v1.48
+through v1.53.x and the entire `v2.0.0.dev1`–`dev11` series had no entry. Decision (explicit):
+backfill it now from git history, then resume per-release going forward.
+
+- [x] Backfilled 17 new version sections at the top of `CHANGELOG.rst`, above the existing
+  `v1.47.0` entry: `v1.48.0` through `v1.53.0` (the six 1.x minor releases), then
+  `v2.0.0.dev1` through `v2.0.0.dev10`, then `v2.0.0.dev11 (unreleased)` covering everything up to
+  current `HEAD` (matches the in-progress version already in `pyproject.toml`).
+- [x] **Patch releases excluded from their own headings**, per explicit instruction — `v1.49.1`
+  and `v1.52.1`–`v1.52.18` (19 patch tags) don't get their own sections; their actual commits are
+  still represented, folded into whichever minor-version section they chronologically fall under
+  (e.g. `v1.49.1`'s changes are in the `v1.50.0` entry, since that's the next minor boundary).
+  `v1.53.1`/`v1.53.2` similarly excluded (their commits weren't found on this branch's linear
+  history at all — they look like they were cut from a separate maintenance branch — so there was
+  nothing of theirs to fold in regardless).
+- [x] Dev pre-releases (`v2.0.0.dev1`–`dev11`) got their own sections rather than being
+  consolidated, since they're not "patch" releases by version number and each one is a real,
+  distinct git tag in this project's history — including a few with very little content
+  (`dev4`, `dev5`, `dev7`–`dev9` each cover only 1-3 commits). Flagging this in case a coarser
+  grouping (e.g. one combined "dev" entry) is preferred instead.
+- [x] Content was synthesized from `git log` commit subjects across the full range (~470 commits),
+  cross-checked against actual diffs (`git show --stat`/full diff) for anything ambiguous, and
+  cross-checked against `whatsnew-2.0.rst` for the 2.0 portion for consistency. This is a curated
+  summary matching the existing changelog's own voice/density (e.g. `v1.47.0` has 6 bullets for
+  27 commits) — it is **not** a verbatim commit-by-commit transcription. Pure-internal noise
+  (`fixed tests`, `added tests`, `make mypy happy`, individual `type: ignore` commits, individual
+  Dependabot bumps) was deliberately omitted or rolled up, consistent with how the rest of the
+  file already reads.
+- [x] Verified underline lengths (`*` matching title length exactly, this file's own convention)
+  for all 17 new headings, and confirmed via clean `sphinx-build -E` that `project/changelog.rst`
+  renders the new content with zero new warnings (the only remaining "Title underline too short"
+  warnings are three pre-existing ones in the untouched `v1.10.0`–`v1.12.0` entries, unrelated to
+  this change).
+- [ ] **Not done, needs a human**: going forward, `CHANGELOG.rst` needs to actually get updated
+  again at each real release — nothing enforces that mechanically, same as before. Worth
+  considering some CI/PR-template nudge if the gap recurring is a real concern.
 
 ## Confirmed NOT stale — already updated for 2.0, no action needed
 
@@ -148,10 +177,21 @@ blocks with nested `async with`/indentation all render correctly), and no remain
 - `docs/source/addmod/index.rst`, `docs/source/modules/index.rst`, `docs/source/api/index.rst` —
   pure toctrees/external links, nothing to update.
 
-## Not checked in this pass
+## Autodoc sanity check on the remaining stub pages — ✅ done, nothing broken
 
-- `docs/source/api/image_processors/*.rst`, `docs/source/modules/*.rst`,
-  `docs/source/api/utils/*.rst` other than `archive.rst`/`skyflats.rst` — all pure autodoc stubs.
-  Given that two of this exact category turned out to be broken, these are no longer a safe
-  "assumed fine" — worth at minimum a `sphinx-build -E` diff check, which is cheap, even if a
-  full manual read isn't.
+Given `archive.rst`/`skyflats.rst` turned out broken despite being pure autodoc stubs (see
+Priority 1 above), ran the same class of check over every remaining stub page
+(`api/image_processors/*.rst`, `modules/*.rst`, `api/utils/*.rst` other than
+`archive.rst`/`skyflats.rst`, which were already fixed):
+
+- Extracted all 151 `automodule`/`autoclass`/`autofunction`/`autodata` dotted paths across those
+  files and imported each one in Python — all resolve.
+- Extracted all `:class:`/`:meth:`/`:func:`/`:mod:`/`:attr:`/`:exc:` cross-reference roles used in
+  any hand-written prose in those files (7 unique targets) — all resolve.
+- Grepped all of them for plain-text mentions of every symbol confirmed renamed/removed elsewhere
+  in this sweep (`pyobs.utils.{simulation,skyflats,archive}`, `pyobs.robotic.{lco,filesystem,
+  backend,taskarchive,observationarchive}` without `.storage.`, `ILatLon`, `SubClassBaseModel`,
+  `MeritScheduler`, `await self.proxy(`, `cache_proxies`, `DbusComm`, `get_radec()`, `get_altaz()`,
+  `get_cooling()`, `get_motion_status()`) — zero hits.
+
+No changes needed to any of these files.

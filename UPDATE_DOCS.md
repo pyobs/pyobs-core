@@ -33,8 +33,9 @@ Everything below was confirmed broken via `sphinx-build` (`ModuleNotFoundError`/
   file (`pyobs.robotic.lco.scripts.*` → `pyobs.robotic.storage.lco.scripts.*`). One dangling
   `:class:` ref to `LcoDefaultScript` (never had an `autoclass` entry anywhere, even before these
   fixes) was downgraded to plain code text rather than a broken cross-reference.
-  **Not done**: adding the 4 new undocumented classes (`ImagingScript`, `TransitImagingScript`,
-  `PointingScript`, `DebugTriggerScript`) — that's new content, not a broken-reference fix.
+  The 4 undocumented classes found alongside this (`ImagingScript`, `TransitImagingScript`,
+  `PointingScript`, `DebugTriggerScript`) were new content rather than a broken-reference fix, so
+  left out of this pass — see "Follow-up content gaps" below, now done.
 - [x] `docs/source/api/comm.rst` — removed the fictional `pyobs.comm.dbus.DbusComm` (never
   existed). Added missing `autoclass` entries for `LocalComm`/`DummyComm`, which were referenced
   in the backend table via `:class:` but had no matching `autoclass` anywhere, so the
@@ -66,10 +67,9 @@ Both are real, *intentional*, already-committed code removals (confirmed via
 - [x] **`docs/source/api/robotic/scripts.rst`** — deleted the "TargetPicker" section
   (`pyobs.robotic.utils.TargetPicker`, removed in `b76e9ef2`). Superseded by `DynamicTarget`
   (`pyobs.robotic.scheduler.targets.dynamictarget.DynamicTarget`) + the `Picker`/`CsvPicker`
-  classes (`pyobs.robotic.scheduler.targets.picker`), added in v1.46. **Note**: none of
-  `DynamicTarget`/`Picker`/`CsvPicker` are documented anywhere currently — not added here since
-  it's new content rather than a fix, but flagging as a gap for whenever the scheduling docs get
-  their next pass.
+  classes (`pyobs.robotic.scheduler.targets.picker`), added in v1.46. At the time, none of
+  `DynamicTarget`/`Picker`/`CsvPicker` were documented anywhere — new content rather than a fix,
+  so left out of this pass; see "Follow-up content gaps" below, now done.
 - [x] **Found while cleaning up the above**: `docs/source/api/utils/simulation.rst` was a whole
   dedicated autodoc page for the same deleted `pyobs.utils.simulation` module — deleted the page
   and its `api/utils/index.rst` toctree entry. Also removed one dangling

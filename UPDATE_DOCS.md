@@ -155,9 +155,15 @@ backfill it now from git history, then resume per-release going forward.
   renders the new content with zero new warnings (the only remaining "Title underline too short"
   warnings are three pre-existing ones in the untouched `v1.10.0`–`v1.12.0` entries, unrelated to
   this change).
-- [ ] **Not done, needs a human**: going forward, `CHANGELOG.rst` needs to actually get updated
-  again at each real release — nothing enforces that mechanically, same as before. Worth
-  considering some CI/PR-template nudge if the gap recurring is a real concern.
+- [x] **Enforcement added**: `scripts/check_changelog.sh`, wired into `.github/workflows/pypi.yml`
+  as a step before build/publish. Fails a tagged release if it's a minor/major bump or a
+  `.devN` pre-release and `CHANGELOG.rst` has no matching heading; patch releases (`X.Y` unchanged,
+  no `.dev` involved) are exempt. Resolves "the previous release" via the tag's own commit
+  ancestry (`git describe --tags --abbrev=0 TAG^`) rather than a global version sort, since this
+  project has cut a patch release from an older maintenance branch after newer tags already
+  existed elsewhere (`v1.53.1`/`v1.53.2` postdate several `v2.0.0.dev*` tags) — a naive
+  highest-tag-wins comparison would misidentify the predecessor in that case. Verified against
+  real tag history and a synthetic repo modeling that exact parallel-branch scenario.
 
 ## Confirmed NOT stale — already updated for 2.0, no action needed
 
@@ -195,3 +201,26 @@ Priority 1 above), ran the same class of check over every remaining stub page
   `get_cooling()`, `get_motion_status()`) — zero hits.
 
 No changes needed to any of these files.
+
+## Follow-up content gaps — ✅ done
+
+Two gaps flagged earlier as "new content, not a fix" and deliberately left out of the Priority 1
+pass — closed now on request:
+
+- [x] **`docs/source/api/robotic/scheduling.rst`** — documented `DynamicTarget` and the
+  `Picker`/`CsvPicker` classes (`pyobs.robotic.scheduler.targets.{dynamictarget,picker}`) in the
+  "Targets" section, with a YAML example, replacing the coverage lost when `TargetPicker` was
+  deleted. Also added `HelioprojectiveRadialTarget`, found undocumented in the same package
+  (`pyobs/robotic/scheduler/targets/__init__.py`) while doing this — not originally asked for, but
+  directly adjacent and trivial to include.
+- [x] **`docs/source/api/robotic/scripts.rst`** — documented the 4 previously-undocumented script
+  classes: `ImagingScript` and `TransitImagingScript` (added to "Observing", `ImagingScript` is
+  the actual default script for science exposures), `PointingScript` (added to "Observing", next
+  to `SkyFlatsScript` since it points the telescope for flat-fielding), and `DebugTriggerScript`
+  (added to "Control flow", next to `LogScript` — it's a minimal test/debug helper, not a real
+  observing script).
+
+All dotted paths verified importable, and confirmed via clean `sphinx-build -E` that both pages
+render the new content with zero new warnings (a handful of pre-existing, unrelated warnings in
+these same files — duplicate autosectionlabels, a couple of dangling `:meth:`/`:exc:` refs in
+untouched prose — were already there before this change).

@@ -82,6 +82,42 @@ on the fly::
    :members:
    :show-inheritance:
 
+.. autoclass:: pyobs.robotic.scheduler.targets.HelioprojectiveRadialTarget
+   :members:
+   :show-inheritance:
+
+For runtime target selection instead of a fixed coordinate, use
+:class:`~pyobs.robotic.scheduler.targets.DynamicTarget` together with a
+:class:`~pyobs.robotic.scheduler.targets.picker.Picker`. ``resolve()`` is called once per
+scheduling attempt and delegates to the configured picker to choose a concrete target;
+``coordinates()`` then delegates to whatever was picked::
+
+    target:
+      class: pyobs.robotic.scheduler.targets.DynamicTarget
+      picker:
+        class: pyobs.robotic.scheduler.targets.picker.CsvPicker
+        csv: /robotic/stars/hipparcos_8mag.csv
+        name_col: HIP
+        ra_col: RAICRS
+        dec_col: DEICRS
+
+:class:`~pyobs.robotic.scheduler.targets.picker.CsvPicker` picks a random target from a CSV
+catalogue that survives the task's own target-dependent constraints (e.g. an altitude
+constraint, evaluated at the time being scheduled) — useful for filler targets drawn from a
+large catalogue rather than one fixed coordinate per task.
+
+.. autoclass:: pyobs.robotic.scheduler.targets.DynamicTarget
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scheduler.targets.picker.Picker
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scheduler.targets.picker.CsvPicker
+   :members:
+   :show-inheritance:
+
 
 Constraints
 ^^^^^^^^^^^^

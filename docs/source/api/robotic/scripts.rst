@@ -122,6 +122,23 @@ Built-in scripts
 Observing
 """""""""
 
+.. autoclass:: pyobs.robotic.scripts.imaging.imaging.ImagingScript
+   :members:
+   :show-inheritance:
+
+*The default script for science exposures: moves to the target, optionally acquires and
+guides on it, then works through one or more* ``instrument_configs`` *(binning, window,
+exposure time, filter, image type), each repeated* ``count`` *times, for* ``repeats`` *full
+passes.*
+
+.. autoclass:: pyobs.robotic.scripts.imaging.transitimaging.TransitImagingScript
+   :members:
+   :show-inheritance:
+
+*An* :class:`~pyobs.robotic.scripts.imaging.imaging.ImagingScript` *subclass that repeats its
+instrument configurations for as long as a transit window is open, instead of a fixed number
+of times. Requires a* :class:`~pyobs.robotic.scheduler.merits.TransitMerit` *on the task.*
+
 .. autoclass:: pyobs.robotic.scripts.imaging.autofocus.AutoFocusScript
    :members:
    :show-inheritance:
@@ -133,6 +150,14 @@ Observing
 .. autoclass:: pyobs.robotic.scripts.calibration.skyflats.SkyFlatsScript
    :members:
    :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scripts.calibration.pointing.PointingScript
+   :members:
+   :show-inheritance:
+
+*Points the telescope at the sky position configured for flat-fielding (via a*
+:class:`~pyobs.robotic.utils.skyflats.pointing.SkyFlatsBasePointing`\\ *), without taking any
+exposures itself — typically run just before a* :class:`~pyobs.robotic.scripts.calibration.skyflats.SkyFlatsScript`.
 
 
 Control flow
@@ -187,6 +212,14 @@ full script class.*
    :show-inheritance:
 
 *Evaluate a Python expression and log the result. Useful for debugging.*
+
+.. autoclass:: pyobs.robotic.scripts.utils.debugtrigger.DebugTriggerScript
+   :members:
+   :show-inheritance:
+
+*Sets its own* ``triggered`` *flag to* ``True`` *when run and does nothing else. Useful as a
+minimal, dependency-free script for testing scheduling and task-runner behavior without any
+real hardware.*
 
 
 Sky flat utilities

@@ -97,8 +97,8 @@ subclasses, even though they are pydantic models::
 
     class ObserveScript(Script):
         async def run(self, data):
-            camera = await self.comm.proxy("camera", ICamera)  # same as in any Module
-            image = await self.vfs.read_image("/cache/last.fits")
+            async with self.comm.proxy("camera", ICamera) as camera:  # same as in any Module
+                image = await self.vfs.read_image("/cache/last.fits")
 
 See :doc:`/api/object` for the full list of properties.
 

@@ -99,11 +99,11 @@ This means a typical deployment YAML for the scheduler module looks like::
       twilight: astronomical
 
     tasks:
-      class: pyobs.robotic.filesystem.YamlTaskArchive   # ← robotic layer
+      class: pyobs.robotic.storage.filesystem.YamlTaskArchive   # ← robotic layer
       path: /robotic/tasks/
 
     schedule:
-      class: pyobs.robotic.filesystem.YamlObservationArchive  # ← robotic layer
+      class: pyobs.robotic.storage.filesystem.YamlObservationArchive  # ← robotic layer
       path: /opt/pyobs/robotic/observations/
 
 
@@ -179,13 +179,13 @@ three concrete implementations:
 
    * - Implementation
      - Use case
-   * - ``pyobs.robotic.filesystem``
+   * - ``pyobs.robotic.storage.filesystem``
      - Tasks and observations stored as YAML files on disk. The simplest setup — no external
        services required. Good for single-telescope systems.
-   * - ``pyobs.robotic.backend``
+   * - ``pyobs.robotic.storage.backend``
      - Tasks and observations managed by the *pyobs-robotic-backend* HTTP service. Enables
        multi-telescope coordination and a web UI for queue management.
-   * - ``pyobs.robotic.lco``
+   * - ``pyobs.robotic.storage.lco``
      - Integration with the Las Cumbres Observatory observation portal. Used for LCO-connected
        telescopes.
 

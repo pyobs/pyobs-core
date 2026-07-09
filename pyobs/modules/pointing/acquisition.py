@@ -11,7 +11,9 @@ import pyobs.utils.exceptions as exc
 from pyobs.images.meta import OnSkyDistance
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.interfaces import (
+    AcquisitionAttempt,
     AcquisitionResult,
+    AcquisitionState,
     AltAzOffsetState,
     AltAzState,
     IAcquisition,
@@ -19,9 +21,12 @@ from pyobs.interfaces import (
     IOffsetsRaDec,
     IPointingAltAz,
     IPointingRaDec,
+    IRunning,
+    OffsetFrame,
     RaDecOffsetState,
     RaDecState,
 )
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import Module, raises, timeout
 from pyobs.utils.enums import ImageType
@@ -82,6 +87,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         self._abort_event = asyncio.Event()
         self._oneshot = oneshot
         self._broadcast = broadcast
+        self._attempts_log: list[AcquisitionAttempt] = []
 
         # init log file
         self._publisher = CsvPublisher(log_file) if log_file is not None else None
@@ -99,6 +105,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         if not await self.has_proxy(self._camera, ICamera):
             log.warning("Camera does not exist or is not of correct type at the moment.")
 
+        # publish initial states
+        await self.comm.set_state(IAcquisition, AcquisitionState())
+        await self.comm.set_state(IRunning, RunningState(running=False))
+
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._is_running
@@ -112,7 +122,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         coordinates.
 
         Returns:
-            Result with time, ra, dec, alt, az, and either off_ra/off_dec or off_alt/off_az offsets.
+            Result with time, ra, dec, alt, az, and an offset in whichever frame the mount supports.
 
         Raises:
             ValueError: If target could not be acquired.
@@ -121,9 +131,12 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         try:
             self._is_running = True
             self._abort_event = asyncio.Event()
+            self._attempts_log = []
+            await self.comm.set_state(IRunning, RunningState(running=True))
             return await self._acquire(self._default_exposure_time)
         finally:
             self._is_running = False
+            await self.comm.set_state(IRunning, RunningState(running=False))
 
     async def _acquire(self, exposure_time: float) -> AcquisitionResult:
         """Actually acquire target."""
@@ -179,6 +192,13 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 continue
             log.info("Found a distance to target of %.2f arcsec.", osd.distance.arcsec)
 
+            # publish attempt telemetry (offset only gets applied if within max_offset but outside tolerance)
+            offset_applied = self._tolerance <= osd.distance <= self._max_offset
+            self._attempts_log.append(
+                AcquisitionAttempt(attempt=a + 1, distance=float(osd.distance.arcsec), offset_applied=offset_applied)
+            )
+            await self.comm.set_state(IAcquisition, AcquisitionState(attempts=self._attempts_log))
+
             # get distance
             if osd.distance < self._tolerance:
                 # we're finished!
@@ -192,8 +212,14 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
             # apply offsets
             async with self.proxy(self._telescope, ITelescope) as telescope:
-                if await self._apply(image, telescope, self._location):
+                result = await self._apply(image, telescope, self._location)
+                if result.applied:
                     log.info("Finished image.")
+                    frame, lon, lat = await self._get_offsets()
+                    self._attempts_log[-1].offset_frame = frame
+                    self._attempts_log[-1].offset_lon = lon
+                    self._attempts_log[-1].offset_lat = lat
+                    await self.comm.set_state(IAcquisition, AcquisitionState(attempts=self._attempts_log))
                 else:
                     log.warning("Could not apply offsets.")
 
@@ -209,6 +235,25 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # could not acquire target
         raise exc.AcquisitionError("Could not acquire target within given tolerance.")
 
+    async def _get_offsets(self) -> tuple[OffsetFrame | None, float | None, float | None]:
+        """Fetch the telescope's current RA/Dec or Alt/Az offset, whichever it supports.
+
+        Returns:
+            Tuple of (frame, lon, lat), or (None, None, None) if neither is supported.
+        """
+        async with self.safe_proxy(self._telescope, IOffsetsRaDec) as telescope:
+            if telescope:
+                s: RaDecOffsetState | None = telescope.get_state(IOffsetsRaDec)
+                if s is not None:
+                    return OffsetFrame.RA_DEC, s.ra, s.dec
+        async with self.safe_proxy(self._telescope, IOffsetsAltAz) as telescope:
+            if telescope:
+                s2: AltAzOffsetState | None = telescope.get_state(IOffsetsAltAz)
+                if s2 is not None:
+                    return OffsetFrame.ALT_AZ, s2.alt, s2.az
+
+        return None, None, None
+
     async def _create_log_and_return(self) -> AcquisitionResult:
         # get current Alt/Az
         async with self.proxy(self._telescope, IPointingAltAz) as telescope:
@@ -221,16 +266,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         result = AcquisitionResult(time=Time.now(), ra=cur_ra, dec=cur_dec, alt=cur_alt, az=cur_az)
 
         # Alt/Az or RA/Dec?
-        async with self.safe_proxy(self._telescope, IOffsetsRaDec) as telescope:
-            if telescope:
-                s: RaDecOffsetState | None = telescope.get_state(IOffsetsRaDec)
-                if s is not None:
-                    result.off_ra, result.off_dec = s.ra, s.dec
-        async with self.safe_proxy(self._telescope, IOffsetsAltAz) as telescope:
-            if telescope:
-                s2: AltAzOffsetState | None = telescope.get_state(IOffsetsAltAz)
-                if s2 is not None:
-                    result.off_alt, result.off_az = s2.alt, s2.az
+        result.offset_frame, result.offset_lon, result.offset_lat = await self._get_offsets()
 
         # write log
         if self._publisher is not None:
@@ -240,11 +276,13 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 dec=result.dec,
                 alt=result.alt,
                 az=result.az,
-                off_ra=result.off_ra,
-                off_dec=result.off_dec,
-                off_alt=result.off_alt,
-                off_az=result.off_az,
+                offset_frame=result.offset_frame,
+                offset_lon=result.offset_lon,
+                offset_lat=result.offset_lat,
             )
+
+        # publish final state, with result set
+        await self.comm.set_state(IAcquisition, AcquisitionState(attempts=self._attempts_log, result=result))
 
         return result
 

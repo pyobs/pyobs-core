@@ -185,7 +185,7 @@ class LcoScheduleReader(Object):
         # create tasks
         scheduled_tasks = ObservationList()
         for obs in schedules:
-            task = LcoTask.from_observation(obs, {})
+            task = LcoTask.from_observation(self, obs, {})
             scheduled_task = Observation(task=task, start=obs.start, end=obs.end)
             scheduled_tasks.append(scheduled_task)
 

@@ -102,7 +102,7 @@ async def test_proxy_method_calls_execute() -> None:
 @pytest.mark.asyncio
 async def test_proxy_method_with_kwargs() -> None:
     proxy, comm = make_proxy([IMode], return_value=None)
-    await proxy.set_mode("imaging", group=0)
+    await proxy.set_mode("imaging", group="Instrument")
     comm.execute.assert_called_once()
     assert comm.execute.call_args[0][1] == "set_mode"
 

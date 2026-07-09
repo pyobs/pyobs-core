@@ -97,8 +97,8 @@ configuration like this::
 
 Once configured, other modules on the network can be reached via a proxy::
 
-    telescope = await self.proxy("telescope", ITelescope)
-    await telescope.move_radec(ra=83.8, dec=-5.4)
+    async with self.proxy("telescope", ITelescope) as telescope:
+        await telescope.move_radec(ra=83.8, dec=-5.4)
 
 More details about this can be found in the :doc:`api/comm` section.
 

@@ -48,23 +48,21 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
         await self.comm.set_capabilities(IMode, ModeCapabilities(modes=self._mode_options))
         await self.comm.set_state(IMode, ModeState(modes=dict(self._modes)))
 
-    def _group_name(self, group: int) -> str:
-        try:
-            return list(self._mode_options.keys())[group]
-        except IndexError:
-            return ""
-
-    async def set_mode(self, mode: str, group: int = 0, **kwargs: Any) -> None:
+    async def set_mode(self, mode: str, group: str = "", **kwargs: Any) -> None:
         """Set the current mode.
 
         Args:
             mode: Name of mode to set.
-            group: Group number
+            group: Name of the group to set the mode for.
 
         Raises:
-            ValueError: If an invalid mode was given.
+            ValueError: If an invalid mode or group was given.
             MoveError: If mode selector cannot be moved.
         """
+        if not group:
+            group = next(iter(self._mode_options.keys()))
+        if group not in self._mode_options:
+            raise ValueError(f"Invalid group: {group}")
         await self._change_motion_status(MotionStatus.SLEWING)
         try:
             await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=3.0)
@@ -72,9 +70,9 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
             return
         except TimeoutError:
             pass  # normal case: 3 seconds elapsed
-        self._modes[self._group_name(group)] = mode
+        self._modes[group] = mode
         await self._change_motion_status(MotionStatus.POSITIONED)
-        await self.comm.send_event(ModeChangedEvent(list(self._mode_options.keys())[group], mode))
+        await self.comm.send_event(ModeChangedEvent(group, mode))
         await self.comm.set_state(IMode, ModeState(modes=dict(self._modes)))
 
     async def init(self, **kwargs: Any) -> None:

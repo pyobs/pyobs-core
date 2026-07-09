@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from dataclasses import dataclass
+from typing import Annotated, Any
 
 import numpy as np
 from astropy.coordinates import EarthLocation, SkyCoord
@@ -11,10 +12,20 @@ from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
 from pyobs.interfaces import IPointingAltAz, IPointingRaDec, ITelescope
 from pyobs.object import Object
+from pyobs.utils.enums import OffsetFrame, Unit
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
+
+
+@dataclass
+class OffsetResult:
+    applied: bool
+    frame: OffsetFrame | None = None
+    # the offset actually applied this call, in the mount's native frame
+    lon: Annotated[float, Unit.DEGREES] | None = None
+    lat: Annotated[float, Unit.DEGREES] | None = None
 
 
 class ApplyOffsets(Object):
@@ -29,7 +40,7 @@ class ApplyOffsets(Object):
         self._publisher = None if log_file is None else CsvPublisher(log_file)
         self._log_absolute = log_absolute
 
-    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation | None) -> bool:
+    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation | None) -> OffsetResult:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -38,9 +49,9 @@ class ApplyOffsets(Object):
             location: Observer location on Earth.
 
         Returns:
-            Whether offsets have been applied successfully.
+            Result indicating whether offsets were applied, and if so, in which frame and by how much.
         """
-        return False
+        return OffsetResult(applied=False)
 
     def _get_radec_center_target(self, image: Image, location: EarthLocation | None) -> tuple[SkyCoord, SkyCoord]:
         """Return RA/Dec of central pixel and of central pixel plus offsets.

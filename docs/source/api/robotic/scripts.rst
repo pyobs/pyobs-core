@@ -122,17 +122,42 @@ Built-in scripts
 Observing
 """""""""
 
-.. autoclass:: pyobs.robotic.scripts.AutoFocus
+.. autoclass:: pyobs.robotic.scripts.imaging.imaging.ImagingScript
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.scripts.DarkBias
+*The default script for science exposures: moves to the target, optionally acquires and
+guides on it, then works through one or more* ``instrument_configs`` *(binning, window,
+exposure time, filter, image type), each repeated* ``count`` *times, for* ``repeats`` *full
+passes.*
+
+.. autoclass:: pyobs.robotic.scripts.imaging.transitimaging.TransitImagingScript
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.scripts.SkyFlats
+*An* :class:`~pyobs.robotic.scripts.imaging.imaging.ImagingScript` *subclass that repeats its
+instrument configurations for as long as a transit window is open, instead of a fixed number
+of times. Requires a* :class:`~pyobs.robotic.scheduler.merits.TransitMerit` *on the task.*
+
+.. autoclass:: pyobs.robotic.scripts.imaging.autofocus.AutoFocusScript
    :members:
    :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scripts.calibration.darkbias.DarkBiasScript
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scripts.calibration.skyflats.SkyFlatsScript
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scripts.calibration.pointing.PointingScript
+   :members:
+   :show-inheritance:
+
+*Points the telescope at the sky position configured for flat-fielding (via a*
+:class:`~pyobs.robotic.utils.skyflats.pointing.SkyFlatsBasePointing`\\ *), without taking any
+exposures itself — typically run just before a* :class:`~pyobs.robotic.scripts.calibration.skyflats.SkyFlatsScript`.
 
 
 Control flow
@@ -141,79 +166,66 @@ Control flow
 These scripts do not perform observations themselves — they compose other scripts into more complex
 execution patterns. They can be nested arbitrarily.
 
-.. autoclass:: pyobs.robotic.scripts.SequentialRunner
+.. autoclass:: pyobs.robotic.scripts.control.sequential.SequentialRunner
    :members:
    :show-inheritance:
 
 *Run a list of scripts one after the other. By default, checks that all scripts can run before
 starting. Set ``check_all_can_run: false`` to only check the first.*
 
-.. autoclass:: pyobs.robotic.scripts.ParallelRunner
+.. autoclass:: pyobs.robotic.scripts.control.parallel.ParallelRunner
    :members:
    :show-inheritance:
 
 *Run a list of scripts concurrently using* ``asyncio.gather``. *Useful for simultaneously
 operating two independent hardware systems.*
 
-.. autoclass:: pyobs.robotic.scripts.ConditionalRunner
+.. autoclass:: pyobs.robotic.scripts.control.conditional.ConditionalRunner
    :members:
    :show-inheritance:
 
 *Evaluate a Python expression and run either a ``true`` or ``false`` sub-script. The expression
 context provides ``now`` as a UTC* ``datetime``.
 
-.. autoclass:: pyobs.robotic.scripts.CasesRunner
+.. autoclass:: pyobs.robotic.scripts.control.cases.CasesRunner
    :members:
    :show-inheritance:
 
 *Evaluate an expression and select a sub-script from a dict of cases. Supports an ``else`` key
 for a default.*
 
-.. autoclass:: pyobs.robotic.scripts.SelectorScript
+.. autoclass:: pyobs.robotic.scripts.control.selector.SelectorScript
    :members:
    :show-inheritance:
 
 *Switch a module implementing* :class:`~pyobs.interfaces.IMode` *to a specified mode.*
 
-.. autoclass:: pyobs.robotic.scripts.CallModule
+.. autoclass:: pyobs.robotic.scripts.utils.callmodule.CallModuleScript
    :members:
    :show-inheritance:
 
 *Call an arbitrary method on any module by name. Useful for one-off actions without writing a
 full script class.*
 
-.. autoclass:: pyobs.robotic.scripts.LogRunner
+.. autoclass:: pyobs.robotic.scripts.utils.log.LogScript
    :members:
    :show-inheritance:
 
 *Evaluate a Python expression and log the result. Useful for debugging.*
 
-
-TargetPicker
-"""""""""""""
-
-:class:`~pyobs.robotic.utils.TargetPicker` is a helper used by some scripts (e.g.
-:class:`~pyobs.robotic.scripts.AutoFocus`) to select a suitable target from a CSV catalogue at
-runtime. It filters the catalogue by current altitude and picks a target in the observable window::
-
-    target:
-      class: pyobs.robotic.utils.TargetPicker
-      csv: /robotic/stars/hipparcos_8mag.csv
-      name_col: HIP
-      ra_col: RAICRS
-      dec_col: DEICRS
-      min_alt: 30
-      max_alt: 75
-
-.. autoclass:: pyobs.robotic.utils.TargetPicker
+.. autoclass:: pyobs.robotic.scripts.utils.debugtrigger.DebugTriggerScript
    :members:
    :show-inheritance:
+
+*Sets its own* ``triggered`` *flag to* ``True`` *when run and does nothing else. Useful as a
+minimal, dependency-free script for testing scheduling and task-runner behavior without any
+real hardware.*
 
 
 Sky flat utilities
 ^^^^^^^^^^^^^^^^^^
 
-These classes support the :class:`~pyobs.robotic.scripts.SkyFlats` script and are configured as
+These classes support the :class:`~pyobs.robotic.scripts.calibration.skyflats.SkyFlatsScript` script and are configured as
 nested objects within it.
 
 .. autoclass:: pyobs.robotic.utils.skyflats.FlatFielder

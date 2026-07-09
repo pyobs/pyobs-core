@@ -1,50 +1,50 @@
-Sky flats (pyobs.utils.skyflats)
---------------------------------
+Sky flats (pyobs.robotic.utils.skyflats)
+----------------------------------------
 
-.. automodule:: pyobs.utils.skyflats
+.. automodule:: pyobs.robotic.utils.skyflats
 
 FlatFielder
 ^^^^^^^^^^^
 
-.. autoclass:: pyobs.utils.skyflats.FlatFielder
+.. autoclass:: pyobs.robotic.utils.skyflats.FlatFielder
 
 Scheduler
 ^^^^^^^^^
 
-.. autoclass:: pyobs.utils.skyflats.Scheduler
+.. autoclass:: pyobs.robotic.utils.skyflats.Scheduler
 
-Sky flat pointings (pyobs.utils.skyflats.pointing)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Sky flat pointings (pyobs.robotic.utils.skyflats.pointing)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: pyobs.utils.skyflats.pointing
+.. automodule:: pyobs.robotic.utils.skyflats.pointing
 
 SkyFlatsBasePointing
 """"""""""""""""""""
 
-.. autoclass:: pyobs.utils.skyflats.pointing.SkyFlatsBasePointing
+.. autoclass:: pyobs.robotic.utils.skyflats.pointing.SkyFlatsBasePointing
 
 SkyFlatsStaticPointing
 """"""""""""""""""""""
 
-.. autoclass:: pyobs.utils.skyflats.pointing.SkyFlatsStaticPointing
+.. autoclass:: pyobs.robotic.utils.skyflats.pointing.SkyFlatsStaticPointing
 
-Sky flat priorities (pyobs.utils.skyflats.priorities)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Sky flat priorities (pyobs.robotic.utils.skyflats.priorities)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: pyobs.utils.skyflats.priorities
+.. automodule:: pyobs.robotic.utils.skyflats.priorities
 
 ArchiveSkyflatPriorities
 """"""""""""""""""""""""
 
-.. autoclass:: pyobs.utils.skyflats.priorities.ArchiveSkyflatPriorities
+.. autoclass:: pyobs.robotic.utils.skyflats.priorities.ArchiveSkyflatPriorities
 
 ConstSkyflatPriorities
 """"""""""""""""""""""
 
-.. autoclass:: pyobs.utils.skyflats.priorities.ConstSkyflatPriorities
+.. autoclass:: pyobs.robotic.utils.skyflats.priorities.ConstSkyflatPriorities
 
 SkyflatPriorities
 """""""""""""""""
 
-.. autoclass:: pyobs.utils.skyflats.priorities.SkyflatPriorities
+.. autoclass:: pyobs.robotic.utils.skyflats.priorities.SkyflatPriorities
 

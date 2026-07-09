@@ -21,7 +21,7 @@ from .helpers import make_observation_archive, make_task_archive
 
 def make_lco_task() -> LcoTask:
     sr = LcoSchedulableRequest.model_validate(SCHEDULABLE_REQUESTS_RESPONSE[0])
-    return LcoTask.from_schedulable_request(sr, {})[0]
+    return LcoTask.from_schedulable_request(make_task_archive(), sr, {})[0]
 
 
 # ── LcoTaskArchive ────────────────────────────────────────────────────────────

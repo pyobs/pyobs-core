@@ -1,16 +1,19 @@
+from __future__ import annotations
+
 import asyncio
 import io
 import logging
 from enum import Enum
 from inspect import Parameter
 from pprint import pprint
-from typing import Any
-
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CallbackContext, CallbackQueryHandler
+from typing import TYPE_CHECKING, Any
 
 from pyobs.events import Event, LogEvent
 from pyobs.modules import Module
+
+if TYPE_CHECKING:
+    from telegram import Update
+    from telegram.ext import Application, CallbackContext
 
 log = logging.getLogger(__name__)
 
@@ -69,7 +72,7 @@ class Telegram(Module):
 
     async def open(self) -> None:
         """Open module."""
-        from telegram.ext import CommandHandler, MessageHandler, filters
+        from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
         await Module.open(self)
         self._loop = asyncio.get_running_loop()
@@ -208,6 +211,8 @@ class Telegram(Module):
             await context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
             return
 
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
         # create buttons for all modules
         keyboard = [[InlineKeyboardButton(c, callback_data=c)] for c in self.comm.clients] + [
             [InlineKeyboardButton("Cancel", callback_data="cancel")]
@@ -238,6 +243,8 @@ class Telegram(Module):
 
         if context.user_data is None:
             raise ValueError("No user data in context.")
+
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
         # get query
         query = update.callback_query
@@ -511,6 +518,8 @@ class Telegram(Module):
         # get current level
         s = context.bot_data["storage"]
         current_level = s["users"][update.message.from_user.id]["loglevel"]
+
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
         # create buttons for all log levels
         keyboard = [[InlineKeyboardButton(level, callback_data=level)] for level in self._log_levels.keys()] + [

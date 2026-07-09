@@ -29,8 +29,7 @@ In simulation or testing scenarios, :meth:`~pyobs.utils.time.Time.set_offset_to_
     # make Time.now() return a time 2 hours in the past
     Time.set_offset_to_now(TimeDelta(-2 * u.hour))
 
-This is used by :class:`~pyobs.utils.simulation.SimWorld` to run the simulator at an arbitrary point
-in time.
+This is useful in simulation or testing scenarios that need to run at an arbitrary point in time.
 
 
 API reference

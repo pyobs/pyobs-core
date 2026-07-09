@@ -82,6 +82,42 @@ on the fly::
    :members:
    :show-inheritance:
 
+.. autoclass:: pyobs.robotic.scheduler.targets.HelioprojectiveRadialTarget
+   :members:
+   :show-inheritance:
+
+For runtime target selection instead of a fixed coordinate, use
+:class:`~pyobs.robotic.scheduler.targets.DynamicTarget` together with a
+:class:`~pyobs.robotic.scheduler.targets.picker.Picker`. ``resolve()`` is called once per
+scheduling attempt and delegates to the configured picker to choose a concrete target;
+``coordinates()`` then delegates to whatever was picked::
+
+    target:
+      class: pyobs.robotic.scheduler.targets.DynamicTarget
+      picker:
+        class: pyobs.robotic.scheduler.targets.picker.CsvPicker
+        csv: /robotic/stars/hipparcos_8mag.csv
+        name_col: HIP
+        ra_col: RAICRS
+        dec_col: DEICRS
+
+:class:`~pyobs.robotic.scheduler.targets.picker.CsvPicker` picks a random target from a CSV
+catalogue that survives the task's own target-dependent constraints (e.g. an altitude
+constraint, evaluated at the time being scheduled) — useful for filler targets drawn from a
+large catalogue rather than one fixed coordinate per task.
+
+.. autoclass:: pyobs.robotic.scheduler.targets.DynamicTarget
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scheduler.targets.picker.Picker
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scheduler.targets.picker.CsvPicker
+   :members:
+   :show-inheritance:
+
 
 Constraints
 ^^^^^^^^^^^^
@@ -295,17 +331,17 @@ applies only per-task constraints.
 Task and Observation archives
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:class:`~pyobs.robotic.taskarchive.TaskArchive` and
-:class:`~pyobs.robotic.observationarchive.ObservationArchive` are abstract base classes defining
-the interface that the :class:`~pyobs.modules.robotic.Scheduler` and
+:class:`~pyobs.robotic.storage.taskarchive.TaskArchive` and
+:class:`~pyobs.robotic.storage.observationarchive.ObservationArchive` are abstract base classes
+defining the interface that the :class:`~pyobs.modules.robotic.Scheduler` and
 :class:`~pyobs.modules.robotic.Mastermind` modules depend on. *pyobs-core* ships three concrete
 implementations of each — see :ref:`archive-implementations` below.
 
-.. autoclass:: pyobs.robotic.taskarchive.TaskArchive
+.. autoclass:: pyobs.robotic.storage.taskarchive.TaskArchive
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.observationarchive.ObservationArchive
+.. autoclass:: pyobs.robotic.storage.observationarchive.ObservationArchive
    :members:
    :show-inheritance:
 
@@ -315,49 +351,49 @@ implementations of each — see :ref:`archive-implementations` below.
 Archive implementations
 """"""""""""""""""""""""
 
-**Filesystem** (``pyobs.robotic.filesystem``)
+**Filesystem** (``pyobs.robotic.storage.filesystem``)
 
 Tasks are YAML files in a directory; observations are YAML files named by night. No external
 services required — the simplest setup for a single telescope.
 
-.. autoclass:: pyobs.robotic.filesystem.YamlTaskArchive
+.. autoclass:: pyobs.robotic.storage.filesystem.YamlTaskArchive
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.filesystem.YamlObservationArchive
+.. autoclass:: pyobs.robotic.storage.filesystem.YamlObservationArchive
    :members:
    :show-inheritance:
 
-**Backend** (``pyobs.robotic.backend``)
+**Backend** (``pyobs.robotic.storage.backend``)
 
 Tasks and observations are managed by the *pyobs-robotic-backend* HTTP service. Enables
 multi-telescope coordination, a web UI for queue management, and centralised logging.
 
-.. autoclass:: pyobs.robotic.backend.BackendTaskArchive
+.. autoclass:: pyobs.robotic.storage.backend.BackendTaskArchive
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.backend.BackendObservationArchive
+.. autoclass:: pyobs.robotic.storage.backend.BackendObservationArchive
    :members:
    :show-inheritance:
 
-**Las Cumbres Observatory** (``pyobs.robotic.lco``)
+**Las Cumbres Observatory** (``pyobs.robotic.storage.lco``)
 
 Integration with the `Las Cumbres Observatory <https://lco.global>`_ observation portal. Tasks are
 fetched from the LCO portal API using an instrument type and authorisation token; observations are
 read from and written back to the LCO schedule. Also includes
-:class:`~pyobs.robotic.lco.LcoTaskRunner`, which maps LCO request configurations to the
+:class:`~pyobs.robotic.storage.lco.LcoTaskRunner`, which maps LCO request configurations to the
 appropriate :class:`~pyobs.robotic.scripts.Script` subclass based on a configurable scripts map.
 
-.. autoclass:: pyobs.robotic.lco.LcoTaskArchive
+.. autoclass:: pyobs.robotic.storage.lco.LcoTaskArchive
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.lco.LcoObservationArchive
+.. autoclass:: pyobs.robotic.storage.lco.LcoObservationArchive
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.lco.LcoTaskRunner
+.. autoclass:: pyobs.robotic.storage.lco.LcoTaskRunner
    :members:
    :show-inheritance:
 
@@ -394,7 +430,7 @@ cached access to site geometry (sunrise, sunset, night boundaries) and to the ob
 history via its ``archive`` attribute.
 
 :class:`~pyobs.robotic.scheduler.observationarchiveevolution.ObservationArchiveEvolution` wraps
-the real :class:`~pyobs.robotic.observationarchive.ObservationArchive` with two additions:
+the real :class:`~pyobs.robotic.storage.observationarchive.ObservationArchive` with two additions:
 
 - **Caching** — observations for each task are fetched from the archive once per scheduling run
   and cached in memory, avoiding repeated HTTP requests during evaluation of many time slots.

@@ -69,7 +69,7 @@ class LcoTaskRunner(TaskRunner):
         config_type = request.configurations[0].type
         if self.scripts is None or config_type not in self.scripts:
             raise ValueError(f'No script found for configuration type "{config_type}".')
-        return self.scripts[config_type]
+        return {**self.scripts[config_type], "request": request}
 
 
 __all__ = ["LcoTaskRunner"]

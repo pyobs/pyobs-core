@@ -2,7 +2,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from pyobs.interfaces import AutoFocusResult, AutoFocusState, IAutoFocus
+from pyobs.interfaces import AutoFocusResult, AutoFocusState, IAutoFocus, IRunning
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.modules.focus.focusseries import AutoFocusSeries
 from pyobs.utils.focusseries import FocusSeries
@@ -20,11 +21,16 @@ async def test_open_publishes_initial_state(mocker) -> None:
 
     await series.open()
 
-    series._comm.set_state.assert_awaited_once()
-    interface, state = series._comm.set_state.await_args[0]
+    assert series._comm.set_state.await_count == 2
+    interface, state = series._comm.set_state.await_args_list[0][0]
     assert interface is IAutoFocus
     assert isinstance(state, AutoFocusState)
     assert state.points == []
+
+    interface, state = series._comm.set_state.await_args_list[1][0]
+    assert interface is IRunning
+    assert isinstance(state, RunningState)
+    assert state.running is False
 
 
 @pytest.mark.asyncio

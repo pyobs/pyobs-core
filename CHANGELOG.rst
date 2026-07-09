@@ -1,3 +1,156 @@
+v2.0.0.dev11 (unreleased)
+*************************
+* Implemented access control (ACLs) for module RPC calls, via an ``acl:`` config block next to
+  ``comm:`` (``allow``/``deny`` policy, ``enforce``/``log`` mode, ``IModule.get_permitted_methods()``).
+* ``IAcquisition.acquire_target()`` now returns a typed ``AcquisitionResult`` instead of
+  ``dict[str, Any]``; added live ``AcquisitionState``.
+* Added live state for ``IAutoGuiding`` (``GuidingState``).
+* Completed the ``Unit`` annotation rollout across all applicable interface signatures.
+* Interface and event schemas, including versioning, are now fully published via service discovery
+  (disco#info), enabling a mixed-version-fleet diagnostic.
+* ``Module``'s constructor no longer takes a ``name`` parameter; a module's name always tracks its
+  ``comm`` object's own identity (XMPP JID / ``LocalComm`` name) instead.
+* A module now shuts down gracefully instead of endlessly reconnecting when kicked from XMPP due to
+  a JID conflict.
+* Fixed an XMPP reconnect storm after an ejabberd outage, and a module reconnect that could be
+  silently dropped by a stale presence callback.
+* Fixed ``DummyTelescope.park()`` not stopping an in-progress slew.
+* Fixed a crash when a cooling setpoint or config name is ``None``.
+* Fixed CRITICAL log lines being journaled with the wrong priority under ``--syslog``.
+* Hardened RPC parameter parsing (``xml_to_params``) against malformed input.
+* Fixed phantom XMPP state subscriptions for composite interfaces.
+* A global ``pyobs.yaml`` config file (including under ``/opt/pyobs/storage/``) is now looked up in
+  addition to a module's own config file.
+* Added a "What's New in pyobs 2.0" docs page tracking user-facing changes for the 2.0 release.
+
+v2.0.0.dev10 (2026-07-02)
+*************************
+* Interface features are now version-tagged in service discovery, giving a diagnostic for
+  mixed-version fleets.
+* ``IAutoFocus.auto_focus()`` now returns ``AutoFocusResult`` instead of a tuple; added live
+  ``AutoFocusState``; removed the old ``auto_focus_status()``.
+* Added ``OptimalFocusState`` for structured focus-model state tracking.
+* ``IWeather`` migrated to structured live state; dropped ``station`` from sensor readings.
+* ``IFitsHeaderBefore``/``IFitsHeaderAfter`` now return ``dict[str, FitsHeaderEntry]`` instead of
+  ``dict[str, tuple[Any, str]]``.
+* Removed the old XML-RPC cast pipeline (``pyobs.utils.types``).
+
+v2.0.0.dev9 (2026-07-01)
+************************
+* Linked all ``pyobs-*`` module docs, now hosted on docs.pyobs.org.
+
+v2.0.0.dev8 (2026-07-01)
+************************
+* Documented optional extras and CLI tools in the README.
+
+v2.0.0.dev7 (2026-07-01)
+************************
+* Minor internal fixes (Dependabot configuration, import scoping in ``DummyCamera``).
+
+v2.0.0.dev6 (2026-06-30)
+************************
+* Renamed the ``state``/``capabilities`` proxy accessor methods to ``get_state``/``get_capabilities``
+  for clarity; both are now also available directly on ``Interface``.
+* Added IERS offline mode support via the ``PYOBS_IERS_OFFLINE`` environment variable.
+* The ``pyobs`` service now loads environment variables from ``/etc/default/pyobs``.
+* Added ``astropy-iers-data`` as a direct dependency.
+
+v2.0.0.dev5 (2026-06-30)
+************************
+* Refactored ``capabilities`` handling for consistency across interfaces.
+
+v2.0.0.dev4 (2026-06-29)
+************************
+* Interface ``State`` classes are now module-level dataclasses rather than nested classes.
+
+v2.0.0.dev3 (2026-06-29)
+************************
+* Removed ``pyobs.utils.simulation`` (``SimWorld``/``SimTelescope``/``SimCamera``) with no
+  replacement.
+* Added ``DummyVideo`` for simulated video streaming.
+* ``IMode`` now uses ``capabilities``/``state`` dataclasses instead of separate mode-group methods.
+* Added an optional ``sender`` attribute to ``LogEvent``.
+
+v2.0.0.dev2 (2026-06-29)
+************************
+* Rolled out live state to (almost) all state-bearing interfaces; removed the corresponding
+  ``get_*``/``is_*`` RPC methods project-wide in favor of subscribing to state.
+* Added a shared XML serializer for both RPC and state payloads
+  (``pyobs.comm.xmpp.serializer``); rewrote the XMPP RPC layer on top of it.
+* Added ``Proxy.wait_for_state`` (returns cached state immediately, or waits for the first update).
+* Added ``capabilities`` — fixed-for-lifetime values published via service discovery, alongside the
+  new ``state`` mechanism.
+* A module's online/ready/error status is now tracked via XMPP presence rather than RPC; removed
+  ``IModule.get_state()``/``get_error_string()``.
+* ``LocalComm`` gained state, capabilities, and presence support to match ``XmppComm``.
+* Removed ``ILatLon`` and the never-implemented ``DbusComm`` backend.
+
+v2.0.0.dev1 (2026-06-22)
+************************
+* Added ``version`` (default ``1``) to ``Interface`` and ``Event``.
+* ``Proxy`` is now obtained via ``async with self.proxy(...) as x:`` only; the long-lived
+  ``await self.proxy(...)`` pattern and the ``cache_proxies`` option are removed. Added
+  ``has_proxy``/``safe_proxy``.
+* Added ``Unit`` annotations for physical quantities on interface signatures.
+* Added the first live **state** implementation over XMPP PubSub, piloted on ``ICooling``.
+
+v1.53.0 (2026-06-19)
+********************
+* Replaced the threading-based XMPP client internals with asyncio throughout.
+* Added ``--syslog`` to log to the systemd journal, for both ``pyobs`` and ``pyobsd``.
+* ``pyobsd`` now names each module's log file after its config file (e.g. ``camera.yaml`` →
+  ``camera.log``) instead of a fixed name, and takes its default module name from the config file.
+* Added ``ObservationState.WINDOW_EXPIRED``.
+* Added ``HelioprojectiveRadialTarget``.
+* The scheduler now guarantees a minimum scheduling window length and excludes the currently-running
+  task from "is there a better task" checks.
+* Made XMPP message sending more robust: queues messages, skips repeated ones, and checks whether
+  the user is actually logged in.
+* Fixed object-ownership tracking so an ``ObservationArchive`` is only registered as a child once.
+* Various performance improvements (lazy imports to reduce memory consumption, a fast path for
+  transit-window calculation).
+
+v1.52.0 (2026-06-13)
+********************
+* Added ``TransitImagingScript`` for imaging around a target's transit.
+* ``estimate_duration`` now takes ``task``/``time`` parameters and can compute full-transit
+  durations.
+* Added ``ExposureTimeProvider`` (and ``StellarExposureTimeProvider``) for dynamic per-exposure
+  timing in ``ImagingScript``.
+* Rewrote ``pyobsd`` to no longer depend on ``start-stop-daemon``; prints subprocess stdout/stderr
+  if a module fails to start.
+* Added a GitHub Actions integration-test run triggered on release.
+* Removed the tornado-based logger handling in favor of slixmpp's own logging.
+* The scheduler now only fetches pending and in-progress observations rather than everything.
+
+v1.51.0 (2026-06-09)
+********************
+* ``Script.can_run`` can now report a reason via ``cant_run_reason``, surfaced by the mastermind
+  when skipping a task.
+
+v1.50.0 (2026-06-09)
+********************
+* Moved the robotic storage backends (filesystem, HTTP backend, LCO) into their own
+  ``pyobs.robotic.storage`` subpackage.
+* Added an in-memory ``TaskArchive``/``ObservationArchive`` implementation, useful for testing.
+* Added ``Comm.has_module``.
+* ``Time`` is now imported from ``pyobs.utils.time`` instead of ``astropy.time`` throughout.
+* Added ``Constraint.filter_skycoord`` for faster constraint filtering.
+* Fixed a proxy deduplication bug.
+
+v1.49.0 (2026-06-08)
+********************
+* Added a ``time`` parameter to ``ObservationArchive.get_schedule`` and ``get_current_observation``
+  across all backends (filesystem, HTTP backend, LCO).
+* Log timestamps are now formatted as ISO 8601.
+
+v1.48.0 (2026-06-07)
+********************
+* Switched linting from flake8 to ruff and fixed the resulting warnings project-wide.
+* Replaced broad ``except Exception`` catches with narrower exception handling in several places.
+* Changed log calls to use lazy (``%``-style) argument evaluation throughout.
+* Renamed ``ensure_feature`` to ``create_task``.
+
 v1.47.0 (2025-06-07)
 *********************
 * Set minimum Python version to 3.11.

@@ -1,5 +1,5 @@
 from .applyaltazoffsets import ApplyAltAzOffsets
-from .applyoffsets import ApplyOffsets
+from .applyoffsets import ApplyOffsets, OffsetResult
 from .applyradecoffsets import ApplyRaDecOffsets
 
-__all__ = ["ApplyOffsets", "ApplyRaDecOffsets", "ApplyAltAzOffsets"]
+__all__ = ["ApplyOffsets", "OffsetResult", "ApplyRaDecOffsets", "ApplyAltAzOffsets"]

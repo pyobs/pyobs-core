@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import slixmpp
 import slixmpp.exceptions
-from slixmpp import ElementBase
+from slixmpp import JID, ElementBase
 from slixmpp.xmlstream import ET
 from slixmpp.xmlstream.handler import Callback
 from slixmpp.xmlstream.matcher import MatchXMLMask
@@ -779,7 +779,7 @@ class XmppComm(Comm):
         # send it to module
         self._send_event_to_module(event, msg["from"].username)
 
-    async def _safe_send(self, method: Callable[[Any], Coroutine[Any, Any, None]], *args: Any, **kwargs: Any) -> Any:
+    async def _safe_send(self, method: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any) -> Any:
         """Safely send an XMPP message.
 
         Args:
@@ -908,7 +908,7 @@ class XmppComm(Comm):
         jid = full_jid
         ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
         try:
-            result = await asyncio.wait_for(self.client.plugin["xep_0030"].get_info(jid=jid), timeout=10.0)
+            result = await asyncio.wait_for(self.client.plugin["xep_0030"].get_info(jid=JID(jid)), timeout=10.0)
         except (TimeoutError, Exception) as e:
             log.warning("Failed to get capabilities for %s from %s: %s", interface.__name__, module, e)
             return None

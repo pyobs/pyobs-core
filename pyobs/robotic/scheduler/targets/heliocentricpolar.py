@@ -21,7 +21,7 @@ class HeliocentricPolar(Target):
         # to helioprojective
         alpha = np.arccos(self.mu)
         d_sun = get_sun(time).distance  # distance earth <-> sun
-        r_sun = constants.R_sun  # radius of sun
+        r_sun = constants.R_sun  # type: ignore[missing-attribute] # radius of sun
 
         # get the angle between target and the line between earth and sun
         # from the triangle defined by the distance between earth and sun, the

@@ -8,7 +8,8 @@ from typing import Any
 import numpy as np
 from aiohttp import web
 
-from pyobs.interfaces import ICamera, IData, IExposureTime, IStartStop, IWindow
+from pyobs.interfaces import ICamera, IData, IExposureTime, IRunning, IStartStop, IWindow
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
@@ -68,6 +69,8 @@ class Kiosk(Module, IStartStop):
         await self._site.start()
         self._is_listening = True
 
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
+
     async def close(self) -> None:
         """Close server"""
         await Module.close(self)
@@ -99,10 +102,12 @@ class Kiosk(Module, IStartStop):
     async def start(self, **kwargs: Any) -> None:
         """Start kiosk mode."""
         self._running = True
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
 
     async def stop(self, **kwargs: Any) -> None:
         """Stop kiosk mode."""
         self._running = False
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether kiosk mode is running."""

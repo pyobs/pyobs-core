@@ -7,7 +7,8 @@ from typing import Any
 import astropy.units as u
 
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IWeather, WeatherSensorReading, WeatherState
+from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IRunning, IWeather, WeatherSensorReading, WeatherState
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.modules.weather.weather_api import WeatherApi
 from pyobs.modules.weather.weather_state import WeatherStatus
@@ -82,6 +83,8 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             await self.comm.register_event(BadWeatherEvent)
             await self.comm.register_event(GoodWeatherEvent)
 
+        await self.comm.set_state(IRunning, RunningState(running=self._active))
+
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
 
@@ -92,10 +95,12 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         # activate
         self._active = True
+        await self.comm.set_state(IRunning, RunningState(running=self._active))
 
     async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         self._active = False
+        await self.comm.set_state(IRunning, RunningState(running=self._active))
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""

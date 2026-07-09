@@ -16,7 +16,8 @@ from pyobs.events import (
     TaskFinishedEvent,
     TaskStartedEvent,
 )
-from pyobs.interfaces import IRunnable, IStartStop
+from pyobs.interfaces import IRunnable, IRunning, IStartStop
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.robotic import (
     ObservationArchive,
@@ -106,13 +107,17 @@ class Scheduler(Module, IStartStop, IRunnable):
             await self.comm.register_event(TaskFailedEvent, self._on_task_finished)
             await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
+
     async def start(self, **kwargs: Any) -> None:
         """Start scheduler."""
         self._running = True
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
 
     async def stop(self, **kwargs: Any) -> None:
         """Stop scheduler."""
         self._running = False
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether scheduler is running."""

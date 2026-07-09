@@ -5,7 +5,8 @@ from typing import Any
 import astropy.units as u
 
 from pyobs.events import TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
-from pyobs.interfaces import FitsHeaderEntry, IAutonomous, IFitsHeaderBefore
+from pyobs.interfaces import FitsHeaderEntry, IAutonomous, IFitsHeaderBefore, IRunning
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.robotic import (
     Observation,
@@ -73,16 +74,19 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
         # start
         self._running = True
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
 
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
         log.info("Starting robotic system...")
         self._running = True
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
 
     async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         log.info("Stopping robotic system...")
         self._running = False
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""

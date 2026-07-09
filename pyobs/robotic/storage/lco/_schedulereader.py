@@ -132,7 +132,8 @@ class LcoScheduleReader(Object):
             # any changes?
             if sorted(scheduled_tasks) != sorted(self._scheduled_tasks):
                 log.info("Task list changed, found %d task(s) to run.", len(scheduled_tasks))
-                for scheduled_task in sorted(scheduled_tasks, key=lambda x: x.start):
+                sorted_tasks = sorted(scheduled_tasks, key=lambda x: x.start)
+                for scheduled_task in sorted_tasks:
                     log.info(
                         "  - %s to %s: %s (#%s)",
                         scheduled_task.start,
@@ -140,6 +141,11 @@ class LcoScheduleReader(Object):
                         scheduled_task.task.name,
                         scheduled_task.task.id,
                     )
+                if sorted_tasks:
+                    obs = sorted_tasks[0]
+                    log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
+                else:
+                    log.info("Downloaded new schedule.")
 
                 # update
                 self._scheduled_tasks = scheduled_tasks

@@ -4,7 +4,7 @@ import pytest
 
 from pyobs.comm.dummy import DummyComm
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import IWeather, WeatherSensorReading
+from pyobs.interfaces import IRunning, IWeather, WeatherSensorReading
 from pyobs.modules import Module
 from pyobs.modules.weather import MockWeather
 from pyobs.utils.enums import Unit, WeatherSensors
@@ -25,10 +25,14 @@ async def test_open() -> None:
     assert weather._comm.register_event.await_args_list[0][0][0] == BadWeatherEvent
     assert weather._comm.register_event.await_args_list[1][0][0] == GoodWeatherEvent
 
-    weather._comm.set_state.assert_awaited_once()
-    interface, state = weather._comm.set_state.await_args[0]
+    assert weather._comm.set_state.await_count == 2
+    interface, state = weather._comm.set_state.await_args_list[0][0]
     assert interface is IWeather
     assert state.good is True
+
+    interface, state = weather._comm.set_state.await_args_list[1][0]
+    assert interface is IRunning
+    assert state.running is True
 
 
 @pytest.mark.asyncio
@@ -89,7 +93,7 @@ async def test_set_good_becomes_bad() -> None:
     assert weather._good is False
     assert isinstance(weather._comm.send_event.await_args[0][0], BadWeatherEvent)
 
-    _, state = weather._comm.set_state.await_args[0]
+    _, state = weather._comm.set_state.await_args_list[0][0]
     assert state.good is False
 
 
@@ -115,7 +119,7 @@ async def test_set_good_inactive_no_event() -> None:
     await weather.set_good(False)
 
     weather._comm.send_event.assert_not_called()
-    _, state = weather._comm.set_state.await_args[0]
+    _, state = weather._comm.set_state.await_args_list[0][0]
     assert state.good is True
 
 

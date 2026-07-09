@@ -2,10 +2,12 @@
 #
 # check_changelog.sh
 #
-# Fails if a minor/major release (or any 2.0.0.devN pre-release) is being tagged without a
-# matching entry in CHANGELOG.rst. Patch releases (only the last X.Y.Z component bumped, with
-# no .devN suffix involved) are exempt -- CHANGELOG.rst intentionally doesn't get a heading for
-# those, only for the following minor release.
+# Fails if a minor/major release is being tagged without a matching entry in CHANGELOG.rst.
+# Dev pre-releases (any X.Y.Z.devN tag) never need their own entry -- their changes accumulate
+# under the CHANGELOG.rst heading for the eventual final X.Y.Z release, so devN tags are exempt
+# outright. Patch releases (only the last X.Y.Z component bumped, with no .devN suffix involved)
+# are likewise exempt -- CHANGELOG.rst intentionally doesn't get a heading for those, only for
+# the following minor release.
 #
 # The "previous release" is found by walking this tag's own commit ancestry (`git describe`),
 # not by a global version sort across all tags -- this project cuts patch releases from older
@@ -20,6 +22,11 @@ set -euo pipefail
 TAG="$1"
 VERSION="${TAG#v}"
 
+if [[ "$VERSION" == *.dev* ]]; then
+    echo "Dev pre-release ${VERSION} - changelog entry not required."
+    exit 0
+fi
+
 PREV_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
 
 if [ -z "$PREV_TAG" ]; then
@@ -30,8 +37,9 @@ PREV_VERSION="${PREV_TAG#v}"
 
 is_patch_bump() {
     local new="$1" prev="$2"
-    # a .devN release always needs its own entry, on either side of the comparison
-    if [[ "$new" == *.dev* || "$prev" == *.dev* ]]; then
+    # if the previous tag was still a dev pre-release, this is the final release graduating
+    # that series -- it always needs its own entry, even if only the patch component differs
+    if [[ "$prev" == *.dev* ]]; then
         return 1
     fi
     local new_minor prev_minor

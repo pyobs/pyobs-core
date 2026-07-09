@@ -17,6 +17,5 @@ Utilities (pyobs.utils)
    parallel
    pipeline
    publisher
-   simulation
    skyflats
    time

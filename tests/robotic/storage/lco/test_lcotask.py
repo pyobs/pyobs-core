@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from pyobs.object import Object
 from pyobs.robotic.scheduler.constraints import (
     AirmassConstraint,
     MoonIlluminationConstraint,
@@ -28,7 +29,7 @@ def schedulable_request() -> LcoSchedulableRequest:
 
 @pytest.fixture
 def task(schedulable_request: LcoSchedulableRequest) -> LcoTask:
-    tasks = LcoTask.from_schedulable_request(schedulable_request, {})
+    tasks = LcoTask.from_schedulable_request(Object(), schedulable_request, {})
     return tasks[0]
 
 
@@ -49,7 +50,7 @@ def test_adds_solar_elevation_constraint_for_dark_sky() -> None:
     config = json.loads(REQUEST_CONFIG)
     config["requests"][0]["configurations"][0]["constraints"]["max_lunar_phase"] = 0.3
     sr = LcoSchedulableRequest.model_validate(config)
-    task = LcoTask.from_schedulable_request(sr, {})[0]
+    task = LcoTask.from_schedulable_request(Object(), sr, {})[0]
 
     solar = [c for c in task.constraints if isinstance(c, SolarElevationConstraint)]
     assert len(solar) == 1
@@ -61,7 +62,7 @@ def test_no_solar_elevation_constraint_for_bright_sky() -> None:
     config = json.loads(REQUEST_CONFIG)
     config["requests"][0]["configurations"][0]["constraints"]["max_lunar_phase"] = 0.7
     sr = LcoSchedulableRequest.model_validate(config)
-    task = LcoTask.from_schedulable_request(sr, {})[0]
+    task = LcoTask.from_schedulable_request(Object(), sr, {})[0]
 
     solar = [c for c in task.constraints if isinstance(c, SolarElevationConstraint)]
     assert len(solar) == 0
@@ -97,7 +98,7 @@ def test_can_start_late_true_for_direct() -> None:
     config = json.loads(REQUEST_CONFIG)
     config["requests"][0]["configurations"][0]["type"] = "DIRECT"
     sr = LcoSchedulableRequest.model_validate(config)
-    task = LcoTask.from_schedulable_request(sr, {})[0]
+    task = LcoTask.from_schedulable_request(Object(), sr, {})[0]
     assert task.can_start_late is True
 
 
@@ -134,7 +135,7 @@ def test_from_observation(schedulable_request: LcoSchedulableRequest) -> None:
         "state": "PENDING",
     }
     obs = LcoObservation.model_validate(obs_json)
-    task = LcoTask.from_observation(obs, {})
+    task = LcoTask.from_observation(Object(), obs, {})
 
     assert task.name == str(obs.request.id)
     assert isinstance(task.target, SiderealTarget)

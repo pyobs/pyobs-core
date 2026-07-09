@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from ..utils.enums import Unit
 from ..utils.time import Time
 from .IAbortable import IAbortable
+from .IRunning import IRunning
 
 
 @dataclass
@@ -27,7 +28,7 @@ class AutoFocusState:  # growing curve during autofocus run
     time: Time = field(default_factory=Time.now)
 
 
-class IAutoFocus(IAbortable, metaclass=ABCMeta):
+class IAutoFocus(IRunning, IAbortable, metaclass=ABCMeta):
     """The module can perform an autofocus."""
 
     __module__ = "pyobs.interfaces"

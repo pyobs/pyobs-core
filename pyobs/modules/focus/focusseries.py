@@ -13,8 +13,10 @@ from pyobs.interfaces import (
     IFilters,
     IFocuser,
     IImageType,
+    IRunning,
 )
 from pyobs.interfaces.IAutoFocus import AutoFocusResult, AutoFocusState
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import Module, raises, timeout
 from pyobs.object import get_object
@@ -99,6 +101,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # publish initial states
         await self.comm.set_state(IAutoFocus, AutoFocusState())
+        await self.comm.set_state(IRunning, RunningState(running=False))
 
     @raises(exc.AbortedError, exc.FocusError)
     @timeout(600)
@@ -124,11 +127,13 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         try:
             log.info("Performing auto-focus...")
             self._running = True
+            await self.comm.set_state(IRunning, RunningState(running=True))
             focus, error = await self._auto_focus(count, step, exposure_time, **kwargs)
             return AutoFocusResult(focus=focus, focus_err=error)
 
         finally:
             self._running = False
+            await self.comm.set_state(IRunning, RunningState(running=False))
 
     async def _auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
         # do camera settings
@@ -289,6 +294,10 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()
+
+    async def is_running(self, **kwargs: Any) -> bool:
+        """Whether a service is running."""
+        return self._running
 
     async def _on_bad_weather(self, event: Event, sender: str) -> bool:
         """Abort series if a bad weather event occurs.

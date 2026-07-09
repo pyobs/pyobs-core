@@ -187,14 +187,6 @@ IImageType
    :show-inheritance:
    :undoc-members:
 
-ILatLon
-^^^^^^^
-
-.. autoclass:: pyobs.interfaces.ILatLon
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 IMode
 ^^^^^
 

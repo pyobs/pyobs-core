@@ -1,20 +1,20 @@
-Image archives (pyobs.utils.archive)
-------------------------------------
+Image archives (pyobs.robotic.utils.archive)
+--------------------------------------------
 
-.. automodule:: pyobs.utils.archive
+.. automodule:: pyobs.robotic.utils.archive
 
 Archive
 ^^^^^^^
 
-.. autoclass:: pyobs.utils.archive.Archive
+.. autoclass:: pyobs.robotic.utils.archive.Archive
 
 LocalArchive
 ^^^^^^^^^^^^
 
-.. autoclass:: pyobs.utils.archive.LocalArchive
+.. autoclass:: pyobs.robotic.utils.archive.LocalArchive
 
 PyobsArchive
 ^^^^^^^^^^^^
 
-.. autoclass:: pyobs.utils.archive.PyobsArchive
+.. autoclass:: pyobs.robotic.utils.archive.PyobsArchive
 

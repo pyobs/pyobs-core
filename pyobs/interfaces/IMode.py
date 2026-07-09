@@ -28,15 +28,15 @@ class IMode(Interface, metaclass=ABCMeta):
     capabilities = ModeCapabilities
 
     @abstractmethod
-    async def set_mode(self, mode: str, group: int = 0, **kwargs: Any) -> None:
+    async def set_mode(self, mode: str, group: str = "", **kwargs: Any) -> None:
         """Set the current mode.
 
         Args:
             mode: Name of mode to set.
-            group: Group number
+            group: Name of the group to set the mode for.
 
         Raises:
-            ValueError: If an invalid mode was given.
+            ValueError: If an invalid mode or group was given.
             MoveError: If mode selector cannot be moved.
         """
         ...

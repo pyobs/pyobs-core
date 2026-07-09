@@ -382,7 +382,7 @@ class XmppComm(Comm):
 
         # request features
         try:
-            info = await self._safe_send(self.client["xep_0030"].get_info, jid=jid, cached=False)
+            info = await self._safe_send(self.client.plugin["xep_0030"].get_info, jid=jid, cached=False)
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             return []
 
@@ -679,7 +679,7 @@ class XmppComm(Comm):
 
         # send it
         await self._safe_send(
-            self.client["xep_0163"].publish,
+            self.client.plugin["xep_0163"].publish,
             stanza,
             node=f"urn:pyobs:event:{event.__class__.__name__}:{event.version}",
             callback=functools.partial(self._send_event_callback, event=event),
@@ -705,15 +705,15 @@ class XmppComm(Comm):
         # loop events
         for ev in events:
             # register event at XMPP
-            self.client["xep_0030"].add_feature(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
+            self.client.plugin["xep_0030"].add_feature(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
 
             # if we have a handler, we're also interested in receiving such events
             if handler:
                 # add interest
-                self.client["xep_0163"].add_interest(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
+                self.client.plugin["xep_0163"].add_interest(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
 
         # update caps and send presence
-        await self._safe_send(self.client["xep_0115"].update_caps)
+        await self._safe_send(self.client.plugin["xep_0115"].update_caps)
         self.client.send_presence()
 
     def _handle_event_sync(self, msg: Any) -> None:
@@ -827,7 +827,9 @@ class XmppComm(Comm):
         retract stanza or a node whose deliver_payloads flag is off.
         """
         try:
-            result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
+            result = await self._safe_send(
+                self.client.plugin["xep_0060"].get_items, self._pubsub_service, node, max_items=1
+            )
             # Use raw XML to avoid lazy-loading issues with plugin_multi_attrib
             pubsub_ns = "http://jabber.org/protocol/pubsub"
             pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
@@ -847,7 +849,7 @@ class XmppComm(Comm):
         node = self._state_node(self._module.name, interface)  # type: ignore[union-attr]
         stanza = StateStanza()
         stanza.xml = _dataclass_to_xml(state, self._state_namespace(interface))
-        await self._safe_send(self.client["xep_0060"].publish, self._pubsub_service, node, payload=stanza)
+        await self._safe_send(self.client.plugin["xep_0060"].publish, self._pubsub_service, node, payload=stanza)
 
     async def _get_disco_info(self, jid, node, ifrom, data):
         """Custom disco#info handler that adds <capability> elements for static module values."""
@@ -906,7 +908,7 @@ class XmppComm(Comm):
         jid = full_jid
         ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
         try:
-            result = await asyncio.wait_for(self.client["xep_0030"].get_info(jid=jid), timeout=10.0)
+            result = await asyncio.wait_for(self.client.plugin["xep_0030"].get_info(jid=jid), timeout=10.0)
         except (TimeoutError, Exception) as e:
             log.warning("Failed to get capabilities for %s from %s: %s", interface.__name__, module, e)
             return None
@@ -957,7 +959,7 @@ class XmppComm(Comm):
         """
         for _attempt in range(30):
             try:
-                await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
+                await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
                 break
             except slixmpp.exceptions.IqError:
                 await asyncio.sleep(1)
@@ -967,7 +969,9 @@ class XmppComm(Comm):
 
         # Fetch current value immediately after subscribing
         try:
-            result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
+            result = await self._safe_send(
+                self.client.plugin["xep_0060"].get_items, self._pubsub_service, node, max_items=1
+            )
             pubsub_ns = "http://jabber.org/protocol/pubsub"
             pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
             items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
@@ -1011,7 +1015,7 @@ class XmppComm(Comm):
                 # Last subscriber — unsubscribe from ejabberd and remove handler
                 del self._state_node_handlers[node]
                 try:
-                    await self._safe_send(self.client["xep_0060"].unsubscribe, self._pubsub_service, node)
+                    await self._safe_send(self.client.plugin["xep_0060"].unsubscribe, self._pubsub_service, node)
                 except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
                     pass  # already gone server-side
 

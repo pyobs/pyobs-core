@@ -252,7 +252,9 @@ class BaseTelescope(
         if coords_alt_az is not None:
             hdr["TEL-ALT"] = FitsHeaderEntry(float(coords_alt_az.alt.degree), "Telescope altitude [degrees]")
             hdr["TEL-AZ"] = FitsHeaderEntry(float(coords_alt_az.az.degree), "Telescope azimuth [degrees]")
-            hdr["TEL-ZD"] = FitsHeaderEntry(90.0 - hdr["TEL-ALT"].value, "Telescope zenith distance [degrees]")
+            hdr["TEL-ZD"] = FitsHeaderEntry(
+                90.0 - float(coords_alt_az.alt.degree), "Telescope zenith distance [degrees]"
+            )
             hdr["AIRMASS"] = FitsHeaderEntry(float(coords_alt_az.secz.value), "Airmass of observation start")
 
         # convert to sexagesimal

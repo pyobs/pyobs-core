@@ -10,6 +10,12 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Check changelog
+        run: ./scripts/check_changelog.sh "${GITHUB_REF_NAME}"
 
       - name: Set up Python
         uses: astral-sh/setup-uv@v5

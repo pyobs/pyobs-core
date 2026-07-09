@@ -9,7 +9,8 @@ from pyobs.images import Image
 
 from ...images.meta import AltAzOffsets, PixelOffsets, RaDecOffsets
 from ...interfaces import IOffsetsRaDec, ITelescope, RaDecOffsetState
-from .applyoffsets import ApplyOffsets
+from ...utils.enums import OffsetFrame
+from .applyoffsets import ApplyOffsets, OffsetResult
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
         self._min_offset = min_offset
         self._max_offset = max_offset
 
-    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation | None) -> bool:
+    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation | None) -> OffsetResult:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -41,14 +42,14 @@ class ApplyRaDecOffsets(ApplyOffsets):
             location: Observer location on Earth.
 
         Returns:
-            Whether offsets have been applied successfully.
+            Result indicating whether offsets were applied, and if so, in which frame and by how much.
         """
 
         # telescope must be of type IRaDecOffsets
         tel = telescope
         if not isinstance(telescope, IOffsetsRaDec):
             log.error("Given telescope cannot handle RA/Dec offsets.")
-            return False
+            return OffsetResult(applied=False)
 
         # what kind of offsets to we have?
         if image.has_meta(RaDecOffsets):
@@ -66,7 +67,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
                 radec_center, radec_target = self._get_radec_center_target(image, location)
             except ValueError:
                 log.warning("Could not get offsets from image meta.")
-                return False
+                return OffsetResult(applied=False)
 
             # get offset
             dra, ddec = radec_center.spherical_offsets_to(radec_target)
@@ -86,15 +87,15 @@ class ApplyRaDecOffsets(ApplyOffsets):
         diff = np.sqrt(dra.arcsec**2.0 + ddec.arcsec**2)
         if diff < self._min_offset:
             log.warning("Shift too small, skipping auto-guiding for now...")
-            return False
+            return OffsetResult(applied=False)
         if diff > self._max_offset:
             log.warning("Shift too large, skipping auto-guiding for now...")
-            return False
+            return OffsetResult(applied=False)
 
         # move offset
         log.info("Offsetting telescope...")
         await telescope.set_offsets_radec(float(cur_dra + dra.degree), float(cur_ddec + ddec.degree))
-        return True
+        return OffsetResult(applied=True, frame=OffsetFrame.RA_DEC, lon=dra.degree, lat=ddec.degree)
 
 
 __all__ = ["ApplyRaDecOffsets"]

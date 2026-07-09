@@ -1847,9 +1847,11 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **Settled:** `IMode.get_mode(group: int)` — ✅ implemented as `IMode.state = ModeState`. `IMotion.get_motion_status(device: str | None)` — ✅ implemented as `IMotion.state = MotionState`. `IConfig.get_config_value`/`set_config_value` — ✅ stays RPC as designed; `ConfigValue = bool | int | float | str` applied.
 
-**The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above. `IReady`/`IRunning`/`IWeather` ✅ all implemented — `is_weather_good()` removed, folded into `WeatherState.good`.
+**The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above. `IReady` and `IWeather` ✅ fully implemented — `is_ready()`/`is_weather_good()` removed outright, folded into `ReadyState.ready`/`WeatherState.good` respectively (only a private, non-interface `_is_ready()` helper survives internally in `baseroof.py`).
 
-**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level and fully implemented. See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+**⚠️ `IRunning.is_running` — NOT actually implemented, despite being marked done below and in the catalogue.** `RunningState` was added and is pushed via `comm.set_state(IRunning, RunningState(...))` in every implementing module (`acquisition.py`, `_baseguiding.py`, `dummyacquisition.py`, `dummyguiding.py`, `focusseries.py`, `dummyautofocus.py`, etc.), but unlike `is_ready()`/`is_weather_good()`, `is_running()` itself was never deleted from `IRunning` (`pyobs/interfaces/IRunning.py:25`, still `@abstractmethod`) or from any of the ~10 modules implementing it. It's also still called directly as live RPC, not read from pushed state — `pyobs/modules/utils/autonomouswarning.py:93` does `await auto.is_running()` through a proxy. Net effect: both the RPC method and the pushed state exist side by side for the same boolean, the exact duplication this migration was meant to remove. **Follow-up needed:** delete `is_running()` from `IRunning` and its ~10 implementers, and switch `autonomouswarning.py` to read `RunningState` from pushed state instead, mirroring exactly what was done for `IReady`.
+
+**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`** — of the 34 `State` items, 33 are fully implemented; `IRunning.is_running` (counted among them) is the one exception noted above. See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 
 ## Appendix: State and Capability dataclass catalogue
 
@@ -2128,7 +2130,7 @@ class IMotion(Interface):           state = MotionState          # ✅
 class IFocuser(Interface):          state = FocuserState         # ✅
 class IFocusModel(Interface):       state = OptimalFocusState    # ✅ get_optimal_focus() removed
 class IReady(Interface):            state = ReadyState           # ✅
-class IRunning(Interface):          state = RunningState         # ✅
+class IRunning(Interface):          state = RunningState         # ⚠️ state added, but is_running() NOT removed -- see below
 class ICooling(Interface):          state = CoolingState         # ✅
 class ITemperatures(Interface):     state = TemperaturesState    # ✅
 class IWeather(Interface):          state = WeatherState         # ✅ get_weather_status/is_weather_good/get_current_weather removed; get_sensor_value kept (RPC by design), returns WeatherSensorReading

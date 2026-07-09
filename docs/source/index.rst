@@ -112,6 +112,7 @@ Introduction
 .. toctree::
    :maxdepth: 1
 
+   whatsnew-2.0
    quickstart
    installing
    development
@@ -167,6 +168,7 @@ Affiliated projects
 
    pyobs-weather <https://docs.pyobs.org/projects/pyobs-weather/en/latest/>
    pyobs-archive <https://docs.pyobs.org/projects/pyobs-archive/en/latest/>
+   pyobs-web-admin <https://docs.pyobs.org/projects/pyobs-web-admin/en/latest/>
 
 
 Project details

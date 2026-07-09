@@ -88,7 +88,7 @@ class DataDisplayWidget(QtWidgets.QWidget):
         headers = {}
         if self.data is not None:
             for card in self.data.header.cards:
-                headers[card.keyword] = (card.value, card.comment)
+                headers[card.keyword] = card
 
         # prepare table
         self.table_fits_header.setRowCount(len(headers))

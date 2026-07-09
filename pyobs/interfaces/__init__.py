@@ -11,10 +11,11 @@ implement :class:`~pyobs.interfaces.ICamera`.
 
 __title__ = "Interfaces"
 
+from ..utils.enums import OffsetFrame
 from .IAbortable import IAbortable
-from .IAcquisition import AcquisitionResult, IAcquisition
+from .IAcquisition import AcquisitionAttempt, AcquisitionResult, AcquisitionState, IAcquisition
 from .IAutoFocus import AutoFocusPoint, AutoFocusResult, AutoFocusState, IAutoFocus
-from .IAutoGuiding import IAutoGuiding
+from .IAutoGuiding import GuidingState, IAutoGuiding
 from .IAutonomous import IAutonomous
 from .IBinning import Binning, BinningCapabilities, BinningState, IBinning
 from .ICalibrate import ICalibrate
@@ -64,12 +65,16 @@ from .IWindow import IWindow, WindowCapabilities, WindowState
 __all__ = [
     "IAbortable",
     "AcquisitionResult",
+    "AcquisitionAttempt",
+    "AcquisitionState",
+    "OffsetFrame",
     "IAcquisition",
     "IAutoFocus",
     "AutoFocusResult",
     "AutoFocusPoint",
     "AutoFocusState",
     "IAutoGuiding",
+    "GuidingState",
     "IAutonomous",
     "Binning",
     "IBinning",

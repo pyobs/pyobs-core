@@ -1,0 +1,23 @@
+name: pyrefly
+on: push
+
+jobs:
+  pyrefly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+
+      - name: Install packages
+        run: uv sync --all-extras --dev
+
+      - name: Run pyrefly
+        run: uv run pyrefly check

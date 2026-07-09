@@ -46,7 +46,9 @@ def make_observation(start: Time = T0, end: Time = T1) -> Observation:
 
     obs_data = OBSERVATIONS_RESPONSE["results"][0]
     task = LcoTask.from_observation(
-        MagicMock(start=start, end=end, request=MagicMock(id=obs_data["request"]["id"], configurations=[])), {}
+        make_reader(),
+        MagicMock(start=start, end=end, request=MagicMock(id=obs_data["request"]["id"], configurations=[])),
+        {},
     )
     return Observation(task=task, start=start, end=end, state=ObservationState.PENDING)
 

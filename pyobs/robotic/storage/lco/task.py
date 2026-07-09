@@ -5,6 +5,7 @@ from typing import Any
 
 import pyobs.utils.exceptions as exc
 from pyobs.interfaces import FitsHeaderEntry
+from pyobs.object import Object
 from pyobs.robotic.scheduler.constraints import (
     AirmassConstraint,
     Constraint,
@@ -34,31 +35,37 @@ class LcoTask(Task):
     request: LcoRequest
 
     @staticmethod
-    def __lco_task(request: LcoRequest, name: str, script: dict[str, Any]) -> LcoTask:
-        return LcoTask(
-            id=request.id,
-            name=name,
-            duration=request.duration,
-            constraints=LcoTask._create_constraints(request),
-            merits=LcoTask._create_merits(request),
-            target=LcoTask._create_target(request),
-            request=request,
-            script=script,
+    def __lco_task(parent: Object, request: LcoRequest, name: str, script: dict[str, Any]) -> LcoTask:
+        return parent.pyobs_model_validate(
+            LcoTask,
+            {
+                "id": request.id,
+                "name": name,
+                "duration": request.duration,
+                "constraints": LcoTask._create_constraints(request),
+                "merits": LcoTask._create_merits(request),
+                "target": LcoTask._create_target(request),
+                "request": request,
+                "script": script,
+            },
+            by_alias=True,
         )
 
     @staticmethod
-    def from_schedulable_request(schedulable_request: LcoSchedulableRequest, script: dict[str, Any]) -> list[LcoTask]:
+    def from_schedulable_request(
+        parent: Object, schedulable_request: LcoSchedulableRequest, script: dict[str, Any]
+    ) -> list[LcoTask]:
         tasks: list[LcoTask] = []
         for request in schedulable_request.requests:
-            tasks.append(LcoTask.__lco_task(request, schedulable_request.name, script))
+            tasks.append(LcoTask.__lco_task(parent, request, schedulable_request.name, script))
         return tasks
 
     @staticmethod
-    def from_observation(observation: LcoObservation, script: dict[str, Any]) -> LcoTask:
+    def from_observation(parent: Object, observation: LcoObservation, script: dict[str, Any]) -> LcoTask:
         request = observation.request
         if not isinstance(request, LcoRequest):
             raise ValueError("Observation does not contain a fully defined request.")
-        return LcoTask.__lco_task(request, str(request.id), script)
+        return LcoTask.__lco_task(parent, request, str(request.id), script)
 
     @staticmethod
     def _create_constraints(request: LcoRequest) -> list[Constraint]:

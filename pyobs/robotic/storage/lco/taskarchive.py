@@ -115,7 +115,7 @@ class LcoTaskArchive(TaskArchive):
         # to LcoTasks
         all_tasks: list[LcoTask] = []
         for schedulable_request in schedulable_requests:
-            tasks = LcoTask.from_schedulable_request(schedulable_request, {})
+            tasks = LcoTask.from_schedulable_request(self, schedulable_request, {})
             for task in tasks:
                 task.priority = schedulable_request.ipp_value * tac_priorities[schedulable_request.proposal]
                 if task.request.state != "PENDING":

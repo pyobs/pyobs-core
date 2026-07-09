@@ -56,13 +56,23 @@ class LcoObservationArchive(ObservationArchive):
         ObservationArchive.__init__(self, **kwargs)
 
         # portal
-        self._portal = self.add_child_object(Portal(url, token, site, enclosure, telescope))
+        self._portal = self.add_child_object(
+            Portal, url=url, token=token, site=site, enclosure=enclosure, telescope=telescope
+        )
         self._configdb = ConfigDB(configdb)
 
         # reader/writer
-        self._schedule_reader = self.add_child_object(LcoScheduleReader(self._portal, site, telescope))
+        self._schedule_reader = self.add_child_object(
+            LcoScheduleReader, portal=self._portal, site=site, telescope=telescope
+        )
         self._schedule_writer = self.add_child_object(
-            LcoScheduleWriter(self._portal, self._configdb, site, enclosure, telescope, period)
+            LcoScheduleWriter,
+            portal=self._portal,
+            configdb=self._configdb,
+            site=site,
+            enclosure=enclosure,
+            telescope=telescope,
+            period=period,
         )
 
     async def get_schedule(self, time: Time | None = None) -> ObservationList:

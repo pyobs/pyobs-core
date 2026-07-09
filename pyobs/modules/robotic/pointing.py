@@ -3,7 +3,8 @@ from typing import Any
 
 from astropy.coordinates import SkyCoord
 
-from pyobs.interfaces import AcquisitionResult, IAcquisition, IAutonomous, IPointingRaDec, IPointingSeries
+from pyobs.interfaces import AcquisitionResult, IAcquisition, IAutonomous, IPointingRaDec, IPointingSeries, IRunning
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
 from pyobs.utils.grids.filters import GridFilter
@@ -45,6 +46,11 @@ class PointingSeries(Module, IAutonomous):
 
         # add thread func
         self.add_background_task(self._run_thread, False)
+
+    async def open(self) -> None:
+        """Open module."""
+        await Module.open(self)
+        await self.comm.set_state(IRunning, RunningState(running=await self.is_running()))
 
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""

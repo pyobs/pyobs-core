@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IWeather, WeatherSensorReading, WeatherState
+from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IRunning, IWeather, WeatherSensorReading, WeatherState
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.modules.weather.weather import FITS_HEADERS, SENSOR_UNITS
 from pyobs.utils.enums import WeatherSensors
@@ -101,6 +102,7 @@ class MockWeather(Module, IWeather, IFitsHeaderBefore):
     async def _publish_state(self) -> None:
         is_good = True if not self._active else self._good
         await self.comm.set_state(IWeather, WeatherState(good=is_good, readings=self._get_readings()))
+        await self.comm.set_state(IRunning, RunningState(running=self._active))
 
     def _get_readings(self) -> list[WeatherSensorReading]:
         return [

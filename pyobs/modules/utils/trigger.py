@@ -4,7 +4,8 @@ import logging
 from typing import Any
 
 from pyobs.events import Event
-from pyobs.interfaces import IAutonomous
+from pyobs.interfaces import IAutonomous, IRunning
+from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.object import get_class_from_string
 
@@ -50,13 +51,17 @@ class Trigger(Module, IAutonomous):
         for event in events:
             await self.comm.register_event(event, self._handle_event)
 
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
+
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
         self._running = True
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
 
     async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         self._running = False
+        await self.comm.set_state(IRunning, RunningState(running=self._running))
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""

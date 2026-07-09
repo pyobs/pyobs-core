@@ -57,15 +57,16 @@ class LcoObservationArchive(ObservationArchive):
 
         # portal
         self._portal = self.add_child_object(
-            Portal, url=url, token=token, site=site, enclosure=enclosure, telescope=telescope
+            Portal, Portal, url=url, token=token, site=site, enclosure=enclosure, telescope=telescope
         )
         self._configdb = ConfigDB(configdb)
 
         # reader/writer
         self._schedule_reader = self.add_child_object(
-            LcoScheduleReader, portal=self._portal, site=site, telescope=telescope
+            LcoScheduleReader, LcoScheduleReader, portal=self._portal, site=site, telescope=telescope
         )
         self._schedule_writer = self.add_child_object(
+            LcoScheduleWriter,
             LcoScheduleWriter,
             portal=self._portal,
             configdb=self._configdb,

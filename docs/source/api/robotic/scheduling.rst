@@ -82,7 +82,7 @@ on the fly::
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.scheduler.targets.HelioprojectiveRadialTarget
+.. autoclass:: pyobs.robotic.scheduler.targets.HelioprojectiveTarget
    :members:
    :show-inheritance:
 

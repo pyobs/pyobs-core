@@ -1,7 +1,7 @@
 from .dynamictarget import DynamicTarget
 from .heliocentricpolar import HeliocentricPolar
-from .helioprojectiveradialarget import HelioprojectiveRadialTarget
+from .helioprojectivetarget import HelioprojectiveTarget
 from .siderealtarget import SiderealTarget
 from .target import Target
 
-__all__ = ["Target", "DynamicTarget", "HeliocentricPolar", "HelioprojectiveRadialTarget", "SiderealTarget"]
+__all__ = ["Target", "DynamicTarget", "HeliocentricPolar", "HelioprojectiveTarget", "SiderealTarget"]

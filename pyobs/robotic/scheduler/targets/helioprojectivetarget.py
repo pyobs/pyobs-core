@@ -5,22 +5,22 @@ from pyobs.utils.time import Time
 from .target import Target
 
 
-class HelioprojectiveRadialTarget(Target):
-    psi: float
-    delta: float
+class HelioprojectiveTarget(Target):
+    tx: float
+    ty: float
 
     @property
     def coord(self) -> SkyCoord:
         return self.coordinates(Time.now())
 
     def coordinates(self, time: Time) -> SkyCoord:
-        from sunpy.coordinates import HelioprojectiveRadial
+        from sunpy.coordinates import Helioprojective
 
         return SkyCoord(
-            self.psi,
-            self.delta,
-            unit="deg",
-            frame=HelioprojectiveRadial,
+            self.tx,
+            self.ty,
+            unit="arcsec",
+            frame=Helioprojective,
             observer="earth",
             obstime=time,
         )
@@ -29,4 +29,4 @@ class HelioprojectiveRadialTarget(Target):
         return f"{self.name} ({self.coord})"
 
 
-__all__ = ["HelioprojectiveRadialTarget"]
+__all__ = ["HelioprojectiveTarget"]

@@ -1,5 +1,5 @@
 from .dynamictarget import DynamicTarget
-from .heliocentricpolar import HeliocentricPolarTarget
+from .heliocentricpolartarget import HeliocentricPolarTarget
 from .helioprojectivetarget import HelioprojectiveTarget
 from .siderealtarget import SiderealTarget
 from .target import Target

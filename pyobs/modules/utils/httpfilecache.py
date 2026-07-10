@@ -33,7 +33,7 @@ class HttpFileCache(Module):
         self._max_file_size = max_file_size * 1024 * 1024
 
         # define web server
-        self._app = web.Application()
+        self._app = web.Application(client_max_size=self._max_file_size)
         self._app.add_routes([web.get("/{filename}", self.download_handler), web.post("/", self.upload_handler)])
         self._runner = web.AppRunner(self._app)
         self._site: web.TCPSite | None = None

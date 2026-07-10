@@ -7,7 +7,7 @@ from pyobs.utils.time import Time
 from .target import Target
 
 
-class HeliocentricPolar(Target):
+class HeliocentricPolarTarget(Target):
     mu: float
     psi: float
 
@@ -37,4 +37,4 @@ class HeliocentricPolar(Target):
         return f"{self.name} ({self.coord})"
 
 
-__all__ = ["HeliocentricPolar"]
+__all__ = ["HeliocentricPolarTarget"]

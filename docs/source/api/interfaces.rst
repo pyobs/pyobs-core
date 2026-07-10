@@ -339,6 +339,14 @@ IStartStop
    :show-inheritance:
    :undoc-members:
 
+IStructuredConfig
+^^^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.interfaces.IStructuredConfig
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 ISyncTarget
 ^^^^^^^^^^^
 

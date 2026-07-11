@@ -34,7 +34,13 @@ class HttpFileCache(Module):
 
         # define web server
         self._app = web.Application(client_max_size=self._max_file_size)
-        self._app.add_routes([web.get("/{filename}", self.download_handler), web.post("/", self.upload_handler)])
+        self._app.add_routes(
+            [
+                web.get("/ping", self.ping_handler),
+                web.get("/{filename}", self.download_handler),
+                web.post("/", self.upload_handler),
+            ]
+        )
         self._runner = web.AppRunner(self._app)
         self._site: web.TCPSite | None = None
 
@@ -60,6 +66,17 @@ class HttpFileCache(Module):
     def opened(self) -> bool:
         """Whether the server is started."""
         return self._is_listening
+
+    async def ping_handler(self, request: web.Request) -> web.Response:
+        """Handles GET access to /ping for testing connectivity.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response with a JSON status.
+        """
+        return web.json_response({"status": "ok"})
 
     async def download_handler(self, request: web.Request) -> web.Response:
         """Handles GET access to /{filename} and returns image.

@@ -147,6 +147,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._app.add_routes(
             [
                 web.get("/", self.web_handler),
+                web.get("/ping", self.ping_handler),
                 web.get("/video.mjpg", self.video_handler),
                 web.get("/{filename}", self.image_handler),
             ]
@@ -193,6 +194,17 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             Response containing web page.
         """
         return web.Response(text=INDEX_HTML, content_type="text/html")
+
+    async def ping_handler(self, request: web.Request) -> web.Response:
+        """Handles GET access to /ping for testing connectivity.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response with a JSON status.
+        """
+        return web.json_response({"status": "ok"})
 
     async def video_handler(self, request: web.Request) -> web.StreamResponse:
         """Handles access to /video.mjpg and returns the video.

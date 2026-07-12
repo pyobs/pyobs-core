@@ -90,6 +90,8 @@ async def test_open_publishes_imodule_capabilities() -> None:
     module._child_objects = []
     module._own_comm = False  # skip comm.open()
     module._config_caps = {}  # no config caps for stub
+    module._location = None
+    module._timezone = "utc"
 
     comm = MagicMock()
     comm.set_capabilities = AsyncMock()
@@ -106,6 +108,7 @@ async def test_open_publishes_imodule_capabilities() -> None:
     caps = imodule_call[0][1]
     assert caps.version == "2.0.0"
     assert caps.label == "Test Camera"
+    assert caps.location is None
 
 
 @pytest.mark.asyncio
@@ -118,6 +121,8 @@ async def test_open_publishes_empty_label_when_none() -> None:
     module._child_objects = []
     module._own_comm = False
     module._config_caps = {}
+    module._location = None
+    module._timezone = "utc"
 
     comm = MagicMock()
     comm.set_capabilities = AsyncMock()
@@ -134,6 +139,148 @@ async def test_open_publishes_empty_label_when_none() -> None:
     caps = imodule_call[0][1]
     assert isinstance(caps, ModuleCapabilities)
     assert caps.label == ""
+
+
+@pytest.mark.asyncio
+async def test_open_publishes_location_when_configured() -> None:
+    """Module.open() includes a populated ModuleLocation when a location is configured."""
+    from astropy.coordinates import EarthLocation
+
+    from pyobs.interfaces import IModule
+
+    module = Module.__new__(Module)
+    module._label = "Test Camera"
+    module._child_objects = []
+    module._own_comm = False
+    module._config_caps = {}
+    module._location = EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0)
+    module._timezone = "utc"
+
+    comm = MagicMock()
+    comm.set_capabilities = AsyncMock()
+    module._comm = comm
+
+    with patch("pyobs.object.Object.open", new_callable=AsyncMock):
+        module.get_version = AsyncMock(return_value="2.0.0")
+        module.get_label = AsyncMock(return_value="Test Camera")
+        await module.open()
+
+    imodule_call = next(c for c in comm.set_capabilities.call_args_list if c[0][0] is IModule)
+    caps = imodule_call[0][1]
+    assert caps.location is not None
+    assert caps.location.longitude == pytest.approx(9.9)
+    assert caps.location.latitude == pytest.approx(51.5)
+    assert caps.location.elevation == pytest.approx(100.0)
+    assert caps.location.timezone == "utc"
+
+
+# ---------------------------------------------------------------------------
+# Module._on_module_opened location mismatch warning
+# ---------------------------------------------------------------------------
+
+
+class _FakeProxyContext:
+    """Minimal async context manager standing in for Object.proxy() in tests."""
+
+    def __init__(self, proxy: object) -> None:
+        self._proxy = proxy
+
+    async def __aenter__(self) -> object:
+        return self._proxy
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+@pytest.mark.asyncio
+async def test_on_module_opened_warns_on_location_mismatch(caplog) -> None:
+    """_on_module_opened logs a warning when a connecting module's location disagrees with ours."""
+    import logging
+
+    from astropy.coordinates import EarthLocation
+
+    from pyobs.events import ModuleOpenedEvent
+    from pyobs.interfaces import ModuleCapabilities, ModuleLocation
+
+    module = Module.__new__(Module)
+    module._location = EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0)
+
+    comm = MagicMock()
+    comm.name = "me"
+    module._comm = comm
+
+    remote_caps = ModuleCapabilities(
+        version="2.0.0",
+        location=ModuleLocation(longitude=10.5, latitude=52.0, elevation=100.0, timezone="utc"),
+    )
+    fake_proxy = MagicMock()
+    fake_proxy.get_capabilities = MagicMock(return_value=remote_caps)
+    module.proxy = MagicMock(return_value=_FakeProxyContext(fake_proxy))
+
+    with caplog.at_level(logging.WARNING, logger="pyobs.modules.module"):
+        await module._on_module_opened(ModuleOpenedEvent(), "camera")
+
+    assert any("reports a location" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_on_module_opened_no_warning_when_locations_match(caplog) -> None:
+    """_on_module_opened does not warn when the connecting module's location agrees with ours."""
+    import logging
+
+    from astropy.coordinates import EarthLocation
+
+    from pyobs.events import ModuleOpenedEvent
+    from pyobs.interfaces import ModuleCapabilities, ModuleLocation
+
+    module = Module.__new__(Module)
+    module._location = EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0)
+
+    comm = MagicMock()
+    comm.name = "me"
+    module._comm = comm
+
+    remote_caps = ModuleCapabilities(
+        version="2.0.0",
+        location=ModuleLocation(longitude=9.9, latitude=51.5, elevation=100.0, timezone="utc"),
+    )
+    fake_proxy = MagicMock()
+    fake_proxy.get_capabilities = MagicMock(return_value=remote_caps)
+    module.proxy = MagicMock(return_value=_FakeProxyContext(fake_proxy))
+
+    with caplog.at_level(logging.WARNING, logger="pyobs.modules.module"):
+        await module._on_module_opened(ModuleOpenedEvent(), "camera")
+
+    assert not any("reports a location" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_on_module_opened_no_warning_when_no_local_location(caplog) -> None:
+    """No comparison (and no crash) when this module has no location configured."""
+    import logging
+
+    from pyobs.events import ModuleOpenedEvent
+    from pyobs.interfaces import ModuleCapabilities, ModuleLocation
+
+    module = Module.__new__(Module)
+    module._location = None
+
+    comm = MagicMock()
+    comm.name = "me"
+    module._comm = comm
+
+    remote_caps = ModuleCapabilities(
+        version="2.0.0",
+        location=ModuleLocation(longitude=10.5, latitude=52.0, elevation=100.0, timezone="utc"),
+    )
+    fake_proxy = MagicMock()
+    fake_proxy.get_capabilities = MagicMock(return_value=remote_caps)
+    module.proxy = MagicMock(return_value=_FakeProxyContext(fake_proxy))
+
+    with caplog.at_level(logging.WARNING, logger="pyobs.modules.module"):
+        await module._on_module_opened(ModuleOpenedEvent(), "camera")
+
+    assert not any("reports a location" in r.message for r in caplog.records)
 
 
 # ---------------------------------------------------------------------------

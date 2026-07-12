@@ -8,9 +8,18 @@ from .interface import Interface
 
 
 @dataclass
+class ModuleLocation:
+    longitude: float = 0.0
+    latitude: float = 0.0
+    elevation: float = 0.0
+    timezone: str = "utc"
+
+
+@dataclass
 class ModuleCapabilities:
     label: str = ""
     version: str = ""
+    location: ModuleLocation | None = None
 
 
 class IModule(Interface, metaclass=ABCMeta):
@@ -31,4 +40,4 @@ class IModule(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IModule", "ModuleCapabilities"]
+__all__ = ["IModule", "ModuleCapabilities", "ModuleLocation"]

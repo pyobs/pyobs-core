@@ -1,15 +1,82 @@
-v2.0.0.dev11 (unreleased)
+v2.0.0.dev18 (unreleased)
+*************************
+* Fixed ``DummyTelescope.set_focus_offset`` silently logging an error instead of raising, which made
+  remote callers see a false success; its M1/M2 temperatures now drift like ``DummyCamera``'s sensors
+  instead of staying static after startup.
+* ``pyobsd`` now defaults to sending module logs to the systemd journal (``--syslog`` is on by
+  default; pass ``--no-syslog`` to disable it).
+* Added ``pyobsd logs [module] [journalctl arguments...]``, a thin passthrough to ``journalctl``
+  filtered to the module's journal fields.
+
+v2.0.0.dev17 (2026-07-11)
+*************************
+* Added a ``/ping`` health-check endpoint to ``HttpFileCache`` and ``BaseVideo``, for verifying HTTP
+  connectivity without touching the file/image cache.
+
+v2.0.0.dev16 (2026-07-10)
+*************************
+* Added ``IStructuredConfig``, letting a module push/apply its whole config dataclass as a unit
+  (schema auto-derived via ``dataclass_to_schema``), complementing ``IConfig``'s per-field get/set.
+* Added ``pydantic_to_schema``, the Pydantic-model counterpart to ``dataclass_to_schema``, for module
+  configs (e.g. pyobs-iagvt's ``FTSConfig``) that need Pydantic's own validation.
+* Renamed ``HeliocentricPolar`` to ``HeliocentricPolarTarget`` for naming consistency.
+* Replaced ``HelioprojectiveRadialTarget`` with ``HelioprojectiveTarget``, using the Helioprojective
+  frame's Tx/Ty (arcsec) directly instead of a radial (psi/delta) representation.
+
+v2.0.0.dev15 (2026-07-10)
+*************************
+* Fixed ``HttpFileCache`` rejecting uploads with "413 Request Entity Too Large" because
+  ``client_max_size`` was never passed through to configure the upload limit.
+
+v2.0.0.dev14 (2026-07-09)
+*************************
+* Fixed ``Scheduler``, ``Trigger``, ``Kiosk``, ``PointingSeries``, ``Weather``, ``MockWeather``, and
+  ``Mastermind`` never publishing their advertised ``IRunning`` state, leaving subscribers retrying
+  indefinitely.
+* The LCO schedule backend now logs the next observation after a schedule update, matching
+  ``BackendObservationArchive``.
+
+v2.0.0.dev13 (2026-07-09)
+*************************
+* Internal fixes only: resolved the remaining pyrefly type-check errors blocking CI.
+
+v2.0.0.dev12 (2026-07-09)
+*************************
+* Added ``HelioprojectiveRadialTarget`` for solar coordinate scheduling.
+* Added ``MockWeather``, a deterministic in-memory ``IWeather`` implementation for tests and
+  simulations.
+* ``IAcquisition``/``IAutoGuiding`` now publish live state (``AcquisitionState``/``AcquisitionAttempt``,
+  ``GuidingState``); fleshed out their dummy modules to match.
+* ``AcquisitionResult``/``AcquisitionAttempt`` now use a single ``offset_frame`` (RA_DEC/ALT_AZ) plus
+  ``offset_lon``/``offset_lat`` instead of four separate ``off_ra``/``off_dec``/``off_alt``/``off_az``
+  fields, and attempts track the 2D offset per iteration.
+* ``ApplyOffsets`` (and its RA/Dec and Alt/Az subclasses) now return an ``OffsetResult`` with the
+  actually-applied correction instead of a bare ``bool``.
+* ``IMode.set_mode`` now takes a group name instead of a positional index.
+* Added ``IRunning`` support to ``IAutoFocus``/``DummyAutoFocus``.
+* Implemented script dispatch for the ``SCRIPT`` config type (``LcoScript``), selecting a nested
+  script via ``extra_params.script_name``.
+* Fixed context (``comm``/``observer``/``vfs``) not being propagated to ``Portal``,
+  ``LcoScheduleReader``/``LcoScheduleWriter``, and ``LcoTask`` when constructed directly, which broke
+  proxy lookups.
+* Fixed a missing ``request`` field causing LCO script validation to fail.
+* Fixed ``BaseVideo`` never publishing ``IImageType`` state (unlike ``BaseCamera``).
+* Made the ``telegram`` import lazy in the ``Telegram`` module, so it's no longer a hard dependency
+  for unrelated modules in ``pyobs.modules.utils``.
+* Added a "What's New in pyobs 2.0" docs page tracking user-facing changes for the 2.0 release.
+
+v2.0.0.dev11 (2026-07-05)
 *************************
 * Implemented access control (ACLs) for module RPC calls, via an ``acl:`` config block next to
   ``comm:`` (``allow``/``deny`` policy, ``enforce``/``log`` mode, ``IModule.get_permitted_methods()``).
-* ``IAcquisition.acquire_target()`` now returns a typed ``AcquisitionResult`` instead of
-  ``dict[str, Any]``; added live ``AcquisitionState``.
-* Added live state for ``IAutoGuiding`` (``GuidingState``).
 * Completed the ``Unit`` annotation rollout across all applicable interface signatures.
 * Interface and event schemas, including versioning, are now fully published via service discovery
   (disco#info), enabling a mixed-version-fleet diagnostic.
+* ``IAcquisition.acquire_target()`` now returns a typed ``AcquisitionResult`` instead of
+  ``dict[str, Any]``.
 * ``Module``'s constructor no longer takes a ``name`` parameter; a module's name always tracks its
   ``comm`` object's own identity (XMPP JID / ``LocalComm`` name) instead.
+* Added ``--syslog`` to ``pyobsd``, forwarding it to the ``pyobs`` processes it launches.
 * A module now shuts down gracefully instead of endlessly reconnecting when kicked from XMPP due to
   a JID conflict.
 * Fixed an XMPP reconnect storm after an ejabberd outage, and a module reconnect that could be
@@ -21,7 +88,6 @@ v2.0.0.dev11 (unreleased)
 * Fixed phantom XMPP state subscriptions for composite interfaces.
 * A global ``pyobs.yaml`` config file (including under ``/opt/pyobs/storage/``) is now looked up in
   addition to a module's own config file.
-* Added a "What's New in pyobs 2.0" docs page tracking user-facing changes for the 2.0 release.
 
 v2.0.0.dev10 (2026-07-02)
 *************************

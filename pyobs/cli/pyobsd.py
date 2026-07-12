@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import glob
 import json
 import logging
@@ -49,9 +50,9 @@ class PyobsDaemonCLI(CLI):
         )
         self._parser.add_argument(
             "--syslog",
-            action="store_true",
-            help="send module logs to systemd journal",
-            default=self._config.get("syslog", False),
+            action=argparse.BooleanOptionalAction,
+            help="send module logs to systemd journal (use --no-syslog to disable)",
+            default=self._config.get("syslog", True),
         )
         self._parser.add_argument("--chuid", type=str, default=self._config.get("chuid", "pyobs:pyobs"))
         self._parser.add_argument("-v", "--verbose", action="store_true")
@@ -63,6 +64,9 @@ class PyobsDaemonCLI(CLI):
         sp.add_parser("restart", help="restart modules").add_argument("modules", type=str, nargs="*")
         sp.add_parser("status", help="status of modules").add_argument("--json", action="store_true")
         sp.add_parser("list", help="list of modules")
+        sp.add_parser("logs", help="show/follow module logs via journalctl").add_argument(
+            "args", nargs=argparse.REMAINDER, help="[module] [journalctl arguments...]"
+        )
 
     def run(self) -> None:
         # init daemon
@@ -88,6 +92,8 @@ class PyobsDaemonCLI(CLI):
                 daemon.status(print_json=self._config["json"])
             case "list":
                 daemon.list()
+            case "logs":
+                daemon.logs(self._config["args"])
 
 
 class PyobsDaemon:
@@ -292,6 +298,21 @@ class PyobsDaemon:
     def list(self) -> None:
         print("\n".join(self._list_configs()))
 
+    def logs(self, args: list[str]) -> None:
+        """Show/follow module logs by exec'ing into journalctl."""
+        match_args = ["SYSLOG_IDENTIFIER=pyobs"]
+        remainder = list(args)
+        # "--" may have been auto-inserted by main() to work around argparse.REMAINDER
+        # refusing to swallow a leading flag (e.g. "pyobsd logs -f") — drop it here.
+        if remainder and remainder[0] == "--":
+            remainder.pop(0)
+        if remainder and remainder[0] in self._list_configs():
+            match_args.append(f"PYOBS_MODULE={remainder.pop(0)}")
+        cmd = ["journalctl", *match_args, *remainder]
+        if self._verbose:
+            print(f"[DEBUG] Executing: {' '.join(cmd)}")
+        os.execvp("journalctl", cmd)
+
     # ── process management ────────────────────────────────────────────────────
 
     def _start_service(self, module: str) -> None:
@@ -388,6 +409,14 @@ class PyobsDaemon:
 
 
 def main() -> None:
+    # argparse.REMAINDER can't swallow a leading flag (e.g. "pyobsd logs -f")
+    # unless a "--" already precedes it — insert one automatically so users
+    # don't need to type it themselves.
+    if "logs" in sys.argv:
+        idx = sys.argv.index("logs") + 1
+        if idx < len(sys.argv) and sys.argv[idx].startswith("-") and sys.argv[idx] != "--":
+            sys.argv.insert(idx, "--")
+
     cli = PyobsDaemonCLI()
     cli()
 

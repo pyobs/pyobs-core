@@ -36,7 +36,7 @@ from .IGain import GainState, IGain
 from .IImageFormat import IImageFormat, ImageFormatCapabilities, ImageFormatState
 from .IImageType import IImageType, ImageTypeState
 from .IMode import IMode, ModeCapabilities, ModeState
-from .IModule import IModule, ModuleCapabilities
+from .IModule import IModule, ModuleCapabilities, ModuleLocation
 from .IMotion import DeviceMotionStatus, IMotion, MotionState
 from .IMultiFiber import IMultiFiber, MultiFiberCapabilities, MultiFiberState
 from .interface import Interface
@@ -118,6 +118,7 @@ __all__ = [
     "ModeState",
     "IModule",
     "ModuleCapabilities",
+    "ModuleLocation",
     "IMotion",
     "DeviceMotionStatus",
     "MotionState",

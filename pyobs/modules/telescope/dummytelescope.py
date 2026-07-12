@@ -108,6 +108,7 @@ class DummyTelescope(
         self._dest_coords: SkyCoord | None = None
         self._drift = (0.0, 0.0)
         self._sim_status = MotionStatus.IDLE
+        self._temperatures = {"M1": 10.0, "M2": 12.0}
 
         # locks
         self._lock_focus = asyncio.Lock()
@@ -172,6 +173,14 @@ class DummyTelescope(
                 drift_dec = random.gauss(self._drift_rate[1], max(self._drift_rate[1] / 10.0, 1e-9))
                 self._drift = (self._drift[0] + drift_ra, self._drift[1] + drift_dec)
 
+            self._temperatures = {name: value + random.gauss(0.0, 0.05) for name, value in self._temperatures.items()}
+            await self.comm.set_state(
+                ITemperatures,
+                TemperaturesState(
+                    readings=[SensorReading(name=name, value=value) for name, value in self._temperatures.items()]
+                ),
+            )
+
             await asyncio.sleep(1)
 
     async def open(self) -> None:
@@ -191,10 +200,7 @@ class DummyTelescope(
         await self.comm.set_state(
             ITemperatures,
             TemperaturesState(
-                readings=[
-                    SensorReading(name="M1", value=10.0),
-                    SensorReading(name="M2", value=12.0),
-                ]
+                readings=[SensorReading(name=name, value=value) for name, value in self._temperatures.items()]
             ),
         )
         await self.comm.set_state(IReady, ReadyState(ready=True))
@@ -318,7 +324,7 @@ class DummyTelescope(
             await self._change_motion_status(MotionStatus.IDLE)
 
     async def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
-        log.error("Not implemented")
+        raise NotImplementedError
 
 
 __all__ = ["DummyTelescope"]

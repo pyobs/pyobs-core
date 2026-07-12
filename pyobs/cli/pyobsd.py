@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import glob
 import json
 import logging
@@ -49,9 +50,9 @@ class PyobsDaemonCLI(CLI):
         )
         self._parser.add_argument(
             "--syslog",
-            action="store_true",
-            help="send module logs to systemd journal",
-            default=self._config.get("syslog", False),
+            action=argparse.BooleanOptionalAction,
+            help="send module logs to systemd journal (use --no-syslog to disable)",
+            default=self._config.get("syslog", True),
         )
         self._parser.add_argument("--chuid", type=str, default=self._config.get("chuid", "pyobs:pyobs"))
         self._parser.add_argument("-v", "--verbose", action="store_true")

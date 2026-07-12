@@ -2,7 +2,7 @@
 
 ## Status
 
-Design exploration turned implementation log. Most of what this document proposed is now built and merged to `develop` (version, state, capabilities, presence, disco#info schema publication, RPC payload encoding 2.0, the `async with`-only `Proxy` redesign, the mixed-version-fleet diagnostic) — checked directly against the code while revising this pass, not just against the document's own earlier self-reported notes, several of which had gone stale. ✅ marks a point confirmed implemented; remaining unmarked items are genuinely still open. One correction surfaced in an earlier pass, noted where relevant: `ILatLon`/`LatLonCapabilities` no longer exist in `pyobs.interfaces` — left as historical context where the reasoning still applies, corrected where it was stated as current fact. This pass removes all D-Bus references throughout the document — `pyobs-core` never had a D-Bus `Comm` backend, and D-Bus is not in use or planned, so the earlier speculative analysis of it as a hypothetical future backend has been dropped rather than kept as unused historical context. A later pass found event feature versioning and event schema publication in disco#info — flagged 🔵 throughout an earlier revision — were actually already implemented, landed in `9c19e512` before this doc was last edited; verified directly against `pyobs/comm/xmpp/xmppcomm.py` and `serializer.py` rather than trusting the doc's own prior notes. **This pass: Phase 6 (external hardware-module repos) checked for the first time** — all 11 repos exist locally alongside `pyobs-core` and were audited for `comm.set_state` migration; 9/11 fully migrated, and the 2 exceptions (`pyobs-aravis`, `pyobs-v4l`) traced to one real `pyobs-core` bug (`BaseVideo.set_image_type` never called `comm.set_state`, unlike `BaseCamera.set_image_type`), not a per-module gap — see [Phase 6](#phase-6--external-official-pyobs--hardware-modules). ✅ **Fixed in this pass**: `BaseVideo` now publishes `IImageType` state on `open()` and on every `set_image_type()` call, matching `BaseCamera`'s pattern exactly (`pyobs/modules/camera/basevideo.py`). **Also this pass: Phase 7 (`pyobs-web-client`) checked for the first time**, against `../pyobs-web-client`'s own code and its own detailed `DEVELOPMENT.md` — it turned out to be fully ported to the 2.0 wire protocol already, verified end-to-end against a live server, not merely "status unknown" as this document previously assumed. One genuine cross-repo RPC-serialization bug it surfaced was already independently fixed on the `pyobs-core` side (`d170fd5e`, this session). See [Phase 7](#phase-7--pyobs-web-client-catch-up). **This pass adds a new, not-yet-implemented design section: [Access Control (ACLs)](#access-control-acls) / [Phase 8](#phase-8--access-control-acls)** — everything up to this point assumed a closed, mutually-trusting fleet, and this is the first design work on restricting which clients may call which methods on which other clients. **This pass adds a `deny` mode alongside the original `allow` mode** — `allow` alone can't express "everyone except this one caller" without enumerating the whole fleet by hand, so an `acl:` block now picks exactly one of `allow` (least-privilege, method-level) or `deny` (quarantine, whole-caller, coarse) rather than only supporting allowlisting. **This pass also adds a `mode: enforce | log` key** — `log` runs the same allow/deny decision but only logs what would have been denied and lets the call through, so a new policy can be validated against real traffic before it's ever capable of blocking a legitimate caller. **This pass adds `IModule.get_permitted_methods()`** — a caller-specific, always-permitted introspection query answering "am I allowed to call this" proactively, so a UI (`pyobs-gui`, `pyobs-web-client`) can hide or grey out actions an operator can't use instead of only learning via `ForbiddenError` on an actual attempt. **This pass also adds a cross-repo pointer**: `acl:` rules living one-per-module-config is a real fleet-wide visibility gap once there are many modules — see [Fleet-wide visibility](#fleet-wide-visibility-cross-repo-pyobs-web-admin), which keeps storage/enforcement exactly as designed and points at a new `pyobs-web-admin`-side matrix UI (its own `DEVELOPMENT.md`) for the actual fix. **This pass adds a similar cross-repo pointer for `pyobs-gui`/`pyobs-web-client`**: both already handle a denied call reactively today with zero changes needed (confirmed by reading their actual error-handling code), and both have an open item, tracked in their own `DEVELOPMENT.md`s, for the proactive half once `get_permitted_methods()` lands. **This pass implements Phase 8 in full** (`exc.ForbiddenError`, `acl:` config parsing, the `Module.execute()` check, `IModule.get_permitted_methods()`, the XMPP `forbidden`-condition mapping, unit and integration test coverage, and config docs) — see [Phase 8](#phase-8--access-control-acls) for the checklist and, notably, two real pre-existing bugs in the XMPP client-side error path (unrelated to this design, dating back to the original project rename) that were found and fixed in order to make the `forbidden` condition actually observable end-to-end, verified against a live ejabberd server rather than assumed from a unit test alone. **This pass also implements the interface-name sugar follow-up** for `acl: allow` entries (an entry may name an interface as shorthand for all of that interface's own methods), and fixes one more pre-existing, unrelated test bug found along the way (`test_background_task` comparing a bound method against a list of `(BackgroundTask, bool)` tuples, so it could never actually catch a regression) — see [Phase 8](#phase-8--access-control-acls) for both. With ACLs done, [Open Questions / Next Steps](#open-questions--next-steps) has no remaining 🔵 items.
+Design exploration turned implementation log. Most of what this document proposed is now built and merged to `develop` (version, state, capabilities, presence, disco#info schema publication, RPC payload encoding 2.0, the `async with`-only `Proxy` redesign, the mixed-version-fleet diagnostic) — checked directly against the code while revising this pass, not just against the document's own earlier self-reported notes, several of which had gone stale. ✅ marks a point confirmed implemented; remaining unmarked items are genuinely still open. One correction surfaced in an earlier pass, noted where relevant: `ILatLon`/`LatLonCapabilities` no longer exist in `pyobs.interfaces` — left as historical context where the reasoning still applies, corrected where it was stated as current fact. This pass removes all D-Bus references throughout the document — `pyobs-core` never had a D-Bus `Comm` backend, and D-Bus is not in use or planned, so the earlier speculative analysis of it as a hypothetical future backend has been dropped rather than kept as unused historical context. A later pass found event feature versioning and event schema publication in disco#info — flagged 🔵 throughout an earlier revision — were actually already implemented, landed in `9c19e512` before this doc was last edited; verified directly against `pyobs/comm/xmpp/xmppcomm.py` and `serializer.py` rather than trusting the doc's own prior notes. **This pass: Phase 6 (external hardware-module repos) checked for the first time** — all 11 repos exist locally alongside `pyobs-core` and were audited for `comm.set_state` migration; 9/11 fully migrated, and the 2 exceptions (`pyobs-aravis`, `pyobs-v4l`) traced to one real `pyobs-core` bug (`BaseVideo.set_image_type` never called `comm.set_state`, unlike `BaseCamera.set_image_type`), not a per-module gap — see [Phase 6](#phase-6--external-official-pyobs--hardware-modules). ✅ **Fixed in this pass**: `BaseVideo` now publishes `IImageType` state on `open()` and on every `set_image_type()` call, matching `BaseCamera`'s pattern exactly (`pyobs/modules/camera/basevideo.py`). **Also this pass: Phase 7 (`pyobs-web-client`) checked for the first time**, against `../pyobs-web-client`'s own code and its own detailed `DEVELOPMENT.md` — it turned out to be fully ported to the 2.0 wire protocol already, verified end-to-end against a live server, not merely "status unknown" as this document previously assumed. One genuine cross-repo RPC-serialization bug it surfaced was already independently fixed on the `pyobs-core` side (`d170fd5e`, this session). See [Phase 7](#phase-7--pyobs-web-client-catch-up). **This pass adds a new, not-yet-implemented design section: [Access Control (ACLs)](#access-control-acls) / [Phase 8](#phase-8--access-control-acls)** — everything up to this point assumed a closed, mutually-trusting fleet, and this is the first design work on restricting which clients may call which methods on which other clients. **This pass adds a `deny` mode alongside the original `allow` mode** — `allow` alone can't express "everyone except this one caller" without enumerating the whole fleet by hand, so an `acl:` block now picks exactly one of `allow` (least-privilege, method-level) or `deny` (quarantine, whole-caller, coarse) rather than only supporting allowlisting. **This pass also adds a `mode: enforce | log` key** — `log` runs the same allow/deny decision but only logs what would have been denied and lets the call through, so a new policy can be validated against real traffic before it's ever capable of blocking a legitimate caller. **This pass adds `IModule.get_permitted_methods()`** — a caller-specific, always-permitted introspection query answering "am I allowed to call this" proactively, so a UI (`pyobs-gui`, `pyobs-web-client`) can hide or grey out actions an operator can't use instead of only learning via `ForbiddenError` on an actual attempt. **This pass also adds a cross-repo pointer**: `acl:` rules living one-per-module-config is a real fleet-wide visibility gap once there are many modules — see [Fleet-wide visibility](#fleet-wide-visibility-cross-repo-pyobs-web-admin), which keeps storage/enforcement exactly as designed and points at a new `pyobs-web-admin`-side matrix UI (its own `DEVELOPMENT.md`) for the actual fix. **This pass adds a similar cross-repo pointer for `pyobs-gui`/`pyobs-web-client`**: both already handle a denied call reactively today with zero changes needed (confirmed by reading their actual error-handling code), and both have an open item, tracked in their own `DEVELOPMENT.md`s, for the proactive half once `get_permitted_methods()` lands. **This pass implements Phase 8 in full** (`exc.ForbiddenError`, `acl:` config parsing, the `Module.execute()` check, `IModule.get_permitted_methods()`, the XMPP `forbidden`-condition mapping, unit and integration test coverage, and config docs) — see [Phase 8](#phase-8--access-control-acls) for the checklist and, notably, two real pre-existing bugs in the XMPP client-side error path (unrelated to this design, dating back to the original project rename) that were found and fixed in order to make the `forbidden` condition actually observable end-to-end, verified against a live ejabberd server rather than assumed from a unit test alone. **This pass also implements the interface-name sugar follow-up** for `acl: allow` entries (an entry may name an interface as shorthand for all of that interface's own methods), and fixes one more pre-existing, unrelated test bug found along the way (`test_background_task` comparing a bound method against a list of `(BackgroundTask, bool)` tuples, so it could never actually catch a regression) — see [Phase 8](#phase-8--access-control-acls) for both. With ACLs done, [Open Questions / Next Steps](#open-questions--next-steps) has no remaining 🔵 items. **This pass folds three sibling planning documents into this file** so 2.0-era design work lives in one place: [Module observer-location capabilities](#module-observer-location-capabilities-implemented) (implemented and merged — was `DESIGN_module_location.md`), [`IStructuredConfig`](#istructuredconfig-bulk-structured-config-for-pyobs-modules-proposed-not-yet-implemented) (proposed interface for `pyobs-iagvt`, not yet implemented in this repo — was `IStructuredConfig-spec.md`), and [Appendix: Sphinx docs sweep findings](#appendix-sphinx-docs-sweep-findings-2026-07-05) (completed docs audit — was `UPDATE_DOCS.md`); the three standalone files are deleted.
 
 ## Table of Contents
 
@@ -59,6 +59,9 @@ Design exploration turned implementation log. Most of what this document propose
   - [Phase 8 — Access Control (ACLs)](#phase-8--access-control-acls)
 - [Appendix: `get_*` to State Survey](#appendix-get_-to-state-survey)
 - [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue)
+- [Module observer-location capabilities (implemented)](#module-observer-location-capabilities-implemented)
+- [`IStructuredConfig`: bulk structured config for pyobs modules (proposed, not yet implemented)](#istructuredconfig-bulk-structured-config-for-pyobs-modules-proposed-not-yet-implemented)
+- [Appendix: Sphinx docs sweep findings (2026-07-05)](#appendix-sphinx-docs-sweep-findings-2026-07-05)
 
 ## Motivation
 
@@ -2213,3 +2216,563 @@ class AcquisitionResult:            # IAcquisition.acquire_target return type --
 ConfigScalar = bool | int | float | str  # closed primitive set; bool before int (subclass)
 ConfigValue = ConfigScalar | list[ConfigScalar] | dict[str, ConfigScalar]
 ```
+
+## Module observer-location capabilities (implemented)
+
+*Folded in from the standalone `DESIGN_module_location.md`.*
+
+### Problem
+
+Every `Module` already knows its observatory location (`Object._location`/`_observer`/`_timezone`,
+set from constructor config in `pyobs/object.py:248-327` and exposed via the `observer`/`location`/
+`timezone` properties, `pyobs/object.py:210-225`). Right now this is purely local: other modules or
+clients (e.g. the web client, or the FITS-header pipeline) have no way to query a remote module's
+site location over comm — each module config just repeats the location block if it needs one.
+
+### Decision: one-shot capabilities, not pubsub state
+
+Location is static for a module's lifetime (set once at construction, not expected to change at
+runtime), so publishing it uses the same **one-shot capabilities** mechanism already used for
+`ModuleCapabilities` (version/label) — not the pubsub `state` mechanism used for values that change
+(`IWeather`, `IMotion`, etc.). This avoids adding subscription overhead to every module (all modules
+implement `IModule`) for what is effectively immutable config, and sidesteps the class of bug hit
+before where a widely-implemented interface picking up unwanted `state` caused phantom XMPP
+subscriptions (see `Interface.has_own_state()` in `pyobs/interfaces/interface.py`).
+
+`Interface.capabilities` is a single `ClassVar[type | None]` slot per interface
+(`pyobs/interfaces/interface.py:10`) — there's no mechanism for a second, independent capabilities
+dataclass on `IModule`. So location is added as a **nested field inside** `ModuleCapabilities`, not
+as a sibling dataclass.
+
+### Caveat: per-module, not a site-wide source of truth
+
+pyobs has no shared "site" concept — each module independently configures its own `location` in
+YAML (`pyobs/object.py:248-327`), so two modules belonging to the same observatory could disagree
+(typo, copy-paste drift, stale config). Publishing per-module location doesn't fix that, it just
+makes it observable for the first time. The published value should be treated as *"this module's
+belief about its own location,"* not a canonical site fact. A lightweight warning (see below) makes
+disagreement surface in logs rather than silently producing wrong astrometry downstream. Fixing
+drift at the config level is handled separately by the existing `{include}`/YAML-anchor mechanism in
+`pyobs/utils/config.py` (already used in production to share a `location:` block across module
+configs) — this design's warning is a backstop for the case someone forgets to use it, or two
+systems get bridged unexpectedly, not a replacement for it.
+
+### Implementation
+
+#### 1. `pyobs/interfaces/IModule.py`
+
+`ModuleLocation` dataclass, nested in `ModuleCapabilities`:
+
+```python
+@dataclass
+class ModuleLocation:
+    longitude: float = 0.0
+    latitude: float = 0.0
+    elevation: float = 0.0
+    timezone: str = "utc"
+
+
+@dataclass
+class ModuleCapabilities:
+    label: str = ""
+    version: str = ""
+    location: ModuleLocation | None = None
+```
+
+`location` stays `None` for modules that don't configure one (`Object._location is None`).
+`ModuleLocation` exported in `__all__`.
+
+#### 2. `pyobs/modules/module.py` — `Module.open()`
+
+Extends the existing capabilities publish with `location=ModuleLocation(...)` built from
+`self._location`/`self._timezone`, or `None` if no location is configured.
+
+#### 3. Comm layer
+
+No changes needed to `pyobs/comm/comm.py` or the XMPP backend (`set_capabilities`/`get_capabilities`
+already generic over `(interface, dataclass)` pairs, `pyobs/comm/xmpp/xmppcomm.py`) — this is exactly
+why the capabilities mechanism was chosen.
+
+#### 4. Warning on location mismatch
+
+Capabilities are pull-only (no subscription, unlike `state`), so there's no "capabilities changed"
+event to hook. But `_on_module_opened` (`pyobs/modules/module.py`) already fires for every peer that
+connects and already fetches that peer's `IModule` capabilities via proxy to compare pyobs versions —
+so this is the natural, automatic, system-wide place to also compare location. No new subscription,
+no opt-in helper that call sites might forget to use: if both sides have a location configured, the
+geocentric distance between them is computed via `EarthLocation`, and a `log.warning` fires if it
+exceeds 100m.
+
+Every module already discovers every other module it connects to via `ModuleOpenedEvent`, so this
+gives full, automatic, system-wide drift detection for free — no extra call sites, no discipline
+required.
+
+#### Status
+
+✅ Implemented and merged to `develop` (`pyobs/interfaces/IModule.py`, `pyobs/modules/module.py`,
+tests in `tests/comm/test_presence.py`).
+
+## `IStructuredConfig`: bulk structured config for pyobs modules (proposed, not yet implemented)
+
+*Folded in from the standalone `IStructuredConfig-spec.md`. Consumer repo: `pyobs-iagvt`.*
+
+### Motivation
+
+`IConfig` (unchanged, stays as-is) already lets any module get/set config
+**per field**, with per-field capability introspection
+(`get_config_caps` → `dict[str, tuple[bool, bool, bool]]` for
+readable/writable/has-options). That's the right model for flat,
+independently-tunable values.
+
+`pyobs-iagvt`'s siderostat driver needs something different: it holds one
+config **dataclass** (potentially nested — sub-dataclasses for things like a
+pointing model) that gets pushed and applied as a unit, not field-by-field.
+`IStructuredConfig` is a new interface for that case. It is *not* a
+replacement for `IConfig` — the two coexist, used for different shapes of
+config.
+
+### Design summary
+
+Same split pyobs already uses everywhere else (see `pyobs/interfaces/ICooling.py`
+for the reference pattern):
+
+- **`capabilities`** (`ConfigSchema`) — static, describes *shape*: field
+  names, types, units, allowed options, nesting. Fetched via the existing
+  generic `Comm.get_capabilities(module, interface)` path
+  (`pyobs/comm/comm.py:496`) — **no changes needed there**, it already
+  deserializes whatever dataclass type an interface declares as
+  `capabilities`.
+- **`state`** (`ConfigAppliedState`) — live, describes *current values*.
+  Published via the existing pub-sub state mechanism, same as
+  `CoolingState`.
+- **`set_config(...)`** — the only RPC method. Call-only, no getter (readback
+  comes from subscribing to `state`, not from a get RPC — this mirrors
+  `ICooling.set_cooling`, which is also call-only).
+
+No values ever live inside `ConfigSchema`/`ConfigFieldSchema` — schema is
+shape-only. Values only ever live in `ConfigAppliedState.config`.
+
+### 1. Recursive `ConfigValue`
+
+`pyobs/interfaces/IConfig.py` currently defines `ConfigValue` one level deep
+(`dict[str, ConfigScalar]`). Needed for `IStructuredConfig` to support nested
+dataclasses. Add this as a new type alias — **do not change `IConfig`'s
+existing usage**, just make the recursive version available for
+`IStructuredConfig` to use:
+
+```python
+ConfigValue = ConfigScalar | list["ConfigValue"] | dict[str, "ConfigValue"]
+```
+
+Decide during implementation whether to widen `IConfig`'s existing
+`ConfigValue` in place (if nothing depends on the flat version) or introduce
+this as a separately-named alias to avoid touching `IConfig` at all. Prefer
+the latter unless a quick grep shows it's safe.
+
+### 2. New file: `pyobs/utils/config_schema.py`
+
+Auto-derives a schema from an arbitrary (possibly nested) dataclass, so
+module authors never hand-write `ConfigSchema` — it's generated from the
+same dataclass they already use for their real config.
+
+```python
+from __future__ import annotations
+import dataclasses
+import enum
+from typing import Annotated, Any, get_args, get_origin, get_type_hints
+from pyobs.utils.enums import Unit
+
+
+@dataclasses.dataclass
+class ConfigFieldSchema:
+    type: str
+    unit: Unit | None = None
+    options: list[str] | None = None
+    default: Any | None = None
+    nested: dict[str, "ConfigFieldSchema"] | None = None
+
+
+@dataclasses.dataclass
+class ConfigSchema:
+    fields: dict[str, ConfigFieldSchema]
+
+
+def dataclass_to_schema(cls: type) -> ConfigSchema:
+    """Recursively derive a ConfigSchema from a dataclass type.
+
+    Handles: plain scalars (str/int/float/bool), Enum-typed fields (→
+    type="enum" with `options`), Annotated[T, Unit.X] (→ populates `unit`),
+    and nested dataclasses (→ type="object" with `nested`).
+    Raises a clear error for unsupported field types rather than silently
+    guessing — this schema is consumed by GUI rendering code, silent
+    fallbacks there are worse than a loud failure here.
+    """
+    hints = get_type_hints(cls, include_extras=True)
+    fields: dict[str, ConfigFieldSchema] = {}
+    for f in dataclasses.fields(cls):
+        fields[f.name] = _field_schema(hints[f.name], f.default)
+    return ConfigSchema(fields=fields)
+
+
+def _field_schema(annotation: Any, default: Any) -> ConfigFieldSchema:
+    unit = None
+    origin = get_origin(annotation)
+    if origin is Annotated:
+        annotation, *extras = get_args(annotation)
+        unit = next((e for e in extras if isinstance(e, Unit)), None)
+
+    if dataclasses.is_dataclass(annotation):
+        nested_schema = dataclass_to_schema(annotation)
+        return ConfigFieldSchema(type="object", nested=nested_schema.fields)
+
+    if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+        return ConfigFieldSchema(
+            type="enum",
+            options=[e.value for e in annotation],
+            default=default if default is not dataclasses.MISSING else None,
+        )
+
+    type_name = {str: "str", int: "int", float: "float", bool: "bool"}.get(annotation)
+    if type_name is None:
+        raise TypeError(f"Unsupported config field type for schema: {annotation!r}")
+
+    return ConfigFieldSchema(
+        type=type_name,
+        unit=unit,
+        default=default if default is not dataclasses.MISSING else None,
+    )
+```
+
+Notes for implementation:
+- `mode: str  # one of "track", "park", "slew"` in freeform prose should
+  really be a proper `enum.Enum` in the real dataclass, not a bare `str`
+  with a comment — that's what lets `dataclass_to_schema` populate
+  `options` automatically. Worth enforcing this as a convention: any config
+  field that should render as a dropdown must be an actual Enum subclass.
+- Cache the derived schema per class (e.g. `functools.lru_cache` keyed on
+  `cls`) since it's static per type — no need to recompute per RPC call.
+
+### 3. New file: `pyobs/interfaces/IStructuredConfig.py`
+
+Follow the exact structure of `pyobs/interfaces/ICooling.py`:
+
+```python
+from __future__ import annotations
+from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
+from typing import Any
+from ..utils.time import Time
+from ..utils.config_schema import ConfigSchema, ConfigFieldSchema  # re-export
+from .interface import Interface
+from .IConfig import ConfigScalar
+
+ConfigValue = ConfigScalar | list["ConfigValue"] | dict[str, "ConfigValue"]
+
+
+@dataclass
+class ConfigAppliedState:
+    config: dict[str, ConfigValue]
+    time: Time = field(default_factory=Time.now)
+
+
+class IStructuredConfig(Interface, metaclass=ABCMeta):
+    """The module accepts a whole structured (possibly nested) config
+    object in one call, rather than per-field get/set (see IConfig for
+    the per-field variant)."""
+
+    __module__ = "pyobs.interfaces"
+
+    capabilities = ConfigSchema
+    state = ConfigAppliedState
+
+    @abstractmethod
+    async def set_config(self, config: dict[str, ConfigValue], **kwargs: Any) -> None:
+        """Apply a full structured config to this module.
+
+        Args:
+            config: Nested dict matching this module's ConfigSchema
+                (fetch via get_capabilities). Values are validated and
+                deserialized into the module's internal config dataclass.
+
+        Raises:
+            ValueError: If config doesn't match the module's schema, or
+                values fail validation.
+        """
+        ...
+
+
+__all__ = ["IStructuredConfig", "ConfigAppliedState", "ConfigSchema", "ConfigFieldSchema"]
+```
+
+Register it in `pyobs/interfaces/__init__.py` alongside the other interface
+imports (this is required for the existing `inspect.getmembers(pyobs.interfaces, ...)`
+resolution in `pyobs/comm/comm.py` and `pyobs/comm/xmpp/xmppcomm.py` to find it).
+
+### 4. Consumer side: `pyobs-iagvt`
+
+In the siderostat module (`siderostat.py`):
+
+1. Define `SiderostatConfig` (and any nested sub-dataclasses, e.g.
+   `PointingModel`) as real dataclasses with proper typing (`Annotated[float, Unit.ARCSEC]`
+   for physical quantities, real `Enum` subclasses for anything
+   dropdown-like).
+2. Implement `IStructuredConfig`:
+   - `capabilities` is derived once via `dataclass_to_schema(SiderostatConfig)`.
+   - `set_config(config)` deserializes the incoming dict into a
+     `SiderostatConfig` instance, applies it to the hardware, then publishes
+     a fresh `ConfigAppliedState` with the new values.
+3. On startup / whenever the live config changes for any reason (not just
+   via `set_config`, e.g. a hardware-side change), publish
+   `ConfigAppliedState` so subscribed GUI clients stay in sync.
+
+### 5. Testing checklist
+
+- `dataclass_to_schema` round-trips a nested dataclass (including a
+  dataclass field, an Enum field, and an `Annotated[float, Unit.X]` field)
+  into the expected `ConfigSchema` shape.
+- A dataclass with an unsupported field type (e.g. a raw `datetime`) raises
+  `TypeError` from `dataclass_to_schema` rather than silently producing a
+  wrong schema.
+- `IStructuredConfig.set_config` on a test module round-trips: call
+  `set_config({...})`, then read back the next published `ConfigAppliedState`
+  and confirm it matches.
+- `Comm.get_capabilities(module, IStructuredConfig)` returns the expected
+  `ConfigSchema` for a module implementing it — confirms the existing
+  generic capabilities path needs no changes.
+
+### Explicitly out of scope for this change
+
+- No changes to `IConfig` (`pyobs/interfaces/IConfig.py`) or its use in
+  `pyobs/modules/module.py` — it keeps its current per-field get/set
+  semantics unchanged.
+- No merge of `IConfig` into `IModule` — considered and rejected; `IConfig`
+  stays a separate interface.
+
+## Appendix: Sphinx docs sweep findings (2026-07-05)
+
+*Folded in from the standalone `UPDATE_DOCS.md`.*
+
+Full pass over every prose page under `docs/source/` (autodoc-only stub pages, i.e. pages that
+are just `.. automodule::`/`.. autoclass::` lists with no hand-written prose, were originally
+skipped on the assumption they self-update from docstrings — that assumption turned out to be
+wrong for two of them, see Priority 1 below). Findings are checked against the actual current
+code (`pyobs/...`), not just against this document's own narrative, and cross-checked with a
+real `sphinx-build -E` run after every fix.
+
+### Priority 1 — broken references (autodoc errors) — ✅ done
+
+Everything below was confirmed broken via `sphinx-build` (`ModuleNotFoundError`/`AttributeError`/
+`ref.class not found`) and is now fixed and re-verified with a clean rebuild.
+
+- [x] `docs/source/api/interfaces.rst` — removed the dead `ILatLon` section.
+- [x] `pyobs.robotic.filesystem` / `pyobs.robotic.backend` / `pyobs.robotic.lco` → all moved to
+  `pyobs.robotic.storage.{filesystem,backend,lco}`. Fixed in `api/robotic/index.rst`,
+  `api/robotic/scheduling.rst`, `recipes/robotic.rst`, `config_examples/iag50cm.rst`.
+- [x] `pyobs.robotic.lco.LcoTaskSchedule` (config_examples/iag50cm.rst) → confirmed via git
+  history (`07e93158`, `ea95dd0e`) this class was renamed to `LcoObservationArchive` when the
+  robotic subsystem's backend abstraction was introduced. Fixed both YAML instances and both
+  prose `:class:` refs.
+- [x] `pyobs.robotic.taskarchive`/`observationarchive` → `pyobs.robotic.storage.taskarchive`/
+  `observationarchive`, including one instance in `scheduling.rst` (~line 397) that wasn't in
+  the original punch list.
+- [x] `api/robotic/scripts.rst` "Built-in scripts" section — all renamed/relocated:
+  `AutoFocus`→`imaging.autofocus.AutoFocusScript`, `DarkBias`→`calibration.darkbias.DarkBiasScript`,
+  `SkyFlats`→`calibration.skyflats.SkyFlatsScript`, `SequentialRunner`/`ParallelRunner`/
+  `ConditionalRunner`/`CasesRunner`/`SelectorScript` → moved under `control.*` (names kept),
+  `CallModule`→`utils.callmodule.CallModuleScript`, `LogRunner`→`utils.log.LogScript`. Also fixed
+  the matching `pyobs.robotic.scripts.SkyFlats` reference in `config_examples/iag50cm.rst`'s
+  `skyflats:` block, and the `LcoDefaultScript`/`LcoAutoFocusScript`/`LcoScript` paths in the same
+  file (`pyobs.robotic.lco.scripts.*` → `pyobs.robotic.storage.lco.scripts.*`). One dangling
+  `:class:` ref to `LcoDefaultScript` (never had an `autoclass` entry anywhere, even before these
+  fixes) was downgraded to plain code text rather than a broken cross-reference.
+  The 4 undocumented classes found alongside this (`ImagingScript`, `TransitImagingScript`,
+  `PointingScript`, `DebugTriggerScript`) were new content rather than a broken-reference fix, so
+  left out of this pass — see "Follow-up content gaps" below, now done.
+- [x] `docs/source/api/comm.rst` — removed the fictional `pyobs.comm.dbus.DbusComm` (never
+  existed). Added missing `autoclass` entries for `LocalComm`/`DummyComm`, which were referenced
+  in the backend table via `:class:` but had no matching `autoclass` anywhere, so the
+  cross-references were dangling too.
+- [x] **Found mid-fix, not in the original list**: `docs/source/api/utils/archive.rst` and
+  `docs/source/api/utils/skyflats.rst` are *entirely* built around `pyobs.utils.archive`/
+  `pyobs.utils.skyflats`, which don't exist — that whole subtree moved to
+  `pyobs.robotic.utils.archive`/`pyobs.robotic.utils.skyflats` back in **v1.44** (2025-04-24,
+  pre-2.0). These were wrongly assumed "self-updating" in the original sweep since they're pure
+  autodoc stubs; fixed both files (including two section-header underline lengths that needed
+  adjusting after the title text got longer).
+- [x] `docs/source/config_examples/iag50cm.rst` — same pre-2.0 `pyobs.utils.skyflats.*` /
+  `pyobs.utils.archive.*` staleness as above (originally filed under Priority 3), fixed alongside
+  the rest of this file's LCO path fixes.
+
+Verified with `rm -rf` + `sphinx-build -E` (clean, no cached doctrees): zero
+`ModuleNotFoundError`/`AttributeError`/dangling `ref.class` warnings remain **except** the two
+items below, which are a different kind of problem.
+
+#### Resolved by deletion (per explicit instruction — both features are gone for good)
+
+Both are real, *intentional*, already-committed code removals (confirmed via
+`git log --diff-filter=D`), not renames — so there was no "correct path" to swap in.
+
+- [x] **`docs/source/recipes/simulation.rst`** — deleted the "Connecting telescope and camera"
+  section (`MultiModule` + `pyobs.utils.simulation.SimWorld`/`SimTelescope`/`SimCamera`), removed
+  outright in `a36ff5a0` with no replacement. This recipe was incorrectly marked "confirmed not
+  stale" in the original sweep (only checked for proxy/interface staleness, not deleted modules).
+- [x] **`docs/source/api/robotic/scripts.rst`** — deleted the "TargetPicker" section
+  (`pyobs.robotic.utils.TargetPicker`, removed in `b76e9ef2`). Superseded by `DynamicTarget`
+  (`pyobs.robotic.scheduler.targets.dynamictarget.DynamicTarget`) + the `Picker`/`CsvPicker`
+  classes (`pyobs.robotic.scheduler.targets.picker`), added in v1.46. At the time, none of
+  `DynamicTarget`/`Picker`/`CsvPicker` were documented anywhere — new content rather than a fix,
+  so left out of this pass; see "Follow-up content gaps" below, now done.
+- [x] **Found while cleaning up the above**: `docs/source/api/utils/simulation.rst` was a whole
+  dedicated autodoc page for the same deleted `pyobs.utils.simulation` module — deleted the page
+  and its `api/utils/index.rst` toctree entry. Also removed one dangling
+  `:class:`~pyobs.utils.simulation.SimWorld`` reference in `api/utils/time.rst`'s prose.
+
+All four confirmed clean via `rm -rf` + `sphinx-build -E`: zero `ModuleNotFoundError`/
+`AttributeError`/dangling `ref.class` warnings remain from any 2.0-era rename or removal.
+
+### Priority 2 — stale `Proxy` usage (teaches code that no longer works) — ✅ done
+
+`Proxy` is `async with`-only now (see `docs/source/whatsnew-2.0.rst`); `await self.proxy(...)` /
+`await self.comm.proxy(...)` returning a usable object is gone.
+
+- [x] `docs/source/api/comm.rst` — the `self.proxy(...)`/`await telescope.move_radec(...)` example
+  and the `safe_proxy` example both converted to `async with ... as x:`. `safe_proxy` now yields
+  `None` inside the block rather than returning `None` directly (verified against
+  `Comm.safe_proxy`'s actual docstring: "Same as proxy(), but yields None inside the block instead
+  of raising").
+- [x] `docs/source/api/module.rst` — both examples converted (the `MyCamera`/`grab_data` one and
+  the `open()`/`move_radec` one).
+- [x] `docs/source/overview.rst` — the "Communication between modules" example converted.
+- [x] `docs/source/api/robotic/scripts.rst` — the `can_run`/`run` example — fixed as part of the
+  Priority 1 pass on this file since it was in the same block as the script renames; converted to
+  `has_proxy`/`AsyncExitStack`, matching the pattern already used in `recipes/robotic.rst`.
+- [x] `docs/source/api/robotic/serialization.rst` — the `PrivateAttrMixin` example converted.
+- [x] `docs/source/recipes/robotic.rst` — `can_run` now uses `self.comm.has_proxy(...)`, `run`
+  uses `AsyncExitStack` since both proxies are used together for the rest of the method (matches
+  the pattern documented in `whatsnew-2.0.rst`).
+- [x] `docs/source/recipes/jupyter.rst` — full rewrite of the "Usage" section, not just a
+  proxy-pattern fix. It also called `telescope.get_radec()`/`telescope.get_altaz()`, both
+  **removed** methods — replaced with `await telescope.wait_for_state(IPointingRaDec)` /
+  `wait_for_state(IPointingAltAz)` (verified `RaDecState`/`AltAzState` field names against
+  `pyobs/interfaces/IPointingRaDec.py`/`IPointingAltAz.py`). Also restructured so each cell
+  re-resolves its proxy via a fresh `async with` block rather than holding `telescope =`/
+  `camera =` across cells — added a short prose note explaining why (a held reference can go
+  stale across a reconnect between cells; a proxy resolved just before use is guaranteed current).
+  The camera cell now does exposure-time/image-type setup and `grab_data` inside one `async with`
+  block since they're used together; `img = await vfs.read_image(...)` stays outside it, unrelated
+  to the proxy.
+
+Verified via clean `sphinx-build -E`: no rendering regressions in the edited files (RST literal
+blocks with nested `async with`/indentation all render correctly), and no remaining
+`await self.proxy(...)`/`await self.comm.proxy(...)`/`await comm.proxy(...)` in any doc page except
+`whatsnew-2.0.rst`, where it's intentionally shown as the old, no-longer-working pattern.
+
+### Priority 3 — pre-existing (non-2.0) staleness surfaced along the way — ✅ done
+
+- [x] `docs/source/config_examples/iag50cm.rst` and `docs/source/api/utils/{archive,skyflats}.rst`
+  — see Priority 1 above, folded in since they were mechanically identical fixes.
+
+### Priority 4 — CHANGELOG.rst gap — ✅ done (backfilled)
+
+`CHANGELOG.rst` had stopped being updated after **v1.47.0** (2025-06-07) — everything from v1.48
+through v1.53.x and the entire `v2.0.0.dev1`–`dev11` series had no entry. Decision (explicit):
+backfill it now from git history, then resume per-release going forward.
+
+- [x] Backfilled 17 new version sections at the top of `CHANGELOG.rst`, above the existing
+  `v1.47.0` entry: `v1.48.0` through `v1.53.0` (the six 1.x minor releases), then
+  `v2.0.0.dev1` through `v2.0.0.dev10`, then `v2.0.0.dev11 (unreleased)` covering everything up to
+  current `HEAD` (matches the in-progress version already in `pyproject.toml`).
+- [x] **Patch releases excluded from their own headings**, per explicit instruction — `v1.49.1`
+  and `v1.52.1`–`v1.52.18` (19 patch tags) don't get their own sections; their actual commits are
+  still represented, folded into whichever minor-version section they chronologically fall under
+  (e.g. `v1.49.1`'s changes are in the `v1.50.0` entry, since that's the next minor boundary).
+  `v1.53.1`/`v1.53.2` similarly excluded (their commits weren't found on this branch's linear
+  history at all — they look like they were cut from a separate maintenance branch — so there was
+  nothing of theirs to fold in regardless).
+- [x] Dev pre-releases (`v2.0.0.dev1`–`dev11`) got their own sections rather than being
+  consolidated, since they're not "patch" releases by version number and each one is a real,
+  distinct git tag in this project's history — including a few with very little content
+  (`dev4`, `dev5`, `dev7`–`dev9` each cover only 1-3 commits). Flagging this in case a coarser
+  grouping (e.g. one combined "dev" entry) is preferred instead.
+- [x] Content was synthesized from `git log` commit subjects across the full range (~470 commits),
+  cross-checked against actual diffs (`git show --stat`/full diff) for anything ambiguous, and
+  cross-checked against `whatsnew-2.0.rst` for the 2.0 portion for consistency. This is a curated
+  summary matching the existing changelog's own voice/density (e.g. `v1.47.0` has 6 bullets for
+  27 commits) — it is **not** a verbatim commit-by-commit transcription. Pure-internal noise
+  (`fixed tests`, `added tests`, `make mypy happy`, individual `type: ignore` commits, individual
+  Dependabot bumps) was deliberately omitted or rolled up, consistent with how the rest of the
+  file already reads.
+- [x] Verified underline lengths (`*` matching title length exactly, this file's own convention)
+  for all 17 new headings, and confirmed via clean `sphinx-build -E` that `project/changelog.rst`
+  renders the new content with zero new warnings (the only remaining "Title underline too short"
+  warnings are three pre-existing ones in the untouched `v1.10.0`–`v1.12.0` entries, unrelated to
+  this change).
+- [x] **Enforcement added**: `scripts/check_changelog.sh`, wired into `.github/workflows/pypi.yml`
+  as a step before build/publish. Fails a tagged release if it's a minor/major bump or a
+  `.devN` pre-release and `CHANGELOG.rst` has no matching heading; patch releases (`X.Y` unchanged,
+  no `.dev` involved) are exempt. Resolves "the previous release" via the tag's own commit
+  ancestry (`git describe --tags --abbrev=0 TAG^`) rather than a global version sort, since this
+  project has cut a patch release from an older maintenance branch after newer tags already
+  existed elsewhere (`v1.53.1`/`v1.53.2` postdate several `v2.0.0.dev*` tags) — a naive
+  highest-tag-wins comparison would misidentify the predecessor in that case. Verified against
+  real tag history and a synthetic repo modeling that exact parallel-branch scenario.
+
+### Confirmed NOT stale — already updated for 2.0, no action needed
+
+- `docs/source/overview.rst` — has a full, accurate "Access control" section describing the
+  `acl:` block (matches current `Module._parse_acl` exactly); the one proxy-pattern leftover it
+  had is fixed now too (Priority 2).
+- `docs/source/installing.rst`, `docs/source/cli.rst` — already document the `pyobs.yaml` config
+  file lookup order and `--syslog`.
+- `docs/source/development.rst` — already states Python 3.11 as the base version.
+- `docs/source/quickstart.rst` — no proxy calls, no removed interfaces touched.
+- `docs/source/api/object.rst` — no proxy usage, unaffected by any of the 2.0 changes.
+- `docs/source/api/robotic/serialization.rst` — `PolymorphicBaseModel` rename already applied
+  correctly; the one proxy line it had is fixed now too (Priority 2).
+- `docs/source/api/interfaces.rst`, `docs/source/api/events.rst` — pure autodoc listings; content
+  is pulled from current docstrings automatically, so nothing to hand-edit beyond the `ILatLon`
+  removal already done.
+- `docs/source/addmod/index.rst`, `docs/source/modules/index.rst`, `docs/source/api/index.rst` —
+  pure toctrees/external links, nothing to update.
+
+### Autodoc sanity check on the remaining stub pages — ✅ done, nothing broken
+
+Given `archive.rst`/`skyflats.rst` turned out broken despite being pure autodoc stubs (see
+Priority 1 above), ran the same class of check over every remaining stub page
+(`api/image_processors/*.rst`, `modules/*.rst`, `api/utils/*.rst` other than
+`archive.rst`/`skyflats.rst`, which were already fixed):
+
+- Extracted all 151 `automodule`/`autoclass`/`autofunction`/`autodata` dotted paths across those
+  files and imported each one in Python — all resolve.
+- Extracted all `:class:`/`:meth:`/`:func:`/`:mod:`/`:attr:`/`:exc:` cross-reference roles used in
+  any hand-written prose in those files (7 unique targets) — all resolve.
+- Grepped all of them for plain-text mentions of every symbol confirmed renamed/removed elsewhere
+  in this sweep (`pyobs.utils.{simulation,skyflats,archive}`, `pyobs.robotic.{lco,filesystem,
+  backend,taskarchive,observationarchive}` without `.storage.`, `ILatLon`, `SubClassBaseModel`,
+  `MeritScheduler`, `await self.proxy(`, `cache_proxies`, `DbusComm`, `get_radec()`, `get_altaz()`,
+  `get_cooling()`, `get_motion_status()`) — zero hits.
+
+No changes needed to any of these files.
+
+### Follow-up content gaps — ✅ done
+
+Two gaps flagged earlier as "new content, not a fix" and deliberately left out of the Priority 1
+pass — closed now on request:
+
+- [x] **`docs/source/api/robotic/scheduling.rst`** — documented `DynamicTarget` and the
+  `Picker`/`CsvPicker` classes (`pyobs.robotic.scheduler.targets.{dynamictarget,picker}`) in the
+  "Targets" section, with a YAML example, replacing the coverage lost when `TargetPicker` was
+  deleted. Also added `HelioprojectiveRadialTarget`, found undocumented in the same package
+  (`pyobs/robotic/scheduler/targets/__init__.py`) while doing this — not originally asked for, but
+  directly adjacent and trivial to include.
+- [x] **`docs/source/api/robotic/scripts.rst`** — documented the 4 previously-undocumented script
+  classes: `ImagingScript` and `TransitImagingScript` (added to "Observing", `ImagingScript` is
+  the actual default script for science exposures), `PointingScript` (added to "Observing", next
+  to `SkyFlatsScript` since it points the telescope for flat-fielding), and `DebugTriggerScript`
+  (added to "Control flow", next to `LogScript` — it's a minimal test/debug helper, not a real
+  observing script).
+
+All dotted paths verified importable, and confirmed via clean `sphinx-build -E` that both pages
+render the new content with zero new warnings (a handful of pre-existing, unrelated warnings in
+these same files — duplicate autosectionlabels, a couple of dangling `:meth:`/`:exc:` refs in
+untouched prose — were already there before this change).

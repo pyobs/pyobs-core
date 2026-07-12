@@ -11,7 +11,15 @@ import packaging.version
 from py_expression_eval import Parser
 
 from pyobs.events import Event, ModuleOpenedEvent
-from pyobs.interfaces import ConfigCapabilities, ConfigValue, IConfig, IModule, Interface, ModuleCapabilities
+from pyobs.interfaces import (
+    ConfigCapabilities,
+    ConfigValue,
+    IConfig,
+    IModule,
+    Interface,
+    ModuleCapabilities,
+    ModuleLocation,
+)
 from pyobs.object import Object
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
@@ -163,11 +171,22 @@ class Module(Object, IModule, IConfig):
 
         # publish base capabilities
         if self._comm is not None:
+            location = (
+                ModuleLocation(
+                    longitude=self._location.lon.degree,
+                    latitude=self._location.lat.degree,
+                    elevation=self._location.height.value,
+                    timezone=str(self._timezone),
+                )
+                if self._location is not None
+                else None
+            )
             await self._comm.set_capabilities(
                 IModule,
                 ModuleCapabilities(
                     version=await self.get_version(),
                     label=await self.get_label(),
+                    location=location,
                 ),
             )
             await self._comm.set_capabilities(
@@ -215,11 +234,35 @@ class Module(Object, IModule, IConfig):
             async with self.proxy(sender, IModule) as proxy:
                 caps = proxy.get_capabilities(IModule)
                 module_version = caps.version if caps is not None else ""
+                remote_location = caps.location if caps is not None else None
         except exc.RemoteError:
             return True
 
         # log it
         log.debug("Other module %s found, running on pyobs %s.", sender, module_version)
+
+        # compare location, if both sides have one configured -- surfaces config drift between
+        # modules that are supposed to share a site, since pyobs has no shared "site" concept
+        if remote_location is not None and self._location is not None:
+            from astropy.coordinates import EarthLocation
+
+            remote = EarthLocation.from_geodetic(
+                remote_location.longitude, remote_location.latitude, remote_location.elevation
+            )
+            distance = (
+                (remote.x - self._location.x) ** 2
+                + (remote.y - self._location.y) ** 2
+                + (remote.z - self._location.z) ** 2
+            ) ** 0.5
+            if distance.to_value("m") > 100:  # tolerance, tune as needed
+                log.warning(
+                    "Module %s reports a location %.0fm from ours (lon=%.4f, lat=%.4f, elevation=%.1fm).",
+                    sender,
+                    distance.to_value("m"),
+                    remote_location.longitude,
+                    remote_location.latitude,
+                    remote_location.elevation,
+                )
 
         # no version reported, cannot compare
         if not module_version:

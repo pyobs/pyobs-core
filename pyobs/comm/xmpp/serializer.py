@@ -32,6 +32,7 @@ import types as _builtin_types
 from enum import StrEnum
 from typing import Annotated, Any, Union, get_args, get_origin, get_type_hints
 
+import numpy as np
 from slixmpp.xmlstream import ET
 
 from ...interfaces.interface import Interface as _Interface
@@ -64,6 +65,13 @@ def value_to_xml(value: Any, type_hint: Any) -> ET.Element:
     # Unwrap Annotated[T, ...]
     if get_origin(type_hint) is Annotated:
         type_hint = get_args(type_hint)[0]
+
+    # Normalize numpy scalars (np.float64, np.int64, np.bool_, ...) to native
+    # Python types. np.float64 subclasses float but repr()s as "np.float64(x)"
+    # since numpy 2.0, which corrupts <double> text; numpy integer types don't
+    # subclass int at all and would otherwise fall through to <string>.
+    if isinstance(value, np.generic):
+        value = value.item()
 
     # None / void
     if value is None:

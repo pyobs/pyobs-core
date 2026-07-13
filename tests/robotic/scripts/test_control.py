@@ -14,6 +14,7 @@ from pyobs.robotic.scripts.control.parallel import ParallelRunner
 from pyobs.robotic.scripts.control.selector import SelectorScript
 from pyobs.robotic.scripts.control.sequential import SequentialRunner
 from pyobs.utils.enums import MotionStatus
+from tests.helpers import make_proxy_cm
 
 # ── helper scripts ────────────────────────────────────────────────────────────
 
@@ -304,13 +305,6 @@ async def test_conditional_get_fits_headers_no_script() -> None:
 
 
 # ── SelectorScript ────────────────────────────────────────────────────────────
-
-
-def make_proxy_cm(value: object) -> MagicMock:
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=value)
-    cm.__aexit__ = AsyncMock(return_value=None)
-    return cm
 
 
 @pytest.mark.asyncio

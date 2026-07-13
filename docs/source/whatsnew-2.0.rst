@@ -323,6 +323,37 @@ non-Python client (``pyobs-web-client``, or any future binding) can generate its
 commands/state/event schema directly from one disco#info query, instead of maintaining a
 separate interface-extraction step against the Python source.
 
+External-package interfaces
+------------------------------
+
+Interfaces no longer have to live in :mod:`pyobs.interfaces`. Any package can define its
+own by subclassing :class:`~pyobs.interfaces.Interface` — it's picked up automatically at
+import time and resolves correctly over the wire, exactly like a core interface:
+
+.. code-block:: python
+
+   # pyobs_mypackage/interfaces.py
+   from pyobs.interfaces import Interface
+
+   class ISiderostatAlignment(Interface):
+       async def start_alignment_sequence(self) -> None: ...
+
+   # a module implementing it
+   class Siderostat(Module, ISiderostatAlignment):
+       async def start_alignment_sequence(self) -> None:
+           ...
+
+   # a consumer, resolved the same way as any core interface
+   async with self.proxy("siderostat", ISiderostatAlignment) as proxy:
+       await proxy.start_alignment_sequence()
+
+There's no separate registration step beyond the import: a module implementing the
+interface, and any code building a typed proxy for it, already have to import it — the same
+implicit requirement core interfaces already impose. Two interfaces defined independently
+that happen to share a class name raise ``TypeError`` immediately at import time, naming
+both offending classes, rather than silently resolving to whichever one happened to be
+imported last.
+
 Units
 -----
 

@@ -7,7 +7,7 @@ import astropy.units as u
 import pytest
 from astropy.time import TimeDelta
 
-from pyobs.comm.comm import Comm
+from pyobs.comm.dummy import DummyComm
 from pyobs.robotic import Task
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
 from pyobs.robotic.scheduler.merits.transit import TransitMerit
@@ -154,14 +154,12 @@ async def test_mastermind_marks_failed_transit_observation() -> None:
 @pytest.mark.integration
 async def test_transit_script_runs_until_end_time() -> None:
     """TransitImagingScript._run_configurations loops until merit.end_time()."""
-    from unittest.mock import MagicMock
-
     config = Configuration(
         instrument_configs=[InstrumentConfig(exposure_time=10.0, image_type=ImageType.OBJECT)],
         repeats=1,
     )
     script = TransitImagingScript.model_validate(
-        {"camera": "camera", "configuration": config}, context={"comm": MagicMock(spec=Comm)}
+        {"camera": "camera", "configuration": config}, context={"comm": DummyComm()}
     )
 
     merit = make_transit_merit()
@@ -198,14 +196,12 @@ async def test_transit_script_runs_until_end_time() -> None:
 @pytest.mark.integration
 async def test_transit_script_does_not_run_after_end_time() -> None:
     """TransitImagingScript does not run if end_time has already passed."""
-    from unittest.mock import MagicMock
-
     config = Configuration(
         instrument_configs=[InstrumentConfig(exposure_time=10.0, image_type=ImageType.OBJECT)],
         repeats=1,
     )
     script = TransitImagingScript.model_validate(
-        {"camera": "camera", "configuration": config}, context={"comm": MagicMock(spec=Comm)}
+        {"camera": "camera", "configuration": config}, context={"comm": DummyComm()}
     )
 
     merit = make_transit_merit()

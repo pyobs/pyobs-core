@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from pyobs.comm.comm import Comm
+from pyobs.comm.dummy import DummyComm
 from pyobs.events import NewImageEvent
 from pyobs.modules.image.imagewriter import ImageWriter
 from pyobs.utils.enums import ImageType
@@ -16,7 +16,7 @@ def make_writer(filename: str = "/archive/{FNAME}", sources=None) -> ImageWriter
     return ImageWriter(
         filename=filename,
         sources=sources,
-        comm=MagicMock(spec=Comm),
+        comm=DummyComm(),
         vfs=MagicMock(spec=VirtualFileSystem),
     )
 

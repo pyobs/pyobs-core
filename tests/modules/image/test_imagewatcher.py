@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 
-from pyobs.comm.comm import Comm
+from pyobs.comm.dummy import DummyComm
 from pyobs.modules.image.imagewatcher import ImageWatcher
 from pyobs.vfs import VirtualFileSystem
 
@@ -21,7 +21,7 @@ def make_watcher(destinations=None, pattern="*", wait_time=0) -> ImageWatcher:
         destinations=destinations or ["/dest"],
         pattern=pattern,
         wait_time=wait_time,
-        comm=MagicMock(spec=Comm),
+        comm=DummyComm(),
         vfs=MagicMock(spec=VirtualFileSystem),
     )
 

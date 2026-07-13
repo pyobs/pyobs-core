@@ -11,7 +11,9 @@
 - `make_camera_comm` moved into `tests/integration/conftest.py` as a `@pytest.fixture` (was a plain function requiring an explicit `xmpp_config` argument at each call site; as a fixture it's just requested by name, and the 16 call sites across 3 files dropped their `xmpp_config` parameter too since nothing else in those tests needed it directly).
 - `make_module` consolidated to the superset version (from `test_xmpp_presence.py`) in `tests/integration/conftest.py`; `test_xmpp_state.py` now imports it instead of keeping its own subset copy.
 
-Verified: `pytest tests/` (858 passed, 2 skipped) and, against a local ejabberd, `pytest tests/integration -m "integration or xmpp"` (72 passed).
+**`test_stellarexptime.py` bug fix:** the file was named `stellarexptime.py` (missing the `test_` prefix), so pytest's default collection glob silently skipped it entirely -- its 4 failing tests never ran in CI. Renamed it into collection and fixed what was actually broken: `provider._comm.proxy` was an `AsyncMock`, but `Comm.proxy()` is a sync method returning an async context manager, so `async with self.comm.proxy(...) as camera:` was awaiting a coroutine instead of entering a context manager. Fixed by wiring `.proxy` as a `MagicMock` returning `make_proxy_cm(...)` (the shared helper from `tests/helpers.py`). That unmasked two more latent bugs: the proxy-routing `side_effect` matched on `ICamera`, but production code requests `IData` for `grab_data` -- the camera mock was never actually reached, silently falling through to the window mock instead; and `mock_exptime`/`mock_window` were configured with methods (`get_exposure_time`, `get_window`) that production code never calls -- it calls `camera.get_state(IExposureTime/IWindow)`, which needs a sync `MagicMock` returning an `ExposureTimeState`/`WindowState` (the mocks were also plain `AsyncMock()`s, so any unconfigured method returned a coroutine instead of a real value). Also fixed `test_call_converges_in_one_iteration`, which never called `await provider()` at all before asserting on call counts. All 9 tests pass now.
+
+Verified: `pytest tests/` (867 passed, 2 skipped -- 9 more than before, from `test_stellarexptime.py` now being collected) and, against a local ejabberd, `pytest tests/integration -m "integration or xmpp"` (72 passed).
 
 ## Bucket 1 -- External-boundary mocks: keep, no action needed
 
@@ -44,7 +46,7 @@ No changes suggested here.
 | `tests/modules/image/test_imagewriter.py` | 19 | `make_writer` | **replaced** ✅ | now `comm=DummyComm()`. |
 | `tests/modules/image/test_imagewriter.py` | 20 | `make_writer` | **keep** | `writer._vfs.read_image` is configured per-test with specific return values/side effects. |
 | `tests/robotic/scripts/test_transitimaging.py` | 29, 152 | `make_script / test_run_configurations_uses_modulo_repeats` | **replaced** ✅ | now `comm=DummyComm()`. |
-| `tests/robotic/utils/exptime/stellarexptime.py` | 48 | `make_provider` | **keep** | `provider._comm.proxy` is reconfigured per-test via `attach_proxies()` with a side_effect resolving fake device proxies. |
+| `tests/robotic/utils/exptime/test_stellarexptime.py` | 48 | `make_provider` | **keep** | `provider._comm.proxy` is reconfigured per-test via `attach_proxies()` with a side_effect resolving fake device proxies. |
 
 5 of 18 were cheap swaps to a real `DummyComm()` (done -- see above). The rest need mock call-tracking and stayed as-is.
 
@@ -57,7 +59,7 @@ Several test files independently defined their own near-identical helper for bui
 - **`make_camera_comm(xmpp_config)`** ✅ -- was identical in 3 files (`test_xmpp_acl.py`, `test_xmpp_dummy_camera.py`, `test_xmpp_rpc.py`). Now a `@pytest.fixture` in `tests/integration/conftest.py`; the 16 call sites across those 3 files request it by name instead of calling `make_camera_comm(xmpp_config)`, and dropped the now-unused `xmpp_config` parameter.
 - **`make_module(interfaces, ...)`** ✅ -- was near-duplicated in `test_xmpp_state.py` and `test_xmpp_presence.py`. Now the superset version (with `label`/`get_label`/`get_version`) lives in `tests/integration/conftest.py`; both files import it.
 
-**Not** flagged as consolidation candidates: `make_camera`/`make_telescope`/`make_camera_mocks` in `test_darkbias.py`/`test_autofocus.py`/`stellarexptime.py`. These look superficially similar (all build a fake device `MagicMock`) but each mocks a different, purpose-specific interface surface for its own script under test -- merging them would mean one over-parameterized "FakeDevice" builder covering every interface combination any script happens to need, which is more abstraction than the modest duplication saves.
+**Not** flagged as consolidation candidates: `make_camera`/`make_telescope`/`make_camera_mocks` in `test_darkbias.py`/`test_autofocus.py`/`test_stellarexptime.py`. These look superficially similar (all build a fake device `MagicMock`) but each mocks a different, purpose-specific interface surface for its own script under test -- merging them would mean one over-parameterized "FakeDevice" builder covering every interface combination any script happens to need, which is more abstraction than the modest duplication saves.
 
 ## Bucket 5 -- Testing mock behavior only: needs manual judgment (49 functions)
 
@@ -107,7 +109,7 @@ Test functions where **every** assertion is about a mock's call history (`.asser
 - `tests/robotic/storage/lco/test_schedulereader.py:126` `test_get_task_calls_update_schedule_now` (1 mock assertion(s), 0 real assertions)
 - `tests/robotic/storage/lco/test_schedulereader.py:189` `test_update_schedule_now_respects_lock` (1 mock assertion(s), 0 real assertions)
 - `tests/robotic/storage/lco/test_schedulewriter.py:149` `test_add_schedule_calls_portal` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/utils/exptime/stellarexptime.py:192` `test_call_restores_settings_on_exception` (2 mock assertion(s), 0 real assertions)
+- `tests/robotic/utils/exptime/test_stellarexptime.py:192` `test_call_restores_settings_on_exception` (2 mock assertion(s), 0 real assertions)
 - `tests/test_background_task.py:201` `test_slow_failures_reset_counter` (1 mock assertion(s), 0 real assertions)
 - `tests/test_object.py:19` `test_perform_background_task_autostart` (1 mock assertion(s), 0 real assertions)
 - `tests/test_object.py:31` `test_perform_background_task_no_autostart` (1 mock assertion(s), 0 real assertions)
@@ -691,7 +693,7 @@ Every `Mock`/`MagicMock`/`AsyncMock` instantiation and `patch(...)` call, groupe
 - L151 [test_fetch_task_restores_resolved_target]: `mock_archive = AsyncMock()`
 - L152 [test_fetch_task_restores_resolved_target]: `mock_archive.get_task = AsyncMock(return_value=task)`
 
-### tests/robotic/utils/exptime/stellarexptime.py (20)
+### tests/robotic/utils/exptime/test_stellarexptime.py (20)
 
 - L39 [make_image]: `img = MagicMock()`
 - L48 [make_provider] spec=Comm: `defaults, context={"comm": MagicMock(spec=Comm), "vfs": MagicMock()}`

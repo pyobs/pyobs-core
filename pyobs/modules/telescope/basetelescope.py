@@ -10,6 +10,7 @@ from astropy.coordinates import ICRS, SkyCoord
 
 from pyobs.events import MoveAltAzEvent, MoveRaDecEvent
 from pyobs.interfaces import (
+    AltAzState,
     FitsHeaderEntry,
     IFitsHeaderBefore,
     IPointingAltAz,
@@ -316,6 +317,13 @@ class BaseTelescope(
         if isinstance(self, IPointingAltAz) and self._position_radec is not None:
             radec = SkyCoord(ra=self._position_radec[0] * u.deg, dec=self._position_radec[1] * u.deg, frame=ICRS)
             tel_altaz = self.observer.altaz(now, radec)
+
+            # publish alt/az state
+            if self._comm is not None:
+                await self.comm.set_state(
+                    IPointingAltAz,
+                    AltAzState(alt=float(tel_altaz.alt.degree), az=float(tel_altaz.az.degree)),
+                )
 
         # get current moon and sun information
         moon_altaz = self.observer.moon_altaz(now)

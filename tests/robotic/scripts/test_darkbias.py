@@ -1,11 +1,25 @@
 from __future__ import annotations
 
+import itertools
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from pyobs.robotic.scripts.calibration.darkbias import DarkBiasScript
 from pyobs.utils.enums import ImageType
+
+_mock_class_counter = itertools.count()
+
+
+def _isinstance_class(name: str, interfaces: list[type]) -> type:
+    """Build a fresh class purely for isinstance() checks against a MagicMock.
+
+    Uniquely named per call: an unqualified name built only from interface
+    bases would otherwise land in the Interface registry (it's structurally
+    indistinguishable from a real composite interface) and collide with
+    itself across repeated calls, since each call creates a new class object.
+    """
+    return type(f"_Mock{name}{next(_mock_class_counter)}", tuple(interfaces), {})
 
 
 def make_script(**kwargs) -> DarkBiasScript:
@@ -43,7 +57,7 @@ def make_camera(
     camera.grab_data = AsyncMock()
 
     # make isinstance checks work
-    camera.__class__ = type("Camera", tuple(interfaces), {})
+    camera.__class__ = _isinstance_class("Camera", interfaces)
     return camera
 
 

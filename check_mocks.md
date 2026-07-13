@@ -15,6 +15,20 @@
 
 Verified: `pytest tests/` (867 passed, 2 skipped -- 9 more than before, from `test_stellarexptime.py` now being collected) and, against a local ejabberd, `pytest tests/integration -m "integration or xmpp"` (72 passed).
 
+**Bucket 5 reviewed (all 49 functions):** went through every flagged function individually. Breakdown:
+
+- **8 false positives** -- the "0 real assertions" heuristic had three blind spots it didn't account for: `pytest.raises(..., match=...)` (verifies via regex, no `assert` statement needed), assert-like function *calls* rather than `assert` statements (`np.testing.assert_array_equal(...)`), and `await asyncio.wait_for(event.wait(), timeout=...)` (fails via timeout if the awaited condition never happens). Affected: `test_version_mismatch.py:168`, `test_weather.py:62`, `test_removebackground.py:29`, `test_image.py:81`, `test_image.py:96`, `test_background_task.py:201`.
+- **~35 genuinely fine** -- thin delegation/orchestration code (event dispatch, proxy calls, guard clauses) where the mock interaction *is* the entire observable behavior; there's no other state to check because the collaborator is fully mocked out. No changes.
+- **4 real bugs found and fixed:**
+  - `test_save.py::test_call` -- constructed `Save(comm=Comm())` without `broadcast=True`, so `send_event` was never actually called; the original author's verification was commented out with `# todo: fix`. Fixed the constructor call and enabled the assertions.
+  - `test_image.py::test_write_catalog_value` / `test_write_catalog_non_value` -- patched `astropy.io.fits.convenience.table_to_hdu`, but `pyobs/images/image.py` imports `table_to_hdu` by name, so that patch never touched the reference actually called; the assertion was marked `# FIXME: does not work for some reason` (in the "not called" test, the wrong-path mock trivially reported "not called" regardless of real behavior). Fixed to patch `pyobs.images.image.table_to_hdu` instead, and simplified away a second `HDUList.writeto` patch that was only working by accident (real `table_to_hdu` output routing through `_ValidHDU.writeto`'s internal `HDUList` wrapping).
+  - `test_imagewriter.py::test_worker_skips_on_file_not_found` -- reassigned `write_image` to a brand-new `AsyncMock` *after* the worker had already run, then asserted the fresh mock was never called -- trivially true regardless of what actually happened. Fixed to wire the mock before running the worker and moved `caplog.at_level(...)` to actually wrap the run.
+- **4 tests strengthened** with a real assertion alongside the existing mock check, where production code does something checkable that wasn't being verified:
+  - `test_presence.py` (3 functions) -- `set_state()` also mutates `module._state`/`module._error_string`, previously unverified.
+  - `test_dummyroof.py::test_init` / `test_park` -- `_move_roof()` runs unmocked and really moves `_open_percentage`; `test_park` also never checked what `_comm.send_event` was called with.
+  - `test_mockweather.py::test_set_good_no_change` -- added a check that `_good` is actually unchanged.
+  - `test_schedulewriter.py::test_add_schedule_calls_portal` -- `assert_called_once()` alone didn't check that `submit_observations` received the converted observations.
+
 ## Bucket 1 -- External-boundary mocks: keep, no action needed
 
 Mocks/patches substituting something genuinely external, non-deterministic, or slow, where no pyobs class could stand in instead:
@@ -61,59 +75,41 @@ Several test files independently defined their own near-identical helper for bui
 
 **Not** flagged as consolidation candidates: `make_camera`/`make_telescope`/`make_camera_mocks` in `test_darkbias.py`/`test_autofocus.py`/`test_stellarexptime.py`. These look superficially similar (all build a fake device `MagicMock`) but each mocks a different, purpose-specific interface surface for its own script under test -- merging them would mean one over-parameterized "FakeDevice" builder covering every interface combination any script happens to need, which is more abstraction than the modest duplication saves.
 
-## Bucket 5 -- Testing mock behavior only: needs manual judgment (49 functions)
+## Bucket 5 -- Testing mock behavior only (reviewed -- see "Resolved this session" above)
 
-Test functions where **every** assertion is about a mock's call history (`.assert_called*`, `.call_args`, etc.) and none assert on real return values, object state, or side effects. This is a heuristic signal, not a verdict -- for thin orchestration code ("does `open()` register the right event handler") that IS the entire observable behavior and the test is fine as-is. It's worth a look where the method under test has real logic (branching, computation, error handling) but the test only checks that a collaborator was called, since that kind of test would still pass if the logic were wrong as long as the call happened.
+Test functions where **every** assertion is about a mock's call history (`.assert_called*`, `.call_args`, etc.) and none assert on real return values, object state, or side effects, per the original heuristic scan. All 49 were reviewed individually; outcomes (false positive / fine / bug fixed / strengthened) are summarized above. Kept here for reference:
 
-- `tests/comm/dummy/test_dummycomm.py:56` `test_send_event_dispatches_to_module` (2 mock assertion(s), 0 real assertions)
-- `tests/comm/local/test_localcomm.py:122` `test_send_event_dispatches_to_all_clients` (2 mock assertion(s), 0 real assertions)
-- `tests/comm/local/test_localcomm.py:137` `test_send_event_dispatches_to_sender_too` (1 mock assertion(s), 0 real assertions)
-- `tests/comm/test_presence.py:20` `test_set_state_calls_set_presence` (1 mock assertion(s), 0 real assertions)
-- `tests/comm/test_presence.py:45` `test_set_state_passes_current_error_string` (1 mock assertion(s), 0 real assertions)
-- `tests/comm/test_presence.py:60` `test_set_state_ready_clears_error` (1 mock assertion(s), 0 real assertions)
-- `tests/comm/test_version_mismatch.py:168` `test_resolve_proxy_appends_diagnostic_hint` (1 mock assertion(s), 0 real assertions)
-- `tests/images/processors/misc/test_removebackground.py:29` `test_call_const_background` (1 mock assertion(s), 0 real assertions)
-- `tests/images/processors/misc/test_save.py:10` `test_init` (1 mock assertion(s), 0 real assertions)
-- `tests/images/processors/misc/test_save.py:18` `test_open` (1 mock assertion(s), 0 real assertions)
-- `tests/images/processors/misc/test_save.py:28` `test_call` (1 mock assertion(s), 0 real assertions)
-- `tests/images/test_image.py:81` `test_from_bytes` (1 mock assertion(s), 0 real assertions)
-- `tests/images/test_image.py:96` `test_from_file` (2 mock assertion(s), 0 real assertions)
-- `tests/images/test_image.py:292` `test_write_catalog_value` (1 mock assertion(s), 0 real assertions)
-- `tests/images/test_image.py:304` `test_write_catalog_non_value` (2 mock assertion(s), 0 real assertions)
-- `tests/modules/image/test_imagewatcher.py:116` `test_worker_deletes_file_after_success` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/image/test_imagewriter.py:78` `test_worker_downloads_and_stores_image` (3 mock assertion(s), 0 real assertions)
-- `tests/modules/image/test_imagewriter.py:101` `test_worker_skips_on_file_not_found` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/image/test_imagewriter.py:123` `test_worker_skips_on_bad_filename_format` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/roof/test_baseroof.py:23` `test_open` (3 mock assertion(s), 0 real assertions)
-- `tests/modules/roof/test_dummyroof.py:12` `test_open` (3 mock assertion(s), 0 real assertions)
-- `tests/modules/roof/test_dummyroof.py:26` `test_init` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/roof/test_dummyroof.py:39` `test_park` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/roof/test_dummyroof.py:99` `test_stop_motion` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/weather/test_mockweather.py:71` `test_set_good_no_change` (2 mock assertion(s), 0 real assertions)
-- `tests/modules/weather/test_weather.py:17` `test_open` (3 mock assertion(s), 0 real assertions)
-- `tests/modules/weather/test_weather.py:62` `test_get_sensor_value_invalid_request` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/weather/test_weather.py:116` `test_loop_valid` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/weather/test_weather.py:128` `test_loop_invalid` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/weather/test_weather_api.py:44` `test_get_current_status` (1 mock assertion(s), 0 real assertions)
-- `tests/modules/weather/test_weather_api.py:52` `test_get_sensor_value` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/scripts/test_autofocus.py:113` `test_run_moves_telescope_and_focuses` (2 mock assertion(s), 0 real assertions)
-- `tests/robotic/scripts/test_autofocus.py:133` `test_run_stops_telescope_in_finally` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/scripts/test_callmodule.py:115` `test_can_run_uses_interface_for_proxy` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/scripts/test_callmodule.py:125` `test_run_calls_method_with_named_params` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/scripts/test_callmodule.py:135` `test_run_uses_interface_for_proxy` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/scripts/test_control.py:356` `test_selector_run_sets_mode` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/storage/lco/test_lco_http.py:168` `test_observation_archive_send_update` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/storage/lco/test_lco_http.py:179` `test_observation_archive_send_update_skips_none` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/storage/lco/test_lco_http.py:188` `test_observation_archive_update_observation` (2 mock assertion(s), 0 real assertions)
-- `tests/robotic/storage/lco/test_lco_http.py:204` `test_observation_archive_update_observation_skips_non_lco` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/storage/lco/test_schedulereader.py:126` `test_get_task_calls_update_schedule_now` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/storage/lco/test_schedulereader.py:189` `test_update_schedule_now_respects_lock` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/storage/lco/test_schedulewriter.py:149` `test_add_schedule_calls_portal` (1 mock assertion(s), 0 real assertions)
-- `tests/robotic/utils/exptime/test_stellarexptime.py:192` `test_call_restores_settings_on_exception` (2 mock assertion(s), 0 real assertions)
-- `tests/test_background_task.py:201` `test_slow_failures_reset_counter` (1 mock assertion(s), 0 real assertions)
-- `tests/test_object.py:19` `test_perform_background_task_autostart` (1 mock assertion(s), 0 real assertions)
-- `tests/test_object.py:31` `test_perform_background_task_no_autostart` (1 mock assertion(s), 0 real assertions)
-- `tests/test_object.py:43` `test_stop_background_task` (1 mock assertion(s), 0 real assertions)
+- `tests/comm/dummy/test_dummycomm.py:56` `test_send_event_dispatches_to_module` -- fine
+- `tests/comm/local/test_localcomm.py:122` `test_send_event_dispatches_to_all_clients` -- fine
+- `tests/comm/local/test_localcomm.py:137` `test_send_event_dispatches_to_sender_too` -- fine
+- `tests/comm/test_presence.py:20,45,60` `test_set_state_*` -- strengthened
+- `tests/comm/test_version_mismatch.py:168` `test_resolve_proxy_appends_diagnostic_hint` -- false positive
+- `tests/images/processors/misc/test_removebackground.py:29` `test_call_const_background` -- false positive
+- `tests/images/processors/misc/test_save.py:10,18` `test_init`, `test_open` -- fine
+- `tests/images/processors/misc/test_save.py:28` `test_call` -- bug fixed
+- `tests/images/test_image.py:81,96` `test_from_bytes`, `test_from_file` -- false positive
+- `tests/images/test_image.py:292,304` `test_write_catalog_value`, `test_write_catalog_non_value` -- bug fixed
+- `tests/modules/image/test_imagewatcher.py:116` `test_worker_deletes_file_after_success` -- fine
+- `tests/modules/image/test_imagewriter.py:78` `test_worker_downloads_and_stores_image` -- fine
+- `tests/modules/image/test_imagewriter.py:101` `test_worker_skips_on_file_not_found` -- bug fixed
+- `tests/modules/image/test_imagewriter.py:123` `test_worker_skips_on_bad_filename_format` -- fine
+- `tests/modules/roof/test_baseroof.py:23` `test_open` -- fine
+- `tests/modules/roof/test_dummyroof.py:12` `test_open` -- fine
+- `tests/modules/roof/test_dummyroof.py:26,39` `test_init`, `test_park` -- strengthened
+- `tests/modules/roof/test_dummyroof.py:99` `test_stop_motion` -- fine
+- `tests/modules/weather/test_mockweather.py:71` `test_set_good_no_change` -- strengthened
+- `tests/modules/weather/test_weather.py:17,116,128` `test_open`, `test_loop_valid`, `test_loop_invalid` -- fine
+- `tests/modules/weather/test_weather.py:62` `test_get_sensor_value_invalid_request` -- false positive
+- `tests/modules/weather/test_weather_api.py:44,52` `test_get_current_status`, `test_get_sensor_value` -- fine
+- `tests/robotic/scripts/test_autofocus.py:113,133` `test_run_moves_telescope_and_focuses`, `test_run_stops_telescope_in_finally` -- fine
+- `tests/robotic/scripts/test_callmodule.py:115,125,135` -- fine
+- `tests/robotic/scripts/test_control.py:356` `test_selector_run_sets_mode` -- fine
+- `tests/robotic/storage/lco/test_lco_http.py:168,179,188,204` -- fine
+- `tests/robotic/storage/lco/test_schedulereader.py:126,189` -- fine
+- `tests/robotic/storage/lco/test_schedulewriter.py:149` `test_add_schedule_calls_portal` -- strengthened
+- `tests/robotic/utils/exptime/test_stellarexptime.py:192` `test_call_restores_settings_on_exception` -- fine (fixed in the earlier collection-bug pass)
+- `tests/test_background_task.py:201` `test_slow_failures_reset_counter` -- false positive
+- `tests/test_object.py:19,31,43` -- fine
 
 ## Full inventory
 

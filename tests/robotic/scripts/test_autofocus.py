@@ -24,9 +24,7 @@ def _isinstance_class(name: str, interfaces: list[type]) -> type:
 
 
 def make_script(**kwargs) -> AutoFocusScript:
-    s = AutoFocusScript(**kwargs)
-    s._comm = MagicMock()
-    return s
+    return AutoFocusScript.model_validate(kwargs, context={"comm": MagicMock()})
 
 
 def make_task(target=None) -> TaskData:

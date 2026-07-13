@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 import pyobs
-from pyobs.comm.dummy import DummyComm
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, WeatherSensorReading
 from pyobs.modules import Module
@@ -17,7 +16,6 @@ from pyobs.utils.time import Time
 @pytest.mark.asyncio
 async def test_open() -> None:
     weather = Weather("")
-    weather._comm = DummyComm()
     weather._comm.register_event = AsyncMock()
 
     Module.open = AsyncMock()
@@ -33,7 +31,6 @@ async def test_open() -> None:
 @pytest.mark.asyncio
 async def test_start() -> None:
     weather = Weather("")
-    weather._comm = DummyComm()
     weather._comm.send_event = AsyncMock()
 
     weather._active = False

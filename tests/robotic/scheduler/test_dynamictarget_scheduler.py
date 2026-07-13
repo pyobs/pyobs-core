@@ -41,12 +41,11 @@ def mock_vfs() -> MagicMock:
 
 
 def make_dynamic_task(mock_vfs: MagicMock, observer: Observer, constraints: list = []) -> Task:
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS")
-    picker._vfs = mock_vfs
-    picker._observer = observer
-    target = DynamicTarget(picker=picker)
-    target._observer = observer
-    target._vfs = mock_vfs
+    context = {"observer": observer, "vfs": mock_vfs}
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"}, context=context
+    )
+    target = DynamicTarget.model_validate({"picker": picker}, context=context)
     return Task(
         id=1,
         name="dynamic",

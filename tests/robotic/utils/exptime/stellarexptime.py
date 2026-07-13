@@ -8,6 +8,7 @@ from astropy.modeling import models
 from astropy.table import Table
 from photutils.datasets import make_model_image
 
+from pyobs.comm.comm import Comm
 from pyobs.robotic.utils.exptime.stellarexptime import StellarExposureTimeProvider
 from pyobs.utils.enums import ImageType
 
@@ -43,10 +44,9 @@ def make_image(data: np.ndarray) -> MagicMock:
 def make_provider(**kwargs) -> StellarExposureTimeProvider:
     defaults = dict(camera="camera", target_peak=30000.0, search_radius=50, max_iterations=3, default_exposure_time=1.0)
     defaults.update(kwargs)
-    p = StellarExposureTimeProvider(**defaults)
-    p._comm = MagicMock()
-    p._vfs = MagicMock()
-    return p
+    return StellarExposureTimeProvider.model_validate(
+        defaults, context={"comm": MagicMock(spec=Comm), "vfs": MagicMock()}
+    )
 
 
 def make_camera_mocks(

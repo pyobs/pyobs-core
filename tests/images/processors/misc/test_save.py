@@ -5,7 +5,6 @@ from pyobs.comm import Comm
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
 from pyobs.images.processors.image import Save
-from pyobs.vfs import VirtualFileSystem
 
 
 def test_init(mocker):
@@ -17,8 +16,7 @@ def test_init(mocker):
 
 @pytest.mark.asyncio
 async def test_open(mocker):
-    save = Save(broadcast=True)
-    save._comm = Comm()
+    save = Save(broadcast=True, comm=Comm())
 
     mocker.patch.object(save._comm, "register_event")
 
@@ -32,10 +30,8 @@ async def test_call(mocker):
     image.header["IMAGETYP"] = "object"
     mocker.patch.object(image, "format_filename", return_value="image.fits")
 
-    save = Save()
-    save._comm = Comm()
+    save = Save(comm=Comm())
     mocker.patch.object(save._comm, "send_event")
-    save._vfs = VirtualFileSystem()
     mocker.patch.object(save._vfs, "write_image")
 
     await save(image)

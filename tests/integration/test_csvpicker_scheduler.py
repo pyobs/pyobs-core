@@ -53,12 +53,11 @@ def make_vfs(tmp_path: Path, csv_content: str, filename: str = "catalogue.csv") 
 
 
 def make_dynamic_task(vfs: VirtualFileSystem, csv_path: str, constraints: list | None = None) -> Task:
-    picker = CsvPicker(csv=csv_path, name_col="name", ra_col="ra", dec_col="dec")
-    picker._vfs = vfs
-    picker._observer = SAAO
-    target = DynamicTarget(picker=picker)
-    target._observer = SAAO
-    target._vfs = vfs
+    context = {"observer": SAAO, "vfs": vfs}
+    picker = CsvPicker.model_validate(
+        {"csv": csv_path, "name_col": "name", "ra_col": "ra", "dec_col": "dec"}, context=context
+    )
+    target = DynamicTarget.model_validate({"picker": picker}, context=context)
     return Task(
         id=1,
         name="csv_task",

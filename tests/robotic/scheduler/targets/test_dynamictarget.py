@@ -57,9 +57,10 @@ def make_task(constraints: list[Constraint] = []) -> Task:
 @pytest.mark.asyncio
 async def test_dynamic_target_resolves(observer: Observer, data: DataProvider, mock_vfs: MagicMock) -> None:
     """DynamicTarget.resolve() picks a target and sets name."""
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS")
-    picker._vfs = mock_vfs
-    picker._observer = observer
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"},
+        context={"observer": observer, "vfs": mock_vfs},
+    )
 
     target = DynamicTarget(picker=picker)
     task = make_task()
@@ -87,9 +88,10 @@ async def test_dynamic_target_coordinates_after_resolve(
     observer: Observer, data: DataProvider, mock_vfs: MagicMock
 ) -> None:
     """coordinates() returns the resolved target's coordinates."""
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS")
-    picker._vfs = mock_vfs
-    picker._observer = observer
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"},
+        context={"observer": observer, "vfs": mock_vfs},
+    )
 
     target = DynamicTarget(picker=picker)
     task = make_task()
@@ -105,9 +107,10 @@ async def test_dynamic_target_coordinates_after_resolve(
 @pytest.mark.asyncio
 async def test_csv_picker_filters_by_airmass(observer: Observer, data: DataProvider, mock_vfs: MagicMock) -> None:
     """CsvPicker excludes candidates that fail airmass constraint."""
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS")
-    picker._vfs = mock_vfs
-    picker._observer = observer
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"},
+        context={"observer": observer, "vfs": mock_vfs},
+    )
 
     # strict airmass constraint — HIP002 (dec -89) should be excluded from SAAO
     task = make_task(constraints=[AirmassConstraint(max_airmass=2.0)])
@@ -131,9 +134,10 @@ async def test_csv_picker_returns_none_when_no_valid_candidates(
     observer: Observer, data: DataProvider, mock_vfs: MagicMock
 ) -> None:
     """CsvPicker returns None when all candidates fail constraints."""
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS")
-    picker._vfs = mock_vfs
-    picker._observer = observer
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"},
+        context={"observer": observer, "vfs": mock_vfs},
+    )
 
     # impossible airmass constraint — nothing can satisfy this
     task = make_task(constraints=[AirmassConstraint(max_airmass=1.0)])
@@ -146,9 +150,10 @@ async def test_csv_picker_returns_none_when_no_valid_candidates(
 @pytest.mark.asyncio
 async def test_csv_picker_caches_dataframe(observer: Observer, data: DataProvider, mock_vfs: MagicMock) -> None:
     """CsvPicker reads the CSV only once across multiple calls."""
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS")
-    picker._vfs = mock_vfs
-    picker._observer = observer
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"},
+        context={"observer": observer, "vfs": mock_vfs},
+    )
 
     task = make_task()
     time = Time("2025-11-03T23:00:00", scale="utc")
@@ -163,9 +168,10 @@ async def test_csv_picker_caches_dataframe(observer: Observer, data: DataProvide
 @pytest.mark.asyncio
 async def test_dynamic_target_resolve_updates_name(observer: Observer, data: DataProvider, mock_vfs: MagicMock) -> None:
     """After resolve(), target.name reflects the picked star."""
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS")
-    picker._vfs = mock_vfs
-    picker._observer = observer
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"},
+        context={"observer": observer, "vfs": mock_vfs},
+    )
 
     target = DynamicTarget(picker=picker)
     assert target.name == "(dynamic)"
@@ -186,9 +192,10 @@ async def test_csv_picker_ra_unit_hour(observer: Observer, data: DataProvider, m
     df = pd.read_csv(io.StringIO("HIP,RAICRS,DEICRS\nHIP001,5.592,+30.000\n"))
     mock_vfs.read_csv = AsyncMock(return_value=df)
 
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS", ra_unit="hour")
-    picker._vfs = mock_vfs
-    picker._observer = observer
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS", "ra_unit": "hour"},
+        context={"observer": observer, "vfs": mock_vfs},
+    )
 
     task = make_task()
     time = Time("2025-11-03T23:00:00", scale="utc")

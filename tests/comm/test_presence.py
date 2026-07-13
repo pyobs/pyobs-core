@@ -19,13 +19,11 @@ from pyobs.utils.enums import ModuleState
 @pytest.mark.asyncio
 async def test_set_state_calls_set_presence() -> None:
     """set_state() must automatically call comm.set_presence()."""
-    module = Module.__new__(Module)
-    module._state = ModuleState.READY
-    module._error_string = ""
-
-    comm = MagicMock()
+    comm = MagicMock(spec=Comm)
+    comm.name = "camera"
     comm.set_presence = AsyncMock()
-    module._comm = comm
+
+    module = Module(comm=comm)
 
     await module.set_state(ModuleState.ERROR, "sensor failure")
 
@@ -46,13 +44,12 @@ async def test_set_state_no_comm_does_not_raise() -> None:
 @pytest.mark.asyncio
 async def test_set_state_passes_current_error_string() -> None:
     """set_state() without explicit error_string passes the stored error string."""
-    module = Module.__new__(Module)
-    module._state = ModuleState.READY
-    module._error_string = "existing error"
-
-    comm = MagicMock()
+    comm = MagicMock(spec=Comm)
+    comm.name = "camera"
     comm.set_presence = AsyncMock()
-    module._comm = comm
+
+    module = Module(comm=comm)
+    module._error_string = "existing error"
 
     await module.set_state(ModuleState.ERROR)
 
@@ -62,13 +59,13 @@ async def test_set_state_passes_current_error_string() -> None:
 @pytest.mark.asyncio
 async def test_set_state_ready_clears_error() -> None:
     """set_state(READY) passes empty error string."""
-    module = Module.__new__(Module)
+    comm = MagicMock(spec=Comm)
+    comm.name = "camera"
+    comm.set_presence = AsyncMock()
+
+    module = Module(comm=comm)
     module._state = ModuleState.ERROR
     module._error_string = "previous error"
-
-    comm = MagicMock()
-    comm.set_presence = AsyncMock()
-    module._comm = comm
 
     await module.set_state(ModuleState.READY, "")
 
@@ -85,17 +82,15 @@ async def test_open_publishes_imodule_capabilities() -> None:
     """Module.open() must call set_capabilities with IModule.Capabilities."""
     from pyobs.interfaces import IModule
 
-    module = Module.__new__(Module)
+    comm = MagicMock(spec=Comm)
+    comm.name = "camera"
+    comm.set_capabilities = AsyncMock()
+
+    module = Module(comm=comm, location=None, timezone="utc")
     module._label = "Test Camera"
     module._child_objects = []
     module._own_comm = False  # skip comm.open()
     module._config_caps = {}  # no config caps for stub
-    module._location = None
-    module._timezone = "utc"
-
-    comm = MagicMock()
-    comm.set_capabilities = AsyncMock()
-    module._comm = comm
 
     with patch("pyobs.object.Object.open", new_callable=AsyncMock):
         module.get_version = AsyncMock(return_value="2.0.0")
@@ -116,17 +111,15 @@ async def test_open_publishes_empty_label_when_none() -> None:
     """Module.open() passes empty string for label when _label is None."""
     from pyobs.interfaces import IModule
 
-    module = Module.__new__(Module)
+    comm = MagicMock(spec=Comm)
+    comm.name = "camera"
+    comm.set_capabilities = AsyncMock()
+
+    module = Module(comm=comm, location=None, timezone="utc")
     module._label = None
     module._child_objects = []
     module._own_comm = False
     module._config_caps = {}
-    module._location = None
-    module._timezone = "utc"
-
-    comm = MagicMock()
-    comm.set_capabilities = AsyncMock()
-    module._comm = comm
 
     with patch("pyobs.object.Object.open", new_callable=AsyncMock):
         module.get_version = AsyncMock(return_value="2.0.0")
@@ -148,17 +141,15 @@ async def test_open_publishes_location_when_configured() -> None:
 
     from pyobs.interfaces import IModule
 
-    module = Module.__new__(Module)
+    comm = MagicMock(spec=Comm)
+    comm.name = "camera"
+    comm.set_capabilities = AsyncMock()
+
+    module = Module(comm=comm, location=EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0), timezone="utc")
     module._label = "Test Camera"
     module._child_objects = []
     module._own_comm = False
     module._config_caps = {}
-    module._location = EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0)
-    module._timezone = "utc"
-
-    comm = MagicMock()
-    comm.set_capabilities = AsyncMock()
-    module._comm = comm
 
     with patch("pyobs.object.Object.open", new_callable=AsyncMock):
         module.get_version = AsyncMock(return_value="2.0.0")
@@ -171,7 +162,7 @@ async def test_open_publishes_location_when_configured() -> None:
     assert caps.location.longitude == pytest.approx(9.9)
     assert caps.location.latitude == pytest.approx(51.5)
     assert caps.location.elevation == pytest.approx(100.0)
-    assert caps.location.timezone == "utc"
+    assert caps.location.timezone == "UTC"
 
 
 # ---------------------------------------------------------------------------
@@ -202,12 +193,10 @@ async def test_on_module_opened_warns_on_location_mismatch(caplog) -> None:
     from pyobs.events import ModuleOpenedEvent
     from pyobs.interfaces import ModuleCapabilities, ModuleLocation
 
-    module = Module.__new__(Module)
-    module._location = EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0)
-
-    comm = MagicMock()
+    comm = MagicMock(spec=Comm)
     comm.name = "me"
-    module._comm = comm
+
+    module = Module(comm=comm, location=EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0))
 
     remote_caps = ModuleCapabilities(
         version="2.0.0",
@@ -233,12 +222,10 @@ async def test_on_module_opened_no_warning_when_locations_match(caplog) -> None:
     from pyobs.events import ModuleOpenedEvent
     from pyobs.interfaces import ModuleCapabilities, ModuleLocation
 
-    module = Module.__new__(Module)
-    module._location = EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0)
-
-    comm = MagicMock()
+    comm = MagicMock(spec=Comm)
     comm.name = "me"
-    module._comm = comm
+
+    module = Module(comm=comm, location=EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0))
 
     remote_caps = ModuleCapabilities(
         version="2.0.0",
@@ -262,12 +249,10 @@ async def test_on_module_opened_no_warning_when_no_local_location(caplog) -> Non
     from pyobs.events import ModuleOpenedEvent
     from pyobs.interfaces import ModuleCapabilities, ModuleLocation
 
-    module = Module.__new__(Module)
-    module._location = None
-
-    comm = MagicMock()
+    comm = MagicMock(spec=Comm)
     comm.name = "me"
-    module._comm = comm
+
+    module = Module(comm=comm, location=None)
 
     remote_caps = ModuleCapabilities(
         version="2.0.0",

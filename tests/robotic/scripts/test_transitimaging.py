@@ -7,6 +7,7 @@ import astropy.units as u
 import pytest
 from astropy.time import TimeDelta
 
+from pyobs.comm.comm import Comm
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler.merits.transit import TransitMerit
 from pyobs.robotic.scheduler.targets import SiderealTarget
@@ -24,9 +25,9 @@ def make_script() -> TransitImagingScript:
         instrument_configs=[InstrumentConfig(exposure_time=30.0, image_type=ImageType.OBJECT)],
         repeats=1,
     )
-    script = TransitImagingScript(camera="camera", configuration=config)
-    script._comm = MagicMock()
-    return script
+    return TransitImagingScript.model_validate(
+        {"camera": "camera", "configuration": config}, context={"comm": MagicMock(spec=Comm)}
+    )
 
 
 def make_transit_merit(duration: int = 3600, ingress: float = 0.2) -> TransitMerit:
@@ -147,8 +148,9 @@ async def test_run_configurations_uses_modulo_repeats() -> None:
         instrument_configs=[InstrumentConfig(exposure_time=10.0, image_type=ImageType.OBJECT)],
         repeats=2,
     )
-    script = TransitImagingScript(camera="camera", configuration=config)
-    script._comm = MagicMock()
+    script = TransitImagingScript.model_validate(
+        {"camera": "camera", "configuration": config}, context={"comm": MagicMock(spec=Comm)}
+    )
     merit = make_transit_merit()
     script._transit_merit = merit
 

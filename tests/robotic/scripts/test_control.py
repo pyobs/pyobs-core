@@ -318,10 +318,10 @@ async def test_selector_can_run_when_parked() -> None:
     selector = MagicMock()
     selector.wait_for_state = AsyncMock(return_value=MotionState(status=MotionStatus.PARKED))
 
-    script = SelectorScript(mode="imaging", selector="selector")
-    script._comm = MagicMock()
-    script._comm.has_proxy = AsyncMock(return_value=True)
-    script._comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
+    comm = MagicMock()
+    comm.has_proxy = AsyncMock(return_value=True)
+    comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
+    script = SelectorScript.model_validate({"mode": "imaging", "selector": "selector"}, context={"comm": comm})
 
     assert await script.can_run(None) is True
 
@@ -331,10 +331,10 @@ async def test_selector_can_run_when_positioned() -> None:
     selector = MagicMock()
     selector.wait_for_state = AsyncMock(return_value=MotionState(status=MotionStatus.POSITIONED))
 
-    script = SelectorScript(mode="imaging", selector="selector")
-    script._comm = MagicMock()
-    script._comm.has_proxy = AsyncMock(return_value=True)
-    script._comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
+    comm = MagicMock()
+    comm.has_proxy = AsyncMock(return_value=True)
+    comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
+    script = SelectorScript.model_validate({"mode": "imaging", "selector": "selector"}, context={"comm": comm})
 
     assert await script.can_run(None) is True
 
@@ -344,10 +344,10 @@ async def test_selector_cannot_run_when_moving() -> None:
     selector = MagicMock()
     selector.wait_for_state = AsyncMock(return_value=MotionState(status=MotionStatus.SLEWING))
 
-    script = SelectorScript(mode="imaging", selector="selector")
-    script._comm = MagicMock()
-    script._comm.has_proxy = AsyncMock(return_value=True)
-    script._comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
+    comm = MagicMock()
+    comm.has_proxy = AsyncMock(return_value=True)
+    comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
+    script = SelectorScript.model_validate({"mode": "imaging", "selector": "selector"}, context={"comm": comm})
 
     assert await script.can_run(None) is False
 
@@ -357,9 +357,9 @@ async def test_selector_run_sets_mode() -> None:
     selector = MagicMock()
     selector.set_mode = AsyncMock()
 
-    script = SelectorScript(mode="spectroscopy", selector="selector")
-    script._comm = MagicMock()
-    script._comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
+    comm = MagicMock()
+    comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
+    script = SelectorScript.model_validate({"mode": "spectroscopy", "selector": "selector"}, context={"comm": comm})
 
     await script.run(None)
     selector.set_mode.assert_called_once_with("spectroscopy")

@@ -5,20 +5,20 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from pyobs.comm.comm import Comm
 from pyobs.events import NewImageEvent
 from pyobs.modules.image.imagewriter import ImageWriter
 from pyobs.utils.enums import ImageType
+from pyobs.vfs import VirtualFileSystem
 
 
 def make_writer(filename: str = "/archive/{FNAME}", sources=None) -> ImageWriter:
-    writer = ImageWriter.__new__(ImageWriter)
-    writer._filename = filename
-    writer._sources = [sources] if isinstance(sources, str) else sources
-    writer._queue = asyncio.Queue()
-    writer._comm = MagicMock()
-    writer._vfs = MagicMock()
-    writer._background_tasks = []
-    return writer
+    return ImageWriter(
+        filename=filename,
+        sources=sources,
+        comm=MagicMock(spec=Comm),
+        vfs=MagicMock(spec=VirtualFileSystem),
+    )
 
 
 def make_image_event(filename: str = "/tmp/test.fits") -> NewImageEvent:

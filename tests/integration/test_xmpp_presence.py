@@ -155,10 +155,7 @@ async def test_set_state_automatically_updates_presence(make_xmpp_comm) -> None:
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
 
-        m = Module.__new__(Module)
-        m._state = ModuleState.READY
-        m._error_string = ""
-        m._comm = camera_comm
+        m = Module(comm=camera_comm)
 
         await m.set_state(ModuleState.ERROR, "disk full")
 

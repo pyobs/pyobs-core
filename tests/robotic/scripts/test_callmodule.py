@@ -11,14 +11,15 @@ from pyobs.robotic.scripts.utils.callmodule import CallModuleScript
 
 @pytest.fixture
 def script() -> CallModuleScript:
-    s = CallModuleScript(
-        module="camera",
-        interface="pyobs.interfaces.IExposureTime",
-        method="set_exposure_time",
-        params={"exposure_time": 30.0},
+    return CallModuleScript.model_validate(
+        {
+            "module": "camera",
+            "interface": "pyobs.interfaces.IExposureTime",
+            "method": "set_exposure_time",
+            "params": {"exposure_time": 30.0},
+        },
+        context={"comm": MagicMock()},
     )
-    s._comm = MagicMock()
-    return s
 
 
 def make_proxy_cm(value: object) -> MagicMock:

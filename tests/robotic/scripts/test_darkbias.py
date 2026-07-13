@@ -23,9 +23,7 @@ def _isinstance_class(name: str, interfaces: list[type]) -> type:
 
 
 def make_script(**kwargs) -> DarkBiasScript:
-    s = DarkBiasScript(camera="camera", **kwargs)
-    s._comm = MagicMock()
-    return s
+    return DarkBiasScript.model_validate({"camera": "camera", **kwargs}, context={"comm": MagicMock()})
 
 
 def make_camera(

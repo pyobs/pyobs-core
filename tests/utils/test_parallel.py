@@ -87,6 +87,32 @@ async def test_set_timeout_extends_wait(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_set_timeout_reschedules_during_active_await(monkeypatch) -> None:
+    """set_timeout() called *during* an in-progress await (the real-world case: the
+    RPC timeout-extension reply arrives over the network only after `await future`
+    has already armed the default 10.0s timeout) must reschedule the pending timer,
+    not just update an attribute nobody reads again.
+    """
+    f = Future()
+    loop = asyncio.get_running_loop()
+    original_call_later = loop.call_later
+
+    # scale all delays down 1000x so the test runs fast
+    monkeypatch.setattr(loop, "call_later", lambda delay, cb, *a: original_call_later(delay / 1000, cb, *a))
+
+    # simulate the timeout-extension reply arriving right after `await f` begins,
+    # i.e. after the default 10.0s timeout has already been scheduled
+    loop.call_soon(f.set_timeout, 30.0)
+
+    # resolve the future at a (scaled) time past the original 10s deadline but
+    # within the extended 30s one -- only reachable if the reschedule worked
+    original_call_later(15.0 / 1000, f.set_result, "done")
+
+    result = await f
+    assert result == "done"
+
+
+@pytest.mark.asyncio
 async def test_timeout_cancelled_when_future_resolves(monkeypatch) -> None:
     """Timeout handle is cancelled when future completes before timeout fires."""
     f = Future()

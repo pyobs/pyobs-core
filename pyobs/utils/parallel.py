@@ -44,6 +44,11 @@ class Future(asyncio.Future[Any]):
         self.annotation = annotation
         self.comm = comm
 
+        # bookkeeping for (re-)scheduling the timeout while awaiting
+        self._wait_loop: asyncio.AbstractEventLoop | None = None
+        self._wait_start: float | None = None
+        self._timeout_handle: asyncio.TimerHandle | None = None
+
         # already set?
         if empty:
             # fire event
@@ -55,6 +60,13 @@ class Future(asyncio.Future[Any]):
         """
         self.timeout = timeout
 
+        # if we're already waiting, reschedule the pending timeout with the new value
+        if self._wait_loop is not None and self._wait_start is not None and not self.done():
+            if self._timeout_handle is not None:
+                self._timeout_handle.cancel()
+            remaining = max(0.0, self._wait_start + timeout - self._wait_loop.time())
+            self._timeout_handle = self._wait_loop.call_later(remaining, self._on_timeout)
+
     def get_timeout(self) -> float | None:
         """
         Returns async timeout.
@@ -64,16 +76,18 @@ class Future(asyncio.Future[Any]):
     def __await__(self) -> Any:
         # not finished? need to wait.
         if not self.done():
-            loop = asyncio.get_running_loop()
+            self._wait_loop = asyncio.get_running_loop()
+            self._wait_start = self._wait_loop.time()
 
             # schedule timeout
             timeout = self.timeout if self.timeout is not None else 10.0
-            handle = loop.call_later(timeout, self._on_timeout)
+            self._timeout_handle = self._wait_loop.call_later(timeout, self._on_timeout)
 
             self._asyncio_future_blocking = True
             yield self  # suspend until done or timeout
 
-            handle.cancel()  # cancel timeout if completed normally
+            if self._timeout_handle is not None:
+                self._timeout_handle.cancel()  # cancel timeout if completed normally
 
         # still not done? raise exception.
         if not self.done():

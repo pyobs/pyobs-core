@@ -11,12 +11,12 @@ XMPP integration tests. Run with:
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from pyobs.interfaces import ICooling, IModule, IWindow, ModuleCapabilities, WindowCapabilities
 from pyobs.utils.enums import ModuleState
+from tests.integration.conftest import make_module
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration, pytest.mark.xmpp]
 
@@ -27,16 +27,6 @@ _CAPABILITIES_NS_IWINDOW = f"urn:pyobs:capabilities:IWindow:{IWindow.version}"
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
-
-
-def make_module(interfaces: list, label: str = "Test Camera") -> MagicMock:
-    m = MagicMock()
-    m.interfaces = list({IModule} | set(interfaces))
-    m.name = "camera"
-    m._label = label
-    m.get_label = AsyncMock(return_value=label)
-    m.get_version = AsyncMock(return_value="2.0.0.dev1")
-    return m
 
 
 async def wait_for(condition, *, timeout: float = 10.0, interval: float = 0.1) -> bool:

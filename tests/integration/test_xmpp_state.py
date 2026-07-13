@@ -19,12 +19,12 @@ For a hand-run server, register the accounts manually:
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import MagicMock
 
 import pytest
 
 from pyobs.events import ModuleClosedEvent
-from pyobs.interfaces import CoolingState, ICooling, IModule
+from pyobs.interfaces import CoolingState, ICooling
+from tests.integration.conftest import make_module
 
 # Applies asyncio/integration/xmpp marks to every test in this module.
 # asyncio must be in pytestmark (not added via pytest_collection_modifyitems)
@@ -35,20 +35,6 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration, pytest.mark.xmpp]
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
-
-
-def make_module(interfaces: list) -> MagicMock:
-    """Minimal module stub satisfying what XmppComm needs on connect.
-
-    IModule must be included: XmppComm._get_interfaces() only adds a peer to
-    _online_clients once it sees IModule in the disco#info features — without
-    it the peer never appears in comm.clients regardless of other interfaces.
-    """
-    m = MagicMock()
-    # Always include IModule so _got_online completes successfully
-    m.interfaces = list({IModule} | set(interfaces))
-    m.name = "camera"
-    return m
 
 
 async def wait_for(condition, *, timeout: float = 10.0, interval: float = 0.1) -> bool:

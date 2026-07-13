@@ -69,6 +69,43 @@ def xmpp_config() -> XmppConfig:
     )
 
 
+def make_module(interfaces: list, label: str = "Test Camera"):
+    """Minimal module stub satisfying what XmppComm needs on connect.
+
+    IModule must be included: XmppComm._get_interfaces() only adds a peer to
+    _online_clients once it sees IModule in the disco#info features -- without
+    it the peer never appears in comm.clients regardless of other interfaces.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from pyobs.interfaces import IModule
+
+    m = MagicMock()
+    # Always include IModule so _got_online completes successfully
+    m.interfaces = list({IModule} | set(interfaces))
+    m.name = "camera"
+    m._label = label
+    m.get_label = AsyncMock(return_value=label)
+    m.get_version = AsyncMock(return_value="2.0.0.dev1")
+    return m
+
+
+@pytest.fixture
+def make_camera_comm(xmpp_config: XmppConfig):
+    """Build an unopened XmppComm for user "camera", for constructor-injecting
+    into DummyCamera(comm=...) -- the caller opens it via camera.open()."""
+    from pyobs.comm.xmpp.xmppcomm import XmppComm
+
+    return XmppComm(
+        user="camera",
+        domain=xmpp_config.domain,
+        password=xmpp_config.password,
+        server=f"{xmpp_config.host}:{xmpp_config.port}",
+        use_tls=xmpp_config.use_tls,
+        ignore_cert_errors=xmpp_config.ignore_cert_errors,
+    )
+
+
 @pytest_asyncio.fixture
 async def make_xmpp_comm(xmpp_config: XmppConfig):
     """

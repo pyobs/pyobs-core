@@ -29,6 +29,8 @@ Verified: `pytest tests/` (867 passed, 2 skipped -- 9 more than before, from `te
   - `test_mockweather.py::test_set_good_no_change` -- added a check that `_good` is actually unchanged.
   - `test_schedulewriter.py::test_add_schedule_calls_portal` -- `assert_called_once()` alone didn't check that `submit_observations` received the converted observations.
 
+**Bucket 2 surveyed:** 20 private-method patches across 8 files, 3 distinct private methods at most in any one class (`ProjectedOffsets`: `_process`, `_calc_1d_offset`, `_gaussian`). In every case, the mocked-out private method is *also* tested directly elsewhere in the same file with real numerical/behavioral assertions (e.g. `test_projected.py` has `test_calc_1d_offset`, `test_subtract_sky_constant`, `test_process_axis_collapse` alongside the orchestration tests that mock those same methods to isolate `__call__`'s coordination logic). That's the healthy version of this pattern, not a smell -- no class showed signs of public seams being too coarse. One correction to the original list: `calibration._calib_cache.get_from_cache`/`add_to_cache` isn't a private method of the class under test at all -- `_calib_cache` is a collaborator object held in a private attribute, and `get_from_cache`/`add_to_cache` are its public API, so mocking them is ordinary dependency isolation (Bucket-1-shaped, not Bucket 2). No changes made.
+
 ## Bucket 1 -- External-boundary mocks: keep, no action needed
 
 Mocks/patches substituting something genuinely external, non-deterministic, or slow, where no pyobs class could stand in instead:
@@ -41,9 +43,9 @@ Mocks/patches substituting something genuinely external, non-deterministic, or s
 
 No changes suggested here.
 
-## Bucket 2 -- Internal collaborator-method patches: mostly fine, same pattern as check_tests.md
+## Bucket 2 -- Internal collaborator-method patches: surveyed, fine (see "Resolved this session")
 
-`mocker.patch.object(obj, "_method")` / `ClassName._method = Mock(...)`-style patches on a *private method of the class under test itself*, to isolate the method actually being tested (e.g. `offsets._process`, `ProjectedOffsets._subtract_sky`, `reader._download_schedule`, `calibration._calib_cache.get_from_cache`, `api._send`). This is a standard unit-isolation technique and was explicitly out of scope for check_tests.md ("calling private methods"). Flagging only because it's the same class of internals-reaching -- worth a look if a single class accumulates many of these (a sign its public seams are too coarse), but not a per-line action item.
+`mocker.patch.object(obj, "_method")` / `ClassName._method = Mock(...)`-style patches on a *private method of the class under test itself*, to isolate the method actually being tested (e.g. `offsets._process`, `ProjectedOffsets._subtract_sky`, `reader._download_schedule`, `api._send`). This is a standard unit-isolation technique and was explicitly out of scope for check_tests.md ("calling private methods"). Surveyed for classes accumulating many of these (a sign of public seams being too coarse) -- none found; see above.
 
 ## Bucket 3 -- `Comm` / `VirtualFileSystem` stand-ins: case-by-case verdict
 

@@ -154,6 +154,8 @@ async def test_add_schedule_calls_portal() -> None:
 
     await writer.add_schedule(ObservationList([obs]))
     portal.submit_observations.assert_called_once()
+    submitted = portal.submit_observations.call_args[0][0]
+    assert len(submitted) == 1
 
 
 @pytest.mark.asyncio

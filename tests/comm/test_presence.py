@@ -27,6 +27,8 @@ async def test_set_state_calls_set_presence() -> None:
 
     await module.set_state(ModuleState.ERROR, "sensor failure")
 
+    assert module._state == ModuleState.ERROR
+    assert module._error_string == "sensor failure"
     comm.set_presence.assert_called_once_with(ModuleState.ERROR, "sensor failure")
 
 
@@ -53,6 +55,8 @@ async def test_set_state_passes_current_error_string() -> None:
 
     await module.set_state(ModuleState.ERROR)
 
+    assert module._state == ModuleState.ERROR
+    assert module._error_string == "existing error"
     comm.set_presence.assert_called_once_with(ModuleState.ERROR, "existing error")
 
 
@@ -69,6 +73,8 @@ async def test_set_state_ready_clears_error() -> None:
 
     await module.set_state(ModuleState.READY, "")
 
+    assert module._state == ModuleState.READY
+    assert module._error_string == ""
     comm.set_presence.assert_called_once_with(ModuleState.READY, "")
 
 

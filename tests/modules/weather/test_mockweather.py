@@ -75,6 +75,7 @@ async def test_set_good_no_change() -> None:
 
     await weather.set_good(True)
 
+    assert weather._good is True
     weather._comm.send_event.assert_not_called()
     weather._comm.set_state.assert_not_called()
 

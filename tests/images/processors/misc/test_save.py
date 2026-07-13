@@ -30,7 +30,7 @@ async def test_call(mocker):
     image.header["IMAGETYP"] = "object"
     mocker.patch.object(image, "format_filename", return_value="image.fits")
 
-    save = Save(comm=Comm())
+    save = Save(broadcast=True, comm=Comm())
     mocker.patch.object(save._comm, "send_event")
     mocker.patch.object(save._vfs, "write_image")
 
@@ -38,8 +38,6 @@ async def test_call(mocker):
 
     save._vfs.write_image.assert_called_once_with("image.fits", image)
 
-    # todo: fix
-    # image_event = save.comm.send_event.call_args[0][0]
-    #
-    # assert image_event.data["filename"] == "image.fits"
-    # assert image_event.data["image_type"] == "object"
+    image_event = save._comm.send_event.call_args[0][0]
+    assert image_event.data["filename"] == "image.fits"
+    assert image_event.data["image_type"] == "object"

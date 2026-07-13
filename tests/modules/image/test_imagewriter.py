@@ -103,20 +103,20 @@ async def test_worker_skips_on_file_not_found(caplog) -> None:
 
     writer = make_writer()
     writer._vfs.read_image = AsyncMock(side_effect=FileNotFoundError)
+    writer._vfs.write_image = AsyncMock()
     writer._queue.put_nowait("/tmp/missing.fits")
 
-    task = asyncio.create_task(writer._worker())
-    await asyncio.sleep(0.05)
-    task.cancel()
-    try:
-        await task
-    except (asyncio.CancelledError, Exception):
-        pass
-
     with caplog.at_level(logging.ERROR):
-        pass
-    writer._vfs.write_image = AsyncMock()
+        task = asyncio.create_task(writer._worker())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
+
     writer._vfs.write_image.assert_not_called()
+    assert "Could not download image." in caplog.text
 
 
 @pytest.mark.asyncio

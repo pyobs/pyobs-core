@@ -340,19 +340,15 @@ class Module(Object, IModule, IConfig):
 
     def _get_interfaces_and_methods(self) -> None:
         """List interfaces and methods of this module."""
-        import pyobs.interfaces
+        from pyobs.interfaces.interface import registered_interfaces
 
         # get interfaces
         self._interfaces = []
         self._methods = {}
         self._interface_methods = {}
-        for _, interface in inspect.getmembers(pyobs.interfaces, predicate=inspect.isclass):
+        for interface in registered_interfaces().values():
             # is module a sub-class of that class that inherits from Interface?
-            if isinstance(self, interface) and issubclass(interface, pyobs.interfaces.Interface):
-                # we ignore the interface "Interface"
-                if interface == pyobs.interfaces.Interface:
-                    continue
-
+            if isinstance(self, interface):
                 # add interface
                 self._interfaces += [interface]
 

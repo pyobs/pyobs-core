@@ -18,11 +18,11 @@ from slixmpp.xmlstream import ET
 from slixmpp.xmlstream.handler import Callback
 from slixmpp.xmlstream.matcher import MatchXMLMask
 
-import pyobs.interfaces
 from pyobs.comm import Comm
 from pyobs.events import Event, LogEvent, ModuleClosedEvent, ModuleOpenedEvent
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
+from pyobs.interfaces.interface import get_registered_interface
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
 
@@ -406,8 +406,8 @@ class XmppComm(Comm):
         interface_names = []
         for feature in features:
             name, _, version = feature[len(prefix) :].rpartition(":")
-            local_cls = getattr(pyobs.interfaces, name, None)
-            if local_cls is not None and issubclass(local_cls, Interface) and str(local_cls.version) == version:
+            local_cls = get_registered_interface(name)
+            if local_cls is not None and str(local_cls.version) == version:
                 interface_names.append(name)
 
         # IModule not in list?

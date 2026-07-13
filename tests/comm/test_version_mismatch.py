@@ -8,13 +8,14 @@ Comm._resolve_proxy folding that hint into its ValueError.
 from __future__ import annotations
 
 import logging
+from abc import ABCMeta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from pyobs.comm.comm import Comm
 from pyobs.comm.xmpp.xmppcomm import XmppComm
-from pyobs.interfaces import ICooling, IModule
+from pyobs.interfaces import ICooling, IModule, Interface
 
 
 class FakeInterface:
@@ -73,6 +74,24 @@ async def test_get_interfaces_drops_unknown_name() -> None:
 
     assert "IModule" in names
     assert "INotReal" not in names
+
+
+@pytest.mark.asyncio
+async def test_get_interfaces_resolves_external_interface() -> None:
+    """An interface defined entirely outside pyobs.interfaces round-trips through
+    the registry the same way core interfaces do -- this is the whole point of the
+    registry: XmppComm never needs to special-case where an interface came from."""
+
+    class IVersionMismatchTestExternal(Interface, metaclass=ABCMeta):
+        pass
+
+    comm = make_xmpp_comm()
+    features = ["urn:pyobs:interface:IModule:1", "urn:pyobs:interface:IVersionMismatchTestExternal:1"]
+    comm._safe_send = AsyncMock(return_value={"features": features})
+
+    names = await comm._get_interfaces("camera@localhost/pyobs")
+
+    assert "IVersionMismatchTestExternal" in names
 
 
 @pytest.mark.asyncio

@@ -298,3 +298,11 @@ This is blocked, not just deferred: `Object.__init__` raises `ValueError` for `t
 state these tests want. Revisit only if `Object.__init__` ever grows a way to represent "no
 timezone configured" without raising -- that's a production-code change, not a test fix, and
 not clearly worth making just for this.
+
+## Feature requests (not testing hygiene)
+
+### Create a `DummySolarTelescope`
+
+Requested by the user. `pyobs/modules/telescope/` currently has `DummyTelescope` but nothing
+solar-specific; presumably follows on from the tracking-mode/`ITrackingRate` work. Not scoped or
+started yet.

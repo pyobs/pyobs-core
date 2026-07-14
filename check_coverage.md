@@ -106,7 +106,7 @@ the two areas with the broadest thin coverage, not just isolated files.
 | ~~`pyobs/robotic/utils/skyflats/flatfielder.py`~~ | ~~21.2%~~ resolved, see `TODO.md` | 260 |
 | ~~`pyobs/modules/camera/basevideo.py`~~ | ~~25.7%~~ resolved, see `TODO.md` | 206 |
 | ~~`pyobs/mixins/fitsheader.py`~~ | ~~27.7%~~ resolved, see `TODO.md` | 177 |
-| `pyobs/modules/robotic/scheduler.py` | 23.5% | 170 |
+| ~~`pyobs/modules/robotic/scheduler.py`~~ | ~~23.5%~~ resolved, see `TODO.md` | 170 |
 | ~~`pyobs/modules/pointing/acquisition.py`~~ | ~~22.2%~~ resolved, see `TODO.md` | 144 |
 | `pyobs/images/processors/offsets/spilled_light.py` | 24.5% | 143 |
 | ~~`pyobs/modules/pointing/_baseguiding.py`~~ | ~~21.7%~~ resolved, see `TODO.md` | 138 |

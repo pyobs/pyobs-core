@@ -244,6 +244,34 @@ Verified: `pytest tests/ -m "not integration and not xmpp"` (1150 passed, up fro
 unrelated pre-existing failure in `test_basetelescope.py` deselected, from the user's own
 in-progress tracking-mode work, not touched here).
 
+### Tests written for `pyobs/modules/robotic/scheduler.py`, plus a real bug fixed ✅
+
+Previously 23.5% coverage (170 stmts) -- only `_compare_task_lists()` had a test before this.
+Extended `tests/modules/robotic/test_scheduler.py` (32 new tests) using `AsyncMock(spec=...)` for
+the `TaskArchive`/`ObservationArchive`/`TaskScheduler` child objects (`TaskScheduler.schedule()`
+is an async generator, so it's stubbed with a plain async-generator function rather than
+`AsyncMock`). Covers `open()`/`start()`/`stop()`/`is_running()`, `_update_schedule()`'s
+change-detection branches (no change / added / only-current-removed / removed-but-not-scheduled /
+removed-and-scheduled), `_schedule_worker()`'s background loop (skip-when-idle, full
+schedule-and-submit run including the two-stage `add_observations()` calls and safety-time
+recalculation, using the running observation's end as the effective start time, aborting a
+schedule pass early when a new update request lands mid-iteration, and catching/logging both
+ordinary exceptions and `CancelledError` from within the scheduling try block), `run()`,
+`_on_task_started()`/`_on_task_finished()`/`_on_good_weather()`'s event-type guards and
+opt-in re-trigger behavior, and `abort()`.
+
+**Found and fixed a real bug while writing these tests**: `_on_task_finished()` is registered in
+`open()` as the handler for *both* `TaskFinishedEvent` and `TaskFailedEvent`, but its own guard
+was `isinstance(event, TaskFinishedEvent)` -- and `TaskFailedEvent` is a sibling class, not a
+subclass, of `TaskFinishedEvent` (both derive directly from `Event`). A failed task was silently
+ignored: `_current_task_id` never got cleared and `trigger_on_task_finished` never fired,
+regardless of configuration. Fixed to `isinstance(event, (TaskFinishedEvent, TaskFailedEvent))`,
+with a regression test (`test_on_task_finished_handles_task_failed_event`).
+
+Verified: `pytest tests/ -m "not integration and not xmpp"` (1220 passed, up from 1150 --
+`test_basetelescope.py`'s unrelated failure still deselected) and, against a local ejabberd,
+`pytest tests/ -m "integration or xmpp"`.
+
 ## Needs a decision
 
 ### `pyobs/modules/camera/basevideo.py`: two minor issues left unfixed

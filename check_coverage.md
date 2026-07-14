@@ -66,21 +66,12 @@ concern.
 - `pyobs/vfs/filelists/testing.py` (12), `filelist.py` (5), `__init__.py` (3) -- also
   test-support tooling per the module name.
 
-### Category E -- Real gaps: no external-service or GUI excuse (17 files, ~487 statements)
+### Category E -- Real gaps: no external-service or GUI excuse (remaining: 13 files)
 
 Core module/processor logic, same shape as plenty of code that *does* have good coverage
-elsewhere (comm/vfs-mockable, no special hardware). The two standouts:
+elsewhere (comm/vfs-mockable, no special hardware). The flatfield subsystem and the two
+untested `Dummy*` modules from this category are resolved (see `TODO.md`); remaining:
 
-- ~~**The entire `pyobs/modules/flatfield/` subsystem**~~ -- **resolved**, see `TODO.md`.
-  `flatfield.py` (112), `scheduler.py` (58), `pointing.py` (24), `__init__.py` (5) = 199
-  statements, previously zero test files. Now covered by `tests/modules/flatfield/` (27 tests).
-- ~~**`pyobs/modules/utils/dummymode.py`** (48) and **`pyobs/modules/camera/dummyvideo.py`**
-  (35)~~ -- **resolved**, see `TODO.md`. Both are `Dummy*` simulator modules, the same family as
-  `DummyRoof`/`DummyCamera`/`MockWeather`, all of which already had solid test coverage
-  (`test_dummyroof.py`, `test_xmpp_dummy_camera.py`, `test_mockweather.py`). Now covered by
-  `tests/modules/utils/test_dummymode.py` and `tests/modules/camera/test_dummyvideo.py`.
-
-Rest of this category:
 - `pyobs/modules/utils/kiosk.py` (87)
 - `pyobs/modules/utils/autonomouswarning.py` (70)
 - `pyobs/modules/utils/trigger.py` (50)
@@ -95,37 +86,26 @@ Rest of this category:
   `pyobs/images/processors/wcs/__init__.py`, `pyobs/vfs/filelists/__init__.py` -- `__init__.py`
   files, usually just re-exports.
 
-## Partially covered, worth a look (<30%, 15+ statements, 16 files)
+## Partially covered, worth a look (<30%, 15+ statements, remaining: 7 files)
 
-Not "no test at all" but thin enough that large parts of the real logic are unexercised.
-Several point at the same subsystems flagged above -- pointing/guiding and flatfields look like
-the two areas with the broadest thin coverage, not just isolated files.
+Not "no test at all" but thin enough that large parts of the real logic are unexercised. The
+pointing/guiding and flatfield-adjacent cluster that used to dominate this table is resolved
+(see `TODO.md`); these are what's left, no longer clustered around one subsystem.
 
 | File | Coverage | Statements |
 |---|---|---|
-| ~~`pyobs/robotic/utils/skyflats/flatfielder.py`~~ | ~~21.2%~~ resolved, see `TODO.md` | 260 |
-| ~~`pyobs/modules/camera/basevideo.py`~~ | ~~25.7%~~ resolved, see `TODO.md` | 206 |
-| ~~`pyobs/mixins/fitsheader.py`~~ | ~~27.7%~~ resolved, see `TODO.md` | 177 |
-| ~~`pyobs/modules/robotic/scheduler.py`~~ | ~~23.5%~~ resolved, see `TODO.md` | 170 |
-| ~~`pyobs/modules/pointing/acquisition.py`~~ | ~~22.2%~~ resolved, see `TODO.md` | 144 |
 | `pyobs/images/processors/offsets/spilled_light.py` | 24.5% | 143 |
-| ~~`pyobs/modules/pointing/_baseguiding.py`~~ | ~~21.7%~~ resolved, see `TODO.md` | 138 |
 | `pyobs/robotic/storage/lco/scripts/default.py` | 19.4% | 134 |
-| ~~`pyobs/robotic/utils/archive/pyobs_archive.py`~~ | ~~21.8%~~ resolved, see `TODO.md` | 133 |
 | `pyobs/utils/pipeline/night.py` | 16.8% | 119 |
 | `pyobs/utils/focusseries/projection.py` | 21.7% | 115 |
 | `pyobs/mixins/follow.py` | 22.0% | 100 |
-| ~~`pyobs/robotic/utils/archive/local_archive.py`~~ | ~~29.2%~~ resolved, see `TODO.md` | 89 |
 | `pyobs/vfs/sshfile.py` | 21.9% | 73 |
-| ~~`pyobs/modules/pointing/autoguiding.py`~~ | ~~29.2%~~ resolved, see `TODO.md` | 72 |
 | `pyobs/images/processors/annotation/text.py` | 29.7% | 37 |
 
 ## Recommendation
 
 Categories A-D (GUI, CLI, external-service integrations, dev tooling) aren't worth chasing --
-same reasoning that already put XMPP/LCO behind integration markers. Category E is where the
-real, actionable gaps were; the flatfield subsystem and the two untested `Dummy*` modules (the
-clearest "should just have tests and doesn't" gaps) are now resolved -- see `TODO.md`. The
-pointing/guiding and flatfield-adjacent thin-coverage cluster in the table above (`flatfielder.py`
-21.2%, `basevideo.py` 25.7%, `_baseguiding.py` 21.7%, `acquisition.py` 22.2%, etc.) is the natural
-next candidate if this is worth continuing, since it overlaps with the same domain.
+same reasoning that already put XMPP/LCO behind integration markers. The remaining Category E
+files and the partial-coverage table above are the actionable candidates if this is worth
+continuing -- no single dominant cluster left, so it comes down to picking whichever file matters
+most next.

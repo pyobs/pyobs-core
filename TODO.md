@@ -1,8 +1,9 @@
 # Testing hygiene TODOs
 
-Forward-looking items from the `check_tests.md` / `check_mocks.md` audits that need a decision
-or a chunk of dedicated work, rather than more review. See those two files for the full audit
-history (what was found, what was fixed, what was deliberately left alone and why).
+Forward-looking items from the mock-usage and private-attribute-access test audits that need a
+decision or a chunk of dedicated work, rather than more review. Both audits are fully resolved
+(see git history for what was found/fixed); the two "Needs a decision" items below are all
+that's left.
 
 ## Resolved
 

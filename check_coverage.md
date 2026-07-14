@@ -70,7 +70,7 @@ concern.
 
 Core module/processor logic, same shape as plenty of code that *does* have good coverage
 elsewhere (comm/vfs-mockable, no special hardware). The flatfield subsystem and the two
-untested `Dummy*` modules from this category are resolved (see `TODO.md`); remaining:
+untested `Dummy*` modules from this category are resolved (see git history); remaining:
 
 - `pyobs/modules/utils/kiosk.py` (87)
 - `pyobs/modules/utils/autonomouswarning.py` (70)
@@ -90,7 +90,7 @@ untested `Dummy*` modules from this category are resolved (see `TODO.md`); remai
 
 Not "no test at all" but thin enough that large parts of the real logic are unexercised. The
 pointing/guiding and flatfield-adjacent cluster that used to dominate this table is resolved
-(see `TODO.md`); these are what's left, no longer clustered around one subsystem.
+(see git history); these are what's left, no longer clustered around one subsystem.
 
 | File | Coverage | Statements |
 |---|---|---|

@@ -223,8 +223,10 @@ class RPC:
             exception_message = s
 
         # and instantiate it
-        if issubclass(exception_class, exc.RemoteError):
-            exception = exception_class(message=exception_message, module=jid)
+        if issubclass(exception_class, exc.InvocationError):
+            exception = exc.RemoteError(module=jid, message=exception_message)
+        elif issubclass(exception_class, exc.RemoteError):
+            exception = exception_class(module=jid, message=exception_message)
         else:
             exception = exception_class(message=exception_message)
 

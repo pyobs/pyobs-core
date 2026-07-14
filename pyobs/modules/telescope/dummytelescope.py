@@ -20,14 +20,23 @@ from pyobs.interfaces import (
     IFocuser,
     IOffsetsRaDec,
     IPointingAltAz,
+    IPointingBody,
+    IPointingOrbitalElements,
     IPointingRaDec,
     IReady,
     ITemperatures,
+    ITrackingMode,
+    ITrackingRate,
     RaDecOffsetState,
     RaDecState,
     ReadyState,
     SensorReading,
     TemperaturesState,
+    TrackingMode,
+    TrackingModeCapabilities,
+    TrackingModeState,
+    TrackingRateCapabilities,
+    TrackingRateState,
 )
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules import timeout
@@ -48,6 +57,10 @@ class DummyTelescope(
     IFilters,
     IFitsHeaderBefore,
     ITemperatures,
+    ITrackingMode,
+    ITrackingRate,
+    IPointingBody,
+    IPointingOrbitalElements,
     FitsNamespaceMixin,
 ):
     """A dummy telescope for testing."""
@@ -110,6 +123,11 @@ class DummyTelescope(
         self._sim_status = MotionStatus.IDLE
         self._temperatures = {"M1": 10.0, "M2": 12.0}
 
+        # tracking mode/rate state (ITrackingMode/ITrackingRate)
+        self._tracking_modes = [TrackingMode.SIDEREAL, TrackingMode.SOLAR, TrackingMode.LUNAR, TrackingMode.OFF]
+        self._tracking_mode = TrackingMode.OFF
+        self._tracking_rate = (0.0, 0.0)  # arcsec/sec; distinct from self._drift_rate (see real_pos/_move_task)
+
         # locks
         self._lock_focus = asyncio.Lock()
         self._abort_focus = asyncio.Event()
@@ -169,6 +187,15 @@ class DummyTelescope(
                     await self._sim_change_status(MotionStatus.SLEWING)
                     self._position = SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
             else:
+                if self._tracking_rate != (0.0, 0.0):
+                    dra = self._tracking_rate[0] * u.arcsec / np.cos(np.radians(self._position.dec.degree))
+                    ddec = self._tracking_rate[1] * u.arcsec
+                    self._position = SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
+                    await self.comm.set_state(
+                        IPointingRaDec,
+                        RaDecState(ra=float(self._position.ra.degree), dec=float(self._position.dec.degree)),
+                    )
+
                 drift_ra = random.gauss(self._drift_rate[0], max(self._drift_rate[0] / 10.0, 1e-9))
                 drift_dec = random.gauss(self._drift_rate[1], max(self._drift_rate[1] / 10.0, 1e-9))
                 self._drift = (self._drift[0] + drift_ra, self._drift[1] + drift_dec)
@@ -212,6 +239,12 @@ class DummyTelescope(
             ),
         )
         await self.comm.set_state(IOffsetsRaDec, RaDecOffsetState(ra=self._offsets[0], dec=self._offsets[1]))
+        await self.comm.set_capabilities(ITrackingMode, TrackingModeCapabilities(modes=self._tracking_modes))
+        await self.comm.set_capabilities(ITrackingRate, TrackingRateCapabilities(min_update_interval=0.0))
+        await self.comm.set_state(ITrackingMode, TrackingModeState(mode=self._tracking_mode))
+        await self.comm.set_state(
+            ITrackingRate, TrackingRateState(ra_rate=self._tracking_rate[0], dec_rate=self._tracking_rate[1])
+        )
 
     async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         acc = self._move_accuracy / 3600.0
@@ -229,6 +262,19 @@ class DummyTelescope(
         )
         icrs = coords.icrs
         await self._move_radec(icrs.ra.degree, icrs.dec.degree, abort_event)
+
+    async def set_tracking_mode(self, mode: TrackingMode, **kwargs: Any) -> None:
+        """Switches to the given tracking mode."""
+        if mode not in self._tracking_modes:
+            raise ValueError(f"Mode {mode} not supported.")
+        self._tracking_mode = mode
+        await self.comm.set_state(ITrackingMode, TrackingModeState(mode=mode))
+
+    async def _set_tracking_rate(self, ra_rate: float, dec_rate: float) -> None:
+        """Applies a tracking rate to the simulated hardware -- state publishing for
+        ITrackingRate itself already happens in BaseTelescope.set_tracking_rate/the background
+        task, this is purely "make the dummy actually move" (see _move_task)."""
+        self._tracking_rate = (ra_rate, dec_rate)
 
     @timeout(60)
     async def set_focus(self, focus: float, **kwargs: Any) -> None:

@@ -50,7 +50,7 @@ def test_valuefilter() -> None:
 
 def test_fromlistfilter(mocker: Any) -> None:
     time = Time("2020-01-01T00:00:00")
-    mocker.patch("astropy.time.Time.now", return_value=time)
+    mocker.patch("pyobs.utils.time.Time.now", return_value=time)
 
     observer = Observer(
         location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)

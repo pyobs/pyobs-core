@@ -170,6 +170,26 @@ build on. Added `tests/modules/camera/test_basevideo.py` (32 tests) covering ini
 Verified: `pytest tests/ -m "not integration and not xmpp"` (1026 passed, up from 994) and,
 against a local ejabberd, `pytest tests/ -m "integration or xmpp"` (still 72 passed).
 
+### Tests written for the pointing/guiding cluster ✅
+
+`pyobs/modules/pointing/_baseguiding.py` (21.7%, 138 stmts), `acquisition.py` (22.2%, 144 stmts),
+and `autoguiding.py` (part of the same 22.2% -- `AutoGuiding` is `BaseGuiding`'s only concrete
+subclass). `BaseGuiding` itself can't be instantiated directly (`IAutoGuiding` requires
+`set_exposure_time`, which only `AutoGuiding` implements), so `tests/modules/pointing/
+test_autoguiding.py` (29 tests) exercises both layers together: open()/start()/stop()/
+is_running(), the FITS-header/statistics hooks, `_reset_guiding()`/`_set_loop_state()`, the full
+`_process_image()` decision tree (disabled/wrong-image-type/first-reference/separation-reset/
+filter-change/time-gap-reset/too-soon-ignore/focus-reset/exptime-too-large/apply-success/
+apply-not-applied/apply-ValueError/no-telescope-proxy), and AutoGuiding's own `_auto_guiding()`
+background loop and `set_exposure_time()`. `tests/modules/pointing/test_acquisition.py` (21 tests)
+covers `open()`, `acquire_target()`'s running-flag bracketing (including on exception), the full
+`_acquire()` attempt loop (abort/within-tolerance/offset-too-large/apply-and-continue/oneshot/
+exhausted-attempts/no-filename/pipeline-error/no-on-sky-distance/exptime-update-from-meta),
+`_get_offsets()`'s RA/Dec-then-Alt/Az-then-neither fallback, `_create_log_and_return()`, and
+`abort()`.
+
+Verified: `pytest tests/ -m "not integration and not xmpp"` (1076 passed, up from 1026).
+
 ## Needs a decision
 
 ### `pyobs/modules/camera/basevideo.py`: two minor issues left unfixed

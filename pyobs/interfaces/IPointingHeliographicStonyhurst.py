@@ -1,0 +1,43 @@
+from __future__ import annotations
+
+from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
+from typing import Annotated, Any
+
+from ..utils.enums import Unit
+from ..utils.time import Time
+from .interface import Interface
+
+
+@dataclass
+class HeliographicStonyhurstState:
+    lon: Annotated[float, Unit.DEGREES]
+    lat: Annotated[float, Unit.DEGREES]
+    time: Time = field(default_factory=Time.now)
+
+
+class IPointingHeliographicStonyhurst(Interface, metaclass=ABCMeta):
+    """The module can move to Heliographic Stonyhurst (lon/lat) coordinates, a frame fixed to the Sun's
+    rotating surface, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
+
+    __module__ = "pyobs.interfaces"
+
+    state = HeliographicStonyhurstState
+
+    @abstractmethod
+    async def move_heliographic_stonyhurst(
+        self, lon: Annotated[float, Unit.DEGREES], lat: Annotated[float, Unit.DEGREES], **kwargs: Any
+    ) -> None:
+        """Moves on given coordinates.
+
+        Args:
+            lon: Longitude in deg to track.
+            lat: Latitude in deg to track.
+
+        Raises:
+            MoveError: If device could not be moved.
+        """
+        ...
+
+
+__all__ = ["IPointingHeliographicStonyhurst", "HeliographicStonyhurstState"]

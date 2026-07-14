@@ -15,12 +15,17 @@ v2.0.0.dev18 (unreleased)
   instead of staying static after startup.
 * Split ``DummyTelescope`` into ``DummyRaDecTelescope`` (+``IOffsetsRaDec``), ``DummyAltAzTelescope``
   (+``IOffsetsAltAz``), and ``DummySolarTelescope`` (+``IPointingHeliocentricPolar``,
-  ``IPointingHelioprojective`` -- always tracks the Sun via a dedicated background task, no
-  compatibility alias for the old class name). See ``dummy-telescope-split-design.md``.
+  ``IPointingHeliographicStonyhurst``, ``IPointingHelioprojective`` -- always tracks the Sun via a
+  dedicated background task, no compatibility alias for the old class name). See
+  ``dummy-telescope-split-design.md``.
 * Renamed ``IPointingHGS`` to ``IPointingHeliocentricPolar`` and its fields from ``lon``/``lat`` to
   ``mu``/``psi``, matching the existing ``HeliocentricPolarTarget`` -- the old fields actually
   represented Heliographic Stonyhurst coordinates, a different frame; breaking change for any
   external driver implementing it (e.g. ``pyobs_iagvt``, tracked separately).
+* Reintroduced the old ``IPointingHGS`` lon/lat contract as ``IPointingHeliographicStonyhurst``, now
+  a separate interface from ``IPointingHeliocentricPolar`` instead of a repurposing of it -- drivers
+  needing Heliographic Stonyhurst tracking (e.g. ``pyobs_iagvt``'s ``SolarTelescope``) should
+  implement this one instead.
 * ``pyobsd`` now defaults to sending module logs to the systemd journal (``--syslog`` is on by
   default; pass ``--no-syslog`` to disable it).
 * Added ``pyobsd logs [module] [journalctl arguments...]``, a thin passthrough to ``journalctl``

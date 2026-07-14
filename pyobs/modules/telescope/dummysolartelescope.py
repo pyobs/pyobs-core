@@ -10,8 +10,10 @@ from astropy.coordinates import SkyCoord, get_sun
 
 from pyobs.interfaces import (
     HeliocentricPolarState,
+    HeliographicStonyhurstState,
     HelioprojectiveState,
     IPointingHeliocentricPolar,
+    IPointingHeliographicStonyhurst,
     IPointingHelioprojective,
     IPointingRaDec,
     RaDecState,
@@ -23,10 +25,12 @@ from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
 
 
-class DummySolarTelescope(_DummyTelescopeBase, IPointingHeliocentricPolar, IPointingHelioprojective):
-    """A dummy telescope dedicated to solar pointing (Heliocentric Polar/Helioprojective),
-    for testing -- it always tracks the Sun and does not support arbitrary body/orbital-element
-    tracking (see dummy-telescope-split-design.md).
+class DummySolarTelescope(
+    _DummyTelescopeBase, IPointingHeliocentricPolar, IPointingHeliographicStonyhurst, IPointingHelioprojective
+):
+    """A dummy telescope dedicated to solar pointing (Heliocentric Polar/Heliographic Stonyhurst/
+    Helioprojective), for testing -- it always tracks the Sun and does not support arbitrary
+    body/orbital-element tracking (see dummy-telescope-split-design.md).
     """
 
     __module__ = "pyobs.modules.telescope"
@@ -36,11 +40,14 @@ class DummySolarTelescope(_DummyTelescopeBase, IPointingHeliocentricPolar, IPoin
     def __init__(self, **kwargs: Any):
         _DummyTelescopeBase.__init__(self, **kwargs)
 
-        # (kind, a, b) of the last move_heliocentric_polar/move_helioprojective call, or None if
-        # not currently following a solar-relative target. Re-resolved to RA/Dec every tick by
-        # _solar_follow_task since the Sun moves across the sky (and, for heliocentric-polar
-        # targets fixed on the rotating solar surface, also rotates).
-        self._solar_target: tuple[Literal["heliocentric_polar", "helioprojective"], float, float] | None = None
+        # (kind, a, b) of the last move_heliocentric_polar/move_heliographic_stonyhurst/
+        # move_helioprojective call, or None if not currently following a solar-relative target.
+        # Re-resolved to RA/Dec every tick by _solar_follow_task since the Sun moves across the sky
+        # (and, for heliocentric-polar/heliographic-stonyhurst targets fixed on the rotating solar
+        # surface, also rotates).
+        self._solar_target: (
+            tuple[Literal["heliocentric_polar", "heliographic_stonyhurst", "helioprojective"], float, float] | None
+        ) = None
 
         self.add_background_task(self._solar_follow_task)
 
@@ -61,6 +68,15 @@ class DummySolarTelescope(_DummyTelescopeBase, IPointingHeliocentricPolar, IPoin
         ty = theta * np.cos(psi_rad)
         coord = SkyCoord(tx, ty, obstime=time, frame=Helioprojective, observer="earth")
         icrs = coord.icrs
+        return float(icrs.ra.degree), float(icrs.dec.degree)
+
+    @staticmethod
+    def _heliographic_stonyhurst_to_radec(lon: float, lat: float, time: Time) -> tuple[float, float]:
+        """Converts Heliographic Stonyhurst (lon, lat), in degrees, to (ra, dec) in degrees, ICRS."""
+        from sunpy.coordinates import HeliographicStonyhurst
+
+        coord = SkyCoord(lon * u.deg, lat * u.deg, frame=HeliographicStonyhurst, obstime=time, observer="earth")
+        icrs = coord.transform_to("icrs")
         return float(icrs.ra.degree), float(icrs.dec.degree)
 
     @staticmethod
@@ -91,6 +107,14 @@ class DummySolarTelescope(_DummyTelescopeBase, IPointingHeliocentricPolar, IPoin
         await self.set_tracking_mode(TrackingMode.SOLAR)
         await self.comm.set_state(IPointingHeliocentricPolar, HeliocentricPolarState(mu=mu, psi=psi))
 
+    async def move_heliographic_stonyhurst(self, lon: float, lat: float, **kwargs: Any) -> None:
+        """Moves to and continuously tracks a Heliographic Stonyhurst (lon, lat) coordinate."""
+        ra, dec = self._heliographic_stonyhurst_to_radec(lon, lat, Time.now())
+        await self.move_radec(ra, dec)
+        self._solar_target = ("heliographic_stonyhurst", lon, lat)
+        await self.set_tracking_mode(TrackingMode.SOLAR)
+        await self.comm.set_state(IPointingHeliographicStonyhurst, HeliographicStonyhurstState(lon=lon, lat=lat))
+
     async def move_helioprojective(self, theta_x: float, theta_y: float, **kwargs: Any) -> None:
         """Moves to and continuously tracks a Helioprojective (theta_x, theta_y) coordinate."""
         ra, dec = self._helioprojective_to_radec(theta_x, theta_y, Time.now())
@@ -101,9 +125,10 @@ class DummySolarTelescope(_DummyTelescopeBase, IPointingHeliocentricPolar, IPoin
 
     async def _solar_follow_task(self) -> None:
         """Background task: while a solar-relative target is active, keeps the simulated
-        position on it as the Sun moves across the sky (and, for heliocentric-polar targets,
-        rotates) -- see dummy-telescope-split-design.md. Dummy-only: real solar hardware tracks
-        the Sun natively, so there's no equivalent generic machinery in BaseTelescope."""
+        position on it as the Sun moves across the sky (and, for heliocentric-polar/heliographic-
+        stonyhurst targets, rotates) -- see dummy-telescope-split-design.md. Dummy-only: real solar
+        hardware tracks the Sun natively, so there's no equivalent generic machinery in
+        BaseTelescope."""
         while True:
             if self._solar_target is not None and not self._lock_moving.locked():
                 async with LockWithAbort(self._lock_moving, self._abort_move):
@@ -111,6 +136,8 @@ class DummySolarTelescope(_DummyTelescopeBase, IPointingHeliocentricPolar, IPoin
                     now = Time.now()
                     if kind == "heliocentric_polar":
                         ra, dec = self._heliocentric_polar_to_radec(a, b, now)
+                    elif kind == "heliographic_stonyhurst":
+                        ra, dec = self._heliographic_stonyhurst_to_radec(a, b, now)
                     else:
                         ra, dec = self._helioprojective_to_radec(a, b, now)
                     self._position = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="icrs")

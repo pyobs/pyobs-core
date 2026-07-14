@@ -10,9 +10,11 @@ from astroplan import Observer
 from pyobs.comm import Comm
 from pyobs.interfaces import (
     HeliocentricPolarState,
+    HeliographicStonyhurstState,
     HelioprojectiveState,
     IPointingBody,
     IPointingHeliocentricPolar,
+    IPointingHeliographicStonyhurst,
     IPointingHelioprojective,
     IPointingOrbitalElements,
     TrackingMode,
@@ -62,6 +64,26 @@ async def test_move_heliocentric_polar_slews_tracks_solar_and_publishes_state():
     assert isinstance(state, HeliocentricPolarState)
     assert state.mu == pytest.approx(0.9)
     assert state.psi == pytest.approx(45.0)
+
+
+@pytest.mark.asyncio
+async def test_move_heliographic_stonyhurst_slews_tracks_solar_and_publishes_state():
+    tel = make_dummysolartelescope()
+    await tel.open()
+
+    await tel.move_heliographic_stonyhurst(10.0, 20.0)
+
+    assert tel._tracking_mode == TrackingMode.SOLAR
+    assert tel._solar_target == ("heliographic_stonyhurst", 10.0, 20.0)
+    ra, dec = tel._position_radec
+    assert 0.0 <= ra <= 360.0
+    assert -90.0 <= dec <= 90.0
+
+    interface, state = tel._comm.set_state.await_args_list[-1].args
+    assert interface is IPointingHeliographicStonyhurst
+    assert isinstance(state, HeliographicStonyhurstState)
+    assert state.lon == pytest.approx(10.0)
+    assert state.lat == pytest.approx(20.0)
 
 
 @pytest.mark.asyncio

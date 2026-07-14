@@ -303,10 +303,10 @@ Module for operating the siderostat
 
 * ``SolarTelescope`` is a custom telescope class, inheriting from
   :class:`pyobs.modules.telescope.basetelescope.BaseTelescope`, and moves to Heliographic Stonyhurst
-  coordinates. It currently does so via the since-renamed/repurposed
-  :class:`pyobs.interfaces.IPointingHeliocentricPolar.IPointingHeliocentricPolar` (formerly
-  ``IPointingHGS``, which represented Heliographic Stonyhurst rather than Heliocentric Polar
-  coordinates); ``pyobs_iagvt`` needs a matching update, tracked separately.
+  coordinates via :class:`pyobs.interfaces.IPointingHeliographicStonyhurst.IPointingHeliographicStonyhurst`
+  (formerly ``IPointingHGS``, briefly repurposed as ``IPointingHeliocentricPolar`` before being
+  reintroduced under its own name for this frame); ``pyobs_iagvt`` needs a matching update, tracked
+  separately.
 
 
 suncamera

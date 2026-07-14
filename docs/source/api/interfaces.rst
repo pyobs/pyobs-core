@@ -259,6 +259,14 @@ IPointingHeliocentricPolar
    :show-inheritance:
    :undoc-members:
 
+IPointingHeliographicStonyhurst
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.interfaces.IPointingHeliographicStonyhurst
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 IPointingHelioprojective
 ^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -63,7 +63,7 @@ async def test_is_running() -> None:
     weather = MockWeather()
     assert await weather.is_running() is True
 
-    weather._active = False
+    await weather.stop()
     assert await weather.is_running() is False
 
 
@@ -110,7 +110,7 @@ async def test_set_good_becomes_good() -> None:
 @pytest.mark.asyncio
 async def test_set_good_inactive_no_event() -> None:
     weather = MockWeather(good=True)
-    weather._active = False
+    await weather.stop()
     weather._comm.send_event = AsyncMock()
     weather._comm.set_state = AsyncMock()
 

@@ -34,7 +34,6 @@ async def test_start() -> None:
     weather._comm.send_event = AsyncMock()
 
     weather._active = False
-    weather._is_good = False
 
     await weather.start()
 
@@ -54,7 +53,7 @@ async def test_is_running() -> None:
     weather = Weather("")
     assert await weather.is_running() is True
 
-    weather._active = False
+    await weather.stop()
     assert await weather.is_running() is False
 
 
@@ -167,7 +166,6 @@ async def test_update_invalid_response(caplog) -> None:
 async def test_update_good_weather(caplog) -> None:
     weather = Weather("")
     weather._comm.send_event = AsyncMock()
-    weather._active = True
 
     weather._api.get_current_status = AsyncMock(return_value={"good": True})
 
@@ -183,7 +181,6 @@ async def test_update_bad_weather(caplog) -> None:
     weather = Weather("")
     weather._weather.is_good = True
     weather._comm.send_event = AsyncMock()
-    weather._active = True
 
     weather._api.get_current_status = AsyncMock(return_value={"good": False})
 
@@ -206,7 +203,6 @@ def test_calc_system_init_eta() -> None:
 async def test_update_publishes_state() -> None:
     weather = Weather("")
     weather._comm.set_state = AsyncMock()
-    weather._active = True
 
     weather._api.get_current_status = AsyncMock(
         return_value={"good": True, "sensors": {"temp": {"value": 12.3}, "rain": {"value": None}}}

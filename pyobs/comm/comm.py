@@ -526,6 +526,13 @@ class Comm:
     def _get_own_state(self, interface: type[Interface]) -> Any:
         return None
 
+    def get_own_capabilities(self, interface: type[Interface]) -> Any:
+        """Return the capabilities published by this module for the given interface, or None."""
+        return self._get_own_capabilities(interface)
+
+    def _get_own_capabilities(self, interface: type[Interface]) -> Any:
+        return None
+
     async def subscribe_state(
         self,
         module: str,

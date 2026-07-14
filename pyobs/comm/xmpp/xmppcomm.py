@@ -896,6 +896,10 @@ class XmppComm(Comm):
         self._capabilities[interface] = capabilities
         log.info("Published capabilities for %s", interface.__name__)
 
+    def _get_own_capabilities(self, interface: type[Interface]) -> Any:
+        """Return this client's own published capabilities."""
+        return self._capabilities.get(interface)
+
     async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
         """Fetch and deserialize capabilities for a remote module's interface."""
         if interface.capabilities is None:

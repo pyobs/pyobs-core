@@ -177,9 +177,9 @@ switch to ``await proxy.get_state(IInterface)`` (or ``wait_for_state``) or
    * - ``IPointingAltAz``
      - ``get_altaz``
      - ``state = AltAzState``
-   * - ``IPointingHGS``
-     - ``get_hgs_lon_lat``
-     - ``state = HGSState``
+   * - ``IPointingHeliocentricPolar``
+     - ``get_heliocentric_polar``
+     - ``state = HeliocentricPolarState``
    * - ``IPointingHelioprojective``
      - ``get_helioprojective``
      - ``state = HelioprojectiveState``
@@ -408,8 +408,10 @@ publishes one (read back via the new ``Comm.get_own_capabilities``, mirroring th
 ``move_radec``/``move_altaz`` gained a documented side effect: they now reset tracking mode
 to ``SIDEREAL``/``OFF`` respectively and stop any active body/orbital-element tracking, so a
 mount left in a stale lunar/custom-rate mode from a previous target doesn't silently keep
-applying it to an unrelated slew. ``DummyTelescope`` implements all four new interfaces, so
-there's a real module to exercise a GUI or client against without hardware.
+applying it to an unrelated slew. ``DummyRaDecTelescope`` and ``DummyAltAzTelescope`` implement
+all four new interfaces (``ITrackingMode``, ``ITrackingRate``, ``IPointingBody``,
+``IPointingOrbitalElements``), so there's a real module to exercise a GUI or client against
+without hardware.
 
 Access control (ACLs)
 ----------------------

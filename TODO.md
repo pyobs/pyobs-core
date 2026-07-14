@@ -290,19 +290,12 @@ From the logic review above (see "Resolved" for the two that were fixed):
 8 files (`test_mastermind.py`, `test_scheduler_mastermind.py`, `test_transit_mastermind.py`,
 `test_backend_archives.py`, `test_yaml_archives.py`, `lco/helpers.py`,
 `test_schedulereader.py`, `test_schedulewriter.py`) build minimal test doubles via
-`Class.__new__(Class)` + manually setting `_comm`/`_observer`/`_timezone`/`_location` to `None`,
-bypassing `__init__` entirely.
+`Class.__new__(Class)` + manually setting `_comm`/`_observer`/`_timezone` to `None`, bypassing
+`__init__` entirely (`_location` no longer exists as a separate attribute -- it's now derived
+from `_observer`, see `Object.location`).
 
 This is blocked, not just deferred: `Object.__init__` raises `ValueError` for `timezone=None`
 (only accepts a string or a real `tzinfo`), so there's no constructor call that reproduces the
 state these tests want. Revisit only if `Object.__init__` ever grows a way to represent "no
 timezone configured" without raising -- that's a production-code change, not a test fix, and
 not clearly worth making just for this.
-
-## Feature requests (not testing hygiene)
-
-### Create a `DummySolarTelescope`
-
-Requested by the user. `pyobs/modules/telescope/` currently has `DummyTelescope` but nothing
-solar-specific; presumably follows on from the tracking-mode/`ITrackingRate` work. Not scoped or
-started yet.

@@ -140,7 +140,48 @@ anywhere in the file. Fixed `if frac > self._target_count` to `if frac > self._a
 
 Verified: `pytest tests/ -m "not integration and not xmpp"` (994 passed, up from 937).
 
+### Tests written for `pyobs/modules/camera/basevideo.py`, plus a logic review ✅
+
+Previously 25.7% coverage (206 statements) -- the base class `DummyVideo`/other camera modules
+build on. Added `tests/modules/camera/test_basevideo.py` (32 tests) covering init defaults,
+`open()`/`close()` (mocking out the real HTTP server bind), the `web_handler`/`ping_handler`/
+`image_handler` routes, `camera_active`/`activate_camera`/`deactivate_camera` and the
+`_active_update()` auto-sleep background loop, `image_jpeg()`, `create_jpeg()`, `_set_image()`
+(flip, live-view JPEG throttling, consuming/preparing `_next_image`), `_create_image()`,
+`_finish_image()` (cache write, broadcast), `grab_data()`, and `set_image_type()`.
+
+**Asked to review the logic for soundness while at it -- found four issues, fixed two:**
+- **Fixed**: `grab_data()` removed its request from `self._image_requests` without holding
+  `self._image_request_lock`, while `_set_image()` iterates and mutates that same list *under*
+  the lock in a loop that itself `await`s per iteration (so it genuinely yields mid-iteration).
+  A concurrent unprotected `.remove()` during that window could cause another pending request to
+  be skipped on that pass. Now `grab_data()`'s removal is also inside the lock.
+- **Fixed**: a dead line, `self._image_request = None` (singular -- a typo of `_image_requests`,
+  the actual list) that was never read anywhere.
+- **Left as a note, not fixed**: `self._new_image_event` is created, `.set()`, and replaced on
+  every frame, but nothing in the codebase ever `.wait()`s on it -- vestigial; the real "new
+  image" notification path is the separate `NewImageEvent` comm event sent from `_finish_image`.
+- **Left as a note, not fixed**: if `filenames=None` is ever configured (nothing enforces this at
+  runtime despite the type hint), `format_filename()` returns `None` before ever setting
+  `image.header["FNAME"]`, but `_finish_image`'s fallback (`filename = "image.fits"`) still keys
+  the cache write off `image.header["FNAME"]` instead of the computed fallback -- would raise
+  `KeyError` instead of degrading gracefully. Narrow, config-dependent edge case.
+
+Verified: `pytest tests/ -m "not integration and not xmpp"` (1026 passed, up from 994) and,
+against a local ejabberd, `pytest tests/ -m "integration or xmpp"` (still 72 passed).
+
 ## Needs a decision
+
+### `pyobs/modules/camera/basevideo.py`: two minor issues left unfixed
+
+From the logic review above (see "Resolved" for the two that were fixed):
+1. `self._new_image_event` is dead code -- created, `.set()`, replaced every frame, never
+   `.wait()`-ed on anywhere. Safe to remove, just wasn't done since the user asked for a
+   conservative fix scope (#1/#2 only) this round.
+2. `_finish_image`'s fallback filename (`"image.fits"`, used when `format_filename()` returns
+   `None`) isn't actually used as the cache key -- `image.header["FNAME"]` is, which is never set
+   in that same code path, so it'd raise `KeyError` instead of falling back gracefully. Only
+   reachable if `filenames=None` is explicitly configured (bypasses the type hint's default).
 
 ### `Class.__new__(Class)` null test doubles can't go through the constructor
 

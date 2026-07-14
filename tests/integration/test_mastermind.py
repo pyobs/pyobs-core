@@ -7,7 +7,6 @@ import astropy.units as u
 import pytest
 from astropy.time import TimeDelta
 
-from pyobs.comm.dummy.dummycomm import DummyComm
 from pyobs.modules.robotic.mastermind import Mastermind
 from pyobs.robotic import Task
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
@@ -21,16 +20,6 @@ from pyobs.utils.time import Time
 class QuickRunner(TaskRunner):
     """TaskRunner that immediately completes any task."""
 
-    def __new__(cls):
-        obj = object.__new__(cls)
-        obj._comm = None
-        obj._observer = None
-        obj._vfs = None
-        obj._timezone = None
-        obj.observation_archive = None
-        obj.task_archive = None
-        return obj
-
     async def can_run(self, task) -> bool:
         return True
 
@@ -41,16 +30,6 @@ class QuickRunner(TaskRunner):
 
 class FailingRunner(TaskRunner):
     """TaskRunner that always raises."""
-
-    def __new__(cls):
-        obj = object.__new__(cls)
-        obj._comm = None
-        obj._observer = None
-        obj._vfs = None
-        obj._timezone = None
-        obj.observation_archive = None
-        obj.task_archive = None
-        return obj
 
     async def can_run(self, task) -> bool:
         return True
@@ -68,13 +47,7 @@ NIGHT = Time("2025-11-03T23:00:00", scale="utc")
 
 
 def make_obs_archive() -> MemoryObservationArchive:
-    archive = MemoryObservationArchive.__new__(MemoryObservationArchive)
-    archive._comm = None
-    archive._observer = None
-    archive._vfs = None
-    archive._timezone = None
-    archive._observations = ObservationList()
-    return archive
+    return MemoryObservationArchive()
 
 
 def make_mastermind(obs_archive, runner=None, task_archive=None) -> Mastermind:
@@ -82,20 +55,8 @@ def make_mastermind(obs_archive, runner=None, task_archive=None) -> Mastermind:
         runner = QuickRunner()
     runner.observation_archive = obs_archive
 
-    mm = Mastermind.__new__(Mastermind)
-    mm._comm = DummyComm()
-    mm._observer = None
-    mm._vfs = None
-    mm._timezone = None
-    mm._allowed_late_start = 300
-    mm._allowed_overrun = 300
-    mm._after_task_sleep = 0
-    mm._running = True
-    mm._task = None
-    mm._task_archive = task_archive
-    mm._last_cant_run_reason = {}
-    mm._observation_archive = obs_archive
-    mm._task_runner = runner
+    mm = Mastermind(schedule=obs_archive, runner=runner, tasks=task_archive)
+    mm._running = True  # skip open()/start(), which would also register comm event handlers
     return mm
 
 

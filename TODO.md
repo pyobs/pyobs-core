@@ -291,19 +291,61 @@ The two issues left unfixed from the earlier conservative-scope logic review:
 Verified: `pytest tests/modules/camera/test_basevideo.py tests/modules/camera/test_dummyvideo.py`
 (39 passed) and full suite `pytest tests/ -m "not integration and not xmpp"` (1229 passed).
 
+### `Mastermind`/`test_mastermind.py`/`test_scheduler_mastermind.py`: `Class.__new__` bypass wasn't actually needed ✅
+
+The "blocked on `Object.__init__` raising for `timezone=None`" reasoning below turned out to be
+wrong for these two files -- `timezone` defaults to `"utc"`, not `None`; nobody needs to pass
+`None` explicitly. Actually instantiating `MemoryObservationArchive()`/`Mastermind(schedule=...,
+runner=...)` confirmed all defaults fall out harmlessly (`comm` -> real `DummyComm()`, `observer`
+-> `None`, `timezone` -> real `UTC` tzinfo, none of which anything under test reads).
+
+The one genuine constructor gap: `Mastermind.__init__` typed `tasks: TaskArchive | dict | None =
+None` but `add_child_object(None, TaskArchive)` unconditionally raised `TypeError` -- `get_object`
+never special-cased `None` for optional child objects the way `Object.__init__` special-cases
+`comm=None`/`vfs=None`. And this wasn't just a test inconvenience: `tasks=None` is a legitimate
+production configuration (`ObservationArchive.get_next_observation`'s `task_archive` param is
+already `None`-safe -- it just skips re-hydrating the task from a canonical archive, fine for
+backends like the in-memory/YAML ones where `Observation`s already carry a complete `Task`).
+Fixed in `Mastermind.__init__`: `self.add_child_object(tasks, TaskArchive) if tasks is not None
+else None`.
+
+With that fixed, replaced the `__new__` bypasses: `QuickRunner`/`FailingRunner` (in
+`test_mastermind.py`) had their own custom `__new__` overrides that turned out to be pure
+dead weight -- `TaskRunner.__init__` already accepts `observation_archive=None`/`task_archive=None`
+as plain defaults (no `add_child_object` involved for those), so removing the overrides entirely
+and just calling `QuickRunner()` works. `make_obs_archive()` (duplicated in both files) is now
+just `MemoryObservationArchive()`. `make_mastermind()` now calls the real `Mastermind(schedule=
+obs_archive, runner=runner, tasks=task_archive)` constructor, keeping only `mm._running = True`
+as a plain post-construction poke (skips `open()`/`start()`, which would also register comm event
+handlers -- out of scope for what these tests exercise).
+
+Verified: `pytest tests/integration/test_mastermind.py tests/integration/test_scheduler_mastermind.py`
+(13 passed) and full suite `pytest tests/ -m "not integration and not xmpp"` (1229 passed).
+
 ## Needs a decision
 
-### `Class.__new__(Class)` null test doubles can't go through the constructor
+### `Class.__new__(Class)` null test doubles can't go through the constructor -- remaining 6 files
 
-8 files (`test_mastermind.py`, `test_scheduler_mastermind.py`, `test_transit_mastermind.py`,
-`test_backend_archives.py`, `test_yaml_archives.py`, `lco/helpers.py`,
-`test_schedulereader.py`, `test_schedulewriter.py`) build minimal test doubles via
-`Class.__new__(Class)` + manually setting `_comm`/`_observer`/`_timezone` to `None`, bypassing
-`__init__` entirely (`_location` no longer exists as a separate attribute -- it's now derived
-from `_observer`, see `Object.location`).
+`test_transit_mastermind.py`, `test_backend_archives.py`, `test_yaml_archives.py`,
+`lco/helpers.py`, `test_schedulereader.py`, `test_schedulewriter.py` still build test doubles via
+`Class.__new__(Class)` + manually setting `_comm`/`_observer`/`_timezone` to `None`. Unlike the
+Mastermind case above, spot-checking these turned up *real* reasons unrelated to comm/timezone:
 
-This is blocked, not just deferred: `Object.__init__` raises `ValueError` for `timezone=None`
-(only accepts a string or a real `tzinfo`), so there's no constructor call that reproduces the
-state these tests want. Revisit only if `Object.__init__` ever grows a way to represent "no
-timezone configured" without raising -- that's a production-code change, not a test fix, and
-not clearly worth making just for this.
+- `lco/helpers.py`'s `make_portal()`/`make_task_archive()`/`make_observation_archive()`:
+  `LcoTaskArchive.__init__` always builds its own internal `Portal` from `url`/`token` (via
+  `add_child_object(Portal, Portal, ...)`) -- there's no constructor parameter to inject a
+  pre-built `Portal` with a mocked session. And `Portal._session` is only ever populated by the
+  async `open()` method; the tests want a `MagicMock()` session installed without an async open
+  call. Bypassing `__init__` is the only way to get that shape.
+- `pyobs/robotic/storage/lco/configdb.py`'s `ConfigDB.__init__` does a **real synchronous
+  `requests.get(...)`** to fetch site config at construction time -- genuine network I/O, exactly
+  what test doubles are supposed to avoid. `test_schedulewriter.py`'s `MagicMock(spec=ConfigDB)`
+  is the right call here, not a constructor limitation to route around.
+- `test_backend_archives.py`'s backend `TaskArchive`/`ObservationArchive` likely have the same
+  "session only exists after async `open()`" shape as `Portal` (`_aiohttp_session` is `None` until
+  `open()`), but this hasn't been verified line-by-line the way Mastermind was.
+
+Not revisited in detail this round -- `test_yaml_archives.py`'s filesystem archives looked like
+they *might* go through the real constructor fine (no network/async-session issue spotted), but
+that's unconfirmed. Worth a proper look if this is picked up again, rather than assuming either
+"all blocked" or "all fixable."

@@ -201,12 +201,14 @@ async def _set_tracking_rate(self, ra_rate: float, dec_rate: float) -> None:
 async def set_tracking_rate(self, ra_rate: float, dec_rate: float, **kwargs: Any) -> None:
     """Public entry point for external/manual callers. Enforces the SIDEREAL precondition."""
     if isinstance(self, ITrackingMode):
-        current = self.get_state(ITrackingMode)
+        current = self.comm.get_own_state(ITrackingMode)
         if current is None or current.mode != TrackingMode.SIDEREAL:
             await self.set_tracking_mode(TrackingMode.SIDEREAL)
     await self._set_tracking_rate(ra_rate, dec_rate)
-    await self.set_state(ITrackingRate, TrackingRateState(ra_rate=ra_rate, dec_rate=dec_rate))
+    await self.comm.set_state(ITrackingRate, TrackingRateState(ra_rate=ra_rate, dec_rate=dec_rate))
 ```
+
+`self.comm.get_own_state`/`self.comm.set_state` — not `self.get_state`/`self.set_state`, which are a different pair of methods (the former is the read side of a *remote proxy's* subscribed state and always returns `None` for `self`; the latter is `Module.set_state`, which sets module lifecycle state, not interface state).
 
 The public `set_tracking_rate` checks current mode via the already-subscribed `ITrackingMode` state (no extra round-trip, it's pub-sub) and only issues a `set_tracking_mode(SIDEREAL)` call if not already there — avoiding an unnecessary hardware mode-switch command on every call, which matters on mounts where a mode switch is an actual relay/gear change rather than a register write.
 
@@ -271,8 +273,23 @@ class IPointingOrbitalElements(Interface, metaclass=ABCMeta):
         ...
 ```
 
-Propagation happens locally (two-body via `poliastro`/`sbpy.data.Orbit`, no network round-trip) and feeds the exact same background task and `set_tracking_rate` path as `IPointingBody`.
-- Trade-off: no network dependency, works for elements minutes-old off an MPC/NEOCP posting, but two-body propagation ignores perturbations — fine over one night's arc, would drift if elements are stale by weeks.
+Propagation happens locally, hand-rolled rather than via a third-party orbital-mechanics library — no network round-trip — and feeds the exact same background task and `set_tracking_rate` path as `IPointingBody`.
+
+**Why hand-rolled, not a library.** The obvious dependency, `poliastro`, doesn't actually work here: its last release (0.17.0, 2022) requires `python>=3.8,<3.11` and `astropy>=5.0,<6`, both incompatible with this project's `python>=3.11` / `astropy>=7.0.1,<9` — pip cannot resolve it at all, on any supported Python version. Its actively-maintained fork, `hapsira`, would resolve, but drags in `matplotlib`, `numba`, and `plotly` transitively for a feature that only ever needs a position at a handful of timestamps, never a plot. Given that two-body propagation is only ever "good for one night" here regardless of implementation (see trade-off below), a full orbital-mechanics library buys negligible extra correctness in exchange for a heavy, awkward-to-pin dependency. Classical two-body Kepler propagation is a small, textbook computation, implemented directly with `numpy` + `astropy.coordinates` — both already core dependencies, nothing new to add.
+
+Propagation, elliptical case (`mean_anomaly` given):
+1. Mean motion `n = k · a^(-3/2)` (Gaussian gravitational constant `k = 0.01720209895` rad/day, `a` in AU) — the standard heliocentric two-body relation; `k` already encodes the Sun's GM for elements expressed this way, so no per-body mass lookup is needed.
+2. Mean anomaly at time `t`: `M(t) = mean_anomaly + n · (t − epoch)`.
+3. Solve Kepler's equation `M = E − e·sin(E)` for eccentric anomaly `E` via Newton–Raphson — a handful of iterations converges to double precision for all but near-parabolic `e`.
+4. True anomaly and heliocentric distance from `E` via the standard closed-form relations.
+5. Position in the perifocal (orbital) plane, then three rotations (argument of periapsis, inclination, longitude of ascending node) into heliocentric ecliptic Cartesian coordinates.
+6. Heliocentric ecliptic → ICRS via `astropy.coordinates` frame transforms (handles the ecliptic-to-equatorial rotation and Earth's own position, so the result comes out as a normal geocentric `SkyCoord`), then RA/Dec straight off that.
+
+Near-parabolic/cometary case (`perihelion_time` given, `mean_anomaly` absent): step 2's linear-in-mean-anomaly form breaks down as `e → 1`, so this path solves Barker's equation (or a universal-variable formulation) instead of Kepler's equation at step 3. More fiddly than the elliptical case, but still self-contained — no new dependency either way.
+
+**Benchmark.** Measured directly rather than assumed, since "hand-rolled" invites the question of whether it's actually cheap enough: steps 1–5 (Kepler solve + rotations, pure numpy, no astropy) cost **~6 µs/call**. Step 6 (the `astropy.coordinates` heliocentric-ecliptic → ICRS frame transform) dominates completely at **~1.2 ms/call** warm — three orders of magnitude more than the orbit math itself, all of it astropy's `SkyCoord`/frame-transform bookkeeping rather than anything intrinsic to the propagation. A cold first call in a fresh process (imports, IERS table init) costs ~270 ms, but that's paid once per process lifetime, not per tick. At the background task's 60–600s cadence and at most two calls per tick (position + one finite-difference sample for rate), total cost is ~2 ms every 60s in the worst case — not a design concern, and irrelevant next to the lock-contention/slew-timing questions raised elsewhere in this doc.
+
+- Trade-off: no network dependency, works for elements minutes-old off an MPC/NEOCP posting, but two-body propagation ignores perturbations regardless of whether it's hand-rolled or library-based — fine over one night's arc, would drift if elements are stale by weeks.
 
 **Elements source, resolved:** both manual and automatic resolution are valid, but they're not competing implementations — they sit at different layers. `track_orbital_elements(elements: OrbitalElements)` already **is** the manual-input path; a caller with elements in hand (typed in, pasted from an MPC posting) just calls it directly, no additional design needed. MPC/NEOCP-automatic lookup is a convenience layer on top, folded into `track_body`'s resolution chain as another kind of name to resolve, alongside Sun/Moon/planets — internally producing elements and calling `track_orbital_elements` itself:
 

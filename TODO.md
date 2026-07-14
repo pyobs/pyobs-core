@@ -273,18 +273,25 @@ Verified: `pytest tests/ -m "not integration and not xmpp"` (1220 passed, up fro
 `test_basetelescope.py`'s unrelated failure still deselected) and, against a local ejabberd,
 `pytest tests/ -m "integration or xmpp"`.
 
-## Needs a decision
+### `pyobs/modules/camera/basevideo.py`: the two remaining logic-review issues, fixed ✅
 
-### `pyobs/modules/camera/basevideo.py`: two minor issues left unfixed
-
-From the logic review above (see "Resolved" for the two that were fixed):
-1. `self._new_image_event` is dead code -- created, `.set()`, replaced every frame, never
-   `.wait()`-ed on anywhere. Safe to remove, just wasn't done since the user asked for a
-   conservative fix scope (#1/#2 only) this round.
+The two issues left unfixed from the earlier conservative-scope logic review:
+1. Removed `self._new_image_event` (dead code -- created, `.set()`, replaced every frame, never
+   `.wait()`-ed on anywhere; confirmed via repo-wide grep).
 2. `_finish_image`'s fallback filename (`"image.fits"`, used when `format_filename()` returns
-   `None`) isn't actually used as the cache key -- `image.header["FNAME"]` is, which is never set
-   in that same code path, so it'd raise `KeyError` instead of falling back gracefully. Only
-   reachable if `filenames=None` is explicitly configured (bypasses the type hint's default).
+   `None`) wasn't reaching the cache key -- `image.header["FNAME"]` is what's actually used to key
+   `self._cache` (and what `image_handler`'s URL lookup matches against), and it was never set in
+   that code path, so it'd raise `KeyError` instead of degrading gracefully. Fixed by setting
+   `image.header["FNAME"] = filename` alongside the fallback, so the cache write and the URL-based
+   lookup stay consistent. (An initial attempt to just cache under the local `filename` variable
+   directly was wrong -- that variable holds the full formatted path in the normal case, e.g.
+   `/webcam/test.fits`, while the cache/URL lookup is keyed by the bare basename; caught by
+   `test_finish_image_writes_to_cache_and_returns_filename` before landing.)
+
+Verified: `pytest tests/modules/camera/test_basevideo.py tests/modules/camera/test_dummyvideo.py`
+(39 passed) and full suite `pytest tests/ -m "not integration and not xmpp"` (1229 passed).
+
+## Needs a decision
 
 ### `Class.__new__(Class)` null test doubles can't go through the constructor
 

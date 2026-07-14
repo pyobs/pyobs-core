@@ -15,11 +15,9 @@ from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scripts.imaging.imaging import Configuration, InstrumentConfig
 from pyobs.robotic.scripts.imaging.transitimaging import TransitImagingScript
 from pyobs.utils.enums import ImageType
-from pyobs.utils.time import Time
 from tests.integration.test_mastermind import (
     NIGHT,
     FailingRunner,
-    QuickRunner,
     make_mastermind,
     run_until_state,
 )
@@ -66,25 +64,6 @@ def make_transit_observation(task: Task) -> Observation:
         end=end_time,
         state=ObservationState.PENDING,
     )
-
-
-class TransitQuickRunner(QuickRunner):
-    """Runner that immediately completes, simulating transit script execution."""
-
-    def __init__(self, end_time: Time):
-        super().__new__(type(self))
-        self._comm = None
-        self._observer = None
-        self._vfs = None
-        self._timezone = None
-        self.observation_archive = None
-        self.task_archive = None
-        self._end_time = end_time
-
-    async def run_task(self, task: Task) -> bool:
-        """Simulate transit imaging: run until end_time."""
-        await asyncio.sleep(0.05)
-        return True
 
 
 # ── transit merit → end_time ──────────────────────────────────────────────────

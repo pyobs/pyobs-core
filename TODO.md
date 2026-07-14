@@ -1,9 +1,8 @@
 # Testing hygiene TODOs
 
-Forward-looking items from the mock-usage and private-attribute-access test audits that need a
-decision or a chunk of dedicated work, rather than more review. Both audits are fully resolved
-(see git history for what was found/fixed); the two "Needs a decision" items below are all
-that's left.
+Forward-looking items from the mock-usage and private-attribute-access test audits that needed a
+decision or a chunk of dedicated work, rather than more review. Everything here is resolved --
+kept as a record of what was found/fixed and, where something was deliberately left alone, why.
 
 ## Resolved
 
@@ -322,28 +321,59 @@ handlers -- out of scope for what these tests exercise).
 Verified: `pytest tests/integration/test_mastermind.py tests/integration/test_scheduler_mastermind.py`
 (13 passed) and full suite `pytest tests/ -m "not integration and not xmpp"` (1229 passed).
 
-## Needs a decision
+### `test_transit_mastermind.py`: `TransitQuickRunner` was dead code, removed ✅
 
-### `Class.__new__(Class)` null test doubles can't go through the constructor -- remaining 6 files
+Its constructor was also broken independently of the bypass question: `def __init__(self,
+end_time): super().__new__(type(self)); self._comm = None; ...` -- calling `__new__` from inside
+`__init__` allocates and discards a *new*, unrelated instance; it does nothing to `self`. Turned
+out not to matter either way: repo-wide grep found zero instantiations of `TransitQuickRunner`
+anywhere. Deleted the class (and the now-unused `QuickRunner`/`Time` imports) rather than fixing
+a bypass nobody uses. `TransitImagingScript` itself was already constructed properly via
+`model_validate(..., context={"comm": DummyComm()})` -- no bypass involved there.
 
-`test_transit_mastermind.py`, `test_backend_archives.py`, `lco/helpers.py`,
-`test_schedulereader.py`, `test_schedulewriter.py` still build test doubles via
-`Class.__new__(Class)` + manually setting `_comm`/`_observer`/`_timezone` to `None`. Unlike the
-Mastermind case above, spot-checking these turned up *real* reasons unrelated to comm/timezone:
+Verified: `pytest tests/integration/test_transit_mastermind.py` (6 passed, pre-existing unrelated
+pyrefly errors on `asyncio.Future()` vs `pyobs.utils.parallel.Future` confirmed via `git stash`).
 
-- `lco/helpers.py`'s `make_portal()`/`make_task_archive()`/`make_observation_archive()`:
-  `LcoTaskArchive.__init__` always builds its own internal `Portal` from `url`/`token` (via
-  `add_child_object(Portal, Portal, ...)`) -- there's no constructor parameter to inject a
-  pre-built `Portal` with a mocked session. And `Portal._session` is only ever populated by the
-  async `open()` method; the tests want a `MagicMock()` session installed without an async open
-  call. Bypassing `__init__` is the only way to get that shape.
-- `pyobs/robotic/storage/lco/configdb.py`'s `ConfigDB.__init__` does a **real synchronous
-  `requests.get(...)`** to fetch site config at construction time -- genuine network I/O, exactly
-  what test doubles are supposed to avoid. `test_schedulewriter.py`'s `MagicMock(spec=ConfigDB)`
-  is the right call here, not a constructor limitation to route around.
-- `test_backend_archives.py`'s backend `TaskArchive`/`ObservationArchive` likely have the same
-  "session only exists after async `open()`" shape as `Portal` (`_aiohttp_session` is `None` until
-  `open()`), but this hasn't been verified line-by-line the way Mastermind was.
+### `test_backend_archives.py`: `Class.__new__` bypass wasn't needed ✅
+
+Same shape as `Portal`: `BackendTaskArchive`/`BackendObservationArchive.__init__` set
+`_aiohttp_session = None` and only populate it in async `open()`. Confirmed by instantiating both
+for real (`BackendTaskArchive(url=..., token=..., auto_update=False)`) -- identical resulting
+state to the bypass, including `_on_tasks_changed`/`_last_update`/`_projects`/`_tasks` defaults
+(the base `TaskArchive.__init__` already defaults `on_tasks_changed=None`). `auto_update=False`
+avoids registering the real `_check_for_changes` background task (harmless either way since it's
+never started without `open()`, but matches the bypass's original intent exactly). Now both
+factories call the real constructor and only override `_aiohttp_session = MagicMock()` after.
+
+Verified: `pytest tests/robotic/storage/backend/test_backend_archives.py` (22 passed).
+
+### `test_schedulereader.py`/`test_schedulewriter.py`: `Class.__new__` bypass wasn't needed ✅
+
+Both `LcoScheduleReader.__init__` and `LcoScheduleWriter.__init__` just store whatever `portal`/
+`configdb` they're given (`self._portal = portal`) -- unlike `LcoTaskArchive`/
+`LcoObservationArchive` (see below), they don't build their own internally, so the already-fake
+`Portal` from `lco/helpers.py::make_portal()` and the already-fake `MagicMock(spec=ConfigDB)` from
+`test_schedulewriter.py::make_configdb()` can be passed straight through the real constructor.
+The only wrinkle: `LcoScheduleReader.__init__` creates a real `ResolvableErrorLogger` for
+`_update_error_log`; tests want a `MagicMock()` there instead, which is a normal post-construction
+override, not a reason to skip `__init__` entirely.
+
+Verified: `pytest tests/robotic/storage/lco/` (56 passed).
+
+### `lco/helpers.py`: bypass confirmed genuinely necessary, left as-is
+
+Unlike the reader/writer above, `LcoTaskArchive.__init__` and `LcoObservationArchive.__init__`
+both **build their own internal collaborators** rather than accepting pre-built ones:
+- `LcoTaskArchive.__init__` always constructs its own `Portal` via `add_child_object(Portal,
+  Portal, url=url, token=token, ...)` -- no parameter to inject a pre-built `Portal` with a mocked
+  session, and `Portal._session` is only ever populated by the async `open()` method.
+- `LcoObservationArchive.__init__` unconditionally does `self._configdb = ConfigDB(configdb)` --
+  and `ConfigDB.__init__` does a **real synchronous `requests.get(...)`** to fetch site config at
+  construction time. Confirmed by reading `configdb.py` directly; this is genuine network I/O,
+  exactly what test doubles are supposed to avoid.
+
+No changes made here -- this is the one file in the original list of 8 where `Class.__new__` is
+the right call, not a limitation to route around.
 
 ### `test_yaml_archives.py`: verified fixable, fixed ✅
 
@@ -370,7 +400,8 @@ It didn't, for two different reasons per class:
 Verified: `pytest tests/robotic/storage/filesystem/test_yaml_archives.py` (22 passed) and full
 suite `pytest tests/ -m "not integration and not xmpp"` (1229 passed).
 
-Not revisited in detail this round -- `test_backend_archives.py`/`test_transit_mastermind.py`/
-`lco/helpers.py`'s `LcoTaskArchive`/`LcoObservationArchive`/`test_schedulereader.py`/
-`test_schedulewriter.py` are the remaining 5 files. Worth the same per-class check if this is
-picked up again, rather than assuming either "all blocked" or "all fixable."
+Of the original 8 files with `Class.__new__` bypasses, only `lco/helpers.py` still needs it
+(see above) -- the other 7 all went through the real constructor once actually tried.
+
+Final tally, full suite: `pytest tests/ -m "not integration and not xmpp"` (1229 passed, 2
+skipped -- unchanged, since these were all refactors with no new tests added).

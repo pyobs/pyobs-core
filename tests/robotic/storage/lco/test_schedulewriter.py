@@ -27,18 +27,14 @@ def make_configdb() -> ConfigDB:
 
 
 def make_writer(portal: Portal | None = None, configdb: ConfigDB | None = None) -> LcoScheduleWriter:
-    writer = LcoScheduleWriter.__new__(LcoScheduleWriter)
-    writer._comm = None
-    writer._observer = None
-    writer._vfs = None
-    writer._timezone = None
-    writer._portal = portal or make_portal()
-    writer._configdb = configdb or make_configdb()
-    writer._site = "goe"
-    writer._enclosure = "roof"
-    writer._telescope = "0m5a"
-    writer._period = 24.0
-    return writer
+    return LcoScheduleWriter(
+        portal=portal or make_portal(),
+        configdb=configdb or make_configdb(),
+        site="goe",
+        enclosure="roof",
+        telescope="0m5a",
+        period=24.0,
+    )
 
 
 def make_lco_observation() -> Observation:

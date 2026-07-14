@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import astropy.units as u
@@ -19,19 +18,7 @@ T1 = Time("2026-06-03T21:28:00", scale="utc")
 
 
 def make_reader(portal: Portal | None = None, auto_updates: bool = False) -> LcoScheduleReader:
-    reader = LcoScheduleReader.__new__(LcoScheduleReader)
-    reader._comm = None
-    reader._observer = None
-    reader._vfs = None
-    reader._timezone = None
-    reader._portal = portal or make_portal()
-    reader._site = "goe"
-    reader._telescope = "0m5a"
-    reader._last_schedule_time = None
-    reader._update_lock = asyncio.Lock()
-    reader._auto_updates = auto_updates
-    reader._last_scheduled = None
-    reader._scheduled_tasks = ObservationList()
+    reader = LcoScheduleReader(portal=portal or make_portal(), site="goe", telescope="0m5a", auto_updates=auto_updates)
     reader._update_error_log = MagicMock()
     reader._update_error_log.resolve = MagicMock()
     reader._update_error_log.error = MagicMock()

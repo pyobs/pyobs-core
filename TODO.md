@@ -227,6 +227,23 @@ not currently harmful.
 Verified: `pytest tests/ -m "not integration and not xmpp"` (1117 passed, up from 1076) and,
 against a local ejabberd, `pytest tests/ -m "integration or xmpp"`.
 
+### Tests written for `pyobs_archive.py` and `local_archive.py` ✅
+
+`pyobs/robotic/utils/archive/pyobs_archive.py` (21.8%, 133 stmts) and `local_archive.py` (29.2%,
+89 stmts) -- the two `Archive` backends. `tests/robotic/utils/archive/test_pyobs_archive.py` (18
+tests) mocks `aiohttp.ClientSession.get`/`.post` (same pattern as `test_weather_api.py`) to cover
+`list_options()`/`list_frames()` (including pagination and non-200 handling), `_build_query()`,
+`download_frames()`/`download_headers()`, and `upload_frames()` (including the
+zero-created-with/without-errors branches). `tests/robotic/utils/archive/test_local_archive.py`
+(16 tests) writes real minimal FITS files into a `tmp_path` and lets `_update_root()`/
+`_filter_data()` run for real -- covers directory scanning (including files with missing
+headers), `list_options()`, `list_frames()`'s filter-by-everything (start/end/night/site/
+telescope/instrument/binning/image_type/rlevel), and `download_frames()`/`download_headers()`.
+
+Verified: `pytest tests/ -m "not integration and not xmpp"` (1150 passed, up from 1117 -- one
+unrelated pre-existing failure in `test_basetelescope.py` deselected, from the user's own
+in-progress tracking-mode work, not touched here).
+
 ## Needs a decision
 
 ### `pyobs/modules/camera/basevideo.py`: two minor issues left unfixed

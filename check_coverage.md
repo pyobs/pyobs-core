@@ -111,11 +111,11 @@ the two areas with the broadest thin coverage, not just isolated files.
 | `pyobs/images/processors/offsets/spilled_light.py` | 24.5% | 143 |
 | ~~`pyobs/modules/pointing/_baseguiding.py`~~ | ~~21.7%~~ resolved, see `TODO.md` | 138 |
 | `pyobs/robotic/storage/lco/scripts/default.py` | 19.4% | 134 |
-| `pyobs/robotic/utils/archive/pyobs_archive.py` | 21.8% | 133 |
+| ~~`pyobs/robotic/utils/archive/pyobs_archive.py`~~ | ~~21.8%~~ resolved, see `TODO.md` | 133 |
 | `pyobs/utils/pipeline/night.py` | 16.8% | 119 |
 | `pyobs/utils/focusseries/projection.py` | 21.7% | 115 |
 | `pyobs/mixins/follow.py` | 22.0% | 100 |
-| `pyobs/robotic/utils/archive/local_archive.py` | 29.2% | 89 |
+| ~~`pyobs/robotic/utils/archive/local_archive.py`~~ | ~~29.2%~~ resolved, see `TODO.md` | 89 |
 | `pyobs/vfs/sshfile.py` | 21.9% | 73 |
 | ~~`pyobs/modules/pointing/autoguiding.py`~~ | ~~29.2%~~ resolved, see `TODO.md` | 72 |
 | `pyobs/images/processors/annotation/text.py` | 29.7% | 37 |

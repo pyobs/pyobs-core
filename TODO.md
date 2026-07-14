@@ -72,17 +72,31 @@ files are GUI widgets, CLI entry points, or external-service integrations (Teleg
 SFTP/InfluxDB) -- same cost/value tradeoff that already put XMPP/LCO behind integration markers,
 not worth chasing. See `check_coverage.md`'s "Category E" for the real, actionable gaps.
 
-## Needs a decision
-
-### 1. Write tests for the `pyobs/modules/flatfield/` subsystem
+### Tests written for the `pyobs/modules/flatfield/` subsystem ✅
 
 Flagged in `check_coverage.md`: 199 statements across `flatfield.py`/`scheduler.py`/
-`pointing.py`, **zero test files** (`tests/` has no `test_*flatfield*` at all). Flat-field
-calibration is a real, regularly-run robotic operation, not a rare corner -- comparable in
-size/shape to `DummyRoof` (264 lines), which has solid coverage. The single clearest "should
-just have tests and doesn't" gap found. Also worth a look while there: `dummymode.py` and
-`dummyvideo.py`, the only two `Dummy*` simulator modules without tests (their siblings
-`DummyRoof`/`DummyCamera`/`MockWeather` all have them).
+`pointing.py`, previously **zero test files**. Added `tests/modules/flatfield/` with
+`test_flatfield.py` (20 tests: init/open/close/callback/binning/filters/the `flat_field()` state
+machine including the already-running guard, abort-mid-run, and telescope-not-ready branches),
+`test_pointing.py` (2 tests), and `test_scheduler.py` (5 tests: the `run()` schedule/execute loop,
+already-running guard, and mid-item abort). 27 tests total, all passing (`pytest tests/modules/flatfield/`).
+
+`FlatFieldScheduler._scheduler` is a real `Scheduler` instance always built internally from
+`functions`/`priorities` (not constructor-injectable), so isolating `FlatFieldScheduler.run()`'s
+own orchestration logic from `Scheduler`'s own scheduling algorithm (already covered by
+`tests/utils/skyflats/test_scheduler.py`) needed one new private-attribute poke
+(`module._scheduler = AsyncMock(spec=Scheduler)`) -- same "no public/constructor path, needed for
+isolation" pattern as everywhere else in `check_tests.md`'s Bucket A.
+
+Verified: `pytest tests/ -m "not integration and not xmpp"` (923 passed, up from 896).
+
+## Needs a decision
+
+### 1. Write tests for `dummymode.py` and `dummyvideo.py`
+
+Flagged in `check_coverage.md` alongside the flatfield subsystem (now resolved, see above): the
+only two `Dummy*` simulator modules without tests (their siblings `DummyRoof`/`DummyCamera`/
+`MockWeather` all have them). Smaller, standalone follow-up, not done yet.
 
 ### 2. `Class.__new__(Class)` null test doubles can't go through the constructor
 

@@ -71,15 +71,14 @@ concern.
 Core module/processor logic, same shape as plenty of code that *does* have good coverage
 elsewhere (comm/vfs-mockable, no special hardware). The two standouts:
 
-- **The entire `pyobs/modules/flatfield/` subsystem** -- `flatfield.py` (112), `scheduler.py`
-  (58), `pointing.py` (24), `__init__.py` (5) = **199 statements, zero test files** (confirmed:
-  no `test_*flatfield*` anywhere in `tests/`). Flat-field calibration is a real, regularly-run
-  robotic operation, not a rarely-used corner. This is the single biggest coincidence-free gap
-  in the codebase and the clearest candidate if you want to prioritize one thing.
-- **`pyobs/modules/utils/dummymode.py`** (48) and **`pyobs/modules/camera/dummyvideo.py`** (35)
-  -- both are `Dummy*` simulator modules, the same family as `DummyRoof`/`DummyCamera`/
-  `MockWeather`, all of which *do* have solid test coverage (`test_dummyroof.py`,
-  `test_xmpp_dummy_camera.py`, `test_mockweather.py`). These two are the odd ones out.
+- ~~**The entire `pyobs/modules/flatfield/` subsystem**~~ -- **resolved**, see `TODO.md`.
+  `flatfield.py` (112), `scheduler.py` (58), `pointing.py` (24), `__init__.py` (5) = 199
+  statements, previously zero test files. Now covered by `tests/modules/flatfield/` (27 tests).
+- ~~**`pyobs/modules/utils/dummymode.py`** (48) and **`pyobs/modules/camera/dummyvideo.py`**
+  (35)~~ -- **resolved**, see `TODO.md`. Both are `Dummy*` simulator modules, the same family as
+  `DummyRoof`/`DummyCamera`/`MockWeather`, all of which already had solid test coverage
+  (`test_dummyroof.py`, `test_xmpp_dummy_camera.py`, `test_mockweather.py`). Now covered by
+  `tests/modules/utils/test_dummymode.py` and `tests/modules/camera/test_dummyvideo.py`.
 
 Rest of this category:
 - `pyobs/modules/utils/kiosk.py` (87)
@@ -125,9 +124,8 @@ the two areas with the broadest thin coverage, not just isolated files.
 
 Categories A-D (GUI, CLI, external-service integrations, dev tooling) aren't worth chasing --
 same reasoning that already put XMPP/LCO behind integration markers. Category E is where the
-real, actionable gaps are, and the flatfield subsystem is the clear first candidate if this is
-worth picking up: a real, regularly-exercised robotic operation with literally zero tests,
-comparable in size/shape to modules that already have good coverage (`DummyRoof` at 264 lines,
-well tested). The pointing/guiding and flatfield-adjacent thin-coverage cluster in the table
-above would be natural follow-ups from the same investigation, since `flatfielder.py` overlaps
-with the same domain.
+real, actionable gaps were; the flatfield subsystem and the two untested `Dummy*` modules (the
+clearest "should just have tests and doesn't" gaps) are now resolved -- see `TODO.md`. The
+pointing/guiding and flatfield-adjacent thin-coverage cluster in the table above (`flatfielder.py`
+21.2%, `basevideo.py` 25.7%, `_baseguiding.py` 21.7%, `acquisition.py` 22.2%, etc.) is the natural
+next candidate if this is worth continuing, since it overlaps with the same domain.

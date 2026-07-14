@@ -90,15 +90,32 @@ isolation" pattern as everywhere else in `check_tests.md`'s Bucket A.
 
 Verified: `pytest tests/ -m "not integration and not xmpp"` (923 passed, up from 896).
 
+### Tests written for `dummymode.py` and `dummyvideo.py` ✅
+
+The last two `Dummy*` simulator modules without tests (their siblings `DummyRoof`/`DummyCamera`/
+`MockWeather` all have them). Added `tests/modules/utils/test_dummymode.py` (7 tests: default
+modes, open() publishing capabilities/state, set_mode()'s default-group/explicit-group/invalid-
+group/closing-during-move branches) and `tests/modules/camera/test_dummyvideo.py` (7 tests:
+init defaults, open() publishing exposure-time state, set_exposure_time() including the
+exptime<=0 fallback, and the `_frame_task()` background loop's active/inactive branches).
+
+`DummyMode.set_mode()` waits up to 3s in production (`asyncio.wait_for(..., timeout=3.0)`) to
+simulate device movement before applying the change -- patched `asyncio.wait_for` directly
+(raising `TimeoutError` for "movement completed normally", returning normally for "module started
+closing mid-move") rather than actually waiting or poking the private `_closing` event.
+`DummyVideo`'s background frame-generation loop is `while True: ... await asyncio.sleep(...)` --
+patched `asyncio.sleep` to raise `CancelledError` after one iteration to test a single frame
+without running forever, and mocked `_set_image` (a `BaseVideo` method) to isolate the frame
+loop's own logic from image/FITS creation, which is `BaseVideo`'s concern, not `DummyVideo`'s.
+
+`BaseVideo.open()` binds a real HTTP port -- mocked out entirely (`mocker.patch.object(BaseVideo,
+"open", ...)`) rather than exercised, same as `Module.open()` is mocked out everywhere else.
+
+Verified: `pytest tests/ -m "not integration and not xmpp"` (937 passed, up from 923).
+
 ## Needs a decision
 
-### 1. Write tests for `dummymode.py` and `dummyvideo.py`
-
-Flagged in `check_coverage.md` alongside the flatfield subsystem (now resolved, see above): the
-only two `Dummy*` simulator modules without tests (their siblings `DummyRoof`/`DummyCamera`/
-`MockWeather` all have them). Smaller, standalone follow-up, not done yet.
-
-### 2. `Class.__new__(Class)` null test doubles can't go through the constructor
+### `Class.__new__(Class)` null test doubles can't go through the constructor
 
 8 files (`test_mastermind.py`, `test_scheduler_mastermind.py`, `test_transit_mastermind.py`,
 `test_backend_archives.py`, `test_yaml_archives.py`, `lco/helpers.py`,

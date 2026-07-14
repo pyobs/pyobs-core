@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
 import astropy.units as u
-from astropy.coordinates import ICRS, SkyCoord
+from astropy.coordinates import ICRS, HeliocentricMeanEcliptic, SkyCoord, get_body
+from astroquery.jplhorizons import Horizons
 
 from pyobs.events import MoveAltAzEvent, MoveRaDecEvent
 from pyobs.interfaces import (
@@ -14,8 +16,15 @@ from pyobs.interfaces import (
     FitsHeaderEntry,
     IFitsHeaderBefore,
     IPointingAltAz,
+    IPointingBody,
+    IPointingOrbitalElements,
     IPointingRaDec,
     ITelescope,
+    ITrackingMode,
+    ITrackingRate,
+    OrbitalElements,
+    TrackingMode,
+    TrackingRateState,
 )
 from pyobs.mixins import MotionStatusMixin, WaitForMotionMixin, WeatherAwareMixin
 from pyobs.modules import Module, timeout
@@ -25,6 +34,163 @@ from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
+
+# Gaussian gravitational constant, rad/day, for AU/day/solar-mass units -- encodes the Sun's
+# GM for heliocentric two-body elements, so no per-body mass lookup is needed.
+_GAUSSIAN_GRAVITATIONAL_CONSTANT = 0.01720209895
+
+# Default background-task refresh cadence for continuously-tracked bodies/elements. See design
+# doc's "Recompute cadence" section: negligible position error over 10 min for anything at or
+# below Mars/Venus/Jupiter-scale apparent motion; the Moon (fallback via ITrackingRate only, i.e.
+# when no native TrackingMode.LUNAR is available) needs the tighter interval instead.
+_DEFAULT_REFRESH_INTERVAL_SECONDS = 600.0
+_MOON_FALLBACK_REFRESH_INTERVAL_SECONDS = 60.0
+
+# How often to correct accumulated position drift with a direct hardware reslew, on top of the
+# continuous rate updates applied every refresh tick.
+_POSITION_NUDGE_INTERVAL_SECONDS = 600.0
+
+
+def _solve_kepler_equation(mean_anomaly: float, eccentricity: float, tol: float = 1e-12, max_iter: int = 50) -> float:
+    """Solves M = E - e*sin(E) for the eccentric anomaly E, via Newton-Raphson.
+
+    Args:
+        mean_anomaly: Mean anomaly, in radians (any range; wrapped internally).
+        eccentricity: Orbital eccentricity (0 <= e < 1).
+    """
+    m = math.fmod(mean_anomaly, 2 * math.pi)
+    e_anom = m if eccentricity < 0.8 else math.pi
+    for _ in range(max_iter):
+        delta = (e_anom - eccentricity * math.sin(e_anom) - m) / (1 - eccentricity * math.cos(e_anom))
+        e_anom -= delta
+        if abs(delta) < tol:
+            break
+    return e_anom
+
+
+def _solve_barker_equation(mean_anomaly: float, tol: float = 1e-12, max_iter: int = 50) -> float:
+    """Solves D + D**3/3 = M for D (Barker's equation, near-parabolic/cometary orbits).
+
+    Unlike Kepler's equation, this cubic is globally monotonic (its derivative 1 + D**2 is
+    always positive), so Newton-Raphson from any starting point converges reliably -- no
+    near-e=1 convergence trouble the way the elliptical solver above can have.
+    """
+    d = mean_anomaly
+    for _ in range(max_iter):
+        delta = (d + d**3 / 3 - mean_anomaly) / (1 + d**2)
+        d -= delta
+        if abs(delta) < tol:
+            break
+    return d
+
+
+def _perifocal_to_radec(
+    x_pf: float,
+    y_pf: float,
+    argument_of_periapsis: float,
+    inclination: float,
+    longitude_ascending_node: float,
+    t: Time,
+) -> tuple[float, float]:
+    """Rotates a perifocal-plane position into heliocentric ecliptic coordinates, then converts
+    to ICRS RA/Dec via astropy's frame-transform machinery (which also applies the
+    heliocentric -> geocentric shift for the given obstime).
+
+    Args:
+        x_pf: X position in the perifocal (orbital) plane, AU.
+        y_pf: Y position in the perifocal (orbital) plane, AU.
+        argument_of_periapsis: Degrees.
+        inclination: Degrees.
+        longitude_ascending_node: Degrees.
+        t: Time of the position.
+    """
+    x3, y3, z3 = _orbital_plane_to_ecliptic_cartesian(
+        x_pf, y_pf, argument_of_periapsis, inclination, longitude_ascending_node
+    )
+    coord = SkyCoord(
+        x=x3 * u.AU,
+        y=y3 * u.AU,
+        z=z3 * u.AU,
+        frame=HeliocentricMeanEcliptic(obstime=t),
+        representation_type="cartesian",
+    )
+    icrs = coord.icrs
+    return float(icrs.ra.degree), float(icrs.dec.degree)
+
+
+def _orbital_plane_to_ecliptic_cartesian(
+    x_pf: float, y_pf: float, argument_of_periapsis: float, inclination: float, longitude_ascending_node: float
+) -> tuple[float, float, float]:
+    """Rotates a perifocal-plane position (AU) into heliocentric ecliptic Cartesian coordinates
+    (AU), via the standard classical-orbital-element rotation Rz(Om) @ Rx(i) @ Rz(w). Pure
+    geometry, split out from _perifocal_to_radec so it's testable without astropy's frame
+    machinery.
+    """
+    w = math.radians(argument_of_periapsis)
+    i = math.radians(inclination)
+    om = math.radians(longitude_ascending_node)
+    cw, sw = math.cos(w), math.sin(w)
+    ci, si = math.cos(i), math.sin(i)
+    co, so = math.cos(om), math.sin(om)
+
+    # Rz(w): rotate within the orbital plane from periapsis direction to ascending-node direction
+    x1 = cw * x_pf - sw * y_pf
+    y1 = sw * x_pf + cw * y_pf
+    # Rx(i): tilt the orbital plane by the inclination
+    y2 = ci * y1
+    z2 = si * y1
+    # Rz(Om): rotate the ascending node into the reference (ecliptic) frame
+    x3 = co * x1 - so * y2
+    y3 = so * x1 + co * y2
+    z3 = z2
+
+    return x3, y3, z3
+
+
+def _propagate_elements(elements: OrbitalElements, t: Time) -> tuple[float, float]:
+    """Two-body Kepler propagation of orbital elements to (ra, dec) in degrees, ICRS.
+
+    Perturbations are ignored -- fine over one night's arc, would drift if elements are stale
+    by weeks. See design doc's "Asteroids/comets" section for the derivation.
+    """
+    if elements.mean_anomaly is not None:
+        # elliptical
+        dt_days = (t - elements.epoch).jd
+        n = _GAUSSIAN_GRAVITATIONAL_CONSTANT * elements.semi_major_axis**-1.5  # rad/day
+        m = math.radians(elements.mean_anomaly) + n * dt_days
+        e_anom = _solve_kepler_equation(m, elements.eccentricity)
+        nu = 2 * math.atan2(
+            math.sqrt(1 + elements.eccentricity) * math.sin(e_anom / 2),
+            math.sqrt(1 - elements.eccentricity) * math.cos(e_anom / 2),
+        )
+        r = elements.semi_major_axis * (1 - elements.eccentricity * math.cos(e_anom))
+    elif elements.perihelion_time is not None:
+        # near-parabolic/cometary: Barker's equation, using perihelion distance q = a*(1-e)
+        q = elements.semi_major_axis * (1 - elements.eccentricity)
+        dt_days = (t - elements.perihelion_time).jd
+        m_p = _GAUSSIAN_GRAVITATIONAL_CONSTANT * dt_days / math.sqrt(2 * q**3)
+        d = _solve_barker_equation(m_p)
+        nu = 2 * math.atan(d)
+        r = q * (1 + d**2)
+    else:
+        raise ValueError("OrbitalElements must set either mean_anomaly or perihelion_time.")
+
+    x_pf = r * math.cos(nu)
+    y_pf = r * math.sin(nu)
+    return _perifocal_to_radec(
+        x_pf, y_pf, elements.argument_of_periapsis, elements.inclination, elements.longitude_ascending_node, t
+    )
+
+
+def _ra_rate_on_sky(ra1_deg: float, ra2_deg: float, dec_deg: float, dt_seconds: float) -> float:
+    """On-sky RA rate in arcsec/sec, i.e. d(RA)/dt * cos(dec) -- matches JPL Horizons' RA_rate
+    convention, and the ITrackingRate interface's "absolute rate on the sky" semantics."""
+    dra = ra2_deg - ra1_deg
+    if dra > 180:
+        dra -= 360
+    elif dra < -180:
+        dra += 360
+    return dra * 3600.0 * math.cos(math.radians(dec_deg)) / dt_seconds
 
 
 class BaseTelescope(
@@ -61,8 +227,15 @@ class BaseTelescope(
         # celestial status
         self._celestial_headers: dict[str, Any] = {}
 
+        # body/orbital-element tracking state (IPointingBody/IPointingOrbitalElements)
+        self._tracked_body: str | None = None
+        self._tracked_elements: OrbitalElements | None = None
+        self._last_position_nudge: Time | None = None
+        self._last_tracking_used_native_mode = False
+
         # add thread func
         self.add_background_task(self._celestial, True)
+        self.add_background_task(self._track_refresh, True)
 
         # init mixins
         WeatherAwareMixin.__init__(self, **kwargs)
@@ -149,6 +322,15 @@ class BaseTelescope(
             )
             await self.comm.send_event(MoveRaDecEvent(ra=ra, dec=dec))
 
+            # a plain move_radec is "go to this fixed coordinate" -- stop any ongoing
+            # body/orbital-element tracking and reset to native sidereal tracking, so a mount
+            # left in e.g. lunar/custom-rate mode from a previous target doesn't silently keep
+            # applying a stale rate to this new, unrelated sidereal target
+            self._tracked_body = None
+            self._tracked_elements = None
+            if isinstance(self, ITrackingMode):
+                await self.set_tracking_mode(TrackingMode.SIDEREAL)
+
             # track telescope
             await self._move_radec(ra, dec, abort_event=self._abort_move)
             log.info("Reached destination")
@@ -208,6 +390,13 @@ class BaseTelescope(
             await self.comm.send_event(MoveAltAzEvent(alt=alt, az=az))
             await self._change_motion_status(MotionStatus.SLEWING)
 
+            # holding a fixed alt/az is incompatible with continued body/orbital-element
+            # tracking or sidereal/lunar/solar motion -- stop both, same reasoning as move_radec
+            self._tracked_body = None
+            self._tracked_elements = None
+            if isinstance(self, ITrackingMode):
+                await self.set_tracking_mode(TrackingMode.OFF)
+
             # move telescope
             await self._move_altaz(alt, az, abort_event=self._abort_move)
             log.info("Reached destination")
@@ -221,6 +410,254 @@ class BaseTelescope(
             # update headers now
             asyncio.create_task(self._update_celestial_headers())
             log.info("Finished moving telescope.")
+
+    @abstractmethod
+    async def _set_tracking_rate(self, ra_rate: float, dec_rate: float) -> None:
+        """Actually applies an absolute tracking rate to hardware. Must be implemented by
+        derived classes that support ITrackingRate.
+
+        Args:
+            ra_rate: Rate in RA, arcsec/sec on the sky.
+            dec_rate: Rate in Dec, arcsec/sec on the sky.
+
+        Raises:
+            MoveError: If rate could not be set.
+        """
+        ...
+
+    async def set_tracking_rate(self, ra_rate: float, dec_rate: float, **kwargs: Any) -> None:
+        """Public entry point for external/manual callers. Enforces the SIDEREAL precondition:
+        a continuous rate is only ever meaningful as a small correction on top of sidereal
+        motion, never on top of OFF -- see design doc's "Required base mode" section.
+
+        Args:
+            ra_rate: Rate in RA, arcsec/sec on the sky.
+            dec_rate: Rate in Dec, arcsec/sec on the sky.
+
+        Raises:
+            MoveError: If rate could not be set.
+        """
+        if isinstance(self, ITrackingMode):
+            current = self.comm.get_own_state(ITrackingMode)
+            if current is None or current.mode != TrackingMode.SIDEREAL:
+                await self.set_tracking_mode(TrackingMode.SIDEREAL)
+        await self._set_tracking_rate(ra_rate, dec_rate)
+        await self.comm.set_state(ITrackingRate, TrackingRateState(ra_rate=ra_rate, dec_rate=dec_rate))
+
+    async def _resolve_body_with_rate(self, body: str, t: Time | None = None) -> tuple[float, float, float, float]:
+        """Resolves a body name to (ra, dec, ra_rate, dec_rate) -- degrees and arcsec/sec on the sky.
+
+        Resolution chain:
+            1. astropy.coordinates.get_body -- Sun, Moon, major planets. No rate output, so
+               finite-differenced locally (cheap: no network call).
+            2. JPL Horizons fallback -- anything not covered above. Horizons' ephemerides table
+               already includes RA_rate/DEC_rate columns alongside position for the same query,
+               so no separate query or finite-differencing is needed.
+
+        Raises:
+            ValueError: If body name is not resolvable.
+        """
+        now = t if t is not None else Time.now()
+        location = self.observer.location if self._observer is not None else None
+
+        try:
+            c1 = get_body(body, now, location=location)
+            c2 = get_body(body, now + 1 * u.s, location=location)
+        except KeyError:
+            pass
+        else:
+            ra, dec = float(c1.icrs.ra.degree), float(c1.icrs.dec.degree)
+            ra_rate = _ra_rate_on_sky(ra, float(c2.icrs.ra.degree), dec, 1.0)
+            dec_rate = (float(c2.icrs.dec.degree) - dec) * 3600.0
+            return ra, dec, ra_rate, dec_rate
+
+        loop = asyncio.get_event_loop()
+
+        def _query() -> tuple[float, float, float, float]:
+            loc = None
+            if self._observer is not None:
+                site = self.observer.location
+                loc = {
+                    "lon": float(site.lon.degree),
+                    "lat": float(site.lat.degree),
+                    "elevation": float(site.height.to(u.km).value),
+                }
+            horizons = Horizons(id=body, location=loc, epochs=now.jd)
+            eph = horizons.ephemerides()
+            return (
+                float(eph["RA"][0]),
+                float(eph["DEC"][0]),
+                float(eph["RA_rate"][0]) / 3600.0,
+                float(eph["DEC_rate"][0]) / 3600.0,
+            )
+
+        try:
+            return await loop.run_in_executor(None, _query)
+        except Exception as e:
+            raise ValueError(f"Could not resolve body '{body}'.") from e
+
+    async def _resolve_body(self, body: str) -> tuple[float, float]:
+        """Resolves a body name to (ra, dec) in degrees, ICRS.
+
+        Raises:
+            ValueError: If body name is not resolvable.
+        """
+        ra, dec, _, _ = await self._resolve_body_with_rate(body)
+        return ra, dec
+
+    async def track_body(self, body: str, **kwargs: Any) -> None:
+        """Starts tracking a named solar-system body.
+
+        Args:
+            body: Name resolvable to an ephemeris (e.g. 'moon', 'mars', 'jupiter', or an
+                  asteroid/comet designation known to JPL Horizons).
+
+        Raises:
+            MoveError: If telescope could not be moved.
+            ValueError: If body name is not resolvable.
+        """
+        if not isinstance(self, IPointingBody):
+            raise NotImplementedError
+        ra, dec = await self._resolve_body(body)
+        await self.move_radec(ra, dec)
+        self._tracked_body = body
+        self._tracked_elements = None
+        self._last_position_nudge = Time.now()
+        await self._track_refresh_tick()
+
+    async def track_orbital_elements(self, elements: OrbitalElements, **kwargs: Any) -> None:
+        """Starts tracking a body defined by orbital elements.
+
+        Args:
+            elements: Orbital elements of the body to track.
+
+        Raises:
+            MoveError: If telescope could not be moved.
+            ValueError: If elements are incomplete (neither mean_anomaly nor perihelion_time given).
+        """
+        if not isinstance(self, IPointingOrbitalElements):
+            raise NotImplementedError
+        if elements.mean_anomaly is None and elements.perihelion_time is None:
+            raise ValueError("OrbitalElements must set either mean_anomaly or perihelion_time.")
+        ra, dec = _propagate_elements(elements, Time.now())
+        await self.move_radec(ra, dec)
+        self._tracked_elements = elements
+        self._tracked_body = None
+        self._last_position_nudge = Time.now()
+        await self._track_refresh_tick()
+
+    def _native_tracking_mode_for_body(self, body: str) -> TrackingMode | None:
+        """Which discrete TrackingMode a body should ideally use, if the driver has it.
+        Nothing beyond Sun/Moon -- there's no TrackingMode.PLANET/ASTEROID; everything else
+        always goes through ITrackingRate."""
+        name = body.strip().lower()
+        if name == "moon":
+            return TrackingMode.LUNAR
+        if name == "sun":
+            return TrackingMode.SOLAR
+        return None
+
+    async def _dispatch_tracking(self, mode: TrackingMode | None, ra_rate: float, dec_rate: float) -> bool:
+        """Applies a computed tracking rate to hardware: native mode if available and applicable
+        (Sun/Moon on a driver that has that mode), else a continuous rate via ITrackingRate.
+
+        Returns:
+            True if native TrackingMode dispatch was used (rate not applied), False if
+            ITrackingRate dispatch was used.
+
+        Raises:
+            MoveError: If hardware supports neither a matching native mode nor ITrackingRate.
+        """
+        if mode is not None and isinstance(self, ITrackingMode):
+            current = self.comm.get_own_state(ITrackingMode)
+            try:
+                if current is None or current.mode != mode:
+                    await self.set_tracking_mode(mode)
+                return True
+            except ValueError:
+                pass  # hardware doesn't support this native mode -- fall through to rate
+
+        if isinstance(self, ITrackingRate):
+            await self._set_tracking_rate(ra_rate, dec_rate)
+            await self.comm.set_state(ITrackingRate, TrackingRateState(ra_rate=ra_rate, dec_rate=dec_rate))
+            return False
+
+        raise exc.MoveError(f"Cannot track: hardware supports neither native mode {mode} nor an arbitrary rate.")
+
+    async def _track_refresh_tick(self) -> None:
+        """Single refresh cycle: recomputes position/rate for whatever's being tracked and
+        applies it. Shared by the background task and by track_body/track_orbital_elements'
+        initial call, so the mount doesn't sit in the just-reset default (sidereal/off) for a
+        whole refresh interval right after the initial slew."""
+        if self._tracked_body is None and self._tracked_elements is None:
+            return
+        if self._lock_moving.locked():
+            # a slew is in progress -- nothing should be actively rate-tracking right now; the
+            # resync nudge after the slew completes absorbs whatever gap this tick skipped
+            return
+
+        async with LockWithAbort(self._lock_moving, self._abort_move):
+            try:
+                now = Time.now()
+                mode = None
+                if self._tracked_body is not None:
+                    ra, dec, ra_rate, dec_rate = await self._resolve_body_with_rate(self._tracked_body, now)
+                    mode = self._native_tracking_mode_for_body(self._tracked_body)
+                else:
+                    assert self._tracked_elements is not None
+                    ra, dec = _propagate_elements(self._tracked_elements, now)
+                    ra2, dec2 = _propagate_elements(self._tracked_elements, now + 1 * u.s)
+                    ra_rate = _ra_rate_on_sky(ra, ra2, dec, 1.0)
+                    dec_rate = (dec2 - dec) * 3600.0
+
+                used_native_mode = await self._dispatch_tracking(mode, ra_rate, dec_rate)
+                self._last_tracking_used_native_mode = used_native_mode
+
+                # periodic drift-correction reslew -- bypasses the public move_radec (which
+                # would reset tracking mode and clear the very state this tick is maintaining),
+                # calling the hardware hook directly instead
+                due = (
+                    self._last_position_nudge is None
+                    or (now - self._last_position_nudge).sec >= _POSITION_NUDGE_INTERVAL_SECONDS
+                )
+                if due and not used_native_mode:
+                    await self._move_radec(ra, dec, abort_event=self._abort_move)
+                    self._last_position_nudge = now
+            except Exception:
+                log.exception("Error refreshing body/orbital-element tracking.")
+
+    def _tracking_refresh_interval(self) -> float:
+        """Accuracy-driven refresh interval for the currently-tracked body/elements. The Moon
+        needs a much tighter interval than planets/asteroids, but only when actually falling back
+        to ITrackingRate for it (no native TrackingMode.LUNAR available) -- see design doc's
+        "Recompute cadence" section. Reflects the outcome of the most recent dispatch rather than
+        re-deriving it, since only that tick's actual result (including capability rejection via
+        ValueError) is authoritative.
+
+        Not clamped against this driver's own TrackingRateCapabilities.min_update_interval:
+        Comm has get_own_state but no get_own_capabilities counterpart to set_capabilities, so
+        there's no existing API to read that back without adding new comm-layer surface for this
+        one self-clamp. See design doc's "Hardware update-rate floor" section.
+        """
+        if (
+            self._tracked_body is not None
+            and self._tracked_body.strip().lower() == "moon"
+            and not self._last_tracking_used_native_mode
+        ):
+            return _MOON_FALLBACK_REFRESH_INTERVAL_SECONDS
+        return _DEFAULT_REFRESH_INTERVAL_SECONDS
+
+    async def _track_refresh(self) -> None:
+        """Background task: refreshes rate/position for body/orbital-element tracking while
+        one is active; sleeps between ticks otherwise."""
+        await asyncio.sleep(10)
+        while True:
+            if self._tracked_body is None and self._tracked_elements is None:
+                await asyncio.sleep(5)
+                continue
+
+            await self._track_refresh_tick()
+            await asyncio.sleep(self._tracking_refresh_interval())
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any

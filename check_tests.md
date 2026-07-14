@@ -18,6 +18,18 @@ Full suite verified: `pytest tests/` (858 passed, 2 skipped) and, against a loca
 
 **Never in scope this session:** every other private attribute in Bucket A (`_state`, `_label`, `_own_comm`, `_config_caps`, `_acl_allow`, `_queue`, `_active`, etc.), and all of Bucket B (state-assertion reads). Both remain exactly as before.
 
+## Resolved in the Bucket B review (follow-up session)
+
+All 171 distinct test functions flagged in Bucket B (grouped by function, not raw line -- the 314-line count below is per-line) were reviewed individually, same depth as the check_mocks.md Bucket 5 pass. Outcomes:
+
+- **~155 fine, no change** -- the private attribute has no reasonable public equivalent (internal algorithm state in a decomposed pipeline already unit-tested step-by-step elsewhere, e.g. `ProjectedOffsets`/`_DotNetRequestBuilder`/`StarExpTimeEstimator`; pure internal bookkeeping like `BackgroundTask._task`, `Comm._interface_features`, `LcoScheduleReader._scheduled_tasks`; or a private attribute used only to build an expected-value baseline for a real mock/behavior assertion, e.g. `astrometry._request_builder._source_count`).
+- **~16 strengthened** to use a public accessor that already existed but wasn't being used: `Task.target` property (6 call sites across `test_csvpicker_scheduler.py`, `test_dynamic_target.py`, `test_dynamictarget_scheduler.py` -- only safe for success-case assertions, since the property falls back to `static_target` rather than `None` on failure), `DummyRoof.get_percent_open()` (6x in `test_dummyroof.py`), `Weather`/`MockWeather.is_running()` (4x), `AutoFocusSeries.is_running()`, `MockWeather.get_sensor_value()`, `MemoryTaskArchive.get_task()`/`.last_changed()` (3x in `test_memory_archives.py`), `_CalibrationCache.get_from_cache()` (2x), `LocalNetwork.get_client()`/`.get_client_names()`, `XmppComm.get_interfaces()`/`.clients`, `RollingTimeAverage.average()`.
+- **2 real bugs found and fixed**, both matching the `stellarexptime.py` collection-bug pattern from the mock-audit session:
+  - `tests/modules/test/standalone.py` -> `test_standalone.py`: missing the `test_` prefix, so pytest's default collection glob silently skipped the whole file -- **29 ACL tests never ran in CI.** All 29 passed once collected (no hidden bugs this time, unlike `stellarexptime.py`).
+  - `tests/utils/grids/test_filters.py::test_fromlistfilter`: patched `astropy.time.Time.now`, but `pyobs.utils.time.Time` (what the code under test actually imports and calls) overrides `now()` itself as a separate classmethod, so the patch never took effect -- the test silently ran against the real wall-clock time instead of the frozen date, and only broke when the date actually rolled over mid-session. Fixed to patch `pyobs.utils.time.Time.now`.
+
+Verified: `pytest tests/` (896 passed, 2 skipped -- 29 more than the prior session's 867, from `test_standalone.py` now being collected).
+
 ## Bucket A -- Setup pokes (writes): tests assign directly to a private attribute
 
 252 lines across 34 files. Pattern: `obj._attr = value` used to inject a test double or seed state post-construction, instead of going through the constructor / a public API.

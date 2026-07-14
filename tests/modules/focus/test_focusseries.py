@@ -52,7 +52,7 @@ async def test_auto_focus_resets_running_flag_on_error() -> None:
     with pytest.raises(ValueError):
         await series.auto_focus(5, 0.1, 2.0)
 
-    assert series._running is False
+    assert await series.is_running() is False
 
 
 def test_focus_series_get_data_points_not_implemented() -> None:

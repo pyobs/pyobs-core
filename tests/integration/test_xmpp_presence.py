@@ -64,12 +64,13 @@ def get_capabilities_from_disco(result_xml, namespace: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-async def test_presence_ready_visible_to_observer(make_xmpp_comm) -> None:
+async def test_presence_ready_visible_to_observer(make_xmpp_comm, make_unopened_comm) -> None:
     """A module in READY state should appear as available to observers."""
 
     async def _run():
-        module = make_module([ICooling])
-        camera_comm = await make_xmpp_comm("camera", module)
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
         await camera_comm.set_presence(ModuleState.READY)
 
         observer_comm = await make_xmpp_comm("observer")
@@ -84,12 +85,13 @@ async def test_presence_ready_visible_to_observer(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_presence_error_state_delivered(make_xmpp_comm) -> None:
+async def test_presence_error_state_delivered(make_xmpp_comm, make_unopened_comm) -> None:
     """ERROR state must arrive as dnd presence with error string in <status>."""
 
     async def _run():
-        module = make_module([ICooling])
-        camera_comm = await make_xmpp_comm("camera", module)
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
 
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
@@ -111,12 +113,13 @@ async def test_presence_error_state_delivered(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_presence_local_state_delivered(make_xmpp_comm) -> None:
+async def test_presence_local_state_delivered(make_xmpp_comm, make_unopened_comm) -> None:
     """LOCAL state must arrive as away presence."""
 
     async def _run():
-        module = make_module([ICooling])
-        camera_comm = await make_xmpp_comm("camera", module)
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
 
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
@@ -134,14 +137,15 @@ async def test_presence_local_state_delivered(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_set_state_automatically_updates_presence(make_xmpp_comm) -> None:
+async def test_set_state_automatically_updates_presence(make_xmpp_comm, make_unopened_comm) -> None:
     """Module.set_state() must automatically push presence — no explicit call."""
 
     async def _run():
         from pyobs.modules.module import Module
 
-        module = make_module([ICooling])
-        camera_comm = await make_xmpp_comm("camera", module)
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
 
@@ -162,12 +166,13 @@ async def test_set_state_automatically_updates_presence(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_subscribe_presence_delivers_initial_and_changes(make_xmpp_comm) -> None:
+async def test_subscribe_presence_delivers_initial_and_changes(make_xmpp_comm, make_unopened_comm) -> None:
     """subscribe_presence fires immediately with current state and again on each change."""
 
     async def _run():
-        module = make_module([ICooling])
-        camera_comm = await make_xmpp_comm("camera", module)
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
         await camera_comm.set_presence(ModuleState.READY)
 
         observer_comm = await make_xmpp_comm("observer")
@@ -199,12 +204,13 @@ async def test_subscribe_presence_delivers_initial_and_changes(make_xmpp_comm) -
 # ---------------------------------------------------------------------------
 
 
-async def test_imodule_capabilities_in_disco_info(make_xmpp_comm) -> None:
+async def test_imodule_capabilities_in_disco_info(make_xmpp_comm, make_unopened_comm) -> None:
     """disco#info must contain IModule.Capabilities with version and label."""
 
     async def _run():
-        module = make_module([ICooling], label="My Camera")
-        camera_comm = await make_xmpp_comm("camera", module)
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm, label="My Camera")
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
 
         # publish capabilities explicitly (normally done by Module.open())
         await camera_comm.set_capabilities(IModule, ModuleCapabilities(version="2.0.0.dev1", label="My Camera"))
@@ -224,12 +230,13 @@ async def test_imodule_capabilities_in_disco_info(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_iwindow_capabilities_in_disco_info(make_xmpp_comm) -> None:
+async def test_iwindow_capabilities_in_disco_info(make_xmpp_comm, make_unopened_comm) -> None:
     """disco#info must contain IWindow.Capabilities with full_frame fields."""
 
     async def _run():
-        module = make_module([ICooling, IWindow])
-        camera_comm = await make_xmpp_comm("camera", module)
+        comm = make_unopened_comm("camera")
+        make_module([ICooling, IWindow], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
 
         await camera_comm.set_capabilities(IModule, ModuleCapabilities(version="2.0.0.dev1", label="My Camera"))
         await camera_comm.set_capabilities(
@@ -249,12 +256,13 @@ async def test_iwindow_capabilities_in_disco_info(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_multiple_interface_capabilities(make_xmpp_comm) -> None:
+async def test_multiple_interface_capabilities(make_xmpp_comm, make_unopened_comm) -> None:
     """Multiple set_capabilities() calls must all appear in disco#info."""
 
     async def _run():
-        module = make_module([ICooling, IWindow])
-        camera_comm = await make_xmpp_comm("camera", module)
+        comm = make_unopened_comm("camera")
+        make_module([ICooling, IWindow], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
 
         await camera_comm.set_capabilities(IModule, ModuleCapabilities(version="2.0.0.dev1", label="Multi Cap Camera"))
         await camera_comm.set_capabilities(
@@ -277,12 +285,13 @@ async def test_multiple_interface_capabilities(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_get_capabilities_api(make_xmpp_comm) -> None:
+async def test_get_capabilities_api(make_xmpp_comm, make_unopened_comm) -> None:
     """comm.get_capabilities() must return a deserialized Capabilities dataclass."""
 
     async def _run():
-        module = make_module([ICooling, IWindow])
-        camera_comm = await make_xmpp_comm("camera", module)
+        comm = make_unopened_comm("camera")
+        make_module([ICooling, IWindow], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
 
         await camera_comm.set_capabilities(IModule, ModuleCapabilities(version="2.0.0.dev1", label="My Camera"))
         await camera_comm.set_capabilities(

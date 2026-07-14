@@ -190,6 +190,43 @@ exhausted-attempts/no-filename/pipeline-error/no-on-sky-distance/exptime-update-
 
 Verified: `pytest tests/ -m "not integration and not xmpp"` (1076 passed, up from 1026).
 
+### Tests written for `pyobs/mixins/fitsheader.py`, plus two more real bugs fixed ✅
+
+Previously 27.7% coverage (177 stmts) despite being the FITS-header-building mixin used by every
+camera module. Added `tests/mixins/test_fitsheader.py` (41 tests) via a minimal `Module +
+ImageFitsHeaderMixin` test-double (`BaseVideo` turned out not to forward `frame_number`/
+`night_obs` to the mixin at all, so it couldn't exercise those branches -- see below). Covers
+`__init__` defaults, `request_fits_headers()`/`add_requested_fits_headers()` (including the
+`RemoteError`-skips-that-client path), `add_fits_headers()`'s top-level orchestration,
+`_fitsheadermixin_add_fits_headers()`'s MJD-OBS/EQUINOX/location/LST/DAY-OBS logic (both the
+night-obs and calendar-day branches), `_fitsheadermixin_add_framenum()` (increment, cache
+hit/reset-on-new-night/corrupt-cache/write-failure), `format_filename()`, and
+`ImageFitsHeaderMixin`'s WCS-header calculations (CRVAL/CDELT/focal-reduction/CRPIX/CTYPE/PC
+matrix, including all the "missing input -> warn and skip" branches).
+
+**Two more real bugs found and fixed while writing these tests:**
+- `_fitsheadermixin_add_framenum()` did `hdr["DAY-OBS"]` unconditionally, but `DAY-OBS` is only
+  set by `_fitsheadermixin_add_fits_headers()` when `DATE-OBS` was present in the header -- a
+  missing `DATE-OBS` meant a `KeyError` crash here instead of the graceful warn-and-skip the
+  calling code's log message ("adding NO further information!") implied. Now guards on
+  `"DAY-OBS" not in hdr` and warns instead of crashing.
+- `_fitsheadermixin_add_fits_headers()` called `date_obs.night_obs(module._observer)`
+  unconditionally whenever `night_obs=True` (the default), even if no observer was configured
+  (e.g. no `location` given at all) -- `AttributeError: 'NoneType' object has no attribute
+  'sun_set_time'`. Now falls back to the plain calendar day when there's no observer to compute
+  the night from, same as the existing `location is None` fallback right above it.
+
+Also noted, not fixed (near-zero behavioral risk): `format_filename()`'s `if filename is None:
+return None` is unreachable given the underlying utility function's contract (raises `KeyError`
+or returns `str`, never `None`); the `ImageFitsHeaderMixin` WCS-header block's `v()` helper checks
+`isinstance(k, list \| tuple)` on the *key* (always a plain string at every call site) instead of
+the *value* -- looks like a typo, but since `astropy.io.fits.Header.__getitem__` never returns
+`(value, comment)` tuples anyway, both branches of the ternary always evaluate identically. Dead,
+not currently harmful.
+
+Verified: `pytest tests/ -m "not integration and not xmpp"` (1117 passed, up from 1076) and,
+against a local ejabberd, `pytest tests/ -m "integration or xmpp"`.
+
 ## Needs a decision
 
 ### `pyobs/modules/camera/basevideo.py`: two minor issues left unfixed

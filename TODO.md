@@ -30,6 +30,40 @@ camera_comm = await make_xmpp_comm("camera", comm=comm)
 ```
 Verified against a local ejabberd: `pytest tests/integration -m "integration or xmpp"` (72 passed).
 
+### Flaky / slow test sweep ✅
+
+Swept the whole suite for the same class of bug as `test_filters.py::test_fromlistfilter`
+(patching the wrong `Time.now`/`datetime.now` target) and other non-determinism sources.
+Came back clean -- no fixes applied:
+
+- **`Time.now`/`datetime.now`/`date.today` patch targets** (26 call sites): all correctly patch
+  `pyobs.utils.time.Time.now` or a module's own imported reference to that same class, so the
+  `test_filters.py` bug was an isolated case, not a systemic pattern.
+- **Real `time.sleep()`** (`test_average.py`, 4 call sites): genuinely can't be mocked without a
+  patchable time seam in `RollingTimeAverage` (it calls `datetime.now(UTC)` directly). Sleeps are
+  short (0.1-0.15s) with a comfortable safety margin over the intervals being tested -- low risk,
+  not worth a production-code change just for this.
+- **Unseeded randomness**: none found; the one `np.random` usage (`test_curvefit.py`) is seeded.
+- **Order-dependent `glob`/`listdir` results**: one file uses unsorted `glob.glob()`
+  (`test_yaml_archives.py`), but every assertion on the result either checks length only or
+  filters to a single match first -- no test actually depends on result order.
+- **Real network calls outside integration-marked tests**: none found.
+- **Long `asyncio.sleep()` calls** (including three `asyncio.sleep(100)` in
+  `test_background_task.py`): all are the "sleep until cancelled" pattern for testing
+  cancellation, not something the test actually waits out.
+- **One theoretical, not fixed**: `test_utils_scripts.py::test_log_expression_with_now` compares
+  `datetime.now(UTC).year` computed after the script runs against a year value the script baked
+  into a log message a few milliseconds earlier -- both call raw `datetime.now(UTC)`, not the
+  patchable `Time.now()`. Could theoretically flake in the exact millisecond window UTC year
+  rolls over (roughly once every 4 years). Left as-is: negligible real-world risk, and patching
+  `datetime` class references correctly is itself easy to get wrong (see the bug this whole sweep
+  was triggered by).
+- **Aside, not itself flaky**: `tests/modules/filecache/test_http.py` is a single large
+  triple-quoted string -- the whole file is inert, pytest collects zero tests from it. Different
+  from the `stellarexptime.py`/`standalone.py` collection-glob bugs (those were real tests just
+  misnamed); this one was deliberately commented out and would need actual work to turn into a
+  real test, not a rename. Not fixed here since it's out of scope for "flaky," not itself broken.
+
 ## Needs a design decision
 
 ### 1. `Class.__new__(Class)` null test doubles can't go through the constructor
@@ -48,16 +82,7 @@ not clearly worth making just for this.
 
 ## Possible next audits (not scoped yet)
 
-### 2. Flaky / slow test sweep
-
-Found one test (`test_filters.py::test_fromlistfilter`) that silently depended on the real
-wall-clock date because it patched the wrong `Time.now` -- it only broke when the date rolled
-over mid-session. Worth a targeted sweep for the same class of bug: tests using real
-`time.sleep`/`asyncio.sleep` instead of a patched one, real network calls, or other
-non-deterministic dependencies that could be masking similar issues. Not scoped yet -- would
-need its own inventory pass first, same shape as `check_tests.md`/`check_mocks.md`.
-
-### 3. Test coverage gaps
+### 2. Test coverage gaps
 
 A different question from "are the existing tests good" (which is what the two audits above
 covered) -- this would be "which production code paths have no test at all." Not scoped yet.

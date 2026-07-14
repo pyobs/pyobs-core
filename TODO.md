@@ -64,9 +64,27 @@ Came back clean -- no fixes applied:
   misnamed); this one was deliberately commented out and would need actual work to turn into a
   real test, not a rename. Not fixed here since it's out of scope for "flaky," not itself broken.
 
-## Needs a design decision
+### Test coverage gaps -- scoped ✅
 
-### 1. `Class.__new__(Class)` null test doubles can't go through the constructor
+Measured with `coverage.py` (full suite incl. integration/XMPP against a local ejabberd): 60%
+overall, 43 files at 0%. Full breakdown, categorized, in `check_coverage.md`. Most of the 0%
+files are GUI widgets, CLI entry points, or external-service integrations (Telegram/Matrix/SMB/
+SFTP/InfluxDB) -- same cost/value tradeoff that already put XMPP/LCO behind integration markers,
+not worth chasing. See `check_coverage.md`'s "Category E" for the real, actionable gaps.
+
+## Needs a decision
+
+### 1. Write tests for the `pyobs/modules/flatfield/` subsystem
+
+Flagged in `check_coverage.md`: 199 statements across `flatfield.py`/`scheduler.py`/
+`pointing.py`, **zero test files** (`tests/` has no `test_*flatfield*` at all). Flat-field
+calibration is a real, regularly-run robotic operation, not a rare corner -- comparable in
+size/shape to `DummyRoof` (264 lines), which has solid coverage. The single clearest "should
+just have tests and doesn't" gap found. Also worth a look while there: `dummymode.py` and
+`dummyvideo.py`, the only two `Dummy*` simulator modules without tests (their siblings
+`DummyRoof`/`DummyCamera`/`MockWeather` all have them).
+
+### 2. `Class.__new__(Class)` null test doubles can't go through the constructor
 
 8 files (`test_mastermind.py`, `test_scheduler_mastermind.py`, `test_transit_mastermind.py`,
 `test_backend_archives.py`, `test_yaml_archives.py`, `lco/helpers.py`,
@@ -79,10 +97,3 @@ This is blocked, not just deferred: `Object.__init__` raises `ValueError` for `t
 state these tests want. Revisit only if `Object.__init__` ever grows a way to represent "no
 timezone configured" without raising -- that's a production-code change, not a test fix, and
 not clearly worth making just for this.
-
-## Possible next audits (not scoped yet)
-
-### 2. Test coverage gaps
-
-A different question from "are the existing tests good" (which is what the two audits above
-covered) -- this would be "which production code paths have no test at all." Not scoped yet.

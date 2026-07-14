@@ -247,7 +247,7 @@ Composes `IPointingRaDec` + `ITrackingMode`/`ITrackingRate` under the hood, and 
 Orbital elements don't belong on `ITrackingMode` (no mount firmware understands six orbital elements — that interface is strictly discrete/firmware-native) and a bare `set_tracking_rate` call isn't sufficient by itself either, since a rate is only the instantaneous output of propagating elements — something still has to do that propagation continuously as geometry changes over a sequence. Both routes below feed the same background task and the same `ITrackingRate` consumer; they differ only in where the ephemeris comes from.
 
 **Option A — extend `IPointingBody.track_body(body: str)` resolution.** Try `astropy.coordinates.get_body` first (Sun/Moon/major planets); for anything not found there, resolve via JPL Horizons (`astroquery.jplhorizons`) instead. No interface change — same call, same signature. Horizons ephemeris is perturbation-aware and accurate.
-- Trade-off: network dependency per target, possible rate-limiting when queueing several asteroid pointings in one night, and no coverage for objects newer than Horizons' latest ingest — exactly the case where speed matters most (fast NEO follow-up).
+- Trade-off: network dependency per target, possible rate-limiting when queueing several asteroid pointings in one night, and no coverage for objects newer than Horizons' latest ingest — exactly the case where speed matters most (fast NEO follow-up). That gap is accepted rather than patched with an automatic MPC/NEOCP lookup (see "Elements source" below); it's covered by calling `track_orbital_elements` directly instead.
 
 **Option B — dedicated interface taking orbital elements directly:**
 
@@ -289,19 +289,19 @@ Near-parabolic/cometary case (`perihelion_time` given, `mean_anomaly` absent): s
 
 **Benchmark.** Measured directly rather than assumed, since "hand-rolled" invites the question of whether it's actually cheap enough: steps 1–5 (Kepler solve + rotations, pure numpy, no astropy) cost **~6 µs/call**. Step 6 (the `astropy.coordinates` heliocentric-ecliptic → ICRS frame transform) dominates completely at **~1.2 ms/call** warm — three orders of magnitude more than the orbit math itself, all of it astropy's `SkyCoord`/frame-transform bookkeeping rather than anything intrinsic to the propagation. A cold first call in a fresh process (imports, IERS table init) costs ~270 ms, but that's paid once per process lifetime, not per tick. At the background task's 60–600s cadence and at most two calls per tick (position + one finite-difference sample for rate), total cost is ~2 ms every 60s in the worst case — not a design concern, and irrelevant next to the lock-contention/slew-timing questions raised elsewhere in this doc.
 
-- Trade-off: no network dependency, works for elements minutes-old off an MPC/NEOCP posting, but two-body propagation ignores perturbations regardless of whether it's hand-rolled or library-based — fine over one night's arc, would drift if elements are stale by weeks.
+- Trade-off: no network dependency, works for elements minutes-old off a freshly-posted orbital-element set, but two-body propagation ignores perturbations regardless of whether it's hand-rolled or library-based — fine over one night's arc, would drift if elements are stale by weeks.
 
-**Elements source, resolved:** both manual and automatic resolution are valid, but they're not competing implementations — they sit at different layers. `track_orbital_elements(elements: OrbitalElements)` already **is** the manual-input path; a caller with elements in hand (typed in, pasted from an MPC posting) just calls it directly, no additional design needed. MPC/NEOCP-automatic lookup is a convenience layer on top, folded into `track_body`'s resolution chain as another kind of name to resolve, alongside Sun/Moon/planets — internally producing elements and calling `track_orbital_elements` itself:
+**Elements source: manual only, no automatic MPC/NEOCP lookup.** `track_orbital_elements(elements: OrbitalElements)` **is** the entry point for anything with orbital elements in hand — typed in, pasted from an MPC/NEOCP posting, whatever the source. There is deliberately no automatic scraping layer built on top of it, resolving a designation to elements the way `track_body` resolves a name to a position.
+
+An automatic MPC/NEOCP-by-designation step, folded into `track_body`'s resolution chain, was considered and dropped: the Minor Planet Center has no formal REST API, so "automatic lookup" would mean scraping an unversioned web page — and doing that is riskiest precisely for a NEOCP object posted hours ago, the one case (fast NEO follow-up) this whole feature exists to unblock. A scraper silently breaking on exactly that object, at exactly the moment speed matters most, is a worse failure mode than not having the automation at all. Manual entry doesn't lose capability here, only the one-call convenience of typing a designation instead of pasting the six element values — and it's more robust, since it never depends on a page MPC could restructure at any time.
+
+`track_body`'s resolution chain is therefore just two steps:
 
 ```python
 async def track_body(self, body: str, **kwargs: Any) -> None:
     # 1. astropy get_body — Sun, Moon, major planets
-    # 2. MPC/NEOCP lookup by designation — fetches current orbital elements,
-    #    then internally calls track_orbital_elements
-    # 3. Horizons fallback — anything not covered above
+    # 2. Horizons fallback — anything not covered above
 ```
-
-Resolution order matters: MPC/NEOCP should be tried *before* Horizons fallback for anything not a Horizons-known major body, since NEOCP exists specifically to cover objects newer than Horizons has ingested — Horizons succeeding on a stale/incomplete record would silently produce worse elements than NEOCP's fresher ones for a newly-discovered object.
 
 ## Where the ephemeris/propagation math lives
 

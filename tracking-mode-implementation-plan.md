@@ -126,15 +126,14 @@ async def _resolve_body(self, body: str) -> tuple[float, float]:
 
     Resolution chain:
     1. astropy.coordinates.get_body — Sun, Moon, major planets
-    2. MPC/NEOCP lookup by designation — fetches orbital elements,
-       then propagates locally via the hand-rolled two-body Kepler solver (5.4)
-    3. JPL Horizons fallback — anything not covered above
+    2. JPL Horizons fallback — anything not covered above
     """
 ```
 
 - Step 1: `astropy.coordinates.get_body(body, Time.now(), observer=...)` -> SkyCoord -> (ra, dec)
-- Step 2: MPC/NEOCP lookup — query `https://www.minorplanetcenter.net/` or `https://ssd.jpl.nasa.gov/api/horizons.api` for elements, construct `OrbitalElements`, propagate locally via the hand-rolled two-body Kepler solver (5.4)
-- Step 3: `astroquery.jplhorizons` Horizons class — query by name, get RA/Dec
+- Step 2: `astroquery.jplhorizons` Horizons class — query by name, get RA/Dec
+
+No automatic MPC/NEOCP-by-designation step. Considered and dropped — see design doc's "Elements source" section: MPC has no formal REST API, so it'd mean scraping an unversioned page, riskiest for exactly the newly-posted-NEOCP-object case this feature is meant to help with. A caller with fresh elements in hand calls `track_orbital_elements(elements)` directly instead — no lookup needed, no scraper to break.
 
 ### 5.2 `track_body` implementation
 
@@ -351,6 +350,6 @@ await self.comm.set_state(
 
 1. **Horizons rate limits** — queueing many asteroid targets per night may hit JPL rate limits. The 10-min refresh cadence helps but isn't guaranteed per-target.
 2. **Two-body propagation accuracy** — hand-rolled two-body propagation ignores perturbations, same as any two-body library would. Fine for one night, drifts if elements are stale by weeks.
-3. **MPC/NEOCP API stability** — the Minor Planet Center doesn't have a formal REST API; scraping may break. Horizons is the more stable fallback.
-4. **Background task crash guard** — `BackgroundTask` considers >3 crashes in 10s as thrashing and calls `quit()`. The tracking task must be robust against transient errors (network failures for Horizons, etc.).
-5. **Kepler solver edge cases** — Newton–Raphson on Kepler's equation converges slowly (or not at all with a naive iteration) as `e` approaches 1; the near-parabolic/cometary path must branch to Barker's equation rather than pushing eccentric-orbit iteration into a regime it's not designed for.
+3. **Background task crash guard** — `BackgroundTask` considers >3 crashes in 10s as thrashing and calls `quit()`. The tracking task must be robust against transient errors (network failures for Horizons, etc.).
+4. **Kepler solver edge cases** — Newton–Raphson on Kepler's equation converges slowly (or not at all with a naive iteration) as `e` approaches 1; the near-parabolic/cometary path must branch to Barker's equation rather than pushing eccentric-orbit iteration into a regime it's not designed for.
+5. **No automatic path for brand-new NEOCP objects** — dropping MPC/NEOCP lookup means `track_body` has no way to resolve a bare designation for something too new for Horizons to have ingested; the caller must obtain elements themselves (MPC posting, NEOCP page) and call `track_orbital_elements` directly. Accepted trade-off, not a bug — see design doc's "Elements source" section.

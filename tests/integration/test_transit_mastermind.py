@@ -77,7 +77,6 @@ class TransitQuickRunner(QuickRunner):
         self._observer = None
         self._vfs = None
         self._timezone = None
-        self._location = None
         self.observation_archive = None
         self.task_archive = None
         self._end_time = end_time

@@ -161,22 +161,21 @@ class FitsHeaderMixin:
         # basic stuff
         hdr["EQUINOX"] = (2000.0, "Equinox of celestial coordinate system")
 
-        # do we have a location?
-        if module._location is not None:
-            loc = module._location
+        # do we have an observer (and thus a location)?
+        if module._observer is not None:
+            loc = module._observer.location
             # add location of telescope
             hdr["LONGITUD"] = (float(loc.lon.degree), "Longitude of the telescope [deg E]")
             hdr["LATITUDE"] = (float(loc.lat.degree), "Latitude of the telescope [deg N]")
             hdr["HEIGHT"] = (float(loc.height.value), "Altitude of the telescope [m]")
 
             # add local sidereal time
-            if module._observer is not None:
-                lst = module._observer.local_sidereal_time(date_obs)
-                lst_hours = float(lst.hour)
-                h = int(lst_hours)
-                m = int((lst_hours - h) * 60)
-                s = (lst_hours - h - m / 60) * 3600
-                hdr["LST"] = (f"{h:02d}:{m:02d}:{s:05.2f}", "Local sidereal time")
+            lst = module._observer.local_sidereal_time(date_obs)
+            lst_hours = float(lst.hour)
+            h = int(lst_hours)
+            m = int((lst_hours - h) * 60)
+            s = (lst_hours - h - m / 60) * 3600
+            hdr["LST"] = (f"{h:02d}:{m:02d}:{s:05.2f}", "Local sidereal time")
 
         # date of night this observation is in
         if self._fitsheadermixin_night_obs and module._observer is not None:

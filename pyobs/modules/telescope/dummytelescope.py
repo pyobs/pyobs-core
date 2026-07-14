@@ -257,9 +257,8 @@ class DummyTelescope(
             await asyncio.sleep(self._wait_secs)
 
     async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
-        coords = SkyCoord(
-            alt=alt * u.degree, az=az * u.degree, obstime=Time.now(), location=self._location, frame="altaz"
-        )
+        location = self._observer.location if self._observer is not None else None
+        coords = SkyCoord(alt=alt * u.degree, az=az * u.degree, obstime=Time.now(), location=location, frame="altaz")
         icrs = coords.icrs
         await self._move_radec(icrs.ra.degree, icrs.dec.degree, abort_event)
 

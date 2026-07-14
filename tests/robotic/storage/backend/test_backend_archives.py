@@ -36,7 +36,6 @@ def make_task_archive() -> BackendTaskArchive:
     archive._observer = None
     archive._vfs = None
     archive._timezone = None
-    archive._location = None
     archive._url = "http://localhost:8000"
     archive._token = "testtoken"
     archive._aiohttp_session = MagicMock()
@@ -53,7 +52,6 @@ def make_obs_archive() -> BackendObservationArchive:
     archive._observer = None
     archive._vfs = None
     archive._timezone = None
-    archive._location = None
     archive._url = "http://localhost:8000"
     archive._token = "testtoken"
     archive._aiohttp_session = MagicMock()

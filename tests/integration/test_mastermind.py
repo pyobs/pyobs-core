@@ -27,7 +27,6 @@ class QuickRunner(TaskRunner):
         obj._observer = None
         obj._vfs = None
         obj._timezone = None
-        obj._location = None
         obj.observation_archive = None
         obj.task_archive = None
         return obj
@@ -49,7 +48,6 @@ class FailingRunner(TaskRunner):
         obj._observer = None
         obj._vfs = None
         obj._timezone = None
-        obj._location = None
         obj.observation_archive = None
         obj.task_archive = None
         return obj
@@ -75,7 +73,6 @@ def make_obs_archive() -> MemoryObservationArchive:
     archive._observer = None
     archive._vfs = None
     archive._timezone = None
-    archive._location = None
     archive._observations = ObservationList()
     return archive
 
@@ -90,7 +87,6 @@ def make_mastermind(obs_archive, runner=None, task_archive=None) -> Mastermind:
     mm._observer = None
     mm._vfs = None
     mm._timezone = None
-    mm._location = None
     mm._allowed_late_start = 300
     mm._allowed_overrun = 300
     mm._after_task_sleep = 0

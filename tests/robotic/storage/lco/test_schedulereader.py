@@ -24,7 +24,6 @@ def make_reader(portal: Portal | None = None, auto_updates: bool = False) -> Lco
     reader._observer = None
     reader._vfs = None
     reader._timezone = None
-    reader._location = None
     reader._portal = portal or make_portal()
     reader._site = "goe"
     reader._telescope = "0m5a"

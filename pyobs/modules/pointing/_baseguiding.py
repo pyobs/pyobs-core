@@ -276,8 +276,9 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
 
         # apply offsets
         try:
+            location = self._observer.location if self._observer is not None else None
             async with self.proxy(self._telescope, ITelescope) as telescope:
-                result = await self._apply(image, telescope, self._location)
+                result = await self._apply(image, telescope, location)
                 if result.applied:
                     await self._set_loop_state(True, result.frame, result.lon, result.lat)
                     log.info("Finished image.")

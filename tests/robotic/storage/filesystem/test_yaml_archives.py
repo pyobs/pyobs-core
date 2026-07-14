@@ -33,7 +33,6 @@ def make_obs_archive(tmp_path, mode="night") -> YamlObservationArchive:
     archive._comm = None
     archive._vfs = None
     archive._timezone = None
-    archive._location = None
     archive._observer = SAAO
     archive._path = str(tmp_path)
     archive._extension = "yaml"
@@ -263,7 +262,6 @@ def make_task_archive(tmp_path) -> YamlTaskArchive:
     archive._comm = None
     archive._observer = None
     archive._timezone = None
-    archive._location = None
     archive._path = str(tmp_path)
     archive._extension = "yaml"
 

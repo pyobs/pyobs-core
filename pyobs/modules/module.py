@@ -173,12 +173,12 @@ class Module(Object, IModule, IConfig):
         if self._comm is not None:
             location = (
                 ModuleLocation(
-                    longitude=self._location.lon.degree,
-                    latitude=self._location.lat.degree,
-                    elevation=self._location.height.value,
+                    longitude=self._observer.location.lon.degree,
+                    latitude=self._observer.location.lat.degree,
+                    elevation=self._observer.location.height.value,
                     timezone=str(self._timezone),
                 )
-                if self._location is not None
+                if self._observer is not None
                 else None
             )
             await self._comm.set_capabilities(
@@ -243,17 +243,14 @@ class Module(Object, IModule, IConfig):
 
         # compare location, if both sides have one configured -- surfaces config drift between
         # modules that are supposed to share a site, since pyobs has no shared "site" concept
-        if remote_location is not None and self._location is not None:
+        if remote_location is not None and self._observer is not None:
             from astropy.coordinates import EarthLocation
 
+            local = self._observer.location
             remote = EarthLocation.from_geodetic(
                 remote_location.longitude, remote_location.latitude, remote_location.elevation
             )
-            distance = (
-                (remote.x - self._location.x) ** 2
-                + (remote.y - self._location.y) ** 2
-                + (remote.z - self._location.z) ** 2
-            ) ** 0.5
+            distance = ((remote.x - local.x) ** 2 + (remote.y - local.y) ** 2 + (remote.z - local.z) ** 2) ** 0.5
             if distance.to_value("m") > 100:  # tolerance, tune as needed
                 log.warning(
                     "Module %s reports a location %.0fm from ours (lon=%.4f, lat=%.4f, elevation=%.1fm).",

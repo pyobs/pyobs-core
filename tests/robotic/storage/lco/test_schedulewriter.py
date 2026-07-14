@@ -32,7 +32,6 @@ def make_writer(portal: Portal | None = None, configdb: ConfigDB | None = None) 
     writer._observer = None
     writer._vfs = None
     writer._timezone = None
-    writer._location = None
     writer._portal = portal or make_portal()
     writer._configdb = configdb or make_configdb()
     writer._site = "goe"

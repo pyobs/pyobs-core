@@ -29,7 +29,6 @@ def make_obs_archive() -> MemoryObservationArchive:
     archive._observer = None
     archive._vfs = None
     archive._timezone = None
-    archive._location = None
     archive._observations = ObservationList()
     return archive
 

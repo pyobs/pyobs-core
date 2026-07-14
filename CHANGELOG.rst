@@ -1,5 +1,8 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* ``Object.location`` is now derived from ``Object.observer`` instead of being stored and propagated to
+  child objects independently, removing a source of location/observer divergence. The ``location``
+  constructor argument is unchanged, but only affects the default ``observer`` built from it.
 * Fixed ``DummyTelescope.set_focus_offset`` silently logging an error instead of raising, which made
   remote callers see a false success; its M1/M2 temperatures now drift like ``DummyCamera``'s sensors
   instead of staying static after startup.

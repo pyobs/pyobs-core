@@ -25,8 +25,14 @@ class FitsModule(Module, ImageFitsHeaderMixin):
         ImageFitsHeaderMixin.__init__(self, **kwargs)
 
 
-def make_observer(lst_hours: float = 5.5, night: date = date(2024, 1, 1)) -> MagicMock:
+DEFAULT_LOCATION = EarthLocation.from_geodetic(lon=20.81, lat=-32.38, height=1798.0)
+
+
+def make_observer(
+    lst_hours: float = 5.5, night: date = date(2024, 1, 1), location: EarthLocation = DEFAULT_LOCATION
+) -> MagicMock:
     observer = MagicMock()
+    observer.location = location
     lst = MagicMock()
     lst.hour = lst_hours
     observer.local_sidereal_time = MagicMock(return_value=lst)
@@ -39,9 +45,9 @@ def make_observer(lst_hours: float = 5.5, night: date = date(2024, 1, 1)) -> Mag
 def make_module(location: EarthLocation | None = ..., observer: MagicMock | None = ..., **kwargs) -> FitsModule:
     comm = MagicMock(spec=Comm)
     if location is ...:
-        location = EarthLocation.from_geodetic(lon=20.81, lat=-32.38, height=1798.0)
+        location = DEFAULT_LOCATION
     if observer is ...:
-        observer = make_observer()
+        observer = make_observer(location=location) if location is not None else None
     return FitsModule(comm=comm, location=location, observer=observer, **kwargs)
 
 

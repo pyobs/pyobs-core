@@ -366,9 +366,9 @@ async def test_got_online_resolves_future_when_no_interfaces_found() -> None:
 
     await comm._got_online(msg)
 
-    future = comm._interface_cache["camera@localhost/pyobs"]
-    assert future.done()
-    assert future.result() == []
+    # a subsequent get_interfaces() call must resolve promptly, not hang forever
+    result = await asyncio.wait_for(comm.get_interfaces("camera@localhost/pyobs"), timeout=2.0)
+    assert result == []
 
 
 @pytest.mark.asyncio
@@ -401,7 +401,7 @@ async def test_got_online_completes_despite_broken_presence_callback() -> None:
     await comm._got_online(msg)
     await asyncio.sleep(0)  # let the task spawned by _send_event_to_module run
 
-    assert "camera@localhost/pyobs" in comm._online_clients
+    assert "camera" in comm.clients
     assert received == ["camera"]
 
 

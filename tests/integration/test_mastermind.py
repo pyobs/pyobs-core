@@ -198,13 +198,13 @@ async def test_mastermind_sends_task_started_event() -> None:
     await obs_archive.add_observations(ObservationList([make_obs()]))
 
     events_sent = []
-    original_send = mm._comm.send_event
+    original_send = mm.comm.send_event
 
     async def tracking_send(event):
         events_sent.append(event)
         return await original_send(event)
 
-    mm._comm.send_event = tracking_send
+    mm.comm.send_event = tracking_send
 
     await run_until_state(mm, obs_archive, ObservationState.COMPLETED)
 

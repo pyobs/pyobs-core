@@ -35,14 +35,11 @@ def test_get_from_cache(mock_image):
 
 def test_add_to_cache(mock_image):
     image_type = ImageType.OBJECT
-    image_instrument = "cam"
-    image_binning = "1x1"
-    image_filter = "filter"
 
     cache = _CalibrationCache(5)
     cache.add_to_cache(mock_image, image_type)
 
-    assert cache._cache[0] == ((image_type, image_instrument, image_binning, image_filter), mock_image)
+    assert cache.get_from_cache(mock_image, image_type) == mock_image
 
 
 def test_add_to_cache_size(mock_image):
@@ -56,7 +53,8 @@ def test_add_to_cache_size(mock_image):
     cache._cache = deque([((image_type, image_instrument, image_binning, image_filter), other_image)], 1)
     cache.add_to_cache(mock_image, image_type)
 
-    assert cache._cache[0] == ((image_type, image_instrument, image_binning, image_filter), mock_image)
+    # maxlen=1, so the old entry must have been evicted -- only the new one is retrievable
+    assert cache.get_from_cache(mock_image, image_type) == mock_image
 
 
 def test_find_cache_entry_emtpy():

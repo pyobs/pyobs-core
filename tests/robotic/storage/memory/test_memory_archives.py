@@ -329,27 +329,32 @@ async def test_task_get_projects_with_projects() -> None:
     assert result[0].code == "test"
 
 
-def test_task_add_task(task_archive) -> None:
+@pytest.mark.asyncio
+async def test_task_add_task(task_archive) -> None:
     task = make_task(1)
     task_archive.add_task(task)
-    assert "1" in task_archive._tasks
-    assert task_archive._last_changed is not None
+    assert await task_archive.get_task("1") is not None
+    assert await task_archive.last_changed() is not None
 
 
-def test_task_add_task_replaces_existing(task_archive) -> None:
+@pytest.mark.asyncio
+async def test_task_add_task_replaces_existing(task_archive) -> None:
     task1 = make_task(1)
     task2 = Task(id=1, name="replaced", duration=100)
     task_archive.add_task(task1)
     task_archive.add_task(task2)
-    assert task_archive._tasks["1"].name == "replaced"
+    result = await task_archive.get_task("1")
+    assert result is not None
+    assert result.name == "replaced"
 
 
-def test_task_remove_task(task_archive) -> None:
+@pytest.mark.asyncio
+async def test_task_remove_task(task_archive) -> None:
     task = make_task(1)
     task_archive.add_task(task)
     task_archive.remove_task(1)
-    assert "1" not in task_archive._tasks
-    assert task_archive._last_changed is not None
+    assert await task_archive.get_task("1") is None
+    assert await task_archive.last_changed() is not None
 
 
 def test_task_remove_task_noop_if_not_found(task_archive) -> None:

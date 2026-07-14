@@ -66,13 +66,13 @@ concern.
 - `pyobs/vfs/filelists/testing.py` (12), `filelist.py` (5), `__init__.py` (3) -- also
   test-support tooling per the module name.
 
-### Category E -- Real gaps: no external-service or GUI excuse (remaining: 13 files)
+### Category E -- Real gaps: no external-service or GUI excuse (remaining: 12 files)
 
 Core module/processor logic, same shape as plenty of code that *does* have good coverage
-elsewhere (comm/vfs-mockable, no special hardware). The flatfield subsystem and the two
-untested `Dummy*` modules from this category are resolved (see git history); remaining:
+elsewhere (comm/vfs-mockable, no special hardware). The flatfield subsystem, the two
+untested `Dummy*` modules, and `kiosk.py` from this category are resolved (see git history);
+remaining:
 
-- `pyobs/modules/utils/kiosk.py` (87)
 - `pyobs/modules/utils/autonomouswarning.py` (70)
 - `pyobs/modules/utils/trigger.py` (50)
 - `pyobs/comm/xmpp/xep_0009/binding.py` (137) -- low-level XMPP RPC extension binding; not hit by

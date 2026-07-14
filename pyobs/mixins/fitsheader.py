@@ -179,8 +179,8 @@ class FitsHeaderMixin:
                 hdr["LST"] = (f"{h:02d}:{m:02d}:{s:05.2f}", "Local sidereal time")
 
         # date of night this observation is in
-        if self._fitsheadermixin_night_obs:
-            hdr["DAY-OBS"] = (date_obs.night_obs(module._observer).strftime("%Y-%m-%d"), "Night of observation")  # type: ignore[arg-type]
+        if self._fitsheadermixin_night_obs and module._observer is not None:
+            hdr["DAY-OBS"] = (date_obs.night_obs(module._observer).strftime("%Y-%m-%d"), "Night of observation")
         else:
             hdr["DAY-OBS"] = (date_obs.strftime("%Y-%m-%d"), "Day of observation")
 
@@ -194,6 +194,11 @@ class FitsHeaderMixin:
 
         # get header
         hdr = image.header
+
+        # need DAY-OBS, which is only set if DATE-OBS was found earlier
+        if "DAY-OBS" not in hdr:
+            log.warning("No DAY-OBS found in FITS header, cannot add FRAMENUM.")
+            return
 
         # get night from header
         night = hdr["DAY-OBS"]

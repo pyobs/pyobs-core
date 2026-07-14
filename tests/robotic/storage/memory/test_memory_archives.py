@@ -296,7 +296,7 @@ async def test_task_constructed_with_tasks() -> None:
 @pytest.mark.asyncio
 async def test_task_get_task_found(task_archive) -> None:
     task = make_task(42)
-    task_archive._tasks = {"42": task}
+    task_archive.add_task(task)
     result = await task_archive.get_task(42)
     assert result is task
 
@@ -310,7 +310,7 @@ async def test_task_get_task_not_found(task_archive) -> None:
 async def test_task_get_task_string_id(task_archive) -> None:
     """get_task works with both int and string IDs."""
     task = make_task(1)
-    task_archive._tasks = {"1": task}
+    task_archive.add_task(task)
     assert await task_archive.get_task("1") is task
     assert await task_archive.get_task(1) is task
 

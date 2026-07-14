@@ -113,6 +113,33 @@ loop's own logic from image/FITS creation, which is `BaseVideo`'s concern, not `
 
 Verified: `pytest tests/ -m "not integration and not xmpp"` (937 passed, up from 923).
 
+### Tests written for `pyobs/robotic/utils/skyflats/flatfielder.py` ✅
+
+Previously 21.2% coverage (260 statements) despite being the actual flat-fielding algorithm
+behind the `FlatField` module. Added `tests/utils/skyflats/test_flatfielder.py` (57 tests)
+covering the state machine (`__call__`'s dispatch, `_init_system`/`_wait`/`_testing`/
+`_flat_field`, each state's transition/sleep/finish branches), the pure helper methods
+(`_eval_exptime`, `_calc_new_exptime`, `_get_image_median`, `_eval_function`, `_initial_check`),
+`reset()`, `has_filters`, `_get_bias`, `_take_image`, `_set_window`, and `_analyse_image`.
+
+Isolated each state-machine step from the ones before/after it by mocking the specific private
+methods that do the work of adjacent steps (e.g. `_testing()`'s tests mock `_set_window`/
+`_take_image`/`_analyse_image` rather than exercising them for real) -- same reasoning as
+`FlatFieldScheduler`'s tests mocking out `Scheduler`. `self._eval` (an `ExpTimeEval`, already
+covered by `test_exptimeeval.py`) is driven with simple constant-exposure-time functions
+(`"5.0"`) rather than mocked, since it's cheap and keeps the tests reading close to real usage;
+`self.observer.sun_altaz` is mocked directly since real astronomical calculations would make
+test outcomes depend on wall-clock time.
+
+**Found and fixed a real bug while writing these tests**: `_analyse_image()` compared a
+normalized fractional deviation (`frac`, typically 0-1ish) against `self._target_count` (a
+count-rate, typically ~30000) -- a condition that could essentially never be true, silently
+disabling the "retry if the flat is way off target" check. `self._allowed_offset_frac` -- a
+constructor parameter clearly named for exactly this purpose -- was stored but never read
+anywhere in the file. Fixed `if frac > self._target_count` to `if frac > self._allowed_offset_frac`.
+
+Verified: `pytest tests/ -m "not integration and not xmpp"` (994 passed, up from 937).
+
 ## Needs a decision
 
 ### `Class.__new__(Class)` null test doubles can't go through the constructor

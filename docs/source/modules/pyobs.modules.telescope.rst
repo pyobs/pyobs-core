@@ -10,10 +10,24 @@ BaseTelescope
    :members:
    :show-inheritance:
 
-DummyTelescope
-^^^^^^^^^^^^^^
+DummyRaDecTelescope
+^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: pyobs.modules.telescope.DummyTelescope
+.. autoclass:: pyobs.modules.telescope.DummyRaDecTelescope
+   :members:
+   :show-inheritance:
+
+DummyAltAzTelescope
+^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.modules.telescope.DummyAltAzTelescope
+   :members:
+   :show-inheritance:
+
+DummySolarTelescope
+^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.modules.telescope.DummySolarTelescope
    :members:
    :show-inheritance:
 

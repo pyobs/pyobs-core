@@ -19,10 +19,10 @@ from pyobs.modules.telescope.basetelescope import (
     _DEFAULT_REFRESH_INTERVAL_SECONDS,
     _MOON_FALLBACK_REFRESH_INTERVAL_SECONDS,
 )
-from pyobs.modules.telescope.dummytelescope import DummyTelescope
+from pyobs.modules.telescope.dummyradectelescope import DummyRaDecTelescope
 
 
-def make_dummytelescope(**kwargs) -> DummyTelescope:
+def make_dummyradectelescope(**kwargs) -> DummyRaDecTelescope:
     comm = MagicMock(spec=Comm)
     comm.get_own_state = MagicMock(return_value=None)
     comm.get_own_capabilities = MagicMock(return_value=None)
@@ -36,7 +36,7 @@ def make_dummytelescope(**kwargs) -> DummyTelescope:
         observer = Observer(latitude=52.0 * u.deg, longitude=10.0 * u.deg, elevation=100.0 * u.m)
     kwargs.setdefault("min_altitude", -90)
     kwargs.setdefault("location", observer.location)
-    return DummyTelescope(comm=comm, observer=observer, **kwargs)
+    return DummyRaDecTelescope(comm=comm, observer=observer, **kwargs)
 
 
 # ── set_tracking_mode ─────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ def make_dummytelescope(**kwargs) -> DummyTelescope:
 
 @pytest.mark.asyncio
 async def test_set_tracking_mode_valid_updates_state():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     await tel.set_tracking_mode(TrackingMode.LUNAR)
     assert tel._tracking_mode == TrackingMode.LUNAR
     interface, state = tel._comm.set_state.await_args.args
@@ -54,7 +54,7 @@ async def test_set_tracking_mode_valid_updates_state():
 
 @pytest.mark.asyncio
 async def test_set_tracking_mode_invalid_raises_and_does_not_change_state():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     with pytest.raises(ValueError):
         await tel.set_tracking_mode("bogus")  # type: ignore[arg-type]
     assert tel._tracking_mode == TrackingMode.OFF
@@ -65,7 +65,7 @@ async def test_set_tracking_mode_invalid_raises_and_does_not_change_state():
 
 @pytest.mark.asyncio
 async def test_open_publishes_tracking_capabilities_and_state():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     await tel.open()
     interfaces_with_capabilities = {call.args[0] for call in tel._comm.set_capabilities.await_args_list}
     assert ITrackingMode in interfaces_with_capabilities
@@ -80,7 +80,7 @@ async def test_open_publishes_tracking_capabilities_and_state():
 
 @pytest.mark.asyncio
 async def test_move_radec_resets_tracking_mode_to_sidereal():
-    tel = make_dummytelescope(speed=100000.0)  # near-instant sim slew
+    tel = make_dummyradectelescope(speed=100000.0)  # near-instant sim slew
     await tel.open()  # _move_task (which drives the simulated slew) only starts after open()
     tel._tracking_mode = TrackingMode.LUNAR
     await tel.move_radec(10.0, 20.0)
@@ -89,7 +89,7 @@ async def test_move_radec_resets_tracking_mode_to_sidereal():
 
 @pytest.mark.asyncio
 async def test_move_altaz_resets_tracking_mode_to_off():
-    tel = make_dummytelescope(speed=100000.0)
+    tel = make_dummyradectelescope(speed=100000.0)
     await tel.open()
     tel._tracking_mode = TrackingMode.LUNAR
     await tel.move_altaz(45.0, 90.0)
@@ -98,7 +98,7 @@ async def test_move_altaz_resets_tracking_mode_to_off():
 
 @pytest.mark.asyncio
 async def test_move_radec_clears_tracked_body():
-    tel = make_dummytelescope(speed=100000.0)
+    tel = make_dummyradectelescope(speed=100000.0)
     await tel.open()
     tel._tracked_body = "mars"
     await tel.move_radec(10.0, 20.0)
@@ -107,7 +107,7 @@ async def test_move_radec_clears_tracked_body():
 
 @pytest.mark.asyncio
 async def test_move_altaz_clears_tracked_body():
-    tel = make_dummytelescope(speed=100000.0)
+    tel = make_dummyradectelescope(speed=100000.0)
     await tel.open()
     tel._tracked_body = "mars"
     await tel.move_altaz(45.0, 90.0)
@@ -119,7 +119,7 @@ async def test_move_altaz_clears_tracked_body():
 
 @pytest.mark.asyncio
 async def test_set_tracking_rate_forces_sidereal_when_not_already():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     tel._tracking_mode = TrackingMode.LUNAR
     tel._comm.get_own_state = MagicMock(return_value=TrackingModeState(mode=TrackingMode.LUNAR))
 
@@ -131,7 +131,7 @@ async def test_set_tracking_rate_forces_sidereal_when_not_already():
 
 @pytest.mark.asyncio
 async def test_set_tracking_rate_skips_redundant_mode_switch_when_already_sidereal():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     tel._tracking_mode = TrackingMode.SIDEREAL
     tel._comm.get_own_state = MagicMock(return_value=TrackingModeState(mode=TrackingMode.SIDEREAL))
     tel.set_tracking_mode = AsyncMock(wraps=tel.set_tracking_mode)  # type: ignore[method-assign]
@@ -148,7 +148,7 @@ async def test_set_tracking_rate_skips_redundant_mode_switch_when_already_sidere
 @pytest.mark.asyncio
 async def test_track_body_moon_slews_and_uses_native_lunar_mode():
     # astropy's builtin ephemeris resolves 'moon' with no network access needed
-    tel = make_dummytelescope(speed=100000.0)
+    tel = make_dummyradectelescope(speed=100000.0)
     await tel.open()
     await tel.track_body("moon")
     assert tel._tracked_body == "moon"
@@ -161,7 +161,7 @@ async def test_track_body_moon_slews_and_uses_native_lunar_mode():
 
 @pytest.mark.asyncio
 async def test_track_body_unresolvable_raises_value_error():
-    tel = make_dummytelescope(speed=100000.0)
+    tel = make_dummyradectelescope(speed=100000.0)
 
     def _raise(*args, **kwargs):
         raise Exception("boom")
@@ -172,12 +172,12 @@ async def test_track_body_unresolvable_raises_value_error():
             await tel.track_body("definitely-not-a-real-body-xyz")
 
 
-# ── DummyTelescope's simulated tracking-rate motion ──────────────────────────
+# ── DummyRaDecTelescope's simulated tracking-rate motion ──────────────────────────
 
 
 @pytest.mark.asyncio
 async def test_move_task_applies_tracking_rate_to_position():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     await tel.open()  # _move_task only starts after open()
     ra0, dec0 = tel._position_radec
     tel._tracking_rate = (5.0, -2.0)  # arcsec/sec, exaggerated for a fast, reliable test
@@ -195,24 +195,24 @@ async def test_move_task_applies_tracking_rate_to_position():
 
 
 def test_tracking_refresh_interval_defaults_when_no_capabilities_published():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     assert tel._tracking_refresh_interval() == _DEFAULT_REFRESH_INTERVAL_SECONDS
 
 
 def test_tracking_refresh_interval_clamped_up_by_min_update_interval():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=900.0))
     assert tel._tracking_refresh_interval() == 900.0
 
 
 def test_tracking_refresh_interval_not_clamped_down_below_accuracy_driven_default():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=10.0))
     assert tel._tracking_refresh_interval() == _DEFAULT_REFRESH_INTERVAL_SECONDS
 
 
 def test_tracking_refresh_interval_moon_fallback_clamped_up():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     tel._tracked_body = "moon"
     tel._last_tracking_used_native_mode = False  # no native LUNAR available -> 60s fallback cadence
     tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=120.0))
@@ -220,7 +220,7 @@ def test_tracking_refresh_interval_moon_fallback_clamped_up():
 
 
 def test_tracking_refresh_interval_moon_fallback_not_clamped_below_60s():
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     tel._tracked_body = "moon"
     tel._last_tracking_used_native_mode = False
     tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=5.0))
@@ -228,7 +228,7 @@ def test_tracking_refresh_interval_moon_fallback_not_clamped_below_60s():
 
 
 def test_tracking_refresh_interval_warns_once_when_hardware_floor_degrades_tracking(caplog):
-    tel = make_dummytelescope()
+    tel = make_dummyradectelescope()
     tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=900.0))
 
     with caplog.at_level("WARNING"):

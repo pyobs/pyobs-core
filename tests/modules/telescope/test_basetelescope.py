@@ -6,7 +6,7 @@ import pytest
 from astroplan import Observer
 
 from pyobs.interfaces import OrbitalElements
-from pyobs.modules.telescope import DummyTelescope
+from pyobs.modules.telescope import DummyRaDecTelescope
 from pyobs.modules.telescope.basetelescope import (
     _orbital_plane_to_ecliptic_cartesian,
     _propagate_elements,
@@ -17,7 +17,7 @@ from pyobs.utils.time import Time
 
 
 def test_calculate_derotator_position():
-    telescope = DummyTelescope(
+    telescope = DummyRaDecTelescope(
         observer=Observer(latitude=-32.375823 * u.deg, longitude=20.8108079 * u.deg, elevation=1798.0 * u.m)
     )
     obstime = Time("2024-03-21T20:11:52.281735")

@@ -92,11 +92,7 @@ async def test_open_publishes_imodule_capabilities() -> None:
     comm.name = "camera"
     comm.set_capabilities = AsyncMock()
 
-    module = Module(comm=comm, location=None, timezone="utc")
-    module._label = "Test Camera"
-    module._child_objects = []
-    module._own_comm = False  # skip comm.open()
-    module._config_caps = {}  # no config caps for stub
+    module = Module(comm=comm, location=None, timezone="utc", label="Test Camera", own_comm=False)
 
     with patch("pyobs.object.Object.open", new_callable=AsyncMock):
         module.get_version = AsyncMock(return_value="2.0.0")
@@ -121,11 +117,7 @@ async def test_open_publishes_empty_label_when_none() -> None:
     comm.name = "camera"
     comm.set_capabilities = AsyncMock()
 
-    module = Module(comm=comm, location=None, timezone="utc")
-    module._label = None
-    module._child_objects = []
-    module._own_comm = False
-    module._config_caps = {}
+    module = Module(comm=comm, location=None, timezone="utc", own_comm=False)
 
     with patch("pyobs.object.Object.open", new_callable=AsyncMock):
         module.get_version = AsyncMock(return_value="2.0.0")
@@ -151,11 +143,13 @@ async def test_open_publishes_location_when_configured() -> None:
     comm.name = "camera"
     comm.set_capabilities = AsyncMock()
 
-    module = Module(comm=comm, location=EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0), timezone="utc")
-    module._label = "Test Camera"
-    module._child_objects = []
-    module._own_comm = False
-    module._config_caps = {}
+    module = Module(
+        comm=comm,
+        location=EarthLocation.from_geodetic(lon=9.9, lat=51.5, height=100.0),
+        timezone="utc",
+        label="Test Camera",
+        own_comm=False,
+    )
 
     with patch("pyobs.object.Object.open", new_callable=AsyncMock):
         module.get_version = AsyncMock(return_value="2.0.0")

@@ -326,8 +326,8 @@ Verified: `pytest tests/integration/test_mastermind.py tests/integration/test_sc
 
 ### `Class.__new__(Class)` null test doubles can't go through the constructor -- remaining 6 files
 
-`test_transit_mastermind.py`, `test_backend_archives.py`, `test_yaml_archives.py`,
-`lco/helpers.py`, `test_schedulereader.py`, `test_schedulewriter.py` still build test doubles via
+`test_transit_mastermind.py`, `test_backend_archives.py`, `lco/helpers.py`,
+`test_schedulereader.py`, `test_schedulewriter.py` still build test doubles via
 `Class.__new__(Class)` + manually setting `_comm`/`_observer`/`_timezone` to `None`. Unlike the
 Mastermind case above, spot-checking these turned up *real* reasons unrelated to comm/timezone:
 
@@ -345,7 +345,32 @@ Mastermind case above, spot-checking these turned up *real* reasons unrelated to
   "session only exists after async `open()`" shape as `Portal` (`_aiohttp_session` is `None` until
   `open()`), but this hasn't been verified line-by-line the way Mastermind was.
 
-Not revisited in detail this round -- `test_yaml_archives.py`'s filesystem archives looked like
-they *might* go through the real constructor fine (no network/async-session issue spotted), but
-that's unconfirmed. Worth a proper look if this is picked up again, rather than assuming either
-"all blocked" or "all fixable."
+### `test_yaml_archives.py`: verified fixable, fixed ✅
+
+Checked whether this one actually needed the `Class.__new__` bypass, same way as Mastermind.
+It didn't, for two different reasons per class:
+
+- `YamlObservationArchive`: no blocker at all. `FileSystemObservationArchive.__init__` just does
+  plain OS-path I/O (`os.path.join`, a real `FileLock`, `open()`/`yaml.safe_dump` in the concrete
+  subclass) -- it never touches `self.vfs`. Calling `YamlObservationArchive(path=str(tmp_path),
+  mode=mode, observer=SAAO)` for real produces the identical shape the bypass built by hand
+  (confirmed by instantiating it directly). Now `make_obs_archive()` is a one-line real
+  constructor call.
+- `YamlTaskArchive`: the `_vfs` fake is legitimate, but for a different reason than comm/timezone.
+  `FileSystemTaskArchive.get_schedulable_tasks()` calls `self.vfs.find(self._path, pattern)`, and
+  the *real* `VirtualFileSystem` addresses files via configured `"root/relative"` prefixes (e.g.
+  `"pyobs/..."`) -- it can't resolve an arbitrary absolute `tmp_path` without registering a custom
+  root keyed to that exact path. The fake `vfs.find`/`vfs.read_yaml` (hitting `tmp_path` directly
+  via `glob`/`open()`) sidesteps that addressing scheme, not comm/timezone. But that only requires
+  faking `_vfs` specifically -- the constructor itself (`YamlTaskArchive(path=str(tmp_path))`)
+  works fine for real, so `make_task_archive()` now calls it for real and only overrides `_vfs`
+  afterward (an ordinary post-construction poke, same pattern used everywhere else for
+  legitimately-mocked collaborators).
+
+Verified: `pytest tests/robotic/storage/filesystem/test_yaml_archives.py` (22 passed) and full
+suite `pytest tests/ -m "not integration and not xmpp"` (1229 passed).
+
+Not revisited in detail this round -- `test_backend_archives.py`/`test_transit_mastermind.py`/
+`lco/helpers.py`'s `LcoTaskArchive`/`LcoObservationArchive`/`test_schedulereader.py`/
+`test_schedulewriter.py` are the remaining 5 files. Worth the same per-class check if this is
+picked up again, rather than assuming either "all blocked" or "all fixable."

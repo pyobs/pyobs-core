@@ -10,7 +10,6 @@ import yaml
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
 from astropy.time import TimeDelta
-from filelock import FileLock
 
 from pyobs.robotic import Task
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
@@ -29,16 +28,7 @@ OBS_END = NIGHT + TimeDelta(300 * u.second)
 
 
 def make_obs_archive(tmp_path, mode="night") -> YamlObservationArchive:
-    archive = YamlObservationArchive.__new__(YamlObservationArchive)
-    archive._comm = None
-    archive._vfs = None
-    archive._timezone = None
-    archive._observer = SAAO
-    archive._path = str(tmp_path)
-    archive._extension = "yaml"
-    archive._mode = mode
-    archive._lock = FileLock(os.path.join(str(tmp_path), ".lock"))
-    return archive
+    return YamlObservationArchive(path=str(tmp_path), mode=mode, observer=SAAO)
 
 
 def make_task(task_id: int = 1) -> Task:
@@ -258,13 +248,10 @@ target:
 
 
 def make_task_archive(tmp_path) -> YamlTaskArchive:
-    archive = YamlTaskArchive.__new__(YamlTaskArchive)
-    archive._comm = None
-    archive._observer = None
-    archive._timezone = None
-    archive._path = str(tmp_path)
-    archive._extension = "yaml"
+    archive = YamlTaskArchive(path=str(tmp_path))
 
+    # real VirtualFileSystem addresses files via configured "root/relative" prefixes, which
+    # doesn't fit an arbitrary tmp_path -- fake just find()/read_yaml() to hit tmp_path directly.
     vfs = MagicMock()
 
     async def read_yaml(path):

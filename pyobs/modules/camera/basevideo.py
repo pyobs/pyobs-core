@@ -395,9 +395,6 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
                 broadcast=broadcast,
             )
 
-            # reset
-            self._image_request = None
-
     async def _create_image(self, data: NDArray[Any], next_image: NextImage) -> tuple[Image, str]:
         """Create an Image object from numpy array.
 
@@ -475,7 +472,8 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             await asyncio.sleep(0.01)
 
         # remove from list
-        self._image_requests.remove(image_request)
+        async with self._image_request_lock:
+            self._image_requests.remove(image_request)
 
         # no image?
         if image_request.image is None or image_request.filename is None:

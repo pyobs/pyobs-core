@@ -243,6 +243,14 @@ IPointingAltAz
    :show-inheritance:
    :undoc-members:
 
+IPointingBody
+^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.interfaces.IPointingBody
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 IPointingHGS
 ^^^^^^^^^^^^
 
@@ -255,6 +263,14 @@ IPointingHelioprojective
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IPointingHelioprojective
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+IPointingOrbitalElements
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.interfaces.IPointingOrbitalElements
    :members:
    :show-inheritance:
    :undoc-members:
@@ -367,6 +383,22 @@ ITemperatures
 ^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.ITemperatures
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ITrackingMode
+^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.interfaces.ITrackingMode
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ITrackingRate
+^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.interfaces.ITrackingRate
    :members:
    :show-inheritance:
    :undoc-members:

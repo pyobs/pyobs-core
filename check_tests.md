@@ -13,8 +13,9 @@ Full suite verified: `pytest tests/` (858 passed, 2 skipped) and, against a loca
 **Left unresolved, deliberately, within that same scope:**
 
 - `tests/comm/test_presence.py:39` -- `module._comm = None`. `Object.__init__`'s `comm=None` means "use a default `DummyComm()`", not "leave it unset", so this exact state can't be produced via the constructor.
-- `tests/integration/conftest.py` (`make_xmpp_comm` fixture, ~2 lines) -- fixable in principle, but the fixture's contract is "attach comm to an already-built module," used by ~30 call sites across 5 XMPP integration test files. Fixing it means inverting build order everywhere it's called -- a bigger redesign than this pass, not attempted.
 - 8 files using a `Class.__new__(Class)` + all-`None` null-test-double pattern for logic-only tests (listed under Bucket A below, still tagged `[comm/observer/location/timezone/vfs -- exception]`) -- `Object.__init__` raises `ValueError` for `timezone=None`, so there's no constructor call that reproduces the state these tests deliberately want.
+
+**Update (later session):** `tests/integration/conftest.py`'s `make_xmpp_comm` fixture -- originally flagged above as "fixable in principle, not attempted" -- has since been fixed. See `TODO.md`. `make_unopened_comm(user)` now builds comm before the module exists, and `make_module(interfaces, comm, ...)` wires itself to it internally, instead of `make_xmpp_comm` retrofitting `module._comm = comm` onto an already-built module. Only 14 of the ~44 `make_xmpp_comm` call sites (`test_xmpp_presence.py`, `test_xmpp_state.py`) actually needed the change. The one line still poking `module._comm` in that file (`connect()`, L32) is unrelated dead code -- a LocalComm helper with zero callers anywhere in the suite, not part of the XMPP fixture.
 
 **Never in scope this session:** every other private attribute in Bucket A (`_state`, `_label`, `_own_comm`, `_config_caps`, `_acl_allow`, `_queue`, `_active`, etc.), and all of Bucket B (state-assertion reads). Both remain exactly as before.
 
@@ -30,9 +31,20 @@ All 171 distinct test functions flagged in Bucket B (grouped by function, not ra
 
 Verified: `pytest tests/` (896 passed, 2 skipped -- 29 more than the prior session's 867, from `test_standalone.py` now being collected).
 
+## Resolved in the Bucket A remainder review (follow-up session)
+
+The rest of Bucket A (everything other than `comm`/`observer`/`location`/`timezone`/`vfs`, already handled above) was reviewed function-by-function, same depth as the Bucket B pass: 174 write lines across 94 functions in 33 files. Outcomes:
+
+- **Vast majority fine, no change** -- either the null-test-double `Class.__new__(Class)` pattern continuing to set its own fields (same exception as the comm/observer/location/timezone/vfs case -- `test_mastermind.py`/`test_scheduler_mastermind.py`'s `make_obs_archive`/`make_mastermind`, `lco/helpers.py`'s `make_task_archive`/`make_observation_archive`, `test_schedulewriter.py`/`test_yaml_archives.py`'s factories), a test-double subclass's own `__init__`/methods setting its own state (`TransitQuickRunner.__init__`, `MockPhotometryCalculator`, `_weather_mock`), or private state with no public equivalent that's necessary to isolate the method under test from the rest of the pipeline (`StarExpTimeEstimator._image`, `_DotNetRequestBuilder._catalog`, `ProjectedOffsets._ref_image`, `TransitImagingScript._transit_merit` in both `test_transit_mastermind.py` and `test_transitimaging.py`, `LcoTaskArchive._tasks`/`_last_changed`/`_projects` in `test_lco_http.py` -- all only ever populated by a private network-polling method with no constructor/setter path).
+- **8 strengthened** to use a public accessor/constructor param that already existed but wasn't being used: `MemoryTaskArchive.add_task()` (2x in `test_memory_archives.py`, replacing direct `_tasks` dict writes), `Mastermind.stop()` (3x across `test_mastermind.py`/`test_scheduler_mastermind.py`, replacing `mm._running = False` teardown pokes -- `_comm` is a real `DummyComm()` in these null-doubles, so the async call is safe), `make_mastermind`'s new `task_archive=` param (`test_dynamic_target.py`, replacing a `mm._task_archive = ...` poke after the factory call), `AddMask`'s already-existing `masks` constructor param (`test_addmask.py`, replacing `AddMask({}); adder._masks = masks`), `_CalibrationCache.add_to_cache()` (2x in `test_calibration_cache.py`, replacing direct `_cache` deque writes), `Weather.stop()`/`MockWeather.stop()` (3x, replacing `_active = False` pokes in `is_running`/`set_good` tests).
+- **1 real bug found and fixed**: `tests/modules/weather/test_weather.py::test_start` poked `weather._is_good = False`, but the real attribute is `weather._weather.is_good` (a property on a nested `WeatherStatus` object) -- `_is_good` doesn't exist on `Weather` at all, so the line silently created an unused instance attribute and had zero effect. The test passed anyway only because `WeatherStatus` already defaults `is_good` to `False`. Removed the dead line.
+- **4 redundant pokes removed**: `test_focusmodel.py`'s `fm._enabled = True` (already the constructor default) and three `weather._active = True` pokes in `test_weather.py` (`test_update_good_weather`, `test_update_bad_weather`, `test_update_publishes_state` -- `_active` already defaults to `True`).
+
+Verified: `pytest tests/ -m "not integration and not xmpp"` (896 passed, 2 skipped) and, against a local ejabberd, `pytest tests/ -m "integration or xmpp"`.
+
 ## Bucket A -- Setup pokes (writes): tests assign directly to a private attribute
 
-252 lines across 34 files. Pattern: `obj._attr = value` used to inject a test double or seed state post-construction, instead of going through the constructor / a public API.
+253 lines across 34 files (conftest.py's count changed after the `make_xmpp_comm` fix -- see above). Pattern: `obj._attr = value` used to inject a test double or seed state post-construction, instead of going through the constructor / a public API.
 
 ### tests/comm/local/test_istructuredconfig.py (4)
 
@@ -141,12 +153,13 @@ Verified: `pytest tests/` (896 passed, 2 skipped -- 29 more than the prior sessi
 - L15: `self._catalog = None`
 - L22: `self._catalog = image.catalog.copy()`
 
-### tests/integration/conftest.py (4)
+### tests/integration/conftest.py (5) -- updated after the `make_xmpp_comm` fix, see above
 
 - L21: `LocalNetwork._instance = None`
 - L23: `LocalNetwork._instance = None`
-- L32: `module._comm = comm`  _[comm/observer/location/timezone/vfs -- exception: shared fixture, not attempted]_
-- L94: `module._comm = comm`  _[comm/observer/location/timezone/vfs -- exception: shared fixture, not attempted]_
+- L32: `module._comm = comm`  _[dead code -- `connect()` has no callers anywhere in the suite, unrelated to the XMPP fixture]_
+- L118: `m._label = label`  _[fine -- `make_module()` is a test-double factory setting its own state, same pattern as `DummyStructuredConfigModule.__init__`]_
+- L121: `m._comm = comm`  _[fine -- same as above; comm is now passed in as a parameter rather than retrofitted from outside]_
 
 ### tests/integration/test_dynamic_target.py (1)
 
@@ -514,7 +527,7 @@ Verified: `pytest tests/` (896 passed, 2 skipped -- 29 more than the prior sessi
 
 ### tests/integration/conftest.py (1)
 
-- L97: `if comm._connected:`
+- L143: `if comm._connected:`
 
 ### tests/integration/test_astroplanscheduler.py (3)
 

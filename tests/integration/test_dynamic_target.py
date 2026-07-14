@@ -172,8 +172,7 @@ async def test_mastermind_receives_resolved_target() -> None:
             await asyncio.sleep(0.05)
             return True
 
-    mm = make_mastermind(obs_archive, runner=TrackingRunner())
-    mm._task_archive = task_archive
+    mm = make_mastermind(obs_archive, runner=TrackingRunner(), task_archive=task_archive)
     reached = await run_until_state(mm, obs_archive, ObservationState.COMPLETED)
 
     assert reached, "Observation did not complete"

@@ -80,7 +80,7 @@ def make_obs_archive() -> MemoryObservationArchive:
     return archive
 
 
-def make_mastermind(obs_archive, runner=None) -> Mastermind:
+def make_mastermind(obs_archive, runner=None, task_archive=None) -> Mastermind:
     if runner is None:
         runner = QuickRunner()
     runner.observation_archive = obs_archive
@@ -96,7 +96,7 @@ def make_mastermind(obs_archive, runner=None) -> Mastermind:
     mm._after_task_sleep = 0
     mm._running = True
     mm._task = None
-    mm._task_archive = None
+    mm._task_archive = task_archive
     mm._last_cant_run_reason = {}
     mm._observation_archive = obs_archive
     mm._task_runner = runner
@@ -145,7 +145,7 @@ async def run_until_state(
         except TimeoutError:
             return False
         finally:
-            mm._running = False
+            await mm.stop()
             task_handle.cancel()
             try:
                 await task_handle
@@ -223,7 +223,7 @@ async def test_mastermind_skips_when_no_observation() -> None:
     with patch("pyobs.utils.time.Time.now", return_value=NIGHT):
         task_handle = asyncio.create_task(mm._run_thread())
         await asyncio.sleep(0.5)
-        mm._running = False
+        await mm.stop()
         task_handle.cancel()
         try:
             await task_handle

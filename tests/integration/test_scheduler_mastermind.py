@@ -205,7 +205,7 @@ async def test_scheduler_ignores_future_observation() -> None:
     with patch("pyobs.utils.time.Time.now", return_value=NIGHT):
         task_handle = asyncio.create_task(mm._run_thread())
         await asyncio.sleep(0.3)
-        mm._running = False
+        await mm.stop()
         task_handle.cancel()
         try:
             await task_handle

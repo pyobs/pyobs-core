@@ -3,13 +3,6 @@ Utility modules (pyobs.modules.utils)
 
 .. automodule:: pyobs.modules.utils
 
-AutonomousWarning
-^^^^^^^^^^^^^^^^^
-
-.. autoclass:: pyobs.modules.utils.AutonomousWarning
-   :members:
-   :show-inheritance:
-
 FluentLogger
 ^^^^^^^^^^^^
 

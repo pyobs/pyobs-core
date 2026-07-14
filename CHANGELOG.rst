@@ -1,5 +1,11 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* Removed ``pyobs.modules.utils.AutonomousWarning`` (played warning sounds while an ``IAutonomous``
+  module was running). Found while writing tests for it: ``started_sound``/``stopped_sound`` were
+  stored but never read anywhere, and ``_check_autonomous()``'s sound selection looked inverted (it
+  logged "Robotic systems started" but played ``stop_sound``, apparently copy-pasted from
+  ``_check_trigger()``'s toggle logic without adjusting the polarity) -- breaking change for anyone
+  using it, no replacement provided.
 * ``Object.location`` is now derived from ``Object.observer`` instead of being stored and propagated to
   child objects independently, removing a source of location/observer divergence. The ``location``
   constructor argument is unchanged, but only affects the default ``observer`` built from it.

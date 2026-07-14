@@ -66,14 +66,14 @@ concern.
 - `pyobs/vfs/filelists/testing.py` (12), `filelist.py` (5), `__init__.py` (3) -- also
   test-support tooling per the module name.
 
-### Category E -- Real gaps: no external-service or GUI excuse (remaining: 12 files)
+### Category E -- Real gaps: no external-service or GUI excuse (remaining: 11 files)
 
 Core module/processor logic, same shape as plenty of code that *does* have good coverage
 elsewhere (comm/vfs-mockable, no special hardware). The flatfield subsystem, the two
 untested `Dummy*` modules, and `kiosk.py` from this category are resolved (see git history);
-remaining:
+`autonomouswarning.py` was removed entirely (dead sound params, inverted sound-selection logic
+found while surveying this file -- not worth fixing, so removed instead). Remaining:
 
-- `pyobs/modules/utils/autonomouswarning.py` (70)
 - `pyobs/modules/utils/trigger.py` (50)
 - `pyobs/comm/xmpp/xep_0009/binding.py` (137) -- low-level XMPP RPC extension binding; not hit by
   the current integration test scenarios even though other XMPP code is well covered.

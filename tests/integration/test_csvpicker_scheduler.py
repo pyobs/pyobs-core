@@ -81,7 +81,7 @@ async def test_csvpicker_picks_visible_target(tmp_path: Path) -> None:
 
     with patch("pyobs.utils.time.Time.now", return_value=NIGHT):
         await task.resolve_target(NIGHT, task, data)
-        result = task._resolved_target
+        result = task.target
 
     assert result is not None
     assert isinstance(result, SiderealTarget)
@@ -115,7 +115,7 @@ async def test_csvpicker_respects_airmass_constraint(tmp_path: Path) -> None:
 
     with patch("pyobs.utils.time.Time.now", return_value=NIGHT):
         await task.resolve_target(NIGHT, task, data)
-        result = task._resolved_target
+        result = task.target
 
     assert result is not None
     assert result.name != "Polaris"
@@ -140,8 +140,8 @@ async def test_scheduler_resolves_csv_dynamic_target(tmp_path: Path) -> None:
             observations.append(obs)
 
     assert len(observations) >= 1
-    assert isinstance(observations[0].task._resolved_target, SiderealTarget)
-    assert observations[0].task._resolved_target.name in ["Betelgeuse", "Rigel", "Sirius"]
+    assert isinstance(observations[0].task.target, SiderealTarget)
+    assert observations[0].task.target.name in ["Betelgeuse", "Rigel", "Sirius"]
 
 
 @pytest.mark.asyncio

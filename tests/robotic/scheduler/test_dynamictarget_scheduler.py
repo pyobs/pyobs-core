@@ -70,8 +70,8 @@ async def test_dynamic_target_scheduled(observer: Observer, mock_vfs: MagicMock)
     assert best is not None
     assert merit > 0.0
     # target should now be resolved on the task
-    assert task._resolved_target is not None
-    assert isinstance(task._resolved_target, SiderealTarget)
+    assert task.target is not None
+    assert isinstance(task.target, SiderealTarget)
 
 
 @pytest.mark.asyncio
@@ -121,10 +121,10 @@ async def test_dynamic_target_same_target_throughout_scheduling(observer: Observ
 
     # evaluate multiple times — target should be the same each time
     await scheduler.evaluate_constraints_and_merits([task], {}, start, end, data)
-    first_target = task._resolved_target
+    first_target = task.target
 
     await scheduler.evaluate_constraints_and_merits([task], {}, start, end, data)
-    second_target = task._resolved_target
+    second_target = task.target
 
     assert first_target is not None
     assert second_target is not None
@@ -150,5 +150,5 @@ async def test_static_target_unaffected(observer: Observer) -> None:
 
     assert best is not None
     assert merit == 3.0
-    assert task._resolved_target is not None
-    assert task._resolved_target.name == "Betelgeuse"
+    assert task.target is not None
+    assert task.target.name == "Betelgeuse"

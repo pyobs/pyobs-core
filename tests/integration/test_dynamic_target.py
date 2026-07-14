@@ -82,8 +82,8 @@ async def test_scheduler_resolves_dynamic_target() -> None:
 
     assert best is not None
     assert merit > 0.0
-    assert task._resolved_target is not None
-    assert isinstance(task._resolved_target, SiderealTarget)
+    assert task.target is not None
+    assert isinstance(task.target, SiderealTarget)
 
 
 @pytest.mark.asyncio
@@ -195,11 +195,11 @@ async def test_target_consistent_across_scheduling_run() -> None:
 
     # resolve once
     await scheduler.evaluate_constraints_and_merits([task], {}, NIGHT, end, data)
-    first_target = task._resolved_target
+    first_target = task.target
 
     # resolve again — should return same cached result
     await scheduler.evaluate_constraints_and_merits([task], {}, NIGHT, end, data)
-    second_target = task._resolved_target
+    second_target = task.target
 
     assert first_target is not None
     assert second_target is not None

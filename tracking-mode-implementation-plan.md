@@ -225,7 +225,13 @@ async def _track_body_refresh(self) -> None:
 - Default: 600s (10 min) for planets/asteroids
 - Moon-via-`ITrackingRate` fallback: 60s
 - NEO close-approach: shorter (user-configurable or auto-detected from rate magnitude)
-- Actual interval: `max(accuracy_driven_interval, capabilities.min_update_interval)`
+- Actual interval: `max(accuracy_driven_interval, capabilities.min_update_interval)` -- **not implemented**.
+  Shipped as just `accuracy_driven_interval` (600s/60s per above). `Comm` has `get_own_state` but no
+  `get_own_capabilities` counterpart to `set_capabilities`, so there's no existing API for the
+  background task to read back its own published `min_update_interval` without adding new comm-layer
+  surface for this one self-clamp. `min_update_interval` is still published (GUI/remote introspection
+  work fine), it just isn't consulted internally yet -- see design doc's "Hardware update-rate floor"
+  section.
 
 ### 6.3 Locking
 

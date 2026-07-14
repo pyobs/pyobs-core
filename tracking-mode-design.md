@@ -356,6 +356,8 @@ The cadence above is entirely accuracy-driven — how often the *value* needs to
 
 `TrackingRateCapabilities.min_update_interval` (added above) exposes this per-driver. The background task computes its actual refresh interval as `max(accuracy_driven_interval, capabilities.min_update_interval)`; if that maximum ends up coarser than what the target's accuracy actually needs, the caller should be told this mount can't track that target well enough, rather than the scheduler quietly accepting degraded tracking.
 
+**Implementation status: not yet self-clamped.** The background task in `BaseTelescope` does not currently read `min_update_interval` back and fold it into its own refresh interval — it just uses the accuracy-driven cadence (10 min / 1 min) unconditionally. The gap is `comm`'s API, not a design change: `Comm` has `get_own_state`/`set_state` for a module reading back its *own* published state, but no equivalent `get_own_capabilities` counterpart to `set_capabilities` for reading back its own published capabilities. Adding one purely to serve this one self-clamp would be new comm-layer surface beyond what this feature asked for, so it's left as a follow-up rather than done speculatively here. `min_update_interval` is still published correctly (for GUI display and remote introspection by other modules) — only the background task's own internal use of its own value is what's missing.
+
 ## Locking
 
 Resolved: the background task's rate/position refresh **shares** `_lock_moving`/`_abort_move` with `move_radec`/`move_altaz`, rather than using a separate lock. Two reasons, not just caution:

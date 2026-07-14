@@ -44,8 +44,8 @@ from .IOffsetsAltAz import AltAzOffsetState, IOffsetsAltAz
 from .IOffsetsRaDec import IOffsetsRaDec, RaDecOffsetState
 from .IPointingAltAz import AltAzState, IPointingAltAz
 from .IPointingBody import IPointingBody
+from .IPointingHeliocentricPolar import HeliocentricPolarState, IPointingHeliocentricPolar
 from .IPointingHelioprojective import HelioprojectiveState, IPointingHelioprojective
-from .IPointingHGS import HGSState, IPointingHGS
 from .IPointingOrbitalElements import IPointingOrbitalElements, OrbitalElements
 from .IPointingRaDec import IPointingRaDec, RaDecState
 from .IPointingSeries import IPointingSeries
@@ -132,10 +132,10 @@ __all__ = [
     "IPointingAltAz",
     "AltAzState",
     "IPointingBody",
+    "IPointingHeliocentricPolar",
+    "HeliocentricPolarState",
     "IPointingHelioprojective",
     "HelioprojectiveState",
-    "IPointingHGS",
-    "HGSState",
     "IPointingOrbitalElements",
     "OrbitalElements",
     "IPointingRaDec",

@@ -251,10 +251,10 @@ IPointingBody
    :show-inheritance:
    :undoc-members:
 
-IPointingHGS
-^^^^^^^^^^^^
+IPointingHeliocentricPolar
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: pyobs.interfaces.IPointingHGS
+.. autoclass:: pyobs.interfaces.IPointingHeliocentricPolar
    :members:
    :show-inheritance:
    :undoc-members:

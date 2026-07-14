@@ -8,13 +8,24 @@ import pytest
 from astroplan import Observer
 
 from pyobs.comm import Comm
-from pyobs.interfaces import ITrackingMode, ITrackingRate, TrackingMode, TrackingModeState
+from pyobs.interfaces import (
+    ITrackingMode,
+    ITrackingRate,
+    TrackingMode,
+    TrackingModeState,
+    TrackingRateCapabilities,
+)
+from pyobs.modules.telescope.basetelescope import (
+    _DEFAULT_REFRESH_INTERVAL_SECONDS,
+    _MOON_FALLBACK_REFRESH_INTERVAL_SECONDS,
+)
 from pyobs.modules.telescope.dummytelescope import DummyTelescope
 
 
 def make_dummytelescope(**kwargs) -> DummyTelescope:
     comm = MagicMock(spec=Comm)
     comm.get_own_state = MagicMock(return_value=None)
+    comm.get_own_capabilities = MagicMock(return_value=None)
     comm.set_state = AsyncMock()
     comm.set_capabilities = AsyncMock()
     comm.send_event = AsyncMock()
@@ -178,3 +189,51 @@ async def test_move_task_applies_tracking_rate_to_position():
     assert dec1 != dec0
     # dec should have decreased, given a negative dec_rate
     assert dec1 < dec0
+
+
+# ── _tracking_refresh_interval clamping against min_update_interval ──────────
+
+
+def test_tracking_refresh_interval_defaults_when_no_capabilities_published():
+    tel = make_dummytelescope()
+    assert tel._tracking_refresh_interval() == _DEFAULT_REFRESH_INTERVAL_SECONDS
+
+
+def test_tracking_refresh_interval_clamped_up_by_min_update_interval():
+    tel = make_dummytelescope()
+    tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=900.0))
+    assert tel._tracking_refresh_interval() == 900.0
+
+
+def test_tracking_refresh_interval_not_clamped_down_below_accuracy_driven_default():
+    tel = make_dummytelescope()
+    tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=10.0))
+    assert tel._tracking_refresh_interval() == _DEFAULT_REFRESH_INTERVAL_SECONDS
+
+
+def test_tracking_refresh_interval_moon_fallback_clamped_up():
+    tel = make_dummytelescope()
+    tel._tracked_body = "moon"
+    tel._last_tracking_used_native_mode = False  # no native LUNAR available -> 60s fallback cadence
+    tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=120.0))
+    assert tel._tracking_refresh_interval() == 120.0
+
+
+def test_tracking_refresh_interval_moon_fallback_not_clamped_below_60s():
+    tel = make_dummytelescope()
+    tel._tracked_body = "moon"
+    tel._last_tracking_used_native_mode = False
+    tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=5.0))
+    assert tel._tracking_refresh_interval() == _MOON_FALLBACK_REFRESH_INTERVAL_SECONDS
+
+
+def test_tracking_refresh_interval_warns_once_when_hardware_floor_degrades_tracking(caplog):
+    tel = make_dummytelescope()
+    tel._comm.get_own_capabilities = MagicMock(return_value=TrackingRateCapabilities(min_update_interval=900.0))
+
+    with caplog.at_level("WARNING"):
+        tel._tracking_refresh_interval()
+        tel._tracking_refresh_interval()
+
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1

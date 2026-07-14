@@ -232,6 +232,7 @@ class BaseTelescope(
         self._tracked_elements: OrbitalElements | None = None
         self._last_position_nudge: Time | None = None
         self._last_tracking_used_native_mode = False
+        self._warned_slow_update_interval = False
 
         # add thread func
         self.add_background_task(self._celestial, True)
@@ -523,6 +524,7 @@ class BaseTelescope(
         self._tracked_body = body
         self._tracked_elements = None
         self._last_position_nudge = Time.now()
+        self._warned_slow_update_interval = False
         await self._track_refresh_tick()
 
     async def track_orbital_elements(self, elements: OrbitalElements, **kwargs: Any) -> None:
@@ -544,6 +546,7 @@ class BaseTelescope(
         self._tracked_elements = elements
         self._tracked_body = None
         self._last_position_nudge = Time.now()
+        self._warned_slow_update_interval = False
         await self._track_refresh_tick()
 
     def _native_tracking_mode_for_body(self, body: str) -> TrackingMode | None:
@@ -627,25 +630,39 @@ class BaseTelescope(
                 log.exception("Error refreshing body/orbital-element tracking.")
 
     def _tracking_refresh_interval(self) -> float:
-        """Accuracy-driven refresh interval for the currently-tracked body/elements. The Moon
-        needs a much tighter interval than planets/asteroids, but only when actually falling back
-        to ITrackingRate for it (no native TrackingMode.LUNAR available) -- see design doc's
+        """Accuracy-driven refresh interval for the currently-tracked body/elements, clamped
+        against this driver's own TrackingRateCapabilities.min_update_interval if published. The
+        Moon needs a much tighter interval than planets/asteroids, but only when actually falling
+        back to ITrackingRate for it (no native TrackingMode.LUNAR available) -- see design doc's
         "Recompute cadence" section. Reflects the outcome of the most recent dispatch rather than
         re-deriving it, since only that tick's actual result (including capability rejection via
         ValueError) is authoritative.
-
-        Not clamped against this driver's own TrackingRateCapabilities.min_update_interval:
-        Comm has get_own_state but no get_own_capabilities counterpart to set_capabilities, so
-        there's no existing API to read that back without adding new comm-layer surface for this
-        one self-clamp. See design doc's "Hardware update-rate floor" section.
         """
         if (
             self._tracked_body is not None
             and self._tracked_body.strip().lower() == "moon"
             and not self._last_tracking_used_native_mode
         ):
-            return _MOON_FALLBACK_REFRESH_INTERVAL_SECONDS
-        return _DEFAULT_REFRESH_INTERVAL_SECONDS
+            accuracy_driven_interval = _MOON_FALLBACK_REFRESH_INTERVAL_SECONDS
+        else:
+            accuracy_driven_interval = _DEFAULT_REFRESH_INTERVAL_SECONDS
+
+        if not isinstance(self, ITrackingRate):
+            return accuracy_driven_interval
+        capabilities = self.comm.get_own_capabilities(ITrackingRate)
+        if capabilities is None:
+            return accuracy_driven_interval
+
+        if capabilities.min_update_interval > accuracy_driven_interval and not self._warned_slow_update_interval:
+            log.warning(
+                "This mount's minimum tracking-rate update interval (%.1fs) is coarser than what "
+                "the current target's accuracy needs (%.1fs) -- tracking will be degraded.",
+                capabilities.min_update_interval,
+                accuracy_driven_interval,
+            )
+            self._warned_slow_update_interval = True
+
+        return max(accuracy_driven_interval, capabilities.min_update_interval)
 
     async def _track_refresh(self) -> None:
         """Background task: refreshes rate/position for body/orbital-element tracking while

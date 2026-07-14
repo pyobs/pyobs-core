@@ -225,13 +225,16 @@ async def _track_body_refresh(self) -> None:
 - Default: 600s (10 min) for planets/asteroids
 - Moon-via-`ITrackingRate` fallback: 60s
 - NEO close-approach: shorter (user-configurable or auto-detected from rate magnitude)
-- Actual interval: `max(accuracy_driven_interval, capabilities.min_update_interval)` -- **not implemented**.
-  Shipped as just `accuracy_driven_interval` (600s/60s per above). `Comm` has `get_own_state` but no
-  `get_own_capabilities` counterpart to `set_capabilities`, so there's no existing API for the
-  background task to read back its own published `min_update_interval` without adding new comm-layer
-  surface for this one self-clamp. `min_update_interval` is still published (GUI/remote introspection
-  work fine), it just isn't consulted internally yet -- see design doc's "Hardware update-rate floor"
-  section.
+- Actual interval: `max(accuracy_driven_interval, capabilities.min_update_interval)`, via the new
+  `Comm.get_own_capabilities(ITrackingRate)` (6.4). Logs a warning, once per tracked target rather
+  than once per tick, if the hardware floor ends up coarser than the target's accuracy needs.
+
+### 6.4 `Comm.get_own_capabilities`
+
+Added alongside the existing `get_own_state`/`_get_own_state` pair, same shape: base `Comm` defines
+`get_own_capabilities`/`_get_own_capabilities` (default `None`), `LocalComm` and `XmppComm` override
+`_get_own_capabilities` to return `self._capabilities.get(interface)` -- the same dict `_set_capabilities`
+already populates in both backends, so this is a new read path onto existing storage, not new state.
 
 ### 6.3 Locking
 

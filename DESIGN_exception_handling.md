@@ -124,10 +124,23 @@ processor code): `pyobs/modules/robotic/mastermind.py:172-174`, `scriptrunner.py
 (`MultiModule._run_module`). None of these consult `.logged` or any per-type suppression list —
 they always log.
 
-Also worth a mention: `Comm.open()` attaches a `CommLoggingHandler` to the root logger at
-`INFO` (`pyobs/comm/comm.py:70-78`), rebroadcasting every `INFO`+ log record to all other modules
-as a `LogEvent`. Suppressing local logging for a type also suppresses this broadcast — that may
-be the right call, or it may need its own knob; flagging it as a decision point below.
+Also worth tracing precisely, since it's not what it first looks like: `Comm.open()` attaches a
+`CommLoggingHandler` to the root logger at `INFO` (`pyobs/comm/comm.py:70-78`). Its `emit()`
+(`pyobs/comm/commlogging.py:27-43`) fires for any record at or above that level — with zero
+awareness of exception type, `@raises`, or anything else — and unconditionally calls
+`self._comm.log_message(entry)` (queued, then published via `XmppComm.send_event()`,
+`pyobs/comm/xmpp/xmppcomm.py:665-687`, which always calls
+`self.client.plugin["xep_0163"].publish(...)`). This is PEP (XEP-0163) publish, not a blind
+broadcast: `_register_events()` (`xmppcomm.py:703-718`) only calls `add_interest(...)` for a given
+event type `if handler:` (line 712-714) — i.e., only modules that actually called
+`register_event(LogEvent, handler=...)` (the GUI, `fluentlogger.py`, etc.) ever receive delivery;
+the server filters by declared interest, so this is already correctly scoped to real consumers,
+not everyone. The real, already-existing cost is on the *publish* side, not delivery: the
+unconditional `xep_0163.publish()` call happens for every record ≥ INFO regardless of whether
+anyone is interested, which means **every currently-logged domain exception already pays this
+cost today** — nothing in the current code gates the network publish below a plain level
+threshold, and since `ERROR` ≥ `INFO`, this has always been true for every domain exception this
+doc discusses, not something a fix here would newly introduce.
 
 ### The existing partial mechanism: `@raises(...)`
 
@@ -150,12 +163,17 @@ Used on exactly two methods: `AutoFocusSeries.auto_focus`
 `@raises(exc.AbortedError, exc.AcquisitionError)`). It demotes to INFO-without-traceback rather
 than suppressing entirely (issue #446 asks for no local log at all), and its match is exact-type
 (`type(e) in getattr(func, "raises")`), not `isinstance` — a subclass of a declared type would
-still log at ERROR today. Treating this as an oversight rather than a deliberate restriction: a
-method decorated `@raises(exc.FocusError)` almost certainly means "anything in the `FocusError`
-family," not "literally `FocusError` and nothing that subclasses it" — especially once goal 5 adds
-leaf subclasses like `WeatherDataError(FocusError)` under types that are already declared in a
-`@raises(...)`. Switching to `isinstance` (done in proposal §1 below) is a bugfix, not a behavior
-change that needs a changelog callout beyond noting it fixes previously-under-caught subclasses.
+still log at ERROR today.
+
+Re-examining this while designing the fix (see proposal §1) changes its role rather than just its
+match semantics: INFO-without-traceback is exactly what a *default* domain-exception log line
+should look like, for *any* `PyObsError`, not just the two methods someone remembered to decorate.
+Every other RPC-exposed method raising a domain exception gets no demotion today purely because
+nobody wrote `@raises` on it — an omission bug, not a deliberate choice, and not something worth
+preserving as an opt-in mechanism. Proposal §1 makes INFO-without-traceback the automatic default
+for every domain exception and retires `@raises` as a logging mechanism entirely — it can still
+carry documentation value (feeding §7's docstring-cross-check idea) but no longer controls log
+level.
 
 No `_disable_x`-style instance/class configuration method exists anywhere on `Module`/`Object`
 today (grepped, no hits). The closest structural precedent for "an instance-level table consulted
@@ -342,6 +360,60 @@ it's a structural gap worth closing while touching this code.
   is invoked, not a deliberate boundary, and the same SDK could just as easily raise mid-operation
   the way `BaseCamera.__expose()`'s hook already anticipates for its own vendor calls.
 
+### Confirmed by a full interface docstring audit
+
+Rather than assume the two known mismatches (`IAutoFocus`, `IFocusModel`) were the whole picture,
+every file in `pyobs/interfaces/` (55 files) was checked against its concrete implementation(s):
+every abstract method with a `Raises:` clause, plus every method without one that has a plausible
+failure mode. Of 27 interfaces with a documented `Raises:` clause, **16 have at least one confirmed
+mismatch** against what actually happens. This isn't a handful of typos — it's a systemic gap, and
+several of the findings are more significant than anything found before this audit:
+
+- **`InitError`/`ParkError` (`IMotion.py:34-48`) are never raised anywhere in the entire
+  `pyobs/modules/` tree — zero call sites.** Not one implementation honors the documented
+  contract. This directly explains the `pyobs-brot` bug found earlier: it isn't that `pyobs-brot`
+  alone silently returns success instead of raising these types — none of pyobs-core's own
+  reference/dummy implementations (`telescope/_dummytelescopebase.py`, `roof/dummyroof.py`,
+  `flatfield/flatfield.py`, `utils/dummymode.py`) raise them either. What they raise instead, when
+  they raise anything: `AcquireLockFailed` (`pyobs/utils/threads/lockwithabort.py:10,37`, via
+  `LockWithAbort`) — a **plain `Exception` subclass, not a `PyObsError`** — leaking undocumented
+  out of `move_radec`, `move_altaz`, `set_focus`, `park`, `stop_motion`, and roof `init`/`park`
+  alike. `DummyRoof`'s own docstrings even document `AcquireLockFailed` locally, silently
+  contradicting the base `IMotion` contract one level up.
+- **`MoveError` is documented on roughly 13 different pointing/tracking/filter/mode interface
+  methods** (`IPointingRaDec`, `IPointingAltAz`, `IPointingBody`, the three
+  `IPointingHeliocentric*`/`IPointingHelio*` interfaces, `IPointingOrbitalElements`,
+  `IOffsetsAltAz`, `IOffsetsRaDec`, `ITrackingRate`, `ITrackingMode`, `IFilters`, `IMode`) **but has
+  exactly one raise site in the whole codebase** (`basetelescope.py:588`), and that site sits
+  inside an internal background-refresh task, not synchronously reachable from any RPC call. For
+  practical purposes, `MoveError` is a documented type an RPC caller essentially never receives —
+  what actually happens on the routine, easily-triggered failure paths (no observer configured,
+  destination below the altitude limit) is an undocumented bare `ValueError`
+  (`basetelescope.py:~300-304,~385`), exactly the sites proposal §4 already targets with
+  `MissingObserverError`/`AltitudeLimitError`/etc. This audit confirms those aren't just "nicer
+  types to have" — they're closing a real, previously-undocumented gap between the interface
+  contract and reality.
+- **`IData.grab_data` documents `GrabImageError`, but two of the three camera-family base classes
+  never raise it at all.** `BaseSpectrograph.grab_data` (`camera/basespectrograph.py:164-186`) and
+  `BaseVideo.grab_data` (already flagged above for a different reason) both raise only bare
+  `ValueError`; only `BaseCamera`/`PipelineCamera` honor the documented type. Most concrete camera
+  types in this framework don't actually raise the interface's headline exception.
+- Two **unconditional `NotImplementedError`s** contradict their documented types outright:
+  `ScienceFrameGuiding.set_exposure_time` (`pointing/scienceframeguiding.py:47`, documents
+  `ValueError`) and `_DummyTelescopeBase.set_focus_offset` (`telescope/_dummytelescopebase.py:361`,
+  documents `ValueError`/`MoveError`) — every single call to either fails with a type nowhere near
+  what's documented.
+- `IAutoFocus`/`IAcquisition` (already known): both document `ValueError`, but their own
+  `@raises(...)` decorators — pyobs's *own* machine-readable exception metadata — declare
+  `AbortedError`/`FocusError`/`AcquisitionError`/`GeneralError` instead. The docstring and the
+  code's own authoritative contract disagree with each other, not just with what actually happens.
+
+Interfaces confirmed as a clean match: `IConfig`, `IPointingBody`/`IPointingOrbitalElements` (their
+primary `ValueError` paths), `IAbortable`, `IImageType`, `IStartStop`, `IModule`. Several interfaces
+(`ICalibrate`, `ISyncTarget`, `IMultiFiber.set_fiber`, `IPointingSeries`, `IRotation`,
+`IScriptRunner.run_script`, `IStructuredConfig`) have zero concrete implementers anywhere in this
+repo, so the doc gap itself is the finding — a future implementer has no contract to follow at all.
+
 ### Confirmed in downstream driver projects
 
 Checked the real hardware-driver projects (`pyobs-sbig`, `-fli`, `-aravis`, `-v4l`, `-brot`) for
@@ -418,7 +490,7 @@ whole picture. They're not — one of these is more serious than anything found 
 
 ## Assessment: what I'd design differently, given a free hand
 
-The incremental fixes below (Proposed design §§1-6) all still make sense on their own, but stepping back,
+The incremental fixes below (Proposed design §§1-10) all still make sense on their own, but stepping back,
 the model has a structural problem none of them touch: **a caller can never actually catch a
 specific domain exception around a proxy call today**, no matter how fine-grained the hierarchy
 becomes. That undercuts goal 5 (add more, finer types) more than any of the individual gaps —
@@ -458,22 +530,25 @@ future.set_exception(exception)
 ```
 
 `except exc.FocusError:` around a proxy call then just works, the way it already silently doesn't
-today. `InvocationError` doesn't need to disappear — it keeps exactly one job, becoming the
-fallback for the case where the remote type couldn't be resolved at all (i.e. it collapses into
-the `UnclassifiedError` safety net from proposal §2 below: known type → raise it directly, unknown
+today. The fallback for "the remote type couldn't be resolved at all" doesn't need to be
+`InvocationError` either — checking how `InvocationError` gets consumed elsewhere (see §E) turns up
+that nothing needs it to survive at all once this fix lands; the fallback becomes the
+`UnclassifiedError` safety net from proposal §2 below (known type → raise it directly, unknown
 type → raise something that says "I don't know what this was, here's the name and message I did
-get").
+get"), and `InvocationError` itself gets retired.
 
-**This is not a free change** — four call sites currently rely on the old behavior and would need
+**This is not a free change** — five call sites currently rely on the old behavior and would need
 auditing: `pyobs/modules/focus/focusseries.py:167,194,203` and `pyobs/modules/module.py:238` all
 write `except exc.RemoteError:` around a proxy call, but reading them, none actually mean
 "specifically a transport failure" — `focusseries.py:167`'s comment-equivalent intent is "however
 this call failed, treat it as my own `FocusError`," and `module.py:238`'s is "however this failed,
 just skip this module." They only work today because *every* remote failure, transport or domain,
-currently arrives as some `RemoteError` subclass (`InvocationError`). Once domain exceptions stop
-being wrapped, these need to widen to `except exc.PyObsError:` (or even bare `Exception`) to
-preserve their actual intent — a small, enumerable migration (4 sites, not a sweep), but a real
-one, not just a config flip.
+currently arrives as some `RemoteError` subclass (`InvocationError`). A fifth,
+`pyobs/robotic/storage/lco/task.py:202-203`, explicitly unwraps `InvocationError.exception` — the
+only place in the codebase that does — and needs the same treatment once that wrapper is gone.
+Once domain exceptions stop being wrapped, all five need to widen to `except exc.PyObsError:` (or
+the specific type each one is actually looking for) to preserve their actual intent — a small,
+enumerable migration (5 sites, not a sweep), but a real one, not just a config flip.
 
 ### B. Collapse the two catch/log sites into one
 
@@ -490,36 +565,74 @@ whereas over XMPP it would at least get named in the fault (if not always correc
 Given `Module.execute()` is already the one transport-agnostic chokepoint every path goes through
 (XMPP, `LocalComm`, `MultiModule`), I'd move all of it there: classification (is this a
 `PyObsError`? if not, wrap it in `UnclassifiedError` right here, once, for every transport), the
-`_disable_exception_logging`/`@raises` level decision, and the actual `log.log(...)` call. `rpc.py`
+`_disable_exception_logging` opt-out check, and the actual `log.log(...)` call. `rpc.py`
 then does no independent logging or wrapping at all — its `except Exception` block (which, after
 this change, is really always `except exc.PyObsError`, since `execute()` never lets anything else
 through) purely serializes and sends the fault. This removes an entire redundant catch/log site
 architecturally, instead of relying on an instance flag to make it inert after the fact, and gives
 `LocalComm` the same wrapping guarantee XMPP calls get, for free.
 
-### C. Decouple severity escalation from construction-time metaclass magic
+### C. Decouple severity escalation from construction-time metaclass magic — and retire the substitution entirely
 
-Already flagged in the `register_exception` comparison above, but worth restating as a standalone
-design smell: `raise exc.FocusError("...")` can silently hand back a `SevereError` instance
-instead, because the metaclass intercepts *construction*, not raising or catching. That means
-`isinstance` checks anywhere between the `raise` and the eventual catch site can't be trusted to
-reflect the type actually named in the source — the object can already have mutated into something
-else before the `raise` keyword even runs. I'd move `handle_exception`'s escalation decision to a
-catch site (natural fit: the same `Module.execute()` chokepoint from §B) rather than the
-metaclass/constructor, so `raise X(...)` always genuinely raises `X`, and "this got severe, treat
-it as `SevereError` instead" becomes an explicit, visible step in the one place that already
-decides logging and wire-serialization, rather than invisible action-at-a-distance triggered by
-merely constructing an exception object (which, notably, can happen without ever raising it at
-all — e.g. constructing one to pass as `exception=` to something else).
+Already flagged in the `register_exception` comparison above: `raise exc.FocusError("...")` can
+silently hand back a `SevereError` instance instead, because the metaclass intercepts
+*construction*, not raising or catching. `isinstance` checks anywhere between the `raise` and the
+eventual catch site can't be trusted to reflect the type actually named in the source — the object
+can already have mutated into something else before the `raise` keyword even runs.
+
+Checking how `SevereError` is actually consumed changes the fix, though. Grepped the whole
+codebase, `pyobs-core` and every sibling project: **nothing anywhere catches `exc.SevereError`
+specifically** — the only production consumer of "this got severe" is the `callback` parameter of
+`register_exception`, and the one callback anyone actually uses,
+`_default_remote_error_callback` (`pyobs/modules/module.py:642-658`), already does the meaningful
+part itself:
+```python
+log.critical(error)
+await self.set_state(ModuleState.ERROR)
+```
+The module already has a real, working way to say "I'm broken because of repeated failures" —
+transitioning to `ModuleState.ERROR`, which `Module.execute()` already special-cases (blocks
+further calls, raises `exc.ModuleError`, which per Design Goal 1's rule always logs
+unconditionally). The `SevereError` substitution on the *original* raise site is ceremony on top
+of a callback that already does the real thing. So rather than "move the substitution to a better
+place," the fix is to **drop the substitution entirely**:
+
+1. Move counting out of the metaclass into the same `Module.execute()` catch-time chokepoint as
+   classification/logging (§B) — `self._record_exception(e)` replaces `_store_exception`, but
+   writes to per-instance state (`self._exception_log`, `self._remote_exception_log`) instead of
+   the module-level globals, closing the cross-instance leakage bug from the `register_exception`
+   comparison in the same change.
+2. Check thresholds right after recording, in the same spot — if a handler's threshold is
+   crossed, fire its `callback` exactly as today (`asyncio.create_task(handler.callback(e))`), no
+   behavior change for module authors relying on the callback.
+3. `execute()` always re-raises `e` unchanged, full stop — no substitution branch at all.
+   `raise exc.FocusError(...)` always raises `FocusError`.
+4. `register_exception` becomes an instance method (`self._register_exception(...)`, called from
+   `__init__`), mirroring `_disable_exception_logging`'s exact shape — same convention, same
+   place.
+5. Remove the `_Meta` metaclass entirely. Constructing a `PyObsError` — even without raising it —
+   becomes side-effect-free, ordinary Python again.
+6. Retire `SevereError` as a class. Nothing constructs it anymore, and its removal also drops one
+   of the three non-standard constructors flagged in §E, leaving only `InvocationError`/
+   `ForbiddenError` to fix there.
+
+Migration cost is small and fully enumerable: nine in-tree call sites
+(`basecamera.py:113`, `flatfield/flatfield.py:93,97,101`, `focusseries.py:82,86`,
+`pointing/_base.py:52,56`, `roof/basedome.py:24`, `basetelescope.py:252`) plus one external
+(`pyobs-alpaca/pyobs_alpaca/focuser.py:37`) need the free-function-to-instance-method rename —
+mechanical, one line each. `tests/utils/test_exceptions.py`'s three
+`isinstance(exc_info.value, exc.SevereError)` assertions (lines 80, 123, 151) need rewriting to
+assert the callback fired / state transitioned instead of asserting the raised type changed.
 
 ### D. Serialize by registry, not by name-lookup into one hardcoded module
 
 `getattr(exc, exc_name, None)` (`rpc.py:272`) only ever finds classes that live in
 `pyobs.utils.exceptions`. That's an implicit constraint nobody had to think about while the
 hierarchy was small and centralized, but goal 5 argues for many new, specific types — and the
-natural place for e.g. `CameraBusyError` is next to `BaseCamera`, not in a growing, unrelated
-`exceptions.py` god-file. Those two pulls are in direct tension under the current serialization
-scheme: put `CameraBusyError` where it domain-belongs and it silently stops surviving the wire.
+natural place for e.g. `WeatherDataError`/`FocusTimeoutError`/`MissingSensorError` is next to
+`FocusModel`, or `ScriptError` next to the `pyobs.robotic.scripts` package, not in a growing,
+unrelated `exceptions.py` god-file. Those two pulls are in direct tension under the current
+serialization scheme: put a type where it domain-belongs and it silently stops surviving the wire.
 
 I'd replace the hardcoded single-module lookup with an explicit registry — a decorator (e.g.
 `@exc.register` or reusing the existing `_Meta` machinery) that any `PyObsError` subclass opts
@@ -533,21 +646,44 @@ arbitrary object based on untrusted network input). An explicit registry keeps t
 things we chose to expose are reconstructable" property the accident currently gives us, while
 decoupling "reconstructable" from "physically defined in this one file."
 
-### E. Standardize the constructor contract
+### E. Standardize the constructor contract — and retire `InvocationError` entirely
 
 Already-noted bug: the fault-reconstruction code assumes every `RemoteError` subclass accepts
 `(message=.., module=..)` as keywords, which `InvocationError` and `ForbiddenError` don't — a
 latent `TypeError`-inside-the-fault-handler waiting for the wrong name to show up
-(`rpc.py:277-280`). More generally, as goal 5 adds more subclasses with their own structured
-fields (a `MissingSensorError` might reasonably want to carry the sensor name; a
-`BodyResolutionError` the body name that failed to resolve), each one either needs its own
-special-cased reconstruction branch or a genuinely uniform contract. I'd standardize on: every
-`PyObsError` subclass accepts `message: str | None` positionally/as its first argument, plus
-arbitrary keyword-only structured fields that get captured generically (e.g. into a `self.context:
-dict[str, Any]`) rather than becoming bespoke positional constructor parameters — so the RPC layer
-can reconstruct *any* subclass the same way (`cls(msg, **context)`) without knowing its specific
-shape in advance, and adding a new field to a new exception type never requires touching
-`rpc.py` again.
+(`rpc.py:277-280`).
+
+Checking whether §A's redesign actually closes this on its own (it doesn't, quite) turned up
+something sharper: under §A, `_on_jabber_rpc_method_fault` never constructs `InvocationError` for
+a resolved type anymore — it raises the real type directly, or `UnclassifiedError` for the
+fallback. Grepping every use of `InvocationError` in the codebase confirms it has no remaining job:
+the only construction site was the one §A replaces (`rpc.py:283`), and its only functional
+consumer was the module-extraction check in `handle_exception` (`exceptions.py:189`), itself part
+of the severity machinery §C already reworks to be catch-time and instance-scoped. **Retire the
+class entirely**, the same call as `SevereError` in §C — one fewer non-standard constructor to
+carry forward, and one fewer wrapper layer for a caller to think about.
+
+That leaves exactly one call site depending on the old behavior that §A's audit didn't originally
+catch: `pyobs/robotic/storage/lco/task.py:202-203`,
+`except exc.InvocationError as e: if isinstance(e.exception, exc.AbortedError): ...` — this needs
+the same treatment as the four `except exc.RemoteError:` sites already flagged in §A/proposal §2:
+widen to catch the real type directly (`except exc.AbortedError:`) instead of unwrapping a type
+that no longer gets constructed.
+
+With `InvocationError` gone and `SevereError` gone (§C), the constructor-uniformity problem shrinks
+to `RemoteError`/`RemoteTimeoutError` (currently `__init__(self, module: str, message: str | None
+= None)`, module positional-first) and `ForbiddenError` (`__init__(self, sender: str, method:
+str)`, never actually reached via the generic reconstruction path since forbidden calls take a
+separate XEP-0009 IQ-error condition, but still worth fixing for consistency). Standardize on:
+`PyObsError.__init__(self, message: str | None = None, **context: Any)`, storing every keyword
+generically (`for key, value in context.items(): setattr(self, key, value)`) so existing attribute
+reads (`exception.module`, a future `exception.sensor`, etc.) keep working without each subclass
+needing its own `__init__` override at all. The RPC layer can then reconstruct *any* registered
+subclass the same way (`cls(msg, **context)`), and adding a new structured field to a new
+exception type never requires touching `rpc.py` again. Migration is mechanical and small: `10`
+direct-construction call sites need their positional argument order updated to message-first —
+`xmppcomm.py:506,507,509` (`RemoteError`/`RemoteTimeoutError`), `rpc.py:298-303` (six `RemoteError`
+constructions, one per XEP-0009 error condition), and `module.py:428` (`ForbiddenError`).
 
 ### F. Add a correlation id instead of relying on suppressing one side's log
 
@@ -578,35 +714,52 @@ operation failed for reason X vs. reason Y" does.
 
 ### Sequencing relative to the rest of this doc
 
-A and B are the two I'd actually want to land alongside the incremental proposal below — A because
-without it, goal 5's whole premise (callers reacting to specific types) doesn't hold, and B because
-it removes the fragile `.logged`-flag coordination this doc otherwise just documents and works
-around. C, D, E are real but more invasive and lower urgency — worth doing, but each is its own
-PR-sized change and none blocks #446 itself. F is small and purely additive, worth including
-opportunistically whenever `rpc.py` is being touched anyway. G is a documentation/naming outcome
-of A, not separate work.
+All seven items (A-G) end up in the rollout below — none are left as someday-maybe, once each one
+turned out to be smaller or more load-bearing than "just a nice-to-have" on closer inspection: A
+because without it, goal 5's whole premise (callers reacting to specific types) doesn't hold; B
+because it removes the fragile `.logged`-flag coordination this doc otherwise just documents and
+works around; C because checking how `SevereError` is actually consumed (nothing does, directly)
+turned it from "worth doing eventually" into a small, enumerable fix riding along with B's same
+catch-time chokepoint change; D because §4's new leaf types need somewhere to physically live
+other than a growing `exceptions.py`, and that's only possible once the registry exists; E because
+checking whether A's fix alone closes the constructor-signature bug turned up that `InvocationError`
+has no remaining job at all once A lands, so retiring it and standardizing the rest is a small,
+concrete extension of the same change rather than separate follow-on work; F is small and purely
+additive, and naturally rides along once A/C are already touching the same fault-path code; G is a
+documentation/naming outcome of A, not separate implementation work. A/C/D/E/rpc.py migrations land
+together as one PR (rollout step 2) since they touch the same two files and are tightly coupled;
+B/F/G/the leaf-type sweep/docstring sweep can each go out on their own schedule after that.
 
 ## Design goals
 
 1. An exception should be logged once, at the place a human can actually act on it — not
-   re-logged at every hop it passes through on the way back to a caller. Concretely: `PyObsError`
-   subclasses are the deliberate, caller-facing API of a failure mode — the module author decided
-   a caller should be able to distinguish and react to this, so the module gets to decide whether
-   it's *also* worth a local line. Anything else (a raw builtin, a third-party/vendor SDK
-   exception) is by definition not part of that deliberate contract — it's unanticipated, which
-   means the fix belongs in the code/hardware that produced it. Those should always be logged
-   loudly, locally, where they happened, with no suppression possible; if a condition like that
-   turns out to recur often enough that callers legitimately need to distinguish and react to it,
-   that's the signal to promote it into a proper `PyObsError` subclass — not to keep passing it
-   through as a string forever.
+   re-logged at every hop it passes through on the way back to a caller. Concretely: creating a
+   `PyObsError` subclass at all is already a deliberate act (goal 5 — module authors mint specific
+   types on purpose, they don't reach for one by accident), so **every domain `PyObsError` logs as
+   one quiet INFO line, without a traceback, automatically — no per-type opt-in required.** A
+   module doesn't need to decide type-by-type whether something is "worth" a line; the only
+   decision it makes is the rare opt-*out* (`_disable_exception_logging`) for a type that fires
+   often enough that even a quiet line is too much (see below). Anything that *isn't* a
+   `PyObsError` (a raw builtin, a third-party/vendor SDK exception) is, by definition, not part of
+   that deliberate contract — it's unanticipated, which means the fix belongs in the code/hardware
+   that produced it. Those always log loudly (ERROR, with a traceback), locally, where they
+   happened, with no suppression possible; if a condition like that turns out to recur often
+   enough that callers legitimately need to distinguish and react to it, that's the signal to
+   promote it into a proper `PyObsError` subclass — not to keep passing it through as a string
+   forever. A single occurrence of a domain exception never escalates to loud on its own — a
+   *pattern* of them does, via the severity-escalation mechanism (Assessment §C) transitioning the
+   module into `ModuleState.ERROR`, which raises the always-loud `ModuleError` for every
+   subsequent call. That's the path to "this needs a human now"; an individual raise never needs
+   to guess at its own severity.
 2. Anything that crosses an RPC boundary should arrive as a meaningful, typed error on the other
    side, catchable directly as that type. A caller writing `except exc.FocusError:` around a
    proxy call should actually catch it — today it never does (see "Assessment" §A below: every
    remote domain exception arrives wrapped in `InvocationError` instead), which undercuts goal 5
    as much as the wire silently degrading to `RemoteError` does.
-3. A module should be able to declare "these exception types (and their subclasses) are
-   expected/already-handled — don't log them locally as errors," without losing the ability to
-   still see genuinely unexpected failures at ERROR with a traceback.
+3. A module should be able to declare "these exception types (and their subclasses) fire often
+   enough that even the default quiet INFO line is too much — suppress it entirely," without
+   losing the ability to still see genuinely unexpected failures at ERROR with a traceback (goal 1
+   already guarantees the latter is never suppressible).
 4. What's documented (`Raises:` docstrings), what's declared (`@raises(...)`), and what's
    actually raised should not be free to drift independently.
 5. Prefer adding a new, specific exception type over reusing a broad one or falling back to a
@@ -653,47 +806,52 @@ the exceptions this rule says should never have reached the RPC boundary unconve
 place. Letting a module silence any of the three would undermine the reason they exist — they're
 supposed to be the cases nobody gets to opt out of hearing about.
 
-`Module.execute()`'s catch block consults the list with `isinstance`, not exact-type match, so
-declaring a base class covers its subclasses for free — closing the gap versus `@raises`'s exact
-match:
+`Module.execute()`'s catch block consults the list with `isinstance`, so declaring a base class
+covers its subclasses for free, and — per the reworked Design Goal 1 — INFO-without-traceback is
+now the automatic default for any domain `PyObsError`, not something a method has to opt into:
 
 ```python
 except Exception as e:
-    if isinstance(e, exc.PyObsError) and not isinstance(e, exc.ModuleError):
-        if isinstance(e, self._disabled_exception_logging):
-            pass  # caller already has it; nothing to log locally
-        else:
-            level = "INFO" if isinstance(e, getattr(func, "raises", ())) else "ERROR"
-            exc_info = level == "ERROR"
-            e.log(log, level, f"Exception was raised in call to {method}: {e}", exc_info=exc_info)
+    if isinstance(e, exc.ModuleError) or isinstance(e, exc.UnclassifiedError):
+        e.log(log, "ERROR", f"Exception was raised in call to {method}: {e}", exc_info=True)
+    elif isinstance(e, exc.PyObsError):
+        if not isinstance(e, self._disabled_exception_logging):
+            e.log(log, "INFO", f"Exception was raised in call to {method}: {e}", exc_info=False)
+        # else: caller already has it; nothing to log locally
     raise e
 ```
 
-This subsumes `@raises(...)`'s INFO-demotion behavior (also switched to `isinstance` while we're
-in there) rather than replacing it outright — `@raises` still exists for "log at INFO, I still
-want a line," `_disable_exception_logging` is the new "log nothing, this is fully expected."
-Both read from the same `isinstance` check shape, so the two decorators/methods stay consistent
-with each other instead of one being exact-match and the other subclass-aware.
+`@raises(...)` (`pyobs/modules/module.py:87-100`) is retired as a *logging* mechanism — its job
+(deciding which types get a quiet line) is now automatic for every domain exception, not
+per-method-declared. It can still survive purely as documentation metadata feeding §7's
+docstring-cross-check idea, but it no longer affects `execute()`'s log level at all.
 
-This also settles the `CommLoggingHandler` broadcast question by construction, not by choice: the
-`pass` branch above never calls `e.log(...)`, so no `LogRecord` is created at all — there's nothing
-for `CommLoggingHandler` (`pyobs/comm/comm.py:70-78`, just another handler on the root logger) to
-pick up. "Suppress locally but still broadcast" isn't a flag away; it would need a second,
-deliberate path (e.g. calling `comm.send_event(...)` directly, bypassing `logging` entirely) even
-though the local write is skipped. Deliberately not building that: the two-tier split already
-covers it without new plumbing — `@raises(...)` is "log at INFO, still emit a record" (which,
-being INFO+, still gets picked up and broadcast), `_disable_exception_logging` is the stronger
-"not worth a line to anyone" tier. A module author wanting "quiet locally but still visible to an
-operator watching the fleet" already has `@raises` for that; giving
-`_disable_exception_logging` the same broadcast-preserving behavior would just duplicate it. And
-per Assessment §A, once the caller receives the real typed exception directly rather than buried
-in `InvocationError`, it already has full fidelity — type, message, and (with the correlation id
-from §F) a path back to the origin's detailed log if ever needed — so staying silent isn't losing
-information, it's not re-announcing something the direct recipient already has in full. One scope
-caveat regardless: this only touches the one log call inside `execute()`'s catch block — any other
-`log.info`/`log.warning` a driver makes on its own (e.g. inside a retry loop) is untouched either
-way; `_disable_exception_logging` was never a total-silence guarantee, just a fix for this one
-redundant site.
+This also settles the `CommLoggingHandler` publish question by construction, not by choice: the
+skipped-log branch above never calls `e.log(...)`, so no `LogRecord` is ever created — there's
+nothing for `CommLoggingHandler.emit()` (`pyobs/comm/commlogging.py:27-43`) to pick up, so
+`log_message()` never queues, and `send_event()`'s `xep_0163.publish()`
+(`pyobs/comm/xmpp/xmppcomm.py:665-687`) never fires. "Skip the local write but still publish"
+isn't a flag away; it would need a second, deliberate path (calling `comm.send_event(...)`
+directly, bypassing `logging` entirely). There's no reason to build that: "don't call `e.log(...)`"
+and "don't queue for `comm.log_message()`" are the same thing once traced through — one *is* the
+other under the standard `logging` dispatch model, so the suppression point already gates the
+publish itself, not just local severity.
+
+That's also the accurate reason `_disable_exception_logging` matters, corrected from an earlier
+draft of this section: it isn't guarding against some *new* publish-side cost this design
+introduces (per the "Where local logging happens" discussion in Current State, that cost already
+exists today, unconditionally, for every currently-logged domain exception — `CommLoggingHandler`
+gates purely on level, and `ERROR` already clears the `INFO` threshold just as well as the new
+default does). It's the *first* mechanism able to reduce a pre-existing cost that #446 never
+touched before: a type firing repeatedly inside a tight internal retry loop already pays this
+publish cost today (formatted, queued, and pushed to the XMPP server as a stanza every single
+time, regardless of whether anyone declared interest via `register_event(..., handler=...)`, per
+Current State) — `_disable_exception_logging` is how a module finally gets to say "stop paying
+that cost for this specific type," not a defense against something this design would otherwise
+make worse. One scope caveat regardless: this only touches the one log call inside `execute()`'s
+catch block — any other `log.info`/`log.warning` a driver makes on its own (e.g. inside a retry
+loop) is untouched either way; `_disable_exception_logging` was never a total-silence guarantee,
+just a fix for this one redundant site.
 
 ### 2. Raise the real reconstructed type directly; `UnclassifiedError` is the only fallback
 
@@ -710,25 +868,30 @@ else:
 future.set_exception(exception)
 ```
 
-`InvocationError` keeps exactly one job — the `else` branch above — rather than wrapping every
-case. This also folds in the constructor-contract bug from the previous draft of this section:
-today's reconstruction assumes every `RemoteError` subclass accepts `(message=.., module=..)`,
-which `InvocationError`/`ForbiddenError` don't, a latent `TypeError`-inside-the-fault-handler
-(`rpc.py:277-280`). Since `InvocationError` no longer needs to wrap arbitrary reconstructed types
-under this design, that whole branch simplifies away rather than needing a separate fix.
+`UnclassifiedError` picks up the one remaining job the old `InvocationError` used to do for every
+case — wrapping the unresolved fallback — which means `InvocationError` itself has no job left at
+all. Retire it entirely (Assessment §E): that also removes the constructor-contract bug this
+section's earlier draft flagged, since today's reconstruction assumed every `RemoteError`
+subclass accepts `(message=.., module=..)`, which `InvocationError`/`ForbiddenError` don't, a
+latent `TypeError`-inside-the-fault-handler (`rpc.py:277-280`) — with `InvocationError` gone, that
+particular non-standard constructor no longer needs handling here at all (the residual
+`RemoteError`/`RemoteTimeoutError`/`ForbiddenError` cleanup is §E's, not this section's).
 
 **Required migration, not optional cleanup**: `pyobs/modules/focus/focusseries.py:167,194,203`
 and `pyobs/modules/module.py:238` currently write `except exc.RemoteError:` specifically to catch
 *any* failure from a proxy call (transport or domain) — they only work today because domain
 exceptions arrive wrapped in an `InvocationError` (a `RemoteError` subclass). Once fixed, these
 need to widen to `except exc.PyObsError:` (their actual intent, reading each one) or they'll stop
-catching domain failures from the remote side entirely. This has to land in the same PR as the
+catching domain failures from the remote side entirely. A fifth site needs the same treatment for
+the same reason, once `InvocationError` no longer exists: `pyobs/robotic/storage/lco/task.py:
+202-203`'s `except exc.InvocationError as e: if isinstance(e.exception, exc.AbortedError):`
+should become a direct `except exc.AbortedError:`. All five have to land in the same PR as the
 unwrap fix, not after it.
 
 ### 3. Collapse the two catch/log sites into `Module.execute()`
 
 Per Assessment §B: move classification (wrap non-`PyObsError` into `UnclassifiedError`), the
-`_disable_exception_logging`/`@raises` level decision, and the actual `log.log(...)` call entirely
+`_disable_exception_logging` opt-out check, and the actual `log.log(...)` call entirely
 into `Module.execute()`. `RPC._on_jabber_rpc_method_call`'s catch block stops doing any logging or
 wrapping of its own — by the time an exception reaches it, `execute()` has already classified and
 logged it, so `rpc.py` purely serializes (`fault_to_xml`) and sends. This also closes the gap where
@@ -752,11 +915,18 @@ depth (and registry/reconstruction surface, per Assessment §D) that nothing eve
 - `CameraException` → both of its current call sites ("camera not idle" for a new exposure, and
   for a new sequence) mean *the caller sent a request the camera can't service right now*, which
   is a different condition from "I tried to grab and it failed" (`GrabImageError`'s actual
-  meaning) — passes test 1 outright ("back off and retry" vs. "something actually broke"). Give it
-  its own type in `exceptions.py`, e.g. `CameraBusyError(PyObsError)`, rather than either leaving
-  it as a non-`PyObsError` class or folding it into `GrabImageError` where it would be
-  indistinguishable from a genuine grab failure. Deliberately *not* split further into e.g. a
-  busy-for-exposure vs. busy-for-sequence variant — no caller would react differently to those two.
+  meaning) — passes test 1 outright ("back off and retry" vs. "something actually broke"). The
+  interface audit turned up the identical condition in a completely different device family:
+  `AcquireLockFailed` (`pyobs/utils/threads/lockwithabort.py:10,37`), a plain `Exception` (not even
+  `PyObsError`) that leaks out of `move_radec`/`move_altaz`/`set_focus`/`park`/`stop_motion`/roof
+  `init`/`park` whenever `LockWithAbort` can't acquire its lock — i.e. the device is already
+  busy handling another motion request. That's the same failure mode as `CameraException`'s, just
+  on telescope/roof/focuser instead of camera. Rather than a camera-specific type, generalize to
+  one reusable `DeviceBusyError(PyObsError)` in `exceptions.py` covering both — "this device is
+  already busy, back off and retry" doesn't depend on which kind of device it is, and a single type
+  lets a caller write one retry-loop `except` clause that works across camera, telescope, roof, and
+  focuser modules alike. Deliberately *not* split further into e.g. a busy-for-exposure vs.
+  busy-for-sequence vs. busy-for-lock variant — no caller would react differently to any of those.
 - `FocusModel.set_optimal_focus`'s three failure modes map onto a real retry-vs-not axis: invalid
   weather reading and a timed-out temperature fetch are both plausibly transient (worth retrying),
   while a misconfigured sensor name in the response is a config bug that retrying never fixes.
@@ -792,13 +962,59 @@ depth (and registry/reconstruction surface, per Assessment §D) that nothing eve
   `BaseCamera`'s equivalent path (`basecamera.py:266`) exactly. Confirmed via `pyobs-aravis`/
   `-v4l` (both build on `BaseVideo`, not `BaseCamera`) in the driver survey above — this is a
   `pyobs-core` fix, not a driver one, and belongs in this same sweep.
+- `BaseSpectrograph.grab_data()` (`pyobs/modules/camera/basespectrograph.py:164-186`) has the
+  identical gap, confirmed by the interface audit: it raises bare `ValueError` three times
+  (lines 176, 182, 185) and never `exc.GrabImageError`, despite `IData.grab_data` documenting
+  exactly that type. Same fix, same sweep.
+- `InitError`/`ParkError` — confirmed by the interface audit to have **zero raise sites anywhere**
+  in `pyobs/modules/`, despite `IMotion.init`/`park` documenting them. Unlike the `pyobs-brot`
+  finding (a different repository this PR can't touch), the in-tree reference/dummy
+  implementations *can* be fixed here: `telescope/_dummytelescopebase.py`, `roof/dummyroof.py`,
+  and `flatfield/flatfield.py`'s `IMotion` methods should catch `AcquireLockFailed` (see the
+  `DeviceBusyError` fix above — a lock-acquisition failure isn't the same condition as "the device
+  failed to initialize/park," so it needs its own translation, not folding into `DeviceBusyError`)
+  and any other failure reaching `init()`/`park()`, and raise `exc.InitError`/`exc.ParkError`
+  respectively, matching the interface contract these two methods have documented all along.
 
 Note: §2 above already gives every new type here a working fallback — anything not yet migrated
 to a specific type still arrives as `UnclassifiedError` rather than degrading to an untyped
 `RemoteError`, so this sweep can genuinely happen incrementally, type by type, without a
 transitional period where unmigrated call sites are worse off than today.
 
-### 5. Document (and fix) the `AbortedError` contract on abortable hooks
+### 5. Serialize by registry, and move domain-specific exceptions to where they belong
+
+Per Assessment §D: `getattr(exc, exc_name, None)` (`rpc.py:272`) only resolves classes that live in
+`pyobs.utils.exceptions`. That constraint was invisible while the hierarchy was small and
+centralized, but §4 just proposed a dozen-plus new leaf types, several of which belong physically
+near the code that raises them, not bolted onto a growing, unrelated `exceptions.py` — e.g.
+`WeatherDataError`/`FocusTimeoutError`/`MissingSensorError` next to `FocusModel`
+(`pyobs/modules/focus/focusmodel.py`), the deferred `ScriptError` next to the
+`pyobs.robotic.scripts` package. Doing that under the current serialization scheme means those
+types silently stop surviving the wire the moment they move.
+
+Fix: replace the hardcoded single-module `getattr` lookup with an explicit registry — a decorator
+(e.g. `@exc.register`) any `PyObsError` subclass applies regardless of which file defines it,
+populating a flat `name -> class` dict the fault deserializer consults instead of reflecting into
+one module. This is a deliberate security boundary, not just refactoring: the current design is
+*accidentally* safe because `getattr` can only ever resolve names that exist in one fixed, trusted
+module; a naive fix ("serialize the fully-qualified class path and import it") would trade that
+away for an open-ended dynamic import driven by a value that arrived over the wire — a real hole.
+An explicit registry keeps the "only things we chose to expose are reconstructable" property the
+accident currently gives us, while decoupling "reconstructable" from "physically defined in
+`pyobs/utils/exceptions.py`."
+
+With the registry in place, physically relocate the domain-specific types from §4 to where they
+belong as part of the same sweep: `WeatherDataError`/`FocusTimeoutError`/`MissingSensorError` into
+`pyobs/modules/focus/focusmodel.py` (or a small `pyobs/modules/focus/exceptions.py` if more than
+one focus-adjacent file ends up needing them); `MissingObserverError`/`AltitudeLimitError`/
+`InvalidOrbitalElementsError`/`BodyResolutionError` into `pyobs/modules/telescope/basetelescope.py`
+or an equivalent telescope-local module; `ScriptError` (and any leaves minted later) into
+`pyobs/robotic/scripts/__init__.py` or a dedicated exceptions module in that package. Cross-cutting
+types that aren't tied to one domain file — `DeviceBusyError`, `NotSupportedError`,
+`UnclassifiedError` — stay in `pyobs.utils.exceptions` alongside the existing hierarchy, since
+they're infrastructure, not a specific module's concern.
+
+### 6. Document (and fix) the `AbortedError` contract on abortable hooks
 
 Per the driver survey above: `BaseCamera._expose()`'s docstring never mentions `AbortedError`,
 and two independent driver projects both guessed `InterruptedError` instead — this isn't a
@@ -810,73 +1026,202 @@ call sites this PR can reach: `pyobs-sbig/src/pyobs_sbig/sbigcamera.py:162`,
 (`InterruptedError(...)` → `exc.AbortedError()`), but in a different repository, so it's a
 companion PR alongside the core docstring fix, not something this repo's PR can do alone.
 
-### 6. Keep documentation honest
+### 7. Keep documentation honest
 
-- Fix the two confirmed mismatches: `IAutoFocus.py`'s `Raises:` clause (`ValueError` →
-  `FocusError`, `AbortedError`), and add a `Raises:` clause to `IFocusModel.py` once (4)'s
-  `FocusError` fix lands there.
+The full interface audit (see "Confirmed by a full interface docstring audit" above) turned this
+from "fix two known typos" into a real sweep: 16 of 27 documented interfaces have at least one
+confirmed mismatch. Splitting the findings by what actually needs to change:
+
+- **Docs need fixing to match already-correct behavior**: `IAutoFocus.py`'s `Raises:` clause
+  (`ValueError` → `FocusError`, `AbortedError`, matching the method's own `@raises(...)`
+  decorator), `IAcquisition.py`'s `Raises:` clause (`ValueError` → `AbortedError`,
+  `AcquisitionError`, `GeneralError`, same pattern).
+- **Behavior needs fixing to match already-correct docs** (these are just pointers back to §4/§6,
+  not new work): `IData.grab_data` — `BaseSpectrograph`/`BaseVideo` need to actually raise
+  `GrabImageError`; `IMotion.init`/`park` — the dummy/reference implementations need to actually
+  raise `InitError`/`ParkError`; `IPointingRaDec`/`IPointingAltAz`/etc.'s `MoveError` — needs real
+  raise sites once §4's `MissingObserverError`/`AltitudeLimitError`/etc. land, since `MoveError`
+  alone was never actually reachable from a synchronous RPC call to begin with.
+- **Both need fixing, together**: `IFocusModel.py` — add a `Raises:` clause once §4's
+  `WeatherDataError`/`FocusTimeoutError`/`MissingSensorError` fix lands there;
+  `ScienceFrameGuiding.set_exposure_time` and `_DummyTelescopeBase.set_focus_offset` — both
+  unconditionally raise bare `NotImplementedError` contradicting their documented types entirely;
+  once §4's `NotSupportedError` exists, both should raise that instead (it's exactly the
+  "capability not supported" condition `NotSupportedError` was proposed for) and their interfaces'
+  docstrings should document it.
+- **Doc-gap-only, no implementation to check yet**: `ICalibrate`, `ISyncTarget`,
+  `IMultiFiber.set_fiber`, `IPointingSeries`, `IRotation`, `IScriptRunner.run_script`,
+  `IStructuredConfig` have zero concrete implementers anywhere in this repo. Add `Raises:` clauses
+  consistent with whatever convention the rest of the sweep settles on (custom type vs. `ValueError`
+  for bad input), so a future implementer — in this repo or a driver project — has a contract to
+  follow instead of guessing, the same guess that produced the `InterruptedError`/`AcquireLockFailed`
+  mismatches found elsewhere in this doc.
 - Longer-term, low-priority idea: a lint/test that cross-checks `@raises(...)`/
   `_disable_exception_logging(...)` arguments against the types actually referenced in a method's
-  docstring, so the three no longer drift independently. Not required for the initial rollout.
+  docstring, so the two no longer drift independently. Not required for the initial rollout.
+
+### 8. Standardize the `PyObsError` constructor contract
+
+Per Assessment §E, once `InvocationError`/`SevereError` are retired (§2, §3), the remaining
+non-uniform constructors are `RemoteError`/`RemoteTimeoutError` (`__init__(self, module: str,
+message: str | None = None)`, module positional-first) and `ForbiddenError` (`__init__(self,
+sender: str, method: str)`). Standardize the base class itself:
+
+```python
+class PyObsError(Exception):
+    def __init__(self, message: str | None = None, **context: Any):
+        self.message = message
+        self.logged = False
+        self.context = context
+        for key, value in context.items():
+            setattr(self, key, value)
+```
+
+Every subclass drops its own `__init__` override — `module=`, `sensor=`, `original_type=`, and any
+future structured field a new leaf type wants to carry all arrive as ordinary keyword arguments and
+become ordinary attributes, generically, with no per-subclass reconstruction code needed in
+`rpc.py` ever again (`cls(msg, **context)` works uniformly for anything the registry, §5, resolves).
+Ten direct-construction call sites need their argument order updated to message-first:
+`xmppcomm.py:506,507,509` (`RemoteError`/`RemoteTimeoutError`, `client` → `module=client`),
+`rpc.py:298-303` (six `RemoteError` constructions, one per XEP-0009 error condition, `sender` →
+`module=sender`), and `module.py:428` (`ForbiddenError`, computing the same message it does today
+but passing `sender=`/`method=` as keywords instead of positionals).
+
+### 9. Add a correlation id for cross-log debugging
+
+Per Assessment §F: tag each RPC call with a correlation id — XEP-0009 already assigns `iq["id"]`
+per call (`rpc.py:163-164`, currently used only as the `Future` dict key) — and include it in both
+the origin-side ERROR log (with full traceback) and whatever reaches the caller (an attribute on
+the exception itself, e.g. `exception.call_id`, following §8's generic-context mechanism — no
+bespoke plumbing needed once §8 lands). An operator debugging a caller-side `FocusError` can then
+jump straight to the matching detailed log on the module that actually raised it, by id. Purely
+additive, no migration required, and a natural companion to `_disable_exception_logging`: the more
+willing a module is to stay silent locally, the more useful a correlation id becomes as the way an
+operator reconnects a caller-side symptom to its origin-side detail.
+
+### 10. Document the domain/transport split as a deliberate axis
+
+Per Assessment §G: once proposal §2 lands (callers actually receive real domain types directly,
+not everything wrapped in `RemoteError`'s subtree), add a module-level comment to
+`pyobs/utils/exceptions.py` stating the two-tier design explicitly: `RemoteError` and its subtree
+(`RemoteTimeoutError`, `ForbiddenError`) mean "the call itself didn't reach/return" — transport
+failures that don't need to multiply into fine-grained subtypes the way goal 5 argues domain
+exceptions should, since "the call failed to even happen" doesn't usually benefit from
+distinguishing *why* the way "the operation failed for reason X vs. reason Y" does. Everything
+outside that subtree is domain-level and gets goal 5's finer-grained treatment. This is
+documentation only — no behavior changes, just naming the axis that already exists once §2 stops
+blurring it by wrapping domain exceptions in a transport-level type.
+
+### 11. Rename `PyObsError` → `PyobsError` for naming consistency
+
+Every other identifier in this codebase that embeds the project name already treats "pyobs" as a
+single capitalized word: `PyobsArchive`, `PyobsCLI`, `PyobsDaemon`, `PyobsJournaldLogHandler`,
+`PyobsWinCLI`, and a bare `Pyobs` class. `PyObsError` is the only place "Obs" gets its own capital
+— an inconsistency, not a deliberate choice. Rename to `PyobsError`, matching the rest.
+
+Mechanical, no logic changes, but real scope: 40 references across 6 files in `pyobs-core` (the
+class declaration, every subclass's base-class reference, `isinstance`/`except` checks throughout
+`pyobs/`, and the test suite), plus at least two downstream files
+(`pyobs-gui/pyobs_gui/base.py`, `pyobs_gui/mainwindow.py`, both `except exc.PyObsError`) and two
+`DEVELOPMENT.md` docs (`pyobs-gui`, `pyobs-iagvt`) referencing it by name. Since `exceptions.py`
+is already being rewritten extensively in rollout step 2 (retiring `InvocationError`/
+`SevereError`, adding `UnclassifiedError`, standardizing constructors), do the rename in the same
+step rather than as separate churn — every new/renamed class in that PR gets declared against the
+correct name from the start, instead of being touched twice.
 
 ## Rollout plan
 
-1. `_disable_exception_logging` + switch `@raises` and the new check to `isinstance` — lands the
-   part of #446 that was actually asked for, low risk, no behavior change for existing callers
-   since nothing uses the new method yet.
-2. Stop wrapping reconstructed exceptions in `InvocationError` (proposal §2) *together with*
-   widening the four now-too-narrow `except exc.RemoteError:` call sites
-   (`focusseries.py:167,194,203`, `module.py:238`) in the same change — this is the one place in
-   the rollout that isn't purely additive, so it can't be split across separate PRs the way the
-   rest can. Also fixes the `InvocationError`/`ForbiddenError` reconstruction-signature bug as a
-   byproduct, since `InvocationError` no longer needs to handle arbitrary reconstructed types.
-   `pyobs-monet`'s `searchpattern2.py:134-141` has the same reliance on the old wrapping (see Open
-   questions) but is out of scope for now — deferred, not a blocker for this step.
-3. Collapse the two catch/log sites into `Module.execute()` (proposal §3) — mechanical once (2) is
-   in place, and extends the `UnclassifiedError` safety net to `LocalComm`/`MultiModule`, not just
-   XMPP.
-4. Sweep the concrete gaps one at a time, each as its own small PR: `CameraException`,
-   `FocusModel`, `BaseTelescope`'s `ValueError` sites, the `Script` subclasses' unwrapped
-   `ValueError`s, `BaseVideo.grab_data()`'s `ValueError` → `GrabImageError`. These touch call
-   sites other code may already `except`, so they go out separately rather than as one large diff.
-   Since (2) already gives every unmigrated site a working `UnclassifiedError` fallback instead of
-   a silent `RemoteError` degradation, there's no pressure to do this sweep all at once.
-5. Document the `AbortedError` contract on `_expose()`/abortable hooks (proposal §5) — purely
+Every assessment item (A-G) ends up somewhere in this plan — none are left as someday-maybe. Step 2
+bundles everything that's tightly coupled enough it can't be split (it's one PR internally, see
+its own bullets); steps 1, 3, and 4 are each independent and can go out on their own schedule
+around it; the rest are incremental sweeps with no fixed order among themselves.
+
+1. Make INFO-without-traceback the automatic default for every domain `PyObsError` in
+   `Module.execute()`, add `_disable_exception_logging` as the opt-out for high-frequency types,
+   and retire `@raises` as a logging mechanism (it keeps only documentary value, feeding §7's
+   docstring-cross-check idea) — lands the part of #446 that was actually asked for. This *is* a
+   small behavior change worth a changelog line: every RPC-exposed method raising a domain
+   exception without an existing `@raises` now logs it at INFO instead of ERROR-with-traceback by
+   default, which is the intended fix, not an accidental side effect.
+2. **The `rpc.py`/`exceptions.py` core rework, as one PR** (proposals §2, §3 fault-path portion,
+   §8, §11; Assessment §A, §C's reconstruction-adjacent parts, §D, §E):
+   - Stop wrapping reconstructed exceptions in `InvocationError` — raise the real registered type
+     directly, `UnclassifiedError` as the only fallback (§2). Retire `InvocationError` entirely
+     (§E) — nothing constructs it under the new design.
+   - Standardize the constructor contract (§8): `PyobsError.__init__(message=None, **context)`,
+     generic attribute capture. Migrate ten direct-construction call sites
+     (`xmppcomm.py:506,507,509`, `rpc.py:298-303`, `module.py:428`) to message-first argument
+     order.
+   - Rename `PyObsError` → `PyobsError` (§11) in the same pass, since every subclass declaration
+     in `exceptions.py` is already being touched by the other changes here.
+   - Build the exception registry (§5, Assessment §D) and switch `rpc.py`'s fault
+     (de)serialization to consult it instead of `getattr` on `pyobs.utils.exceptions` — needed
+     before any type can physically relocate out of that one module later.
+   - Widen the five now-too-narrow call sites that relied on "everything remote arrives wrapped":
+     `focusseries.py:167,194,203`, `module.py:238` (→ `except exc.PyObsError:`), and
+     `lco/task.py:202-203` (→ `except exc.AbortedError:` directly, since `InvocationError` is
+     gone). This is the one place in the rollout that isn't purely additive, so it can't be split
+     further — all five have to move together with the unwrap fix.
+   - `pyobs-monet`'s `searchpattern2.py:134-141` has the same reliance on the old wrapping (see
+     "Resolved during design" below) but is out of scope for now — deferred, not a blocker for
+     this step.
+3. Collapse the two catch/log sites into `Module.execute()` (proposal §3's classification/logging
+   portion) — mechanical once (2) is in place, and extends the `UnclassifiedError` safety net to
+   `LocalComm`/`MultiModule`, not just XMPP. Retire the `SevereError` substitution in the same pass
+   (Assessment §C): move `register_exception`'s counting/threshold check into this same catch-time
+   chokepoint as an instance method (`self._register_exception(...)`), fixing the cross-instance
+   global-state bug as a byproduct, drop the type-substitution branch entirely, and remove the
+   `_Meta` metaclass. Nine in-tree call sites plus one in `pyobs-alpaca` need the mechanical
+   `exc.register_exception(...)` → `self._register_exception(...)` rename; three assertions in
+   `tests/utils/test_exceptions.py` need rewriting to check the callback/state-transition instead
+   of the (now-removed) type substitution.
+4. Add the correlation id (proposal §9, Assessment §F) — purely additive, rides along naturally
+   once (2)/(3) are already touching the same fault-path code, but doesn't block anything else.
+5. Sweep the concrete gaps one at a time, each as its own small PR: `CameraException`/
+   `AcquireLockFailed` → `DeviceBusyError`, `FocusModel` → `WeatherDataError`/`FocusTimeoutError`/
+   `MissingSensorError` (relocated to `focusmodel.py`), `BaseTelescope`'s `ValueError` sites →
+   `MissingObserverError`/`AltitudeLimitError`/`InvalidOrbitalElementsError`/`BodyResolutionError`
+   (relocated to `basetelescope.py`), the capability-check `NotImplementedError` sites (including
+   `ScienceFrameGuiding`/`_DummyTelescopeBase`, confirmed by the interface audit) →
+   `NotSupportedError`, `InitError`/`ParkError` actually raised by the dummy/reference `IMotion`
+   implementations, the `Script` subclasses' unwrapped `ValueError`s → `ScriptError` (relocated to
+   `pyobs.robotic.scripts`), `BaseCamera`/`BaseSpectrograph`/`BaseVideo.grab_data()`'s `ValueError`
+   → `GrabImageError`. These touch call sites other code may already `except`, so they go out
+   separately rather than as one large diff. Since (2) already gives every unmigrated site a
+   working `UnclassifiedError` fallback instead of a silent `RemoteError` degradation, there's no
+   pressure to do this sweep all at once.
+6. Document the domain/transport split explicitly in `pyobs/utils/exceptions.py` (proposal §10,
+   Assessment §G) — documentation only, natural once (2) stops blurring the split by wrapping
+   domain exceptions in a transport-level type.
+7. Document the `AbortedError` contract on `_expose()`/abortable hooks (proposal §6) — purely
    additive to `pyobs-core`'s docstrings, doesn't depend on anything else in this rollout.
-6. Docstring sweep (`IAutoFocus`, `IFocusModel`, and any others turned up while doing (4)).
+8. Docstring sweep across every interface flagged in the audit (proposal §7) — the mismatches that
+   are pure documentation fixes (`IAutoFocus`, `IAcquisition`) can go immediately; the ones that
+   need §4's behavior fixes first (`IData`, `IMotion`, the pointing/tracking `MoveError` family,
+   `IFocusModel`) land alongside those; the doc-gap-only interfaces with no implementers
+   (`ICalibrate`, `ISyncTarget`, etc.) can go any time.
 
 Two items surfaced by the driver survey are explicitly **not** part of this rollout because they
 live in other repositories and can't be fixed by a pyobs-core PR alone: the `AbortedError` fix in
-`pyobs-sbig`/`pyobs-fli` (companion to step 5) and, more importantly, `pyobs-brot`'s roof/dome/
+`pyobs-sbig`/`pyobs-fli` (companion to step 7) and, more importantly, `pyobs-brot`'s roof/dome/
 telescope silently returning success instead of raising `InitError`/`ParkError` on hardware
 failure — see "Confirmed in downstream driver projects" above. The latter isn't blocking #446, but
 it's a real, independent bug worth its own issue regardless of this design doc's fate.
 
-Assessment items C (decouple severity escalation from construction), D (registry-based
-serialization), E (uniform constructor contract — largely subsumed by step 2 above, but the
-general-purpose version for future subclasses is separate), F (correlation id), and G (naming) are
-not included in this rollout — each is its own PR-sized change, none blocks #446, and D in
-particular only becomes urgent once the sweep in step 4 actually wants to define exception types
-outside `pyobs/utils/exceptions.py` (currently proposed as living there anyway, per step 4's
-listed types, precisely to sidestep needing D immediately).
+## Resolved during design
 
-## Open questions
-
-- `_disable_exception_logging` as an instance method called in `__init__` (matches
-  `register_exception`'s existing convention) vs. a class-level decorator like `@raises` — the
-  issue text suggests the former (`self._disable_exception_logging(...)`); confirm that's still
-  the preference now that `@raises` is being touched anyway.
-- Checked every sibling `pyobs-*` project on the `2.0.0.devX` line (`pyobs-alpaca`, `-aravis`,
-  `-asi`, `-brot`, `-fli`, `-flipro`, `-gui`, `-monet`, `-qhyccd`, `-sbig`, `-v4l`, `-zaber`,
-  `-zwoeaf`) for `InvocationError`/`RemoteError`/`except exc.`. `pyobs-gui`'s two hits
-  (`pyobs_gui/base.py:311`, `pyobs_gui/mainwindow.py:577`) catch the broad `exc.PyObsError` and
-  don't touch `.exception`, so they're unaffected either way. `pyobs-monet/pyobs_monet/morisot/
-  searchpattern2.py:134-141` does rely on the old wrapping (a retry loop doing
-  `except exc.InvocationError: pass` around a proxy call, to mean "any remote failure") but that
-  script is out of scope for now — not a current concern for this design, per the project owner.
-  Noting for later regardless: grepping can only find call sites that name the exception type
-  explicitly — a bare `except Exception:` swallowing the same wrapped failure elsewhere wouldn't
-  show up this way, so a changelog callout for proposal §2 is still worth doing when it lands,
-  independent of `searchpattern2.py` specifically.
-- Should Assessment items C/D/E/F/G be tracked as their own follow-up issues now, so they don't
-  get lost once #446 itself is closed out by steps 1-5?
+- `_disable_exception_logging`'s shape: an instance method called from `__init__`, matching
+  `register_exception`'s existing convention (`self._disable_exception_logging(exc.FocusError)`),
+  not a class-level decorator like the old `@raises`. Decided; see proposal §1.
+- Cross-repo impact: checked every sibling `pyobs-*` project on the `2.0.0.devX` line
+  (`pyobs-alpaca`, `-aravis`, `-asi`, `-brot`, `-fli`, `-flipro`, `-gui`, `-monet`, `-qhyccd`,
+  `-sbig`, `-v4l`, `-zaber`, `-zwoeaf`) for `InvocationError`/`RemoteError`/`except exc.`.
+  `pyobs-gui`'s two hits (`pyobs_gui/base.py:311`, `pyobs_gui/mainwindow.py:577`) catch the broad
+  `exc.PyObsError` and don't touch `.exception`, so they're unaffected either way.
+  `pyobs-monet/pyobs_monet/morisot/searchpattern2.py:134-141` does rely on the old wrapping (a
+  retry loop doing `except exc.InvocationError: pass` around a proxy call, to mean "any remote
+  failure") but that script is out of scope for now — not a current concern for this design, per
+  the project owner. Noted for later regardless: grepping can only find call sites that name the
+  exception type explicitly — a bare `except Exception:` swallowing the same wrapped failure
+  elsewhere wouldn't show up this way, so a changelog callout for proposal §2 is still worth doing
+  when it lands, independent of `searchpattern2.py` specifically.

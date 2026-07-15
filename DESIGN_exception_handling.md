@@ -150,7 +150,12 @@ Used on exactly two methods: `AutoFocusSeries.auto_focus`
 `@raises(exc.AbortedError, exc.AcquisitionError)`). It demotes to INFO-without-traceback rather
 than suppressing entirely (issue #446 asks for no local log at all), and its match is exact-type
 (`type(e) in getattr(func, "raises")`), not `isinstance` — a subclass of a declared type would
-still log at ERROR, which doesn't match the issue's "maybe use the inheritance tree" ask.
+still log at ERROR today. Treating this as an oversight rather than a deliberate restriction: a
+method decorated `@raises(exc.FocusError)` almost certainly means "anything in the `FocusError`
+family," not "literally `FocusError` and nothing that subclasses it" — especially once goal 5 adds
+leaf subclasses like `WeatherDataError(FocusError)` under types that are already declared in a
+`@raises(...)`. Switching to `isinstance` (done in proposal §1 below) is a bugfix, not a behavior
+change that needs a changelog callout beyond noting it fixes previously-under-caught subclasses.
 
 No `_disable_x`-style instance/class configuration method exists anywhere on `Module`/`Object`
 today (grepped, no hits). The closest structural precedent for "an instance-level table consulted
@@ -285,10 +290,26 @@ it's a structural gap worth closing while touching this code.
   calls `await script.run(None)` with no surrounding `try`/`except` — whatever a `Script`
   subclass raises goes straight out over RPC unwrapped. `autofocus.py:60`,
   `transitimaging.py:64,86`, `callmodule.py:54,61,68`, `cases.py:32` all raise bare `ValueError`
-  on this path. `callmodule.py:68` is worth flagging specifically — it catches an arbitrary
-  exception from a proxied call and does `raise ValueError(str(e))`, collapsing whatever type the
-  remote side had into a fresh `ValueError`, discarding it a second time on top of the
-  RPC-boundary degradation already described above.
+  on this path, but not all are the same *kind* of gap. `callmodule.py:68` is worth flagging
+  specifically — it catches an arbitrary exception from a proxied call and does
+  `raise ValueError(str(e))`, collapsing whatever type the remote side had into a fresh
+  `ValueError`, discarding it a second time on top of the RPC-boundary degradation already
+  described above. `transitimaging.py:64,86`'s `"No TransitMerit found on task."` is a different
+  case entirely: `TransitImagingScript.can_run()` (`transitimaging.py:30-49`) already checks for
+  exactly this condition and reports it through the *real* skip mechanism — it sets
+  `self._cant_run_reason` and returns `False`, which is how a scheduler is meant to find out a
+  task isn't runnable *without* an exception. The `ValueError` inside `run()`/
+  `_run_configurations()` only fires if something invokes `run()` without checking `can_run()`
+  first — a caller-contract violation, not a domain failure — so it isn't actually a case of
+  "this needs a nicer exception type," it's dead code in properly-scheduled operation. Contrast
+  with `autofocus.py:60`'s `"No target given."`: `AutoFocusScript.can_run()`
+  (`autofocus.py:25-48`) checks proxy availability and telescope readiness but has *no*
+  equivalent check for a missing target, so that `ValueError` is a genuinely reachable runtime
+  failure, not a redundant one. The real fix for the `transitimaging.py` case is to trust
+  `can_run()`'s existing gate (or, if defense-in-depth is wanted, keep a minimal assertion there,
+  not a rich exception type); the real fix for `autofocus.py` is arguably to extend `can_run()` to
+  check for a target too, closing the gap at the same place `transitimaging.py` already closes it
+  for its own precondition, rather than reporting the absence only after `run()` has started.
 - Documentation/implementation mismatch: `IAutoFocus.py:56-57` documents
   `Raises: ValueError: If focus could not be obtained.` — but `AutoFocusSeries.auto_focus`
   raises `exc.FocusError`/`exc.AbortedError` (confirmed via its own `@raises(...)` decorator),
@@ -301,9 +322,83 @@ it's a structural gap worth closing while touching this code.
   done consistently (`basetelescope.py`, `focusmodel.py`, the `Script` subclasses don't do it),
   but it's exactly the shape a broader convention should formalize.
 
+### Confirmed in downstream driver projects
+
+Checked the real hardware-driver projects (`pyobs-sbig`, `-fli`, `-aravis`, `-v4l`, `-brot`) for
+the same class of gap, rather than assuming `basecamera.py`/`basetelescope.py`'s issues are the
+whole picture. They're not — one of these is more serious than anything found in-tree.
+
+- **Abort signal gets lost, independently, in two projects.** `BaseCamera._expose()`'s docstring
+  (`pyobs/modules/camera/basecamera.py:213-227`) documents only `Raises: GrabImageError` — it
+  never mentions `AbortedError`, even though every implementation is handed an `abort_event` and
+  is clearly expected to react to it. Three independent raise sites across two different driver
+  projects all guessed the same wrong type instead: `sbigcamera.py:162`
+  (`raise InterruptedError("Exposure aborted.")`), `sbigfiltercamera.py:168`
+  (`raise InterruptedError("Filter change aborted.")`), `flicamera.py:169`
+  (`raise InterruptedError("Aborted exposure.")`). Since `BaseCamera.__expose()`'s except block
+  only passes `PyObsError` through unchanged and wraps everything else into
+  `GrabImageError(str(e))` (`basecamera.py:268-276`), an aborted SBIG/FLI exposure surfaces to the
+  RPC caller as `GrabImageError`, not `AbortedError` — code written against the documented
+  contract (`except exc.AbortedError: # user cancelled, not a failure`) would misclassify every
+  cancelled exposure as a hardware fault. The filter-wheel abort is worse: `set_filter()` isn't
+  part of the `__expose()` pipeline at all, so that `InterruptedError` isn't even wrapped into
+  `GrabImageError` — it's a raw builtin hitting the RPC layer directly, which degrades to generic
+  `RemoteError` on the wire (per the wire-serialization findings above) with the fact that it was
+  an abort lost entirely. This isn't "two sloppy drivers" — it's that nothing in pyobs-core ever
+  told driver authors which type to use, and two independent people reached for the same
+  reasonable-sounding builtin. Worth its own line item: document the `AbortedError` contract
+  explicitly wherever an `abort_event`/similar is handed to a driver hook, and fix the three call
+  sites.
+- **`ModuleError` misuse confirms a real discoverability gap.** `flifilterwheel.py:89` raises
+  `exc.ModuleError("Filter not found")` for a caller supplying an unknown filter name — but
+  `ModuleError` specifically means "the module itself is in ERROR state, block all calls"
+  (`Module.execute()`, `pyobs/modules/module.py:416-419`), an unrelated concept. The correct type
+  per the already-documented `IFilters` convention is `ValueError`, used correctly one file over
+  in `sbigfiltercamera.py:142` (`raise ValueError(f"Unknown filter: {filter_name}")`) for the
+  identical condition. Real evidence that the convention isn't currently discoverable enough
+  without something enforcing it (ties into goal 4 and the docstring-cross-check idea in §6).
+- **Two more confirming instances of the `NotSupportedError` gap** (already proposed above, until
+  now motivated only by in-tree `basetelescope.py` code): `sbigfiltercamera.py:137`
+  (`raise NotImplementedError` — camera has no filter wheel) and `brottelescope.py:190`
+  (`raise NotImplementedError` — mount doesn't support a custom tracking rate). Same
+  capability-check shape in two more independent projects; no new proposal needed, just stronger
+  evidence for the one already in §4.
+- **`BaseVideo` (`pyobs-aravis`, `-v4l`) is missing `BaseCamera`'s exception-wrapping entirely, and
+  this is a `pyobs-core` gap, not a driver one.** `AravisCamera`/`v4lCamera` extend `BaseVideo`
+  (`pyobs/modules/camera/basevideo.py`), not `BaseCamera` — a different, continuous-capture-loop
+  base class for streaming devices. `v4lCamera` has zero `raise`/`except` statements of its own; it
+  inherits entirely from `BaseVideo`'s handling. That handling has two gaps: `_capture()`'s
+  background loop (`araviscamera.py:117`, `except Exception: await asyncio.sleep(1)`) swallows
+  every internal failure and just retries forever, so a persistently failing camera never surfaces
+  anything to any caller at all; and `BaseVideo.grab_data()`'s own "no image" condition
+  (`pyobs/modules/camera/basevideo.py:476`) raises a bare `ValueError("Could not take image.")`
+  instead of `exc.GrabImageError`, inconsistent with `BaseCamera`'s equivalent path
+  (`basecamera.py:266`). Worth folding into proposal §4 as a `BaseVideo`-specific fix, parallel to
+  but separate from `BaseCamera`'s.
+- **The significant one: `pyobs-brot`'s roof/dome/telescope never raise at all on hardware
+  error.** `BrotRoof.init/park` (`brotroof.py:61-98`), `BrotDome.init/park` (`brotdome.py:76-153`),
+  and `BrotBaseTelescope`'s status handling (`brottelescope.py:100-286`) all call a shared
+  `_error_state(mess)` helper when the underlying hardware reports an error status — and that
+  helper only does `log.error(mess)` plus setting the motion status to `ERROR`
+  (`brotroof.py:102-104`, identical shape in `brotdome.py:161-163` and `brottelescope.py:149-151`).
+  Every calling method then just `return`s normally. Confirmed across all three files, 8+ call
+  sites. This means `init()`/`park()` **always return successfully to the RPC caller**, even when
+  the roof/dome/telescope hardware genuinely failed to move — despite `IMotion.init()`/`park()`
+  explicitly documenting `Raises: InitError`/`ParkError` (`pyobs/interfaces/IMotion.py:34-38,
+  40-46`), types that already exist in the hierarchy for exactly this. This is a different, more
+  serious class of gap than everything else in this doc: it's not that the wrong type crosses the
+  RPC boundary, it's that *nothing* does — a caller has no way to learn the operation failed except
+  by separately polling or subscribing to motion state, and any code written against the
+  documented `except exc.InitError:`/`except exc.ParkError:` contract would never fire. This can't
+  be fixed by this PR (it's a different repository) but is strong, concrete validation of why goal
+  4 matters beyond tidiness: the documented contract already exists and a real production driver
+  already silently doesn't honor it. Fix in `pyobs-brot`: `_error_state()` (or its callers) should
+  `raise exc.InitError(mess)`/`raise exc.ParkError(mess)`/`exc.MoveError(mess)` as appropriate,
+  instead of only logging.
+
 ## Assessment: what I'd design differently, given a free hand
 
-The incremental fixes below (Proposed design §§1-5) all still make sense on their own, but stepping back,
+The incremental fixes below (Proposed design §§1-6) all still make sense on their own, but stepping back,
 the model has a structural problem none of them touch: **a caller can never actually catch a
 specific domain exception around a proxy call today**, no matter how fine-grained the hierarchy
 becomes. That undercuts goal 5 (add more, finer types) more than any of the individual gaps —
@@ -583,46 +678,75 @@ Given the wire-serialization mechanics, this isn't a style preference — it's t
 between a caller being able to `except exc.FocusError` meaningfully or not. Concrete fixes:
 
 Per goal 5, default to a new, specific leaf class per distinguishable failure mode rather than
-reusing the nearest existing coarse type:
+reusing the nearest existing coarse type — but "distinguishable" needs a concrete test, not just
+"has a different message." A new leaf earns its existence if it passes at least one of: (1) some
+caller would plausibly branch on it specifically (retry vs. give up vs. "this isn't even a failure,
+just defer it"), or (2) the type name adds diagnostic value over the message string for someone
+scanning logs, without needing to read the full text. Splitting further than that adds hierarchy
+depth (and registry/reconstruction surface, per Assessment §D) that nothing ever uses.
 
 - `CameraException` → both of its current call sites ("camera not idle" for a new exposure, and
   for a new sequence) mean *the caller sent a request the camera can't service right now*, which
   is a different condition from "I tried to grab and it failed" (`GrabImageError`'s actual
-  meaning). Give it its own type in `exceptions.py`, e.g. `CameraBusyError(PyObsError)`, rather
-  than either leaving it as a non-`PyObsError` class or folding it into `GrabImageError` where it
-  would be indistinguishable from a genuine grab failure.
-- `FocusModel.set_optimal_focus`'s three failure modes are not the same thing and a caller might
-  reasonably want to handle them differently (e.g. retry on a timeout, don't retry on a
-  misconfigured sensor name): introduce three leaves under `FocusError` rather than raising the
-  base class directly — e.g. `WeatherDataError(FocusError)` (invalid/missing temperature reading,
-  line 278), `FocusTimeoutError(FocusError)` (timed out waiting for module temperatures, line
-  296), `MissingSensorError(FocusError)` (configured sensor absent from the response, line 307).
-- `BaseTelescope`'s `ValueError` sites are five distinct conditions, not one: no observer
-  configured, destination below the altitude limit, unresolvable orbital elements, unresolvable
-  body name, and (separately) the `NotImplementedError` capability-check sites. Give each a real
-  type under `MotionError` rather than reusing the single `MoveError` the file already uses
-  correctly elsewhere (line 588) or leaving them as bare `ValueError`: e.g.
-  `MissingObserverError(MotionError)`, `AltitudeLimitError(MotionError)`,
-  `InvalidOrbitalElementsError(MotionError)`, `BodyResolutionError(MotionError)`. The
-  capability-check `NotImplementedError` sites are a different, cross-cutting condition ("this
-  module doesn't support this operation at all," not "this specific move failed") that shows up
-  wherever a module optionally implements a mixin interface — worth a single reusable type in
-  `exceptions.py` (e.g. `NotSupportedError(PyObsError)`) rather than a telescope-specific one, so
-  other optional-capability modules can raise the same thing instead of a bare `NotImplementedError`.
-- `ScriptRunner`/`Script` subclasses' `ValueError`s → introduce a `ScriptError(PyObsError)` base
-  for the `pyobs.robotic.scripts` package, with per-script leaves where the failure modes are
-  genuinely distinct (e.g. `MissingTargetError(ScriptError)` for `autofocus.py:60`,
-  `NoMeritFoundError(ScriptError)` for `transitimaging.py:64,86`), wrapped at the
-  `ScriptRunner.run()` boundary following the `BaseCamera.__expose()` pattern (catch broadly,
-  re-raise as the typed exception) rather than leaving each `Script` subclass to raise ad hoc
-  `ValueError`s that all degrade to `RemoteError` on the wire today.
+  meaning) — passes test 1 outright ("back off and retry" vs. "something actually broke"). Give it
+  its own type in `exceptions.py`, e.g. `CameraBusyError(PyObsError)`, rather than either leaving
+  it as a non-`PyObsError` class or folding it into `GrabImageError` where it would be
+  indistinguishable from a genuine grab failure. Deliberately *not* split further into e.g. a
+  busy-for-exposure vs. busy-for-sequence variant — no caller would react differently to those two.
+- `FocusModel.set_optimal_focus`'s three failure modes map onto a real retry-vs-not axis: invalid
+  weather reading and a timed-out temperature fetch are both plausibly transient (worth retrying),
+  while a misconfigured sensor name in the response is a config bug that retrying never fixes.
+  Three leaves under `FocusError`: `WeatherDataError(FocusError)` (line 278),
+  `FocusTimeoutError(FocusError)` (line 296), `MissingSensorError(FocusError)` (line 307).
+- `BaseTelescope`'s `ValueError` sites split the same way, and arguably more usefully:
+  `AltitudeLimitError(MotionError)` isn't really a *failure* from a scheduler's point of view — a
+  target below the altitude limit is an expected, deferrable condition, not something to alert on
+  — while `BodyResolutionError(MotionError)` is transient/network-dependent (a Horizons query),
+  and `MissingObserverError(MotionError)`/`InvalidOrbitalElementsError(MotionError)` are config/input
+  bugs that should alert loudly and never auto-retry. Four genuinely different reactions, four
+  types. The capability-check `NotImplementedError` sites are a separate, cross-cutting condition
+  ("this module doesn't support this operation at all," not "this specific move failed") that
+  shows up wherever a module optionally implements a mixin interface — a single reusable
+  `NotSupportedError(PyObsError)` in `exceptions.py`, not a telescope-specific type, so other
+  optional-capability modules can raise the same thing instead of a bare `NotImplementedError`.
+- `ScriptRunner`/`Script` subclasses' `ValueError`s → a flat `ScriptError(PyObsError)` base earns
+  its place (fixes real unwrapped `ValueError`s degrading on the wire today, e.g.
+  `callmodule.py`'s), but per the closer look above, `transitimaging.py:64,86`'s "no merit found"
+  isn't actually a domain error at all — it's a reachability gap in a caller-contract check, not a
+  failure mode this hierarchy needs to represent, so it doesn't need any exception type, coarse or
+  fine (fix: trust `can_run()`'s existing gate; at most keep a minimal assertion, not a rich type).
+  `autofocus.py:60`'s "no target given" *is* a genuine runtime failure — worth wrapping as
+  `ScriptError` — but the better fix is closing the same gap `transitimaging.py` already closed:
+  extend `AutoFocusScript.can_run()` to check for a target too, so the scheduler finds out via the
+  same non-exception path instead of only discovering it after `run()` has already started.
+  Whatever residual cases remain after that (network/proxy failures inside a script's `run()`, say)
+  wrap with the flat `ScriptError(PyObsError)` at the `ScriptRunner.run()` boundary, following the
+  `BaseCamera.__expose()` pattern — no need to mint per-script leaves until a caller actually wants
+  to distinguish them.
+- `BaseVideo.grab_data()`'s "no image" condition (`pyobs/modules/camera/basevideo.py:476`,
+  `raise ValueError("Could not take image.")`) → switch to `exc.GrabImageError`, matching
+  `BaseCamera`'s equivalent path (`basecamera.py:266`) exactly. Confirmed via `pyobs-aravis`/
+  `-v4l` (both build on `BaseVideo`, not `BaseCamera`) in the driver survey above — this is a
+  `pyobs-core` fix, not a driver one, and belongs in this same sweep.
 
 Note: §2 above already gives every new type here a working fallback — anything not yet migrated
 to a specific type still arrives as `UnclassifiedError` rather than degrading to an untyped
 `RemoteError`, so this sweep can genuinely happen incrementally, type by type, without a
 transitional period where unmigrated call sites are worse off than today.
 
-### 5. Keep documentation honest
+### 5. Document (and fix) the `AbortedError` contract on abortable hooks
+
+Per the driver survey above: `BaseCamera._expose()`'s docstring never mentions `AbortedError`,
+and two independent driver projects both guessed `InterruptedError` instead — this isn't a
+one-off mistake, it's a missing contract. Add `Raises: AbortedError: If the operation was
+cancelled via abort_event.` (or equivalent) to `_expose()`'s docstring and any other
+`abort_event`/`IAbortable`-adjacent hook signature in `pyobs-core`, and fix the three known
+call sites this PR can reach: `pyobs-sbig/src/pyobs_sbig/sbigcamera.py:162`,
+`sbigfiltercamera.py:168`, `pyobs-fli/pyobs_fli/flicamera.py:169` — each a one-line change
+(`InterruptedError(...)` → `exc.AbortedError()`), but in a different repository, so it's a
+companion PR alongside the core docstring fix, not something this repo's PR can do alone.
+
+### 6. Keep documentation honest
 
 - Fix the two confirmed mismatches: `IAutoFocus.py`'s `Raises:` clause (`ValueError` →
   `FocusError`, `AbortedError`), and add a `Raises:` clause to `IFocusModel.py` once (4)'s
@@ -642,16 +766,30 @@ transitional period where unmigrated call sites are worse off than today.
    the rollout that isn't purely additive, so it can't be split across separate PRs the way the
    rest can. Also fixes the `InvocationError`/`ForbiddenError` reconstruction-signature bug as a
    byproduct, since `InvocationError` no longer needs to handle arbitrary reconstructed types.
+   Confirmed (see Open questions) this also breaks `pyobs-monet`'s
+   `searchpattern2.py:134-141` retry loop, which catches `exc.InvocationError` to mean "any
+   remote failure" the same way the four in-tree sites did — so this step needs a companion fix
+   landed in `pyobs-monet` (and a changelog callout, since other out-of-tree consumers can't all
+   be grepped for) before or alongside merging, not purely a pyobs-core-internal change.
 3. Collapse the two catch/log sites into `Module.execute()` (proposal §3) — mechanical once (2) is
    in place, and extends the `UnclassifiedError` safety net to `LocalComm`/`MultiModule`, not just
    XMPP.
 4. Sweep the concrete gaps one at a time, each as its own small PR: `CameraException`,
    `FocusModel`, `BaseTelescope`'s `ValueError` sites, the `Script` subclasses' unwrapped
-   `ValueError`s. These touch call sites other code may already `except`, so they go out
-   separately rather than as one large diff. Since (2) already gives every unmigrated site a
-   working `UnclassifiedError` fallback instead of a silent `RemoteError` degradation, there's no
-   pressure to do this sweep all at once.
-5. Docstring sweep (`IAutoFocus`, `IFocusModel`, and any others turned up while doing (4)).
+   `ValueError`s, `BaseVideo.grab_data()`'s `ValueError` → `GrabImageError`. These touch call
+   sites other code may already `except`, so they go out separately rather than as one large diff.
+   Since (2) already gives every unmigrated site a working `UnclassifiedError` fallback instead of
+   a silent `RemoteError` degradation, there's no pressure to do this sweep all at once.
+5. Document the `AbortedError` contract on `_expose()`/abortable hooks (proposal §5) — purely
+   additive to `pyobs-core`'s docstrings, doesn't depend on anything else in this rollout.
+6. Docstring sweep (`IAutoFocus`, `IFocusModel`, and any others turned up while doing (4)).
+
+Two items surfaced by the driver survey are explicitly **not** part of this rollout because they
+live in other repositories and can't be fixed by a pyobs-core PR alone: the `AbortedError` fix in
+`pyobs-sbig`/`pyobs-fli` (companion to step 5) and, more importantly, `pyobs-brot`'s roof/dome/
+telescope silently returning success instead of raising `InitError`/`ParkError` on hardware
+failure — see "Confirmed in downstream driver projects" above. The latter isn't blocking #446, but
+it's a real, independent bug worth its own issue regardless of this design doc's fate.
 
 Assessment items C (decouple severity escalation from construction), D (registry-based
 serialization), E (uniform constructor contract — largely subsumed by step 2 above, but the
@@ -670,22 +808,35 @@ listed types, precisely to sidestep needing D immediately).
   `register_exception`'s existing convention) vs. a class-level decorator like `@raises` — the
   issue text suggests the former (`self._disable_exception_logging(...)`); confirm that's still
   the preference now that `@raises` is being touched anyway.
-- Is exact-type matching in `@raises` today an intentional restriction or an oversight? Affects
-  whether switching it to `isinstance` (proposal §1) is a bugfix or a behavior change worth
-  calling out in the changelog.
-- How granular is too granular for the new leaf types proposed in §4 (`CameraBusyError`,
-  `WeatherDataError`, `FocusTimeoutError`, `MissingSensorError`,
-  `MissingObserverError`/`AltitudeLimitError`/`InvalidOrbitalElementsError`/`BodyResolutionError`,
-  `NotSupportedError`, `ScriptError` + leaves)? Goal 5 argues for finer over coarser by default,
-  but naming/hierarchy bikeshedding is easiest to do once, up front, in review rather than across
-  several separate PRs — worth confirming the proposed names/split before starting the sweep in
-  rollout step 4.
-- Does anything outside this codebase (e.g. `pyobs-gui`, other pyobs-* packages) already catch
-  `exc.InvocationError` and inspect `.exception` the way `pyobs/robotic/storage/lco/task.py:202`
-  does? Proposal §2 makes that pattern unnecessary for newly-typed exceptions but doesn't break
-  it (an `InvocationError` can still occur, just only for genuinely unclassified faults) — worth
-  a quick check of downstream consumers before this lands, since their `isinstance(e.exception,
-  ...)` checks would simply stop firing (not error out) if what they were unwrapping now arrives
-  unwrapped instead.
+- **Resolved by checking**: yes. Grepped every sibling `pyobs-*` project on the `2.0.0.devX` line
+  (`pyobs-alpaca`, `-aravis`, `-asi`, `-brot`, `-fli`, `-flipro`, `-gui`, `-monet`, `-qhyccd`,
+  `-sbig`, `-v4l`, `-zaber`, `-zwoeaf`) for `InvocationError`/`RemoteError`/`except exc.`.
+  `pyobs-gui`'s two hits (`pyobs_gui/base.py:311`, `pyobs_gui/mainwindow.py:577`) catch the broad
+  `exc.PyObsError` and don't touch `.exception`, so they're unaffected either way (and would
+  arguably read slightly better once `str(e)` is the real exception's message instead of
+  `InvocationError`'s wrapper formatting). But `pyobs-monet/pyobs_monet/morisot/searchpattern2.py:
+  134-141` does this, in a retry loop around a proxy call:
+  ```python
+  for x in range(5):
+      try:
+          await acquisition.acquire_target()
+          break
+      except exc.InvocationError:
+          pass
+  else:
+      log.error("Acquisition failed")
+      return
+  ```
+  This relies on *any* remote failure — transport-level or a genuine `exc.AcquisitionError` from
+  the remote module — currently arriving as `InvocationError`, exactly like the four in-tree call
+  sites proposal §2 already flags. Under §2's fix, a real `AcquisitionError` would be raised
+  directly and this `except exc.InvocationError:` would stop catching it, breaking the retry loop
+  in an external, independently-versioned project this PR can't touch. This makes §2 a
+  cross-repo breaking change, not just a four-call-site migration inside this repo — worth either
+  a deprecation window (e.g. a release note plus a companion fix landed in `pyobs-monet` before or
+  alongside the core change) or, at minimum, an explicit, prominent changelog entry, since grepping
+  can only find call sites that name the exception type explicitly — a bare `except Exception:`
+  swallowing the same wrapped failure elsewhere would rely on identical behavior without grep ever
+  surfacing it.
 - Should Assessment items C/D/E/F/G be tracked as their own follow-up issues now, so they don't
   get lost once #446 itself is closed out by steps 1-5?

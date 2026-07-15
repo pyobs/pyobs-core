@@ -91,7 +91,7 @@ class PyobsDaemonCLI(CLI):
             case "status":
                 daemon.status(print_json=self._config["json"])
             case "list":
-                daemon.list()
+                daemon.list_modules()
             case "logs":
                 daemon.logs(self._config["args"])
 
@@ -295,7 +295,7 @@ class PyobsDaemon:
                 else:
                     print(f"{module:<30}  {'stopped':<8}")
 
-    def list(self) -> None:
+    def list_modules(self) -> None:
         print("\n".join(self._list_configs()))
 
     def logs(self, args: list[str]) -> None:

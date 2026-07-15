@@ -153,6 +153,8 @@ class Unit(StrEnum):
         HPA: Pressure, in hectopascals.
         KM_PER_HOUR: Speed, in kilometers per hour.
         MM: Length, in millimetres.
+        ARCSEC_PER_SEC: Angular rate, in arcseconds per second.
+        AU: Distance, in astronomical units.
     """
 
     DEGREES = "deg"
@@ -163,6 +165,8 @@ class Unit(StrEnum):
     HPA = "hpa"
     KM_PER_HOUR = "km/h"
     MM = "mm"
+    ARCSEC_PER_SEC = "arcsec/s"
+    AU = "au"
 
     def to_astropy(self) -> astropy.units.UnitBase:
         """The equivalent astropy.units unit, for code that needs to build a Quantity."""
@@ -178,6 +182,8 @@ _ASTROPY_UNITS: dict["Unit", astropy.units.UnitBase] = {
     Unit.HPA: astropy.units.hPa,
     Unit.KM_PER_HOUR: astropy.units.km / astropy.units.h,
     Unit.MM: astropy.units.mm,
+    Unit.ARCSEC_PER_SEC: astropy.units.arcsec / astropy.units.s,
+    Unit.AU: astropy.units.AU,
 }
 
 

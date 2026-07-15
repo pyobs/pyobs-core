@@ -7,9 +7,9 @@ import logging
 from collections.abc import Callable, Coroutine
 from typing import TYPE_CHECKING, Any, overload
 
-import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from pyobs.interfaces import Interface
+from pyobs.interfaces.interface import get_registered_interface
 from pyobs.utils.enums import ModuleState
 
 from .commlogging import CommLoggingHandler
@@ -337,28 +337,13 @@ class Comm:
             list of interface classes.
         """
 
-        # get interface classes
-        inspection = inspect.getmembers(pyobs.interfaces, predicate=inspect.isclass)
-
         # loop interfaces
         interface_classes = []
         for interface_name in interfaces:
-            # loop all classes
-            found = False
-            for cls_name, cls in inspection:
-                # class needs to face same name and implement Interface
-                if interface_name == cls_name and issubclass(cls, Interface):
-                    # found it!
-                    found = True
-
-                    # then add it to the list of all interfaces
-                    interface_classes.append(cls)
-
-                    # there can only be one...
-                    break
-
-            # not found?
-            if not found:
+            cls = get_registered_interface(interface_name)
+            if cls is not None:
+                interface_classes.append(cls)
+            else:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
@@ -539,6 +524,13 @@ class Comm:
         return self._get_own_state(interface)
 
     def _get_own_state(self, interface: type[Interface]) -> Any:
+        return None
+
+    def get_own_capabilities(self, interface: type[Interface]) -> Any:
+        """Return the capabilities published by this module for the given interface, or None."""
+        return self._get_own_capabilities(interface)
+
+    def _get_own_capabilities(self, interface: type[Interface]) -> Any:
         return None
 
     async def subscribe_state(

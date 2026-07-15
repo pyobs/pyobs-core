@@ -165,7 +165,7 @@ class ConvertGridToSkyCoord(GridFilter):
 
     Wraps a tuple-producing grid and converts each point to a SkyCoord in the
     requested frame. The current time (Time.now()) is used as obstime. The
-    'location' attribute is taken from this object (inherited from Object).
+    location is taken from this object's observer (inherited from Object).
     """
 
     def __init__(self, grid: Grid | GridFilter, frame: str = "altaz", **kwargs: object):
@@ -177,8 +177,9 @@ class ConvertGridToSkyCoord(GridFilter):
             **kwargs: Additional keyword arguments forwarded to GridFilter.__init__().
 
         Notes:
-            Requires that 'self.location' be defined (e.g., an EarthLocation)
-            for frames that need it (such as AltAz).
+            Requires that this object's observer be defined (e.g., via the
+            'observer' or 'location' constructor argument) for frames that
+            need a location (such as AltAz).
         """
         GridFilter.__init__(self, grid, **kwargs)
         self._frame = frame
@@ -201,9 +202,8 @@ class ConvertGridToSkyCoord(GridFilter):
             raise TypeError(f"Expected a tuple with 2 elements, got {type(point)}")
 
         # to SkyCoord
-        return SkyCoord(
-            point[0] * u.deg, point[1] * u.deg, frame=self._frame, location=self._location, obstime=Time.now()
-        )
+        location = self._observer.location if self._observer is not None else None
+        return SkyCoord(point[0] * u.deg, point[1] * u.deg, frame=self._frame, location=location, obstime=Time.now())
 
 
 class ConvertGridFrame(GridFilter):

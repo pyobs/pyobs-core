@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 import pyobs
-from pyobs.comm.dummy import DummyComm
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, WeatherSensorReading
 from pyobs.modules import Module
@@ -17,7 +16,6 @@ from pyobs.utils.time import Time
 @pytest.mark.asyncio
 async def test_open() -> None:
     weather = Weather("")
-    weather._comm = DummyComm()
     weather._comm.register_event = AsyncMock()
 
     Module.open = AsyncMock()
@@ -33,15 +31,13 @@ async def test_open() -> None:
 @pytest.mark.asyncio
 async def test_start() -> None:
     weather = Weather("")
-    weather._comm = DummyComm()
     weather._comm.send_event = AsyncMock()
 
     weather._active = False
-    weather._is_good = False
 
     await weather.start()
 
-    assert weather._active is True
+    assert await weather.is_running() is True
     assert isinstance(weather._comm.send_event.await_args[0][0], BadWeatherEvent)
 
 
@@ -49,7 +45,7 @@ async def test_start() -> None:
 async def test_stop() -> None:
     weather = Weather("")
     await weather.stop()
-    assert weather._active is False
+    assert await weather.is_running() is False
 
 
 @pytest.mark.asyncio
@@ -57,7 +53,7 @@ async def test_is_running() -> None:
     weather = Weather("")
     assert await weather.is_running() is True
 
-    weather._active = False
+    await weather.stop()
     assert await weather.is_running() is False
 
 
@@ -170,7 +166,6 @@ async def test_update_invalid_response(caplog) -> None:
 async def test_update_good_weather(caplog) -> None:
     weather = Weather("")
     weather._comm.send_event = AsyncMock()
-    weather._active = True
 
     weather._api.get_current_status = AsyncMock(return_value={"good": True})
 
@@ -186,7 +181,6 @@ async def test_update_bad_weather(caplog) -> None:
     weather = Weather("")
     weather._weather.is_good = True
     weather._comm.send_event = AsyncMock()
-    weather._active = True
 
     weather._api.get_current_status = AsyncMock(return_value={"good": False})
 
@@ -209,7 +203,6 @@ def test_calc_system_init_eta() -> None:
 async def test_update_publishes_state() -> None:
     weather = Weather("")
     weather._comm.set_state = AsyncMock()
-    weather._active = True
 
     weather._api.get_current_status = AsyncMock(
         return_value={"good": True, "sensors": {"temp": {"value": 12.3}, "rain": {"value": None}}}

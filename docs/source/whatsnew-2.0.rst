@@ -177,9 +177,9 @@ switch to ``await proxy.get_state(IInterface)`` (or ``wait_for_state``) or
    * - ``IPointingAltAz``
      - ``get_altaz``
      - ``state = AltAzState``
-   * - ``IPointingHGS``
-     - ``get_hgs_lon_lat``
-     - ``state = HGSState``
+   * - ``IPointingHeliocentricPolar``
+     - ``get_heliocentric_polar``
+     - ``state = HeliocentricPolarState``
    * - ``IPointingHelioprojective``
      - ``get_helioprojective``
      - ``state = HelioprojectiveState``
@@ -323,6 +323,37 @@ non-Python client (``pyobs-web-client``, or any future binding) can generate its
 commands/state/event schema directly from one disco#info query, instead of maintaining a
 separate interface-extraction step against the Python source.
 
+External-package interfaces
+------------------------------
+
+Interfaces no longer have to live in :mod:`pyobs.interfaces`. Any package can define its
+own by subclassing :class:`~pyobs.interfaces.Interface` — it's picked up automatically at
+import time and resolves correctly over the wire, exactly like a core interface:
+
+.. code-block:: python
+
+   # pyobs_mypackage/interfaces.py
+   from pyobs.interfaces import Interface
+
+   class ISiderostatAlignment(Interface):
+       async def start_alignment_sequence(self) -> None: ...
+
+   # a module implementing it
+   class Siderostat(Module, ISiderostatAlignment):
+       async def start_alignment_sequence(self) -> None:
+           ...
+
+   # a consumer, resolved the same way as any core interface
+   async with self.proxy("siderostat", ISiderostatAlignment) as proxy:
+       await proxy.start_alignment_sequence()
+
+There's no separate registration step beyond the import: a module implementing the
+interface, and any code building a typed proxy for it, already have to import it — the same
+implicit requirement core interfaces already impose. Two interfaces defined independently
+that happen to share a class name raise ``TypeError`` immediately at import time, naming
+both offending classes, rather than silently resolving to whichever one happened to be
+imported last.
+
 Units
 -----
 
@@ -334,6 +365,53 @@ wire schema (``unit="celsius"`` in disco#info) — nothing to keep in sync by ha
 conventions are unchanged (degrees for angles, Celsius for temperature, seconds for
 duration, percent, hPa, km/h) — this only makes them explicit on the wire for non-Python
 clients.
+
+Non-sidereal tracking
+----------------------
+
+Telescopes can now track anything beyond sidereal: the Moon, planets, the Sun, or a body
+defined by orbital elements (asteroids, comets, NEOs). Two new interfaces express this at
+the hardware-capability level, mirroring the ASCOM ``ITelescope`` split between discrete
+tracking rates and an arbitrary rate offset:
+
+* ``ITrackingMode`` — discrete, firmware-native rates (``sidereal``/``solar``/``lunar``/``off``),
+  for drivers whose hardware actually has them.
+* ``ITrackingRate`` — an arbitrary continuous RA/Dec rate offset
+  (``Annotated[float, Unit.ARCSEC_PER_SEC]``, absolute on the sky), for anything without a
+  native mode. Always applied on top of ``TrackingMode.SIDEREAL``, never ``OFF`` — the
+  physical decomposition of a tracked body's motion is "sidereal plus a small correction,"
+  not an unrelated absolute rate.
+
+Two more interfaces are the actual pointing-layer entry points on top of those:
+
+.. code-block:: python
+
+   async with self.proxy("telescope", IPointingBody) as telescope:
+       await telescope.track_body("moon")  # or "mars", "jupiter", an asteroid designation, ...
+
+``IPointingOrbitalElements.track_orbital_elements(elements)`` is the equivalent for a body
+given as classical orbital elements directly (asteroid/comet/NEO) rather than resolved by
+name — the manual-input path for a freshly-posted NEOCP object, for instance, with no
+automatic scraping layer in between.
+
+``BaseTelescope`` implements the ephemeris/propagation math once, centrally, rather than
+per-driver: named bodies resolve via ``astropy.coordinates.get_body`` with a JPL Horizons
+fallback, and orbital elements propagate via a hand-rolled two-body Kepler/Barker solver — no
+new third-party dependency (the obvious one, ``poliastro``, can't actually be installed
+alongside this project's Python/astropy version requirements). A background task keeps
+refreshing rate and position for whatever's being tracked, preferring a driver's native
+``TrackingMode`` for Sun/Moon when available and falling back to ``ITrackingRate`` otherwise,
+clamped against a driver's own ``TrackingRateCapabilities.min_update_interval`` if it
+publishes one (read back via the new ``Comm.get_own_capabilities``, mirroring the existing
+``get_own_state``).
+
+``move_radec``/``move_altaz`` gained a documented side effect: they now reset tracking mode
+to ``SIDEREAL``/``OFF`` respectively and stop any active body/orbital-element tracking, so a
+mount left in a stale lunar/custom-rate mode from a previous target doesn't silently keep
+applying it to an unrelated slew. ``DummyRaDecTelescope`` and ``DummyAltAzTelescope`` implement
+all four new interfaces (``ITrackingMode``, ``ITrackingRate``, ``IPointingBody``,
+``IPointingOrbitalElements``), so there's a real module to exercise a GUI or client against
+without hardware.
 
 Access control (ACLs)
 ----------------------

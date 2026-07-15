@@ -19,8 +19,8 @@ def test_singleton() -> None:
 def test_connect_client() -> None:
     net = LocalNetwork()
     client = LocalComm("test")
-    assert "test" in net._clients
-    assert net._clients["test"] is client
+    assert "test" in net.get_client_names()
+    assert net.get_client("test") is client
 
 
 def test_get_client() -> None:

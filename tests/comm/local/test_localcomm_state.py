@@ -70,6 +70,24 @@ async def test_set_and_get_capabilities() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_own_capabilities_returns_what_was_published() -> None:
+    """get_own_capabilities reads back this client's own published capabilities, unlike
+    get_capabilities which fetches a *remote* module's."""
+    camera = LocalComm("camera")
+
+    caps = ModuleCapabilities(version="2.0.0", label="Test Camera")
+    await camera._set_capabilities(IModule, caps)
+
+    result = camera.get_own_capabilities(IModule)
+    assert result is caps
+
+
+def test_get_own_capabilities_none_if_never_published() -> None:
+    camera = LocalComm("camera")
+    assert camera.get_own_capabilities(IModule) is None
+
+
+@pytest.mark.asyncio
 async def test_get_capabilities_unknown_interface() -> None:
     """get_capabilities returns None for interface without Capabilities class."""
     LocalComm("camera")

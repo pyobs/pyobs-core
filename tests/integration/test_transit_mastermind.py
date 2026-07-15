@@ -7,6 +7,7 @@ import astropy.units as u
 import pytest
 from astropy.time import TimeDelta
 
+from pyobs.comm.dummy import DummyComm
 from pyobs.robotic import Task
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
 from pyobs.robotic.scheduler.merits.transit import TransitMerit
@@ -14,11 +15,9 @@ from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scripts.imaging.imaging import Configuration, InstrumentConfig
 from pyobs.robotic.scripts.imaging.transitimaging import TransitImagingScript
 from pyobs.utils.enums import ImageType
-from pyobs.utils.time import Time
 from tests.integration.test_mastermind import (
     NIGHT,
     FailingRunner,
-    QuickRunner,
     make_mastermind,
     run_until_state,
 )
@@ -65,26 +64,6 @@ def make_transit_observation(task: Task) -> Observation:
         end=end_time,
         state=ObservationState.PENDING,
     )
-
-
-class TransitQuickRunner(QuickRunner):
-    """Runner that immediately completes, simulating transit script execution."""
-
-    def __init__(self, end_time: Time):
-        super().__new__(type(self))
-        self._comm = None
-        self._observer = None
-        self._vfs = None
-        self._timezone = None
-        self._location = None
-        self.observation_archive = None
-        self.task_archive = None
-        self._end_time = end_time
-
-    async def run_task(self, task: Task) -> bool:
-        """Simulate transit imaging: run until end_time."""
-        await asyncio.sleep(0.05)
-        return True
 
 
 # ── transit merit → end_time ──────────────────────────────────────────────────
@@ -153,14 +132,13 @@ async def test_mastermind_marks_failed_transit_observation() -> None:
 @pytest.mark.integration
 async def test_transit_script_runs_until_end_time() -> None:
     """TransitImagingScript._run_configurations loops until merit.end_time()."""
-    from unittest.mock import MagicMock
-
     config = Configuration(
         instrument_configs=[InstrumentConfig(exposure_time=10.0, image_type=ImageType.OBJECT)],
         repeats=1,
     )
-    script = TransitImagingScript(camera="camera", configuration=config)
-    script._comm = MagicMock()
+    script = TransitImagingScript.model_validate(
+        {"camera": "camera", "configuration": config}, context={"comm": DummyComm()}
+    )
 
     merit = make_transit_merit()
     script._transit_merit = merit
@@ -196,14 +174,13 @@ async def test_transit_script_runs_until_end_time() -> None:
 @pytest.mark.integration
 async def test_transit_script_does_not_run_after_end_time() -> None:
     """TransitImagingScript does not run if end_time has already passed."""
-    from unittest.mock import MagicMock
-
     config = Configuration(
         instrument_configs=[InstrumentConfig(exposure_time=10.0, image_type=ImageType.OBJECT)],
         repeats=1,
     )
-    script = TransitImagingScript(camera="camera", configuration=config)
-    script._comm = MagicMock()
+    script = TransitImagingScript.model_validate(
+        {"camera": "camera", "configuration": config}, context={"comm": DummyComm()}
+    )
 
     merit = make_transit_merit()
     script._transit_merit = merit

@@ -8,8 +8,11 @@ from astropy.modeling import models
 from astropy.table import Table
 from photutils.datasets import make_model_image
 
+from pyobs.comm.comm import Comm
+from pyobs.interfaces import ExposureTimeState, WindowState
 from pyobs.robotic.utils.exptime.stellarexptime import StellarExposureTimeProvider
 from pyobs.utils.enums import ImageType
+from tests.helpers import make_proxy_cm
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,10 +46,9 @@ def make_image(data: np.ndarray) -> MagicMock:
 def make_provider(**kwargs) -> StellarExposureTimeProvider:
     defaults = dict(camera="camera", target_peak=30000.0, search_radius=50, max_iterations=3, default_exposure_time=1.0)
     defaults.update(kwargs)
-    p = StellarExposureTimeProvider(**defaults)
-    p._comm = MagicMock()
-    p._vfs = MagicMock()
-    return p
+    return StellarExposureTimeProvider.model_validate(
+        defaults, context={"comm": MagicMock(spec=Comm), "vfs": MagicMock()}
+    )
 
 
 def make_camera_mocks(
@@ -57,14 +59,42 @@ def make_camera_mocks(
     mock_camera.grab_data = AsyncMock(side_effect=["bias.fits", "sci.fits"])
 
     mock_exptime = AsyncMock()
-    mock_exptime.get_exposure_time = AsyncMock(return_value=orig_exptime)
+    mock_exptime.get_state = MagicMock(return_value=ExposureTimeState(exposure_time=orig_exptime))
 
     mock_imagetype = AsyncMock()
 
     mock_window = AsyncMock()
-    mock_window.get_window = AsyncMock(return_value=(0, 0, SHAPE[1], SHAPE[0]))
+    mock_window.get_state = MagicMock(return_value=WindowState(x=0, y=0, width=SHAPE[1], height=SHAPE[0]))
 
     return mock_camera, mock_exptime, mock_imagetype, mock_window
+
+
+def wire_proxies(
+    provider: StellarExposureTimeProvider,
+    mock_camera: AsyncMock,
+    mock_exptime: AsyncMock,
+    mock_imagetype: AsyncMock,
+    mock_window: AsyncMock,
+) -> None:
+    """Make provider.comm.proxy(...) resolve to the given mocks.
+
+    Comm.proxy() is a sync method returning an async context manager (used as
+    `async with self.comm.proxy(...) as camera:`), so the mock must be a plain
+    MagicMock -- an AsyncMock here would make the call return a coroutine
+    instead of a context manager.
+    """
+    from pyobs.interfaces import IData, IExposureTime, IImageType
+
+    def proxy_side_effect(name, interface=None):
+        if interface is IData:
+            return make_proxy_cm(mock_camera)
+        if interface is IExposureTime:
+            return make_proxy_cm(mock_exptime)
+        if interface is IImageType:
+            return make_proxy_cm(mock_imagetype)
+        return make_proxy_cm(mock_window)
+
+    provider._comm.proxy = MagicMock(side_effect=proxy_side_effect)
 
 
 def attach_proxies(
@@ -76,25 +106,13 @@ def attach_proxies(
     bias_data: np.ndarray,
     sci_data: np.ndarray,
 ) -> None:
-    from pyobs.interfaces import ICamera, IExposureTime, IImageType
-
     provider._vfs.read_image = AsyncMock(
         side_effect=[
             make_image(bias_data),
             make_image(sci_data),
         ]
     )
-
-    async def proxy_side_effect(name, interface=None):
-        if interface is ICamera:
-            return mock_camera
-        if interface is IExposureTime:
-            return mock_exptime
-        if interface is IImageType:
-            return mock_imagetype
-        return mock_window
-
-    provider._comm.proxy = AsyncMock(side_effect=proxy_side_effect)
+    wire_proxies(provider, mock_camera, mock_exptime, mock_imagetype, mock_window)
 
 
 # ── _find_star ────────────────────────────────────────────────────────────────
@@ -193,26 +211,15 @@ async def test_call_restores_settings_on_exception() -> None:
     """Original camera settings are restored even when grab_data raises."""
     provider = make_provider()
 
-    from pyobs.interfaces import ICamera, IExposureTime, IImageType
-
     mock_camera = AsyncMock()
     mock_camera.grab_data = AsyncMock(side_effect=RuntimeError("camera error"))
     mock_exptime = AsyncMock()
-    mock_exptime.get_exposure_time = AsyncMock(return_value=10.0)
+    mock_exptime.get_state = MagicMock(return_value=ExposureTimeState(exposure_time=10.0))
     mock_imagetype = AsyncMock()
     mock_window = AsyncMock()
-    mock_window.get_window = AsyncMock(return_value=(0, 0, 512, 512))
+    mock_window.get_state = MagicMock(return_value=WindowState(x=0, y=0, width=512, height=512))
 
-    async def proxy_side_effect(name, interface=None):
-        if interface is ICamera:
-            return mock_camera
-        if interface is IExposureTime:
-            return mock_exptime
-        if interface is IImageType:
-            return mock_imagetype
-        return mock_window
-
-    provider._comm.proxy = AsyncMock(side_effect=proxy_side_effect)
+    wire_proxies(provider, mock_camera, mock_exptime, mock_imagetype, mock_window)
 
     with pytest.raises(RuntimeError):
         await provider()
@@ -232,6 +239,8 @@ async def test_call_converges_in_one_iteration() -> None:
     provider = make_provider(target_peak=target_peak, max_iterations=3, convergence_threshold=0.05)
     mocks = make_camera_mocks(bias_data, sci_data)
     attach_proxies(provider, *mocks, bias_data, sci_data)
+
+    await provider()
 
     # bias + exactly one science frame = 2 grab_data calls
     assert mocks[0].grab_data.call_count == 2

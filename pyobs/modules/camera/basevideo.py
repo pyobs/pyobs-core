@@ -121,7 +121,6 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._is_listening = False
         self._port = http_port
         self._interval = interval
-        self._new_image_event = asyncio.Event()
         self._video_path = video_path
         self._frame_num = 0
         self._live_view = live_view
@@ -377,10 +376,6 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._last_image = LastImage(data=data, image=image, jpeg=jpeg, filename=filename)
         self._frame_num += 1
 
-        # signal it
-        self._new_image_event.set()
-        self._new_image_event = asyncio.Event()
-
         # prepare next image
         if len(self._image_requests) > 0:
             # broadcast?
@@ -394,9 +389,6 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
                 header_futures=await self.request_fits_headers(),
                 broadcast=broadcast,
             )
-
-            # reset
-            self._image_request = None
 
     async def _create_image(self, data: NDArray[Any], next_image: NextImage) -> tuple[Image, str]:
         """Create an Image object from numpy array.
@@ -436,6 +428,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         filename = self.format_filename(image)
         if filename is None:
             filename = "image.fits"
+            image.header["FNAME"] = filename
 
         # store it and return filename
         log.info("Writing image %s to cache...", filename)
@@ -475,7 +468,8 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             await asyncio.sleep(0.01)
 
         # remove from list
-        self._image_requests.remove(image_request)
+        async with self._image_request_lock:
+            self._image_requests.remove(image_request)
 
         # no image?
         if image_request.image is None or image_request.filename is None:

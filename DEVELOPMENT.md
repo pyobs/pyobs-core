@@ -2,7 +2,7 @@
 
 ## Status
 
-Design exploration turned implementation log. Most of what this document proposed is now built and merged to `develop` (version, state, capabilities, presence, disco#info schema publication, RPC payload encoding 2.0, the `async with`-only `Proxy` redesign, the mixed-version-fleet diagnostic) — checked directly against the code while revising this pass, not just against the document's own earlier self-reported notes, several of which had gone stale. ✅ marks a point confirmed implemented; remaining unmarked items are genuinely still open. One correction surfaced in an earlier pass, noted where relevant: `ILatLon`/`LatLonCapabilities` no longer exist in `pyobs.interfaces` — left as historical context where the reasoning still applies, corrected where it was stated as current fact. This pass removes all D-Bus references throughout the document — `pyobs-core` never had a D-Bus `Comm` backend, and D-Bus is not in use or planned, so the earlier speculative analysis of it as a hypothetical future backend has been dropped rather than kept as unused historical context. A later pass found event feature versioning and event schema publication in disco#info — flagged 🔵 throughout an earlier revision — were actually already implemented, landed in `9c19e512` before this doc was last edited; verified directly against `pyobs/comm/xmpp/xmppcomm.py` and `serializer.py` rather than trusting the doc's own prior notes. **This pass: Phase 6 (external hardware-module repos) checked for the first time** — all 11 repos exist locally alongside `pyobs-core` and were audited for `comm.set_state` migration; 9/11 fully migrated, and the 2 exceptions (`pyobs-aravis`, `pyobs-v4l`) traced to one real `pyobs-core` bug (`BaseVideo.set_image_type` never called `comm.set_state`, unlike `BaseCamera.set_image_type`), not a per-module gap — see [Phase 6](#phase-6--external-official-pyobs--hardware-modules). ✅ **Fixed in this pass**: `BaseVideo` now publishes `IImageType` state on `open()` and on every `set_image_type()` call, matching `BaseCamera`'s pattern exactly (`pyobs/modules/camera/basevideo.py`). **Also this pass: Phase 7 (`pyobs-web-client`) checked for the first time**, against `../pyobs-web-client`'s own code and its own detailed `DEVELOPMENT.md` — it turned out to be fully ported to the 2.0 wire protocol already, verified end-to-end against a live server, not merely "status unknown" as this document previously assumed. One genuine cross-repo RPC-serialization bug it surfaced was already independently fixed on the `pyobs-core` side (`d170fd5e`, this session). See [Phase 7](#phase-7--pyobs-web-client-catch-up). **This pass adds a new, not-yet-implemented design section: [Access Control (ACLs)](#access-control-acls) / [Phase 8](#phase-8--access-control-acls)** — everything up to this point assumed a closed, mutually-trusting fleet, and this is the first design work on restricting which clients may call which methods on which other clients. **This pass adds a `deny` mode alongside the original `allow` mode** — `allow` alone can't express "everyone except this one caller" without enumerating the whole fleet by hand, so an `acl:` block now picks exactly one of `allow` (least-privilege, method-level) or `deny` (quarantine, whole-caller, coarse) rather than only supporting allowlisting. **This pass also adds a `mode: enforce | log` key** — `log` runs the same allow/deny decision but only logs what would have been denied and lets the call through, so a new policy can be validated against real traffic before it's ever capable of blocking a legitimate caller. **This pass adds `IModule.get_permitted_methods()`** — a caller-specific, always-permitted introspection query answering "am I allowed to call this" proactively, so a UI (`pyobs-gui`, `pyobs-web-client`) can hide or grey out actions an operator can't use instead of only learning via `ForbiddenError` on an actual attempt. **This pass also adds a cross-repo pointer**: `acl:` rules living one-per-module-config is a real fleet-wide visibility gap once there are many modules — see [Fleet-wide visibility](#fleet-wide-visibility-cross-repo-pyobs-web-admin), which keeps storage/enforcement exactly as designed and points at a new `pyobs-web-admin`-side matrix UI (its own `DEVELOPMENT.md`) for the actual fix. **This pass adds a similar cross-repo pointer for `pyobs-gui`/`pyobs-web-client`**: both already handle a denied call reactively today with zero changes needed (confirmed by reading their actual error-handling code), and both have an open item, tracked in their own `DEVELOPMENT.md`s, for the proactive half once `get_permitted_methods()` lands. **This pass implements Phase 8 in full** (`exc.ForbiddenError`, `acl:` config parsing, the `Module.execute()` check, `IModule.get_permitted_methods()`, the XMPP `forbidden`-condition mapping, unit and integration test coverage, and config docs) — see [Phase 8](#phase-8--access-control-acls) for the checklist and, notably, two real pre-existing bugs in the XMPP client-side error path (unrelated to this design, dating back to the original project rename) that were found and fixed in order to make the `forbidden` condition actually observable end-to-end, verified against a live ejabberd server rather than assumed from a unit test alone. **This pass also implements the interface-name sugar follow-up** for `acl: allow` entries (an entry may name an interface as shorthand for all of that interface's own methods), and fixes one more pre-existing, unrelated test bug found along the way (`test_background_task` comparing a bound method against a list of `(BackgroundTask, bool)` tuples, so it could never actually catch a regression) — see [Phase 8](#phase-8--access-control-acls) for both. With ACLs done, [Open Questions / Next Steps](#open-questions--next-steps) has no remaining 🔵 items. **This pass folds three sibling planning documents into this file** so 2.0-era design work lives in one place: [Module observer-location capabilities](#module-observer-location-capabilities-implemented) (implemented and merged — was `DESIGN_module_location.md`), [`IStructuredConfig`](#istructuredconfig-bulk-structured-config-for-pyobs-modules-proposed-not-yet-implemented) (proposed interface for `pyobs-iagvt`, not yet implemented in this repo — was `IStructuredConfig-spec.md`), and [Appendix: Sphinx docs sweep findings](#appendix-sphinx-docs-sweep-findings-2026-07-05) (completed docs audit — was `UPDATE_DOCS.md`); the three standalone files are deleted.
+Design exploration turned implementation log. Most of what this document proposed is now built and merged to `develop` (version, state, capabilities, presence, disco#info schema publication, RPC payload encoding 2.0, the `async with`-only `Proxy` redesign, the mixed-version-fleet diagnostic) — checked directly against the code while revising this pass, not just against the document's own earlier self-reported notes, several of which had gone stale. ✅ marks a point confirmed implemented; remaining unmarked items are genuinely still open. One correction surfaced in an earlier pass, noted where relevant: `ILatLon`/`LatLonCapabilities` no longer exist in `pyobs.interfaces` — left as historical context where the reasoning still applies, corrected where it was stated as current fact. This pass removes all D-Bus references throughout the document — `pyobs-core` never had a D-Bus `Comm` backend, and D-Bus is not in use or planned, so the earlier speculative analysis of it as a hypothetical future backend has been dropped rather than kept as unused historical context. A later pass found event feature versioning and event schema publication in disco#info — flagged 🔵 throughout an earlier revision — were actually already implemented, landed in `9c19e512` before this doc was last edited; verified directly against `pyobs/comm/xmpp/xmppcomm.py` and `serializer.py` rather than trusting the doc's own prior notes. **This pass: Phase 6 (external hardware-module repos) checked for the first time** — all 11 repos exist locally alongside `pyobs-core` and were audited for `comm.set_state` migration; 9/11 fully migrated, and the 2 exceptions (`pyobs-aravis`, `pyobs-v4l`) traced to one real `pyobs-core` bug (`BaseVideo.set_image_type` never called `comm.set_state`, unlike `BaseCamera.set_image_type`), not a per-module gap — see [Phase 6](#phase-6--external-official-pyobs--hardware-modules). ✅ **Fixed in this pass**: `BaseVideo` now publishes `IImageType` state on `open()` and on every `set_image_type()` call, matching `BaseCamera`'s pattern exactly (`pyobs/modules/camera/basevideo.py`). **Also this pass: Phase 7 (`pyobs-web-client`) checked for the first time**, against `../pyobs-web-client`'s own code and its own detailed `DEVELOPMENT.md` — it turned out to be fully ported to the 2.0 wire protocol already, verified end-to-end against a live server, not merely "status unknown" as this document previously assumed. One genuine cross-repo RPC-serialization bug it surfaced was already independently fixed on the `pyobs-core` side (`d170fd5e`, this session). See [Phase 7](#phase-7--pyobs-web-client-catch-up). **This pass adds a new, not-yet-implemented design section: [Access Control (ACLs)](#access-control-acls) / [Phase 8](#phase-8--access-control-acls)** — everything up to this point assumed a closed, mutually-trusting fleet, and this is the first design work on restricting which clients may call which methods on which other clients. **This pass adds a `deny` mode alongside the original `allow` mode** — `allow` alone can't express "everyone except this one caller" without enumerating the whole fleet by hand, so an `acl:` block now picks exactly one of `allow` (least-privilege, method-level) or `deny` (quarantine, whole-caller, coarse) rather than only supporting allowlisting. **This pass also adds a `mode: enforce | log` key** — `log` runs the same allow/deny decision but only logs what would have been denied and lets the call through, so a new policy can be validated against real traffic before it's ever capable of blocking a legitimate caller. **This pass adds `IModule.get_permitted_methods()`** — a caller-specific, always-permitted introspection query answering "am I allowed to call this" proactively, so a UI (`pyobs-gui`, `pyobs-web-client`) can hide or grey out actions an operator can't use instead of only learning via `ForbiddenError` on an actual attempt. **This pass also adds a cross-repo pointer**: `acl:` rules living one-per-module-config is a real fleet-wide visibility gap once there are many modules — see [Fleet-wide visibility](#fleet-wide-visibility-cross-repo-pyobs-web-admin), which keeps storage/enforcement exactly as designed and points at a new `pyobs-web-admin`-side matrix UI (its own `DEVELOPMENT.md`) for the actual fix. **This pass adds a similar cross-repo pointer for `pyobs-gui`/`pyobs-web-client`**: both already handle a denied call reactively today with zero changes needed (confirmed by reading their actual error-handling code), and both have an open item, tracked in their own `DEVELOPMENT.md`s, for the proactive half once `get_permitted_methods()` lands. **This pass implements Phase 8 in full** (`exc.ForbiddenError`, `acl:` config parsing, the `Module.execute()` check, `IModule.get_permitted_methods()`, the XMPP `forbidden`-condition mapping, unit and integration test coverage, and config docs) — see [Phase 8](#phase-8--access-control-acls) for the checklist and, notably, two real pre-existing bugs in the XMPP client-side error path (unrelated to this design, dating back to the original project rename) that were found and fixed in order to make the `forbidden` condition actually observable end-to-end, verified against a live ejabberd server rather than assumed from a unit test alone. **This pass also implements the interface-name sugar follow-up** for `acl: allow` entries (an entry may name an interface as shorthand for all of that interface's own methods), and fixes one more pre-existing, unrelated test bug found along the way (`test_background_task` comparing a bound method against a list of `(BackgroundTask, bool)` tuples, so it could never actually catch a regression) — see [Phase 8](#phase-8--access-control-acls) for both. With ACLs done, [Open Questions / Next Steps](#open-questions--next-steps) has no remaining 🔵 items. **This pass folds three sibling planning documents into this file** so 2.0-era design work lives in one place: [Module observer-location capabilities](#module-observer-location-capabilities-implemented) (implemented and merged — was `DESIGN_module_location.md`), [`IStructuredConfig`](#istructuredconfig-bulk-structured-config-for-pyobs-modules-proposed-not-yet-implemented) (proposed interface for `pyobs-iagvt`, not yet implemented in this repo — was `IStructuredConfig-spec.md`), and [Appendix: Sphinx docs sweep findings](#appendix-sphinx-docs-sweep-findings-2026-07-05) (completed docs audit — was `UPDATE_DOCS.md`); the three standalone files are deleted. **This pass folds in `external-interfaces-spec.md` and `external-interfaces-implementation-plan.md`** as [External interfaces registry](#external-interfaces-registry-implemented) — unlike the two proposed-but-unbuilt designs above, this one was fully implemented and merged in the same pass that folded it in: an import-time registry (`Interface.__init_subclass__`) replacing three hardcoded `pyobs.interfaces`-namespace lookups (`Module._get_interfaces_and_methods`, `XmppComm._get_interfaces`, `Comm._interface_names_to_classes`), so an external package can define its own interface and have it resolve correctly over the wire. Two real bugs were caught by the existing test suite during implementation, not by design review — a purity-filter gap that would have let `DummyCamera` register itself as an "interface" (fixed by checking registry membership instead of `issubclass`), and two test helpers whose dynamically-built mock classes collided with themselves across repeated calls — both documented in the folded section. The two standalone files are deleted.
 
 ## Table of Contents
 
@@ -61,6 +61,7 @@ Design exploration turned implementation log. Most of what this document propose
 - [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue)
 - [Module observer-location capabilities (implemented)](#module-observer-location-capabilities-implemented)
 - [`IStructuredConfig`: bulk structured config for pyobs modules (proposed, not yet implemented)](#istructuredconfig-bulk-structured-config-for-pyobs-modules-proposed-not-yet-implemented)
+- [External interfaces registry (implemented)](#external-interfaces-registry-implemented)
 - [Appendix: Sphinx docs sweep findings (2026-07-05)](#appendix-sphinx-docs-sweep-findings-2026-07-05)
 
 ## Motivation
@@ -1852,7 +1853,7 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above. `IReady` and `IWeather` ✅ fully implemented — `is_ready()`/`is_weather_good()` removed outright, folded into `ReadyState.ready`/`WeatherState.good` respectively (only a private, non-interface `_is_ready()` helper survives internally in `baseroof.py`).
 
-**⚠️ `IRunning.is_running` — NOT actually implemented, despite being marked done below and in the catalogue.** `RunningState` was added and is pushed via `comm.set_state(IRunning, RunningState(...))` in every implementing module (`acquisition.py`, `_baseguiding.py`, `dummyacquisition.py`, `dummyguiding.py`, `focusseries.py`, `dummyautofocus.py`, etc.), but unlike `is_ready()`/`is_weather_good()`, `is_running()` itself was never deleted from `IRunning` (`pyobs/interfaces/IRunning.py:25`, still `@abstractmethod`) or from any of the ~10 modules implementing it. It's also still called directly as live RPC, not read from pushed state — `pyobs/modules/utils/autonomouswarning.py:93` does `await auto.is_running()` through a proxy. Net effect: both the RPC method and the pushed state exist side by side for the same boolean, the exact duplication this migration was meant to remove. **Follow-up needed:** delete `is_running()` from `IRunning` and its ~10 implementers, and switch `autonomouswarning.py` to read `RunningState` from pushed state instead, mirroring exactly what was done for `IReady`.
+**⚠️ `IRunning.is_running` — NOT actually implemented, despite being marked done below and in the catalogue.** `RunningState` was added and is pushed via `comm.set_state(IRunning, RunningState(...))` in every implementing module (`acquisition.py`, `_baseguiding.py`, `dummyacquisition.py`, `dummyguiding.py`, `focusseries.py`, `dummyautofocus.py`, etc.), but unlike `is_ready()`/`is_weather_good()`, `is_running()` itself was never deleted from `IRunning` (`pyobs/interfaces/IRunning.py:25`, still `@abstractmethod`) or from any of the ~10 modules implementing it. It was also still called directly as live RPC, not read from pushed state, by `pyobs/modules/utils/autonomouswarning.py` (removed — see git history) through a proxy. Net effect: both the RPC method and the pushed state exist side by side for the same boolean, the exact duplication this migration was meant to remove. **Follow-up needed:** delete `is_running()` from `IRunning` and its ~10 implementers.
 
 **Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`** — of the 34 `State` items, 33 are fully implemented; `IRunning.is_running` (counted among them) is the one exception noted above. See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 
@@ -2547,6 +2548,140 @@ In the siderostat module (`siderostat.py`):
   semantics unchanged.
 - No merge of `IConfig` into `IModule` — considered and rejected; `IConfig`
   stays a separate interface.
+
+## External interfaces registry (implemented)
+
+*Folded in from the standalone `external-interfaces-spec.md` and
+`external-interfaces-implementation-plan.md`.*
+
+### Problem
+
+`Interface` (`pyobs/interfaces/interface.py`) was a plain ABC — nothing
+technically stopped an external package from subclassing it, but resolution
+silently dropped anything that did. Three chokepoints hardcoded lookups
+against the `pyobs.interfaces` module namespace specifically:
+
+1. `Module._get_interfaces_and_methods()` (`pyobs/modules/module.py`) — the
+   **publishing** side, and the one that actually mattered most: it built
+   `Module._interfaces` (what every comm backend reads — `LocalComm.get_interfaces()`
+   returns it directly, `XmppComm` iterates it to add disco#info features) by
+   scanning `inspect.getmembers(pyobs.interfaces, predicate=inspect.isclass)`.
+   A module implementing an external interface never had it added here, so
+   it was never advertised at all, over *any* backend — the other two
+   chokepoints were moot without this one.
+2. `XmppComm._get_interfaces()` (`pyobs/comm/xmpp/xmppcomm.py`) —
+   `getattr(pyobs.interfaces, name, None)` to resolve a disco#info feature
+   string back to a class.
+3. `Comm._interface_names_to_classes()` (`pyobs/comm/comm.py`) — the same
+   `inspect.getmembers` scan, for the same purpose, used only by `XmppComm`.
+
+### Design: import-time registry via `__init_subclass__`
+
+A module-level `_REGISTRY: dict[str, type[Interface]]` in `interface.py`,
+populated by `Interface.__init_subclass__`. Registration happens at
+class-definition time, which is exactly when it needs to be available: both
+the module implementing an external interface and any code building a typed
+proxy for it already have to import it, the same implicit constraint core
+interfaces already rely on.
+
+**The registry must only register genuine interface definitions, not every
+concrete class that happens to subclass one.** Concrete module classes (e.g.
+`BaseCamera(Module, ICamera, IExposureTime, IImageType)`) also transitively
+subclass `Interface`. The filter: a base only counts as "pure" if it's
+`Interface` itself or is *already in the registry*. Checking registry
+membership (rather than the weaker `issubclass(base, Interface)`) matters
+and was not obvious up front — the first version of this filter used the
+weaker check and shipped a real bug: `BaseCamera` transitively satisfies
+`issubclass(BaseCamera, Interface)` (via `ICamera`) despite mixing in
+`Module`, which let `DummyCamera(BaseCamera, ...)` register itself as an
+"interface" too. Caught by the existing test suite (`DummyCamera()`
+instantiation crashed with `TypeError: None is not a callable object`, from
+chokepoint 1's rewrite iterating `DummyCamera`'s own class dict for a
+method that didn't exist) — not by design review. Checking registry
+membership instead of `issubclass` propagates purity down the whole
+inheritance chain for free, since `BaseCamera` itself never registers.
+
+Two alternatives considered and rejected for the purity check, both with
+concrete counter-examples in this exact domain: abstractness
+(`ABCMeta`/`isabstract`) doesn't discriminate, since `BaseCamera` is
+abstract too (`get_image_format` etc. deferred to concrete drivers); a
+name-prefix convention (`cls.__name__.startswith("I")`, even tightened to
+`I` + capital second letter like `ICamera`) breaks on real acronym-prefixed
+driver names — **INDI** is a real astronomical device SDK, so `INDICamera`
+(`I` + capital `N`) would misclassify, as would `IAGVTController` for a
+`pyobs-iagvt`-style package.
+
+**Collision handling**, increasing cost: (1) convention only — document a
+naming prefix, zero mechanism; (2) **fail fast at import** (implemented) —
+`__init_subclass__` raises `TypeError` immediately when two *distinct*
+class objects claim the same name (re-importing the same module twice
+resolves to the same object and is a no-op); (3) fully-qualified wire names
+— change the disco#info feature string from bare `__name__` to
+`module.qualname` for anything outside `pyobs.interfaces`. Tier 3 is
+**explicitly not built** — no real external interface exists yet, and
+committing to a wire-format change ahead of need is exactly the kind of
+thing that's annoying to undo later. The purity filter also narrows what
+can collide under tier 2: concrete module/driver classes — the far more
+numerous, far less name-coordinated population across independent hardware
+packages — never enter the registry, so the fail-fast only fires for
+genuine interface-name clashes.
+
+### Implementation
+
+| File | Change |
+|---|---|
+| `pyobs/interfaces/interface.py` | `_REGISTRY`, purity-filtered `__init_subclass__`, `get_registered_interface()`, `registered_interfaces()` |
+| `pyobs/modules/module.py` | `_get_interfaces_and_methods()` scans `registered_interfaces()` instead of `pyobs.interfaces` |
+| `pyobs/comm/xmpp/xmppcomm.py` | `_get_interfaces()` uses `get_registered_interface(name)` |
+| `pyobs/comm/comm.py` | `_interface_names_to_classes()` collapsed to a registry lookup, replacing the `inspect.getmembers` scan |
+
+No changes needed to `pyobs/interfaces/__init__.py` (keeps re-exporting core
+interfaces; resolution no longer depends on that module's namespace),
+`LocalComm`/`DummyComm` (no string-based resolution of their own — though
+both depended on the `module.py` fix to see external interfaces in
+`.interfaces` at all), the disco#info wire format, or capabilities/state
+pub-sub (already keyed by `type[Interface]`, not by name or origin).
+
+A second real bug surfaced during implementation, unrelated to the registry
+design itself: two test helpers (`tests/robotic/scripts/test_autofocus.py`,
+`test_darkbias.py`) build a `MagicMock.__class__` from interface-only bases
+via `type("Camera", tuple(interfaces), {})` to make `isinstance()` checks
+pass — structurally indistinguishable from a real composite interface, so
+it now legitimately registers. The old code reused the bare name
+`"Camera"`/`"Telescope"` on every call, colliding with itself across
+repeated test invocations (a fresh `type()` object each time, same name).
+Fixed with a small `_isinstance_class()` helper that uniquely names each
+throwaway mock class — the production equivalent (`Proxy.__init__`,
+`pyobs/comm/proxy.py`) is unaffected, since its dynamic class always
+includes the base `Proxy` class itself, which isn't an `Interface`
+subclass and so fails the purity filter.
+
+### Testing
+
+- `tests/interfaces/test_interface_registry.py` — registration on
+  subclassing, composite interfaces, the purity filter and its regression
+  case (`ImpureBase`/`ImpureChild`, the exact `BaseCamera`/`DummyCamera`
+  bug shape), re-registration of the same object, collision detection
+  naming both offending classes.
+- `tests/comm/test_comm_interface_resolution.py` — `Comm._interface_names_to_classes`
+  resolving core and external interfaces, logging on unknown names.
+- `tests/comm/test_version_mismatch.py` — added a case for
+  `XmppComm._get_interfaces` resolving a genuinely external interface
+  through the registry.
+- `tests/modules/test_module_interfaces.py` — `Module._get_interfaces_and_methods`
+  discovering an external interface, *not* registering the concrete module
+  class itself, method collection, and a sanity check that core interface
+  discovery still works.
+
+### Status
+
+✅ Implemented and merged to `develop`. Verified end-to-end against the
+worked example from the original spec (an `ISiderostatAlignment`-style
+external interface defined outside `pyobs.interfaces`, implemented by a
+`Module` subclass, discovered via `.interfaces`, resolved by name through
+`Comm._interface_names_to_classes`, with collision detection confirmed
+separately) in addition to the test suite above. `ruff` and `pyrefly`
+clean; full suite passing.
 
 ## Appendix: Sphinx docs sweep findings (2026-07-05)
 

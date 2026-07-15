@@ -45,8 +45,7 @@ async def test_call():
     image.header["XBINNING"] = 1
     image.header["YBINNING"] = 1
 
-    adder = AddMask({})
-    adder._masks = masks
+    adder = AddMask(masks)
 
     output_image = await adder(image)
     np.testing.assert_array_equal(output_image.mask, mask)

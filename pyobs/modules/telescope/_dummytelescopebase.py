@@ -3,13 +3,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+from abc import ABCMeta
 from typing import Any
 
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
 
-from pyobs.events import FilterChangedEvent, OffsetsRaDecEvent
+from pyobs.events import FilterChangedEvent
 from pyobs.interfaces import (
     FiltersCapabilities,
     FilterState,
@@ -18,16 +19,21 @@ from pyobs.interfaces import (
     IFilters,
     IFitsHeaderBefore,
     IFocuser,
-    IOffsetsRaDec,
     IPointingAltAz,
     IPointingRaDec,
     IReady,
     ITemperatures,
-    RaDecOffsetState,
+    ITrackingMode,
+    ITrackingRate,
     RaDecState,
     ReadyState,
     SensorReading,
     TemperaturesState,
+    TrackingMode,
+    TrackingModeCapabilities,
+    TrackingModeState,
+    TrackingRateCapabilities,
+    TrackingRateState,
 )
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules import timeout
@@ -39,25 +45,28 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class DummyTelescope(
+class _DummyTelescopeBase(
     BaseTelescope,
     IPointingRaDec,
     IPointingAltAz,
-    IOffsetsRaDec,
     IFocuser,
     IFilters,
     IFitsHeaderBefore,
     ITemperatures,
+    ITrackingMode,
+    ITrackingRate,
     FitsNamespaceMixin,
+    metaclass=ABCMeta,
 ):
-    """A dummy telescope for testing."""
+    """Shared simulator for all dummy telescopes: position/motion, focus, filters,
+    temperatures, tracking mode/rate. No offset or solar-pointing interfaces -- those are
+    added by concrete subclasses."""
 
     __module__ = "pyobs.modules.telescope"
 
     def __init__(
         self,
         position: tuple[float, float] | None = None,
-        offsets: tuple[float, float] | None = None,
         pointing_offset: tuple[float, float] | None = None,
         move_accuracy: float = 2.0,
         speed: float = 20.0,
@@ -73,7 +82,6 @@ class DummyTelescope(
 
         Args:
             position: Initial RA/Dec position in degrees.
-            offsets: Initial RA/Dec offsets in degrees.
             pointing_offset: Pointing offset in RA/Dec in arcsecs.
             move_accuracy: Accuracy of movements in arcsec (random error after any movement).
             speed: Speed of telescope in deg/sec.
@@ -93,7 +101,6 @@ class DummyTelescope(
             if position is None
             else SkyCoord(position[0] * u.deg, position[1] * u.deg, frame="icrs")
         )
-        self._offsets = (0.0, 0.0) if offsets is None else tuple(offsets)
         self._pointing_offset = (20.0, 2.0) if pointing_offset is None else tuple(pointing_offset)
         self._move_accuracy = move_accuracy
         self._speed = speed
@@ -110,6 +117,11 @@ class DummyTelescope(
         self._sim_status = MotionStatus.IDLE
         self._temperatures = {"M1": 10.0, "M2": 12.0}
 
+        # tracking mode/rate state (ITrackingMode/ITrackingRate)
+        self._tracking_modes = [TrackingMode.SIDEREAL, TrackingMode.SOLAR, TrackingMode.LUNAR, TrackingMode.OFF]
+        self._tracking_mode = TrackingMode.OFF
+        self._tracking_rate = (0.0, 0.0)  # arcsec/sec; distinct from self._drift_rate (see _move_task)
+
         # locks
         self._lock_focus = asyncio.Lock()
         self._abort_focus = asyncio.Event()
@@ -120,13 +132,6 @@ class DummyTelescope(
     @property
     def focal_length(self) -> float:
         return self._focal_length
-
-    @property
-    def real_pos(self) -> SkyCoord:
-        """Current position including offsets and drift."""
-        dra = (self._offsets[0] * u.deg + self._drift[0] * u.arcsec) / np.cos(np.radians(self._position.dec.degree))
-        ddec = self._offsets[1] * u.deg + self._drift[1] * u.arcsec
-        return SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
 
     @property
     def _position_radec(self) -> tuple[float, float] | None:
@@ -169,6 +174,15 @@ class DummyTelescope(
                     await self._sim_change_status(MotionStatus.SLEWING)
                     self._position = SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
             else:
+                if self._tracking_rate != (0.0, 0.0):
+                    dra = self._tracking_rate[0] * u.arcsec / np.cos(np.radians(self._position.dec.degree))
+                    ddec = self._tracking_rate[1] * u.arcsec
+                    self._position = SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
+                    await self.comm.set_state(
+                        IPointingRaDec,
+                        RaDecState(ra=float(self._position.ra.degree), dec=float(self._position.dec.degree)),
+                    )
+
                 drift_ra = random.gauss(self._drift_rate[0], max(self._drift_rate[0] / 10.0, 1e-9))
                 drift_dec = random.gauss(self._drift_rate[1], max(self._drift_rate[1] / 10.0, 1e-9))
                 self._drift = (self._drift[0] + drift_ra, self._drift[1] + drift_dec)
@@ -189,7 +203,6 @@ class DummyTelescope(
 
         if self._comm:
             await self.comm.register_event(FilterChangedEvent)
-            await self.comm.register_event(OffsetsRaDecEvent)
 
         await self._change_motion_status(MotionStatus.IDLE)
 
@@ -211,7 +224,12 @@ class DummyTelescope(
                 dec=float(self._position.dec.degree),
             ),
         )
-        await self.comm.set_state(IOffsetsRaDec, RaDecOffsetState(ra=self._offsets[0], dec=self._offsets[1]))
+        await self.comm.set_capabilities(ITrackingMode, TrackingModeCapabilities(modes=self._tracking_modes))
+        await self.comm.set_capabilities(ITrackingRate, TrackingRateCapabilities(min_update_interval=0.0))
+        await self.comm.set_state(ITrackingMode, TrackingModeState(mode=self._tracking_mode))
+        await self.comm.set_state(
+            ITrackingRate, TrackingRateState(ra_rate=self._tracking_rate[0], dec_rate=self._tracking_rate[1])
+        )
 
     async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         acc = self._move_accuracy / 3600.0
@@ -224,11 +242,23 @@ class DummyTelescope(
             await asyncio.sleep(self._wait_secs)
 
     async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
-        coords = SkyCoord(
-            alt=alt * u.degree, az=az * u.degree, obstime=Time.now(), location=self._location, frame="altaz"
-        )
+        location = self._observer.location if self._observer is not None else None
+        coords = SkyCoord(alt=alt * u.degree, az=az * u.degree, obstime=Time.now(), location=location, frame="altaz")
         icrs = coords.icrs
         await self._move_radec(icrs.ra.degree, icrs.dec.degree, abort_event)
+
+    async def set_tracking_mode(self, mode: TrackingMode, **kwargs: Any) -> None:
+        """Switches to the given tracking mode."""
+        if mode not in self._tracking_modes:
+            raise ValueError(f"Mode {mode} not supported.")
+        self._tracking_mode = mode
+        await self.comm.set_state(ITrackingMode, TrackingModeState(mode=mode))
+
+    async def _set_tracking_rate(self, ra_rate: float, dec_rate: float) -> None:
+        """Applies a tracking rate to the simulated hardware -- state publishing for
+        ITrackingRate itself already happens in BaseTelescope.set_tracking_rate/the background
+        task, this is purely "make the dummy actually move" (see _move_task)."""
+        self._tracking_rate = (ra_rate, dec_rate)
 
     @timeout(60)
     async def set_focus(self, focus: float, **kwargs: Any) -> None:
@@ -297,14 +327,6 @@ class DummyTelescope(
             await self._change_motion_status(MotionStatus.PARKED)
         log.info("Telescope parked.")
 
-    async def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
-        """Move an RA/Dec offset."""
-        log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
-        await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
-        acc = self._move_accuracy / 3600.0
-        self._offsets = (random.gauss(dra, acc), random.gauss(ddec, acc))
-        await self.comm.set_state(IOffsetsRaDec, RaDecOffsetState(ra=dra, dec=ddec))
-
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
     ) -> dict[str, FitsHeaderEntry]:
@@ -327,4 +349,4 @@ class DummyTelescope(
         raise NotImplementedError
 
 
-__all__ = ["DummyTelescope"]
+__all__ = ["_DummyTelescopeBase"]

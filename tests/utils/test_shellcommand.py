@@ -6,6 +6,7 @@ import pytest
 
 import pyobs.utils.exceptions as exc
 from pyobs.utils.shellcommand import ShellCommand, ShellCommandResponse
+from tests.helpers import make_proxy_cm
 
 # ── ShellCommand.parse ────────────────────────────────────────────────────────
 
@@ -92,13 +93,6 @@ def test_str_representation() -> None:
 
 
 # ── ShellCommand.execute ──────────────────────────────────────────────────────
-
-
-def make_proxy_cm(value: object) -> MagicMock:
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=value)
-    cm.__aexit__ = AsyncMock(return_value=None)
-    return cm
 
 
 @pytest.mark.asyncio

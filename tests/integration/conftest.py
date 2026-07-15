@@ -69,19 +69,15 @@ def xmpp_config() -> XmppConfig:
     )
 
 
-@pytest_asyncio.fixture
-async def make_xmpp_comm(xmpp_config: XmppConfig):
-    """
-    Factory fixture: ``await make_xmpp_comm(user)`` returns an open XmppComm
-    for ``<user>@<domain>``.  Optionally pass a module stub as the second
-    argument.  All comms are closed after the test.
-    """
+@pytest.fixture
+def make_unopened_comm(xmpp_config: XmppConfig):
+    """Factory fixture: ``make_unopened_comm(user)`` returns an unopened XmppComm
+    for ``<user>@<domain>``, for constructor-injecting into a module (real or
+    stub) before anything is opened or connected."""
     from pyobs.comm.xmpp.xmppcomm import XmppComm
 
-    opened: list[XmppComm] = []
-
-    async def _factory(user: str, module=None) -> XmppComm:
-        comm = XmppComm(
+    def _factory(user: str) -> XmppComm:
+        return XmppComm(
             user=user,
             domain=xmpp_config.domain,
             password=xmpp_config.password,
@@ -89,9 +85,59 @@ async def make_xmpp_comm(xmpp_config: XmppConfig):
             use_tls=xmpp_config.use_tls,
             ignore_cert_errors=xmpp_config.ignore_cert_errors,
         )
-        if module is not None:
-            comm.module = module
-            module._comm = comm
+
+    return _factory
+
+
+@pytest.fixture
+def make_camera_comm(make_unopened_comm):
+    """Build an unopened XmppComm for user "camera", for constructor-injecting
+    into DummyCamera(comm=...) -- the caller opens it via camera.open()."""
+    return make_unopened_comm("camera")
+
+
+def make_module(interfaces: list, comm, label: str = "Test Camera"):
+    """Minimal module stub satisfying what XmppComm needs on connect.
+
+    IModule must be included: XmppComm._get_interfaces() only adds a peer to
+    _online_clients once it sees IModule in the disco#info features -- without
+    it the peer never appears in comm.clients regardless of other interfaces.
+
+    Takes comm (built via make_unopened_comm) rather than being retrofitted
+    onto afterward, mirroring how a real module wires up: comm is known before
+    the module is done configuring itself.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from pyobs.interfaces import IModule
+
+    m = MagicMock()
+    # Always include IModule so _got_online completes successfully
+    m.interfaces = list({IModule} | set(interfaces))
+    m.name = "camera"
+    m._label = label
+    m.get_label = AsyncMock(return_value=label)
+    m.get_version = AsyncMock(return_value="2.0.0.dev1")
+    m._comm = comm
+    comm.module = m
+    return m
+
+
+@pytest_asyncio.fixture
+async def make_xmpp_comm(xmpp_config: XmppConfig, make_unopened_comm):
+    """
+    Factory fixture: ``await make_xmpp_comm(user)`` returns an open XmppComm
+    for ``<user>@<domain>``, building one via make_unopened_comm(user). Pass
+    comm=<already-built-comm> to open a comm that was constructed (and wired
+    to a module) earlier instead. All comms are closed after the test.
+    """
+    from pyobs.comm.xmpp.xmppcomm import XmppComm
+
+    opened: list[XmppComm] = []
+
+    async def _factory(user: str, comm: XmppComm | None = None) -> XmppComm:
+        if comm is None:
+            comm = make_unopened_comm(user)
         await comm.open()
         for _ in range(50):
             if comm._connected:

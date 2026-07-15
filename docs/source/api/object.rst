@@ -60,11 +60,18 @@ Runtime context: ``comm``, ``vfs``, ``observer``, ``location``, ``timezone``
 - :attr:`~pyobs.object.Object.comm` — the :class:`~pyobs.comm.Comm` object for communicating with other modules.
 - :attr:`~pyobs.object.Object.vfs` — the :class:`~pyobs.vfs.VirtualFileSystem` for file access.
 - :attr:`~pyobs.object.Object.observer` — an :class:`astroplan.Observer` built from the configured location and timezone.
-- :attr:`~pyobs.object.Object.location` — the observatory's :class:`~astropy.coordinates.EarthLocation`.
+- :attr:`~pyobs.object.Object.location` — the observatory's :class:`~astropy.coordinates.EarthLocation`, read as
+  ``observer.location``. It is not stored separately, so it is always in sync with ``observer`` and does not need
+  to be propagated to child objects on its own.
 - :attr:`~pyobs.object.Object.timezone` — the local timezone as a :class:`datetime.tzinfo`.
 
-These are automatically propagated to child objects created via :meth:`~pyobs.object.Object.add_child_object`.
-They can be configured in the YAML block (see :doc:`/overview` for examples) or inherited from a parent object.
+The constructor still accepts a ``location`` argument (a site name, an ``{longitude, latitude, elevation}`` dict,
+or an :class:`~astropy.coordinates.EarthLocation`), but only uses it to build the default ``observer`` — pass
+``observer`` directly to bypass that derivation entirely.
+
+``comm``, ``vfs``, ``observer``, and ``timezone`` are automatically propagated to child objects created via
+:meth:`~pyobs.object.Object.add_child_object`. They can be configured in the YAML block (see :doc:`/overview`
+for examples) or inherited from a parent object.
 
 
 Background tasks

@@ -19,12 +19,12 @@ For a hand-run server, register the accounts manually:
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import MagicMock
 
 import pytest
 
 from pyobs.events import ModuleClosedEvent
-from pyobs.interfaces import CoolingState, ICooling, IModule
+from pyobs.interfaces import CoolingState, ICooling
+from tests.integration.conftest import make_module
 
 # Applies asyncio/integration/xmpp marks to every test in this module.
 # asyncio must be in pytestmark (not added via pytest_collection_modifyitems)
@@ -35,20 +35,6 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration, pytest.mark.xmpp]
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
-
-
-def make_module(interfaces: list) -> MagicMock:
-    """Minimal module stub satisfying what XmppComm needs on connect.
-
-    IModule must be included: XmppComm._get_interfaces() only adds a peer to
-    _online_clients once it sees IModule in the disco#info features — without
-    it the peer never appears in comm.clients regardless of other interfaces.
-    """
-    m = MagicMock()
-    # Always include IModule so _got_online completes successfully
-    m.interfaces = list({IModule} | set(interfaces))
-    m.name = "camera"
-    return m
 
 
 async def wait_for(condition, *, timeout: float = 10.0, interval: float = 0.1) -> bool:
@@ -72,14 +58,16 @@ async def wait_for_peer(comm, peer: str, *, timeout: float = 15.0) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_subscriber_receives_initial_value_on_subscribe(make_xmpp_comm) -> None:
+async def test_subscriber_receives_initial_value_on_subscribe(make_xmpp_comm, make_unopened_comm) -> None:
     """
     A subscriber that connects after the first publish must receive the current
     value immediately on subscribe (send_last_published_item semantics).
     """
 
     async def _run():
-        camera_comm = await make_xmpp_comm("camera", make_module([ICooling]))
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
         await camera_comm.set_state(ICooling, CoolingState(setpoint=-20.0, power=65, enabled=True))
 
         # Brief pause to let ejabberd persist the item before observer subscribes
@@ -99,11 +87,13 @@ async def test_subscriber_receives_initial_value_on_subscribe(make_xmpp_comm) ->
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_subscriber_receives_live_update(make_xmpp_comm) -> None:
+async def test_subscriber_receives_live_update(make_xmpp_comm, make_unopened_comm) -> None:
     """After subscribing, subsequent set_state calls must arrive at the subscriber."""
 
     async def _run():
-        camera_comm = await make_xmpp_comm("camera", make_module([ICooling]))
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
 
@@ -123,11 +113,13 @@ async def test_subscriber_receives_live_update(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_proxy_state_method_reflects_latest_value(make_xmpp_comm) -> None:
+async def test_proxy_state_method_reflects_latest_value(make_xmpp_comm, make_unopened_comm) -> None:
     """proxy.get_state(ICooling) must return the latest value without an RPC round-trip."""
 
     async def _run():
-        camera_comm = await make_xmpp_comm("camera", make_module([ICooling]))
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
         await camera_comm.set_state(ICooling, CoolingState(setpoint=-15.0, power=50, enabled=True))
         await asyncio.sleep(0.5)
 
@@ -144,7 +136,7 @@ async def test_proxy_state_method_reflects_latest_value(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_disconnect_cleans_up_subscriptions(make_xmpp_comm) -> None:
+async def test_disconnect_cleans_up_subscriptions(make_xmpp_comm, make_unopened_comm) -> None:
     """
     When the remote module disconnects, _client_disconnected must call
     unsubscribe_state, clear _state_subscriptions, and collapse the proxy
@@ -152,7 +144,9 @@ async def test_disconnect_cleans_up_subscriptions(make_xmpp_comm) -> None:
     """
 
     async def _run():
-        camera_comm = await make_xmpp_comm("camera", make_module([ICooling]))
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
 
@@ -172,14 +166,16 @@ async def test_disconnect_cleans_up_subscriptions(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_reconnect_resubscribes_with_fresh_proxy(make_xmpp_comm) -> None:
+async def test_reconnect_resubscribes_with_fresh_proxy(make_xmpp_comm, make_unopened_comm) -> None:
     """
     After disconnect and reconnect, the next proxy() call must produce a fresh
     Proxy with a live subscription to the new session's state.
     """
 
     async def _run():
-        camera_comm = await make_xmpp_comm("camera", make_module([ICooling]))
+        comm = make_unopened_comm("camera")
+        make_module([ICooling], comm)
+        camera_comm = await make_xmpp_comm("camera", comm=comm)
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
 
@@ -191,7 +187,9 @@ async def test_reconnect_resubscribes_with_fresh_proxy(make_xmpp_comm) -> None:
         observer_comm._send_event_to_module(ModuleClosedEvent(), "camera")
         await asyncio.sleep(0.5)
 
-        camera_comm2 = await make_xmpp_comm("camera", make_module([ICooling]))
+        comm2 = make_unopened_comm("camera")
+        make_module([ICooling], comm2)
+        camera_comm2 = await make_xmpp_comm("camera", comm=comm2)
         await camera_comm2.set_state(ICooling, CoolingState(setpoint=-30.0, power=90, enabled=True))
 
         await wait_for_peer(observer_comm, "camera")

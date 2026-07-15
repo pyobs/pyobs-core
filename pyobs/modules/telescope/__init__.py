@@ -6,6 +6,8 @@ TODO: write doc
 __title__ = "Telescopes"
 
 from .basetelescope import BaseTelescope
-from .dummytelescope import DummyTelescope
+from .dummyaltaztelescope import DummyAltAzTelescope
+from .dummyradectelescope import DummyRaDecTelescope
+from .dummysolartelescope import DummySolarTelescope
 
-__all__ = ["BaseTelescope", "DummyTelescope"]
+__all__ = ["BaseTelescope", "DummyRaDecTelescope", "DummyAltAzTelescope", "DummySolarTelescope"]

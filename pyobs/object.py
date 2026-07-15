@@ -191,7 +191,6 @@ class PrivateAttrMixin:
     _comm: Comm | None
     _vfs: VirtualFileSystem | None
     _observer: Observer | None
-    _location: EarthLocation | None
     _timezone: datetime.tzinfo | None
 
     @property
@@ -214,9 +213,8 @@ class PrivateAttrMixin:
 
     @property
     def location(self) -> EarthLocation:
-        if self._location is None:
-            raise AttributeError("No location available.")
-        return self._location
+        """Location of the observer, derived from :attr:`observer` (there is no separately stored location)."""
+        return self.observer.location
 
     @property
     def timezone(self) -> datetime.tzinfo:
@@ -233,7 +231,6 @@ class PrivateAttrMixin:
                 "observer": self._observer,
                 "vfs": self._vfs,
                 "timezone": self._timezone,
-                "location": self._location,
             },
             **kwargs,
         )
@@ -296,18 +293,19 @@ class Object(PrivateAttrMixin):
         else:
             raise ValueError(f"Unknown format for timezone: {type(timezone)}")
 
-        # location
+        # parse location; only used to build the default observer below, not stored separately
+        parsed_location: EarthLocation | None
         if location is None:
-            self._location = None
+            parsed_location = None
         else:
             from astropy.coordinates import EarthLocation
 
             if isinstance(location, EarthLocation):
-                self._location = location
+                parsed_location = location
             elif isinstance(location, str):
-                self._location = EarthLocation.of_site(location)
+                parsed_location = EarthLocation.of_site(location)
             elif isinstance(location, dict):
-                self._location = EarthLocation.from_geodetic(
+                parsed_location = EarthLocation.from_geodetic(
                     location["longitude"], location["latitude"], location["elevation"]
                 )
             else:
@@ -315,16 +313,16 @@ class Object(PrivateAttrMixin):
 
         # create observer
         self._observer = observer
-        if self._observer is None and self._location is not None and self._timezone is not None:
+        if self._observer is None and parsed_location is not None and self._timezone is not None:
             from astroplan import Observer
 
             log.info(
                 "Setting location to longitude=%.4f°, latitude=%.4f°, and elevation=%.2fm.",
-                self._location.lon.degree,
-                self._location.lat.degree,
-                self._location.height.value,
+                parsed_location.lon.degree,
+                parsed_location.lat.degree,
+                parsed_location.height.value,
             )
-            self._observer = Observer(location=self._location, timezone=timezone)
+            self._observer = Observer(location=parsed_location, timezone=timezone)
 
         # comm object
         self._comm: Comm | None
@@ -473,8 +471,8 @@ class Object(PrivateAttrMixin):
         if copy_comm:
             params["comm"] = self._comm
 
-        # copy timezone, location, vfs, and observer, if not exists
-        for p in ["_timezone", "_location", "_vfs", "_observer"]:
+        # copy timezone, vfs, and observer, if not exists (location is derived from observer)
+        for p in ["_timezone", "_vfs", "_observer"]:
             if self.config_or_object_get_param(config_or_object, p) is None:
                 params[p[1:]] = getattr(self, p)
 

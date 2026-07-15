@@ -6,7 +6,6 @@ import asyncio
 
 import pytest
 
-from pyobs.comm.xmpp.xmppcomm import XmppComm
 from pyobs.interfaces import ICooling, IModule, IWindow, ModuleCapabilities, WindowCapabilities
 from pyobs.modules.camera.dummycamera import DummyCamera
 
@@ -23,18 +22,7 @@ async def wait_for(condition, *, timeout: float = 15.0, interval: float = 0.1) -
     return False
 
 
-def make_camera_comm(xmpp_config) -> XmppComm:
-    return XmppComm(
-        user="camera",
-        domain=xmpp_config.domain,
-        password=xmpp_config.password,
-        server=f"{xmpp_config.host}:{xmpp_config.port}",
-        use_tls=xmpp_config.use_tls,
-        ignore_cert_errors=xmpp_config.ignore_cert_errors,
-    )
-
-
-async def test_dummy_camera_publishes_cooling_state(make_xmpp_comm, xmpp_config) -> None:
+async def test_dummy_camera_publishes_cooling_state(make_xmpp_comm, make_camera_comm) -> None:
     """
     DummyCamera's _cooling_thread publishes CoolingState every second.
     An observer subscribing to the camera's ICooling state must receive
@@ -42,7 +30,7 @@ async def test_dummy_camera_publishes_cooling_state(make_xmpp_comm, xmpp_config)
     """
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
+        camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
             await camera.open()
 
@@ -69,14 +57,14 @@ async def test_dummy_camera_publishes_cooling_state(make_xmpp_comm, xmpp_config)
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_dummy_camera_cooling_state_reflects_set_cooling(make_xmpp_comm, xmpp_config) -> None:
+async def test_dummy_camera_cooling_state_reflects_set_cooling(make_xmpp_comm, make_camera_comm) -> None:
     """
     After calling set_cooling via RPC, the published CoolingState must
     reflect the new setpoint and enabled flag within the next publish cycle.
     """
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
+        camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
             await camera.open()
 
@@ -108,11 +96,11 @@ async def test_dummy_camera_cooling_state_reflects_set_cooling(make_xmpp_comm, x
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_dummy_camera_publishes_iwindow_capabilities(make_xmpp_comm, xmpp_config) -> None:
+async def test_dummy_camera_publishes_iwindow_capabilities(make_xmpp_comm, make_camera_comm) -> None:
     """DummyCamera.open() must publish IWindow.Capabilities with the SimCamera full frame."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
+        camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
             await camera.open()
 
@@ -135,11 +123,11 @@ async def test_dummy_camera_publishes_iwindow_capabilities(make_xmpp_comm, xmpp_
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_dummy_camera_publishes_imodule_capabilities(make_xmpp_comm, xmpp_config) -> None:
+async def test_dummy_camera_publishes_imodule_capabilities(make_xmpp_comm, make_camera_comm) -> None:
     """DummyCamera.open() must publish IModule.Capabilities with version and label."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
+        camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
             await camera.open()
 
@@ -160,13 +148,13 @@ async def test_dummy_camera_publishes_imodule_capabilities(make_xmpp_comm, xmpp_
     await asyncio.wait_for(_run(), timeout=60)
 
 
-async def test_dummy_camera_no_capabilities_for_unconfigured_interface(make_xmpp_comm, xmpp_config) -> None:
+async def test_dummy_camera_no_capabilities_for_unconfigured_interface(make_xmpp_comm, make_camera_comm) -> None:
     """get_capabilities() must return None for an interface DummyCamera doesn't publish."""
 
     async def _run():
         from pyobs.interfaces import IFocuser
 
-        camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
+        camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
             await camera.open()
 

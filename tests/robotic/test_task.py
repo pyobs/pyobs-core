@@ -31,19 +31,6 @@ class _NeverCanRunScript(Script):
         return False
 
 
-# ── helpers ──────────────────────────────────────────────────────────────────
-
-
-def _blank_context(task: Task) -> Task:
-    """Set private attrs to None so pyobs_model_validate works without Object."""
-    task._comm = None
-    task._observer = None
-    task._vfs = None
-    task._timezone = None
-    task._location = None
-    return task
-
-
 # ── YAML parsing ─────────────────────────────────────────────────────────────
 
 TASK_CONFIG = """
@@ -99,13 +86,11 @@ def test_estimate_duration_falls_back_to_duration() -> None:
 
 
 def test_estimate_duration_delegates_to_script() -> None:
-    task = _blank_context(
-        Task(
-            id=1,
-            name="test",
-            duration=300.0,
-            script={"class": "tests.robotic.test_task._TimedScript"},
-        )
+    task = Task(
+        id=1,
+        name="test",
+        duration=300.0,
+        script={"class": "tests.robotic.test_task._TimedScript"},
     )
     assert task.estimate_duration() == 42.0
 
@@ -122,13 +107,11 @@ async def test_can_run_returns_true_when_no_script() -> None:
 @pytest.mark.asyncio
 async def test_can_run_delegates_to_script() -> None:
     for cls, expected in [(_AlwaysCanRunScript, True), (_NeverCanRunScript, False)]:
-        task = _blank_context(
-            Task(
-                id=1,
-                name="test",
-                duration=100,
-                script={"class": f"tests.robotic.test_task.{cls.__name__}"},
-            )
+        task = Task(
+            id=1,
+            name="test",
+            duration=100,
+            script={"class": f"tests.robotic.test_task.{cls.__name__}"},
         )
         assert await task.can_run(None) is expected
 

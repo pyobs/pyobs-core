@@ -10,24 +10,20 @@ import numpy as np
 import pytest
 from astropy.io import fits
 
+from pyobs.comm.dummy import DummyComm
 from pyobs.modules.image.imagewatcher import ImageWatcher
+from pyobs.vfs import VirtualFileSystem
 
 
 def make_watcher(destinations=None, pattern="*", wait_time=0) -> ImageWatcher:
-    watcher = ImageWatcher.__new__(ImageWatcher)
-    watcher._watchpath = "/watch"
-    watcher._destinations = destinations or ["/dest"]
-    watcher._pattern = pattern
-    watcher._wait_time = wait_time
-    watcher._poll = False
-    watcher._poll_interval = 5
-    watcher._notifier = None
-    watcher._queue = asyncio.Queue()
-    watcher.current_file = None
-    watcher._comm = MagicMock()
-    watcher._vfs = MagicMock()
-    watcher._background_tasks = []
-    return watcher
+    return ImageWatcher(
+        watchpath="/watch",
+        destinations=destinations or ["/dest"],
+        pattern=pattern,
+        wait_time=wait_time,
+        comm=DummyComm(),
+        vfs=MagicMock(spec=VirtualFileSystem),
+    )
 
 
 def make_fits_bytes() -> bytes:

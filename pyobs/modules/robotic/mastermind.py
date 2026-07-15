@@ -56,7 +56,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self.add_background_task(self._run_thread, True)
 
         # get schedule and runner
-        self._task_archive = self.add_child_object(tasks, TaskArchive)
+        self._task_archive = self.add_child_object(tasks, TaskArchive) if tasks is not None else None
         self._observation_archive = self.add_child_object(schedule, ObservationArchive)
         self._task_runner = self.add_child_object(runner, TaskRunner, observation_archive=self._observation_archive)
 

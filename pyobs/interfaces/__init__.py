@@ -43,8 +43,11 @@ from .interface import Interface
 from .IOffsetsAltAz import AltAzOffsetState, IOffsetsAltAz
 from .IOffsetsRaDec import IOffsetsRaDec, RaDecOffsetState
 from .IPointingAltAz import AltAzState, IPointingAltAz
+from .IPointingBody import IPointingBody
+from .IPointingHeliocentricPolar import HeliocentricPolarState, IPointingHeliocentricPolar
+from .IPointingHeliographicStonyhurst import HeliographicStonyhurstState, IPointingHeliographicStonyhurst
 from .IPointingHelioprojective import HelioprojectiveState, IPointingHelioprojective
-from .IPointingHGS import HGSState, IPointingHGS
+from .IPointingOrbitalElements import IPointingOrbitalElements, OrbitalElements
 from .IPointingRaDec import IPointingRaDec, RaDecState
 from .IPointingSeries import IPointingSeries
 from .IReady import IReady, ReadyState
@@ -59,6 +62,8 @@ from .IStructuredConfig import ConfigAppliedState, ConfigFieldSchema, ConfigSche
 from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures, SensorReading, TemperaturesState
+from .ITrackingMode import ITrackingMode, TrackingMode, TrackingModeCapabilities, TrackingModeState
+from .ITrackingRate import ITrackingRate, TrackingRateCapabilities, TrackingRateState
 from .IVideo import IVideo, VideoCapabilities
 from .IWeather import IWeather, WeatherSensorReading, WeatherState
 from .IWindow import IWindow, WindowCapabilities, WindowState
@@ -127,10 +132,15 @@ __all__ = [
     "MultiFiberState",
     "IPointingAltAz",
     "AltAzState",
+    "IPointingBody",
+    "IPointingHeliocentricPolar",
+    "HeliocentricPolarState",
+    "IPointingHeliographicStonyhurst",
+    "HeliographicStonyhurstState",
     "IPointingHelioprojective",
     "HelioprojectiveState",
-    "IPointingHGS",
-    "HGSState",
+    "IPointingOrbitalElements",
+    "OrbitalElements",
     "IPointingRaDec",
     "RaDecState",
     "IPointingSeries",
@@ -153,6 +163,13 @@ __all__ = [
     "ITemperatures",
     "SensorReading",
     "TemperaturesState",
+    "ITrackingMode",
+    "TrackingMode",
+    "TrackingModeState",
+    "TrackingModeCapabilities",
+    "ITrackingRate",
+    "TrackingRateState",
+    "TrackingRateCapabilities",
     "IOffsetsAltAz",
     "AltAzOffsetState",
     "IOffsetsRaDec",

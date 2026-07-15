@@ -211,8 +211,9 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 raise exc.ImageError("Calculated offsets too large.")
 
             # apply offsets
+            location = self._observer.location if self._observer is not None else None
             async with self.proxy(self._telescope, ITelescope) as telescope:
-                result = await self._apply(image, telescope, self._location)
+                result = await self._apply(image, telescope, location)
                 if result.applied:
                     log.info("Finished image.")
                     frame, lon, lat = await self._get_offsets()

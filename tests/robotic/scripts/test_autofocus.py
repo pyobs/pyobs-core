@@ -7,12 +7,11 @@ import pytest
 from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scripts.imaging.autofocus import AutoFocusScript
 from pyobs.robotic.task import TaskData
+from tests.helpers import isinstance_class, make_proxy_cm
 
 
 def make_script(**kwargs) -> AutoFocusScript:
-    s = AutoFocusScript(**kwargs)
-    s._comm = MagicMock()
-    return s
+    return AutoFocusScript.model_validate(kwargs, context={"comm": MagicMock()})
 
 
 def make_task(target=None) -> TaskData:
@@ -33,7 +32,7 @@ def make_telescope(ready=True, is_motion=True) -> MagicMock:
     tel.get_state = MagicMock(return_value=ReadyState(ready=ready))
     tel.move_radec = AsyncMock()
     tel.stop_motion = AsyncMock()
-    tel.__class__ = type("Telescope", tuple(interfaces), {})
+    tel.__class__ = isinstance_class("Telescope", interfaces)
     return tel
 
 
@@ -43,13 +42,6 @@ def make_autofocus() -> MagicMock:
     af = MagicMock(spec=[IAutoFocus])
     af.auto_focus = AsyncMock()
     return af
-
-
-def make_proxy_cm(value: object) -> MagicMock:
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=value)
-    cm.__aexit__ = AsyncMock(return_value=None)
-    return cm
 
 
 # ── can_run ───────────────────────────────────────────────────────────────────

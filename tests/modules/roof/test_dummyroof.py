@@ -33,6 +33,7 @@ async def test_init(mocker) -> None:
     await roof.init()
 
     roof._change_motion_status.assert_awaited_with(MotionStatus.IDLE)
+    assert roof.get_percent_open() == 100
 
 
 @pytest.mark.asyncio
@@ -48,6 +49,9 @@ async def test_park(mocker) -> None:
     await roof.park()
 
     roof._change_motion_status.assert_awaited_with(MotionStatus.PARKED)
+    roof._comm.send_event.assert_called_once()
+    assert isinstance(roof._comm.send_event.call_args[0][0], RoofClosingEvent)
+    assert roof.get_percent_open() == 0
 
 
 @pytest.mark.asyncio
@@ -58,7 +62,7 @@ async def test_move_roof_open(mocker) -> None:
 
     await roof._move_roof(roof._ROOF_OPEN_PERCENTAGE)
 
-    assert roof._open_percentage == 100
+    assert roof.get_percent_open() == 100
 
 
 @pytest.mark.asyncio
@@ -69,7 +73,7 @@ async def test_move_roof_closed(mocker) -> None:
 
     await roof._move_roof(roof._ROOF_CLOSED_PERCENTAGE)
 
-    assert roof._open_percentage == 0
+    assert roof.get_percent_open() == 0
 
 
 @pytest.mark.asyncio
@@ -81,7 +85,7 @@ async def test_move_roof_abort(mocker) -> None:
     roof._abort_motion.set()
     await roof._move_roof(roof._ROOF_OPEN_PERCENTAGE)
 
-    assert roof._open_percentage == 0
+    assert roof.get_percent_open() == 0
 
 
 @pytest.mark.asyncio
@@ -92,7 +96,7 @@ async def test_move_roof_percentage(mocker) -> None:
 
     await roof._move_roof(roof._ROOF_OPEN_PERCENTAGE)
 
-    assert roof._open_percentage == 100
+    assert roof.get_percent_open() == 100
 
 
 @pytest.mark.asyncio

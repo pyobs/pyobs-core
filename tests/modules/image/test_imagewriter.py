@@ -5,20 +5,20 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from pyobs.comm.dummy import DummyComm
 from pyobs.events import NewImageEvent
 from pyobs.modules.image.imagewriter import ImageWriter
 from pyobs.utils.enums import ImageType
+from pyobs.vfs import VirtualFileSystem
 
 
 def make_writer(filename: str = "/archive/{FNAME}", sources=None) -> ImageWriter:
-    writer = ImageWriter.__new__(ImageWriter)
-    writer._filename = filename
-    writer._sources = [sources] if isinstance(sources, str) else sources
-    writer._queue = asyncio.Queue()
-    writer._comm = MagicMock()
-    writer._vfs = MagicMock()
-    writer._background_tasks = []
-    return writer
+    return ImageWriter(
+        filename=filename,
+        sources=sources,
+        comm=DummyComm(),
+        vfs=MagicMock(spec=VirtualFileSystem),
+    )
 
 
 def make_image_event(filename: str = "/tmp/test.fits") -> NewImageEvent:
@@ -103,20 +103,20 @@ async def test_worker_skips_on_file_not_found(caplog) -> None:
 
     writer = make_writer()
     writer._vfs.read_image = AsyncMock(side_effect=FileNotFoundError)
+    writer._vfs.write_image = AsyncMock()
     writer._queue.put_nowait("/tmp/missing.fits")
 
-    task = asyncio.create_task(writer._worker())
-    await asyncio.sleep(0.05)
-    task.cancel()
-    try:
-        await task
-    except (asyncio.CancelledError, Exception):
-        pass
-
     with caplog.at_level(logging.ERROR):
-        pass
-    writer._vfs.write_image = AsyncMock()
+        task = asyncio.create_task(writer._worker())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
+
     writer._vfs.write_image.assert_not_called()
+    assert "Could not download image." in caplog.text
 
 
 @pytest.mark.asyncio

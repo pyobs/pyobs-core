@@ -24,14 +24,7 @@ SAAO = Observer(location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-3
 
 
 def make_obs_archive() -> MemoryObservationArchive:
-    archive = MemoryObservationArchive.__new__(MemoryObservationArchive)
-    archive._comm = None
-    archive._observer = None
-    archive._vfs = None
-    archive._timezone = None
-    archive._location = None
-    archive._observations = ObservationList()
-    return archive
+    return MemoryObservationArchive()
 
 
 def make_task(task_id: int = 1, ra: float = 83.82, dec: float = -5.39, duration: float = 300.0) -> Task:
@@ -205,7 +198,7 @@ async def test_scheduler_ignores_future_observation() -> None:
     with patch("pyobs.utils.time.Time.now", return_value=NIGHT):
         task_handle = asyncio.create_task(mm._run_thread())
         await asyncio.sleep(0.3)
-        mm._running = False
+        await mm.stop()
         task_handle.cancel()
         try:
             await task_handle

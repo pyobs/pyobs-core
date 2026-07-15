@@ -17,7 +17,6 @@ def make_portal() -> Portal:
     p._observer = None
     p._vfs = None
     p._timezone = None
-    p._location = None
     # Portal attributes
     p.url = "http://localhost:8000"
     p.token = "token123"
@@ -39,7 +38,6 @@ def make_task_archive(instrument_type: str = "0m5 iag50cm sbig6303e") -> LcoTask
     archive._observer = None
     archive._vfs = None
     archive._timezone = None
-    archive._location = None
     archive._portal = make_portal()
     archive._instrument_type = [instrument_type]
     archive._last_changed = None
@@ -56,6 +54,5 @@ def make_observation_archive() -> LcoObservationArchive:
     archive._observer = None
     archive._vfs = None
     archive._timezone = None
-    archive._location = None
     archive._portal = make_portal()
     return archive

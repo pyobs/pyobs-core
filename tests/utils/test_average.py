@@ -88,5 +88,4 @@ def test_add_evicts_expired_values() -> None:
     avg.add(99.0)
     time.sleep(0.15)
     avg.add(1.0)
-    assert len(avg._values) == 1
-    assert avg._values[0][1] == 1.0
+    assert avg.average() == pytest.approx(1.0)

@@ -322,13 +322,13 @@ class Scheduler(Module, IStartStop, IRunnable):
         return True
 
     async def _on_task_finished(self, event: Event, sender: str) -> bool:
-        """Reset current task, when it has finished.
+        """Reset current task, when it has finished or failed.
 
         Args:
-            event: The task finished event.
+            event: The task finished or failed event.
             sender: Who sent it.
         """
-        if not isinstance(event, TaskFinishedEvent):
+        if not isinstance(event, TaskFinishedEvent | TaskFailedEvent):
             return False
 
         # reset current task

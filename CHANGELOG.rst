@@ -1,8 +1,31 @@
 v2.0.0.dev18 (unreleased)
 *************************
-* Fixed ``DummyTelescope.set_focus_offset`` silently logging an error instead of raising, which made
+* Removed ``pyobs.modules.utils.AutonomousWarning`` (played warning sounds while an ``IAutonomous``
+  module was running). Found while writing tests for it: ``started_sound``/``stopped_sound`` were
+  stored but never read anywhere, and ``_check_autonomous()``'s sound selection looked inverted (it
+  logged "Robotic systems started" but played ``stop_sound``, apparently copy-pasted from
+  ``_check_trigger()``'s toggle logic without adjusting the polarity) -- breaking change for anyone
+  using it, no replacement provided.
+* ``Object.location`` is now derived from ``Object.observer`` instead of being stored and propagated to
+  child objects independently, removing a source of location/observer divergence. The ``location``
+  constructor argument is unchanged, but only affects the default ``observer`` built from it.
+* Fixed ``DummyTelescope.set_focus_offset`` (now ``DummyRaDecTelescope``/``DummyAltAzTelescope``/
+  ``DummySolarTelescope``, see below) silently logging an error instead of raising, which made
   remote callers see a false success; its M1/M2 temperatures now drift like ``DummyCamera``'s sensors
   instead of staying static after startup.
+* Split ``DummyTelescope`` into ``DummyRaDecTelescope`` (+``IOffsetsRaDec``), ``DummyAltAzTelescope``
+  (+``IOffsetsAltAz``), and ``DummySolarTelescope`` (+``IPointingHeliocentricPolar``,
+  ``IPointingHeliographicStonyhurst``, ``IPointingHelioprojective`` -- always tracks the Sun via a
+  dedicated background task, no compatibility alias for the old class name). See
+  ``dummy-telescope-split-design.md``.
+* Renamed ``IPointingHGS`` to ``IPointingHeliocentricPolar`` and its fields from ``lon``/``lat`` to
+  ``mu``/``psi``, matching the existing ``HeliocentricPolarTarget`` -- the old fields actually
+  represented Heliographic Stonyhurst coordinates, a different frame; breaking change for any
+  external driver implementing it (e.g. ``pyobs_iagvt``, tracked separately).
+* Reintroduced the old ``IPointingHGS`` lon/lat contract as ``IPointingHeliographicStonyhurst``, now
+  a separate interface from ``IPointingHeliocentricPolar`` instead of a repurposing of it -- drivers
+  needing Heliographic Stonyhurst tracking (e.g. ``pyobs_iagvt``'s ``SolarTelescope``) should
+  implement this one instead.
 * ``pyobsd`` now defaults to sending module logs to the systemd journal (``--syslog`` is on by
   default; pass ``--no-syslog`` to disable it).
 * Added ``pyobsd logs [module] [journalctl arguments...]``, a thin passthrough to ``journalctl``

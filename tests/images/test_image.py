@@ -290,26 +290,26 @@ def test_to_bytes(mock_image):
 
 
 def test_write_catalog_value(mocker):
-    mocker.patch("astropy.io.fits.convenience.table_to_hdu")
-    mocker.patch("astropy.io.fits.HDUList.writeto")
+    # patch where it's used (pyobs.images.image imports table_to_hdu by name),
+    # not where it's defined -- astropy.io.fits.convenience.table_to_hdu would
+    # never actually be called through that already-bound reference
+    mock_table_to_hdu = mocker.patch("pyobs.images.image.table_to_hdu")
     catalog = astropy.table.Table(np.array([1]))
     image = Image(catalog=catalog)
 
     image.write_catalog("test.fits")
-    # FIXME: Assertion does not work for some reason
-    # astropy.io.fits.convenience.table_to_hdu.assert_called_once()
-    astropy.io.fits.HDUList.writeto.assert_called_once()
+
+    mock_table_to_hdu.assert_called_once_with(catalog)
+    mock_table_to_hdu.return_value.writeto.assert_called_once_with("test.fits")
 
 
 def test_write_catalog_non_value(mocker):
-    mocker.patch("astropy.io.fits.convenience.table_to_hdu")
-    mocker.patch("astropy.io.fits.HDUList.writeto")
+    mock_table_to_hdu = mocker.patch("pyobs.images.image.table_to_hdu")
 
     image = Image()
     image.write_catalog("test.fits")
 
-    astropy.io.fits.convenience.table_to_hdu.assert_not_called()
-    astropy.io.fits.HDUList.writeto.assert_not_called()
+    mock_table_to_hdu.assert_not_called()
 
 
 def test_to_ccddata(mock_image):

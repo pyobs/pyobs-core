@@ -117,6 +117,10 @@ class LocalComm(Comm):
         """Store capabilities locally."""
         self._capabilities[interface] = capabilities
 
+    def _get_own_capabilities(self, interface: type[Interface]) -> Any:
+        """Return this client's own published capabilities."""
+        return self._capabilities.get(interface)
+
     async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
         """Fetch capabilities from a remote module."""
         if interface.capabilities is None:

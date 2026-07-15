@@ -6,12 +6,11 @@ import pytest
 
 from pyobs.robotic.scripts.calibration.darkbias import DarkBiasScript
 from pyobs.utils.enums import ImageType
+from tests.helpers import isinstance_class, make_proxy_cm
 
 
 def make_script(**kwargs) -> DarkBiasScript:
-    s = DarkBiasScript(camera="camera", **kwargs)
-    s._comm = MagicMock()
-    return s
+    return DarkBiasScript.model_validate({"camera": "camera", **kwargs}, context={"comm": MagicMock()})
 
 
 def make_camera(
@@ -43,15 +42,8 @@ def make_camera(
     camera.grab_data = AsyncMock()
 
     # make isinstance checks work
-    camera.__class__ = type("Camera", tuple(interfaces), {})
+    camera.__class__ = isinstance_class("Camera", interfaces)
     return camera
-
-
-def make_proxy_cm(value: object) -> MagicMock:
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=value)
-    cm.__aexit__ = AsyncMock(return_value=None)
-    return cm
 
 
 def setup_run_comm(script: DarkBiasScript, camera: MagicMock, binning_cam=..., window_cam=...) -> None:

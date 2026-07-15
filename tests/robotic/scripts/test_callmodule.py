@@ -7,25 +7,20 @@ from pydantic import ValidationError
 
 from pyobs.interfaces import IExposureTime
 from pyobs.robotic.scripts.utils.callmodule import CallModuleScript
+from tests.helpers import make_proxy_cm
 
 
 @pytest.fixture
 def script() -> CallModuleScript:
-    s = CallModuleScript(
-        module="camera",
-        interface="pyobs.interfaces.IExposureTime",
-        method="set_exposure_time",
-        params={"exposure_time": 30.0},
+    return CallModuleScript.model_validate(
+        {
+            "module": "camera",
+            "interface": "pyobs.interfaces.IExposureTime",
+            "method": "set_exposure_time",
+            "params": {"exposure_time": 30.0},
+        },
+        context={"comm": MagicMock()},
     )
-    s._comm = MagicMock()
-    return s
-
-
-def make_proxy_cm(value: object) -> MagicMock:
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=value)
-    cm.__aexit__ = AsyncMock(return_value=None)
-    return cm
 
 
 # ── param validation ──────────────────────────────────────────────────────────

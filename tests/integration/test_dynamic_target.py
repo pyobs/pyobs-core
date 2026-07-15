@@ -50,12 +50,11 @@ def make_mock_vfs(csv_content: str = CSV_CONTENT) -> MagicMock:
 
 
 def make_dynamic_task(vfs: MagicMock) -> Task:
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS")
-    picker._vfs = vfs
-    picker._observer = SAAO
-    target = DynamicTarget(picker=picker)
-    target._observer = SAAO
-    target._vfs = vfs
+    context = {"observer": SAAO, "vfs": vfs}
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"}, context=context
+    )
+    target = DynamicTarget.model_validate({"picker": picker}, context=context)
     return Task(
         id=1,
         name="dynamic_task",
@@ -83,8 +82,8 @@ async def test_scheduler_resolves_dynamic_target() -> None:
 
     assert best is not None
     assert merit > 0.0
-    assert task._resolved_target is not None
-    assert isinstance(task._resolved_target, SiderealTarget)
+    assert task.target is not None
+    assert isinstance(task.target, SiderealTarget)
 
 
 @pytest.mark.asyncio
@@ -95,12 +94,11 @@ async def test_scheduler_picks_visible_target_only() -> None:
 PolarStar,083.820,+85.000
 """
     vfs = make_mock_vfs(csv)
-    picker = CsvPicker(csv="/test/stars.csv", name_col="HIP", ra_col="RAICRS", dec_col="DEICRS")
-    picker._vfs = vfs
-    picker._observer = SAAO
-    target = DynamicTarget(picker=picker)
-    target._observer = SAAO
-    target._vfs = vfs
+    context = {"observer": SAAO, "vfs": vfs}
+    picker = CsvPicker.model_validate(
+        {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"}, context=context
+    )
+    target = DynamicTarget.model_validate({"picker": picker}, context=context)
     task = Task(
         id=1,
         name="polar_task",
@@ -174,8 +172,7 @@ async def test_mastermind_receives_resolved_target() -> None:
             await asyncio.sleep(0.05)
             return True
 
-    mm = make_mastermind(obs_archive, runner=TrackingRunner())
-    mm._task_archive = task_archive
+    mm = make_mastermind(obs_archive, runner=TrackingRunner(), task_archive=task_archive)
     reached = await run_until_state(mm, obs_archive, ObservationState.COMPLETED)
 
     assert reached, "Observation did not complete"
@@ -197,11 +194,11 @@ async def test_target_consistent_across_scheduling_run() -> None:
 
     # resolve once
     await scheduler.evaluate_constraints_and_merits([task], {}, NIGHT, end, data)
-    first_target = task._resolved_target
+    first_target = task.target
 
     # resolve again — should return same cached result
     await scheduler.evaluate_constraints_and_merits([task], {}, NIGHT, end, data)
-    second_target = task._resolved_target
+    second_target = task.target
 
     assert first_target is not None
     assert second_target is not None

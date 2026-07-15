@@ -34,13 +34,15 @@ Simulated telescope
 ^^^^^^^^^^^^^^^^^^^
 
 *pyobs* contains classes for simulated telescopes and cameras, called :class:`~pyobs.modules.camera.DummyCamera` and
-:class:`~pyobs.modules.telescope.DummyTelescope`, respectively.
+:class:`~pyobs.modules.telescope.DummyRaDecTelescope` (there are also :class:`~pyobs.modules.telescope.DummyAltAzTelescope`
+and :class:`~pyobs.modules.telescope.DummySolarTelescope` variants, for testing Alt/Az-offset and solar-pointing
+setups specifically), respectively.
 
 Starting with the telescope, create a file ``telescope.yaml`` with the following content::
 
     {include _environment.yaml}
 
-    class: pyobs.modules.telescope.DummyTelescope
+    class: pyobs.modules.telescope.DummyRaDecTelescope
 
     comm:
         class: pyobs.comm.xmpp.XmppComm

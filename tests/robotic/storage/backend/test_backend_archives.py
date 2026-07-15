@@ -31,34 +31,14 @@ def make_obs(
 
 
 def make_task_archive() -> BackendTaskArchive:
-    archive = BackendTaskArchive.__new__(BackendTaskArchive)
-    archive._comm = None
-    archive._observer = None
-    archive._vfs = None
-    archive._timezone = None
-    archive._location = None
-    archive._url = "http://localhost:8000"
-    archive._token = "testtoken"
+    archive = BackendTaskArchive(url="http://localhost:8000", token="testtoken", auto_update=False)
     archive._aiohttp_session = MagicMock()
-    archive._last_update = None
-    archive._projects = []
-    archive._tasks = []
-    archive._on_tasks_changed = None
     return archive
 
 
 def make_obs_archive() -> BackendObservationArchive:
-    archive = BackendObservationArchive.__new__(BackendObservationArchive)
-    archive._comm = None
-    archive._observer = None
-    archive._vfs = None
-    archive._timezone = None
-    archive._location = None
-    archive._url = "http://localhost:8000"
-    archive._token = "testtoken"
+    archive = BackendObservationArchive(url="http://localhost:8000", token="testtoken", auto_update=False)
     archive._aiohttp_session = MagicMock()
-    archive._last_update = None
-    archive._observations = ObservationList()
     return archive
 
 

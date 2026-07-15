@@ -58,7 +58,6 @@ async def test_update_publishes_state_every_iteration(mocker) -> None:
     weather = _weather_mock(5.0)
     fm = FocusModel(weather=weather, model="temp", interval=10)
     fm._comm.set_state = AsyncMock()
-    fm._enabled = True
 
     # first sleep(1) before the loop returns normally, the interval sleep after
     # the first iteration (focuser proxy is unset, so has_proxy is False) raises

@@ -413,6 +413,28 @@ all four new interfaces (``ITrackingMode``, ``ITrackingRate``, ``IPointingBody``
 ``IPointingOrbitalElements``), so there's a real module to exercise a GUI or client against
 without hardware.
 
+Counted data sequences
+-------------------------
+
+Taking a sequence of N grabs (images, spectra, ...) no longer requires a client-side loop of
+individual ``grab_data()`` calls. The new ``IDataSequence`` interface, implemented by
+``BaseCamera``, adds a server-side counted sequence:
+
+.. code-block:: python
+
+   async with self.proxy("camera", IDataSequence) as camera:
+       await camera.grab_sequence(10)          # returns immediately, sequence runs in the background
+       state = camera.get_state(IDataSequence)  # DataSequenceState(count_total, count_left, time)
+
+       await camera.abort_sequence()  # graceful: lets the current grab finish, stops the rest
+       # vs. the existing IAbortable.abort(), which now also clears a running sequence's count
+
+``grab_sequence()`` is deliberately fire-and-forget rather than blocking for the whole
+sequence: a blocking call's RPC timeout would have to scale with the caller-supplied count,
+weakening it as a stall-detection sanity check the larger the count gets. Progress is instead
+observed via the pushed ``DataSequenceState``, consistent with how the rest of live state
+works. See ``DESIGN_IDataSequence.md`` in the repository root for the full design writeup.
+
 Access control (ACLs)
 ----------------------
 

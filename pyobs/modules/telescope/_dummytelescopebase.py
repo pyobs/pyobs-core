@@ -12,6 +12,7 @@ from astropy.coordinates import SkyCoord
 
 from pyobs.events import FilterChangedEvent
 from pyobs.interfaces import (
+    AltAzState,
     FiltersCapabilities,
     FilterState,
     FitsHeaderEntry,
@@ -137,6 +138,14 @@ class _DummyTelescopeBase(
     def _position_radec(self) -> tuple[float, float] | None:
         return float(self._position.ra.degree), float(self._position.dec.degree)
 
+    async def _publish_altaz(self) -> None:
+        """Publish the current position as IPointingAltAz state, derived from RA/Dec and the observer location."""
+        if self._observer is not None:
+            altaz = self.observer.altaz(Time.now(), self._position)
+            await self.comm.set_state(
+                IPointingAltAz, AltAzState(alt=float(altaz.alt.degree), az=float(altaz.az.degree))
+            )
+
     async def _sim_change_status(self, status: MotionStatus) -> None:
         if status != self._sim_status:
             self._sim_status = status
@@ -168,6 +177,7 @@ class _DummyTelescopeBase(
                             dec=float(self._position.dec.degree),
                         ),
                     )
+                    await self._publish_altaz()
                 else:
                     dra = vra / length * self._speed / np.cos(np.radians(self._position.dec.degree)) * u.deg
                     ddec = vdec / length * self._speed * u.deg
@@ -182,6 +192,7 @@ class _DummyTelescopeBase(
                         IPointingRaDec,
                         RaDecState(ra=float(self._position.ra.degree), dec=float(self._position.dec.degree)),
                     )
+                    await self._publish_altaz()
 
                 drift_ra = random.gauss(self._drift_rate[0], max(self._drift_rate[0] / 10.0, 1e-9))
                 drift_dec = random.gauss(self._drift_rate[1], max(self._drift_rate[1] / 10.0, 1e-9))
@@ -224,6 +235,7 @@ class _DummyTelescopeBase(
                 dec=float(self._position.dec.degree),
             ),
         )
+        await self._publish_altaz()
         await self.comm.set_capabilities(ITrackingMode, TrackingModeCapabilities(modes=self._tracking_modes))
         await self.comm.set_capabilities(ITrackingRate, TrackingRateCapabilities(min_update_interval=0.0))
         await self.comm.set_state(ITrackingMode, TrackingModeState(mode=self._tracking_mode))

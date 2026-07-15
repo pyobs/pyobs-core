@@ -2141,6 +2141,7 @@ class IWeather(Interface):          state = WeatherState         # ✅ get_weath
 class IMultiFiber(Interface):       state = MultiFiberState      # ✅
 class IMode(Interface):             state = ModeState            # ✅
 class IAutoFocus(Interface):        state = AutoFocusState       # ✅ auto_focus() -> AutoFocusResult; auto_focus_status() removed
+class IDataSequence(Interface):     state = DataSequenceState    # ✅ grab_sequence()/abort_sequence(), see DESIGN_IDataSequence.md
 
 
 # ---- Capabilities: fixed-for-lifetime values, parsed once from disco#info ----

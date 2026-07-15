@@ -9,7 +9,7 @@ from typing import Any, NamedTuple
 from astropy.io import fits
 
 from pyobs.events import ExposureStatusChangedEvent, NewSpectrumEvent
-from pyobs.interfaces import ISpectrograph
+from pyobs.interfaces import ExposureState, IExposure, ISpectrograph
 from pyobs.mixins.fitsheader import SpectrumFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils.enums import ExposureStatus
@@ -59,6 +59,15 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         # check
         if self._comm is None:
             log.warning("No comm module given, will not be able to signal new images!")
+
+    async def open(self) -> None:
+        """Open module."""
+        await Module.open(self)
+
+        # publish initial state
+        await self.comm.set_state(
+            IExposure, ExposureState(status=self._spectrograph_status, progress=0.0, exposure_time_left=0.0)
+        )
 
     @abstractmethod
     async def _expose(self, abort_event: asyncio.Event) -> fits.HDUList:
@@ -192,6 +201,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
 
         # set it
         self._spectrograph_status = status
+        await self.comm.set_state(IExposure, ExposureState(status=status, progress=0.0, exposure_time_left=0.0))
 
     async def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure.

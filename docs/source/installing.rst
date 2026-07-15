@@ -34,6 +34,14 @@ In case you already have a working XMPP server, skip this step.
 
     ejabberdctl register <name> <host> <password>
 
+Troubleshooting: module hangs at "Opening module..."
+------------------------------------------------------
+If ``pyobs <config.yaml>`` hangs indefinitely right after logging ``Opening module...`` and
+never reaches ``Started successfully.``, and your ejabberd server is *not* configured for TLS,
+this is usually a STARTTLS mismatch between pyobs' XMPP client and ejabberd. Find
+``starttls_required: true`` under the ``listen:`` section of **ejabberd.yml** and set it to
+``false`` (or configure TLS on both ends instead, if you'd rather keep it required).
+
 Install pyobs
 ------------------
 First thing to decide is whether you want to install *pyobs* in a virtual environment. If you do, and most of the

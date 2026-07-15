@@ -524,7 +524,13 @@ class FlatFielder(Object):
     def _calc_new_exptime(self) -> None:
         """Calculate new exposure time."""
         # calculate factor for new exposure time
-        factor = (self._target_count - self._bias_level) / (self._median - self._bias_level)
+        denom = self._median - self._bias_level
+        if denom <= 0:
+            # median at or below bias level -- signal is indistinguishable from bias,
+            # so aim for the largest allowed increase in exposure time
+            factor = 10.0
+        else:
+            factor = (self._target_count - self._bias_level) / denom
 
         # limit factor to 0.1-10
         factor = min(10.0, max(0.1, factor))

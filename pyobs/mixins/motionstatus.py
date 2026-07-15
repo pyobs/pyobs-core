@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from pyobs.events import MotionStatusChangedEvent
-from pyobs.interfaces import IMotion, MotionState
+from pyobs.interfaces import IMotion, IReady, MotionState, ReadyState
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
 
@@ -31,6 +31,7 @@ class MotionStatusMixin:
         if isinstance(self, Module) and self._comm:
             await self.comm.register_event(MotionStatusChangedEvent)
             await self.comm.set_state(IMotion, MotionState(status=self.__motion_status))
+            await self.comm.set_state(IReady, ReadyState(ready=self._is_ready()))
 
     async def _change_motion_status(self, status: MotionStatus, interface: str | None = None) -> None:
         """Change motion status and send event,
@@ -88,6 +89,7 @@ class MotionStatusMixin:
                 MotionStatusChangedEvent(status=this.__motion_status, interfaces=this.__motion_status_single)
             )
             await self.comm.set_state(IMotion, MotionState(status=this.__motion_status))
+            await self.comm.set_state(IReady, ReadyState(ready=self._is_ready()))
 
     def _combine_motion_status(self) -> MotionStatus:
         """Method for combining motion statuses for individual interfaces into the global one. Can be overriden."""
@@ -110,6 +112,16 @@ class MotionStatusMixin:
 
         # otherwise just take status of first interface
         return self.__motion_status_single[self.__motion_status_interfaces[0]]
+
+    def _is_ready(self) -> bool:
+        """Whether the device is ready, for publishing as `IReady` state. Override for device-specific criteria."""
+        return self.motion_status() not in [
+            MotionStatus.PARKED,
+            MotionStatus.INITIALIZING,
+            MotionStatus.PARKING,
+            MotionStatus.ERROR,
+            MotionStatus.UNKNOWN,
+        ]
 
     def motion_status(self, device: str | None = None) -> MotionStatus:
         """Returns current motion status (synchronous, for internal use).

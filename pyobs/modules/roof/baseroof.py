@@ -4,7 +4,7 @@ import logging
 from abc import ABCMeta
 from typing import Any
 
-from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IReady, IRoof, ReadyState
+from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IRoof
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
@@ -32,9 +32,6 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         await WeatherAwareMixin.open(self)
         await MotionStatusMixin.open(self)
 
-        # publish initial ready state
-        await self.comm.set_state(IReady, ReadyState(ready=self._is_ready()))
-
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
     ) -> dict[str, FitsHeaderEntry]:
@@ -52,16 +49,6 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
                 "True for open, false for closed roof",
             )
         }
-
-    def _is_ready(self) -> bool:
-        """The roof is ready if it is open (not parked, initializing, parking, error, or unknown)."""
-        return self.motion_status() not in [
-            MotionStatus.PARKED,
-            MotionStatus.INITIALIZING,
-            MotionStatus.PARKING,
-            MotionStatus.ERROR,
-            MotionStatus.UNKNOWN,
-        ]
 
 
 __all__ = ["BaseRoof"]

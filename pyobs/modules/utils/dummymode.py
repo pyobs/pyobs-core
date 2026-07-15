@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 from pyobs.events import ModeChangedEvent
-from pyobs.interfaces import IMode, IMotion, IReady, ModeCapabilities, ModeState, ReadyState
+from pyobs.interfaces import IMode, IMotion, ModeCapabilities, ModeState
 from pyobs.mixins import MotionStatusMixin
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
@@ -42,7 +42,6 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
         # subscribe to events
         if isinstance(self, Module) and self._comm:
             await self.comm.register_event(ModeChangedEvent)
-            await self.comm.set_state(IReady, ReadyState(ready=True))
 
         # publish capabilities and initial state
         await self.comm.set_capabilities(IMode, ModeCapabilities(modes=self._mode_options))

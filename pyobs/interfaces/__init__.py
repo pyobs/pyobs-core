@@ -23,6 +23,7 @@ from .ICamera import ICamera
 from .IConfig import ConfigCapabilities, ConfigScalar, ConfigValue, IConfig
 from .ICooling import CoolingState, ICooling
 from .IData import IData
+from .IDataSequence import DataSequenceState, IDataSequence
 from .IDome import IDome
 from .IExposure import ExposureState, IExposure
 from .IExposureTime import ExposureTimeState, IExposureTime
@@ -94,6 +95,8 @@ __all__ = [
     "ConfigValue",
     "ICooling",
     "CoolingState",
+    "IDataSequence",
+    "DataSequenceState",
     "IDome",
     "IExposure",
     "ExposureState",

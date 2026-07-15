@@ -445,6 +445,25 @@ class Comm:
         if not event_class.local:
             await self._register_events(event_classes, handler)
 
+    async def unregister_event(
+        self, event_class: type[Event], handler: Callable[[Event, str], Coroutine[Any, Any, bool]]
+    ) -> None:
+        """Remove a handler previously added via register_event().
+
+        Leaves the event type itself registered (other handlers may still be interested in it,
+        and the module may still want to advertise/receive it), only stops calling this handler.
+
+        Args:
+            event_class: Class of event that was registered.
+            handler: The exact handler that was passed to register_event().
+        """
+
+        # same derived-events expansion as register_event(), so this mirrors exactly what was added
+        for ev in self._get_derived_events(event_class):
+            handlers = self._event_handlers.get(ev)
+            if handlers is not None and handler in handlers:
+                handlers.remove(handler)
+
     async def _register_events(
         self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:

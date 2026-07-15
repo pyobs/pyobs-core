@@ -156,7 +156,10 @@ class FocusModel(Module, IFocusModel):
             await self._calc_focus_model()
 
         # publish initial states
-        await self.comm.set_state(IFocusModel, OptimalFocusState(focus=await self._get_optimal_focus()))
+        try:
+            await self.comm.set_state(IFocusModel, OptimalFocusState(focus=await self._get_optimal_focus()))
+        except ValueError as e:
+            log.warning("Could not publish initial focus model state: %s", e)
 
     async def _update(self) -> None:
         # wait a little
@@ -170,7 +173,12 @@ class FocusModel(Module, IFocusModel):
                 continue
 
             # update states
-            await self.comm.set_state(IFocusModel, OptimalFocusState(focus=await self._get_optimal_focus()))
+            try:
+                await self.comm.set_state(IFocusModel, OptimalFocusState(focus=await self._get_optimal_focus()))
+            except ValueError as e:
+                log.warning("Could not update focus model state: %s", e)
+                await asyncio.sleep(self._interval)
+                continue
 
             # get focuser
             if not await self.has_proxy(self._focuser, IFocuser):
@@ -282,7 +290,10 @@ class FocusModel(Module, IFocusModel):
 
                 # get temperatures
                 async with self.proxy(cfg["module"], ITemperatures) as proxy:
-                    temp_state = proxy.get_state(ITemperatures)
+                    try:
+                        temp_state = await proxy.wait_for_state(ITemperatures)
+                    except TimeoutError:
+                        raise ValueError(f"Timeout waiting for temperatures from module {cfg['module']}.")
                     module_temps[cfg["module"]] = (
                         {r.name: r.value for r in temp_state.readings} if temp_state is not None else {}
                     )

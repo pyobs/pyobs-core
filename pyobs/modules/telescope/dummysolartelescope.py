@@ -51,6 +51,17 @@ class DummySolarTelescope(
 
         self.add_background_task(self._solar_follow_task)
 
+    async def open(self) -> None:
+        """Open module."""
+        await _DummyTelescopeBase.open(self)
+
+        # no solar target is being followed yet -- publish the disk centre as a placeholder so
+        # the pubsub nodes exist (real values get set once a move_heliocentric_polar/
+        # move_heliographic_stonyhurst/move_helioprojective call comes in)
+        await self.comm.set_state(IPointingHeliocentricPolar, HeliocentricPolarState(mu=1.0, psi=0.0))
+        await self.comm.set_state(IPointingHeliographicStonyhurst, HeliographicStonyhurstState(lon=0.0, lat=0.0))
+        await self.comm.set_state(IPointingHelioprojective, HelioprojectiveState(theta_x=0.0, theta_y=0.0))
+
     @staticmethod
     def _heliocentric_polar_to_radec(mu: float, psi: float, time: Time) -> tuple[float, float]:
         """Converts Heliocentric Polar (mu, psi) to (ra, dec) in degrees, ICRS. Mirrors
@@ -142,6 +153,7 @@ class DummySolarTelescope(
                         ra, dec = self._helioprojective_to_radec(a, b, now)
                     self._position = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="icrs")
                     await self.comm.set_state(IPointingRaDec, RaDecState(ra=ra, dec=dec))
+                    await self._publish_altaz()
 
             await asyncio.sleep(self._SOLAR_FOLLOW_INTERVAL_SECONDS)
 

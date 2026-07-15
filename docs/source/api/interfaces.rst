@@ -91,6 +91,14 @@ IData
    :show-inheritance:
    :undoc-members:
 
+IDataSequence
+^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.interfaces.IDataSequence
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 IDome
 ^^^^^
 

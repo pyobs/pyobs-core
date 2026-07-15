@@ -41,6 +41,11 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
         # add thread func
         self.add_background_task(self._auto_guiding)
 
+    async def open(self) -> None:
+        """Open module."""
+        await BaseGuiding.open(self)
+        await self.comm.set_state(IExposureTime, ExposureTimeState(exposure_time=self._default_exposure_time))
+
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time in seconds.
 

@@ -176,6 +176,25 @@ def test_calc_new_exptime_clamps_factor_high() -> None:
     assert ff._exptime == pytest.approx(10.0)
 
 
+def test_calc_new_exptime_median_equals_bias_does_not_raise() -> None:
+    """Regression test for #481: median == bias_level used to raise ZeroDivisionError."""
+    ff = make_flatfielder(target_count=30000)
+    ff._bias_level = 500
+    ff._median = 500
+    ff._exptime = 1.0
+    ff._calc_new_exptime()
+    assert ff._exptime == pytest.approx(10.0)
+
+
+def test_calc_new_exptime_median_below_bias_does_not_raise() -> None:
+    ff = make_flatfielder(target_count=30000)
+    ff._bias_level = 500
+    ff._median = 400
+    ff._exptime = 1.0
+    ff._calc_new_exptime()
+    assert ff._exptime == pytest.approx(10.0)
+
+
 # ── _get_image_median ───────────────────────────────────────────────────────
 
 

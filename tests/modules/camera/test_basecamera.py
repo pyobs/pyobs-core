@@ -1,6 +1,7 @@
 import pytest
 from astropy.io import fits
 
+from pyobs.events import BadWeatherEvent
 from pyobs.modules.camera import DummyCamera
 
 pytest_plugins = ("pytest_asyncio",)
@@ -13,6 +14,32 @@ async def test_open_close():
     # create camera, open and close it
     camera = DummyCamera()
     await camera.open()
+    await camera.close()
+
+
+@pytest.mark.asyncio
+async def test_registers_bad_weather_handler():
+    """#547: BaseCamera must abort on BadWeatherEvent."""
+    camera = DummyCamera()
+    await camera.open()
+
+    assert camera._abort_weather in camera.comm._event_handlers[BadWeatherEvent]
+
+    await camera.close()
+
+
+@pytest.mark.asyncio
+async def test_abort_weather_aborts_camera():
+    """#547: a BadWeatherEvent must actually trigger abort() -- exposure + any running sequence."""
+    camera = DummyCamera()
+    await camera.open()
+    camera._sequence_count_left = 3  # simulate a running grab_sequence()
+
+    await camera._abort_weather(BadWeatherEvent(), "weather")
+
+    assert camera.expose_abort.is_set()
+    assert camera._sequence_count_left == 0
+
     await camera.close()
 
 

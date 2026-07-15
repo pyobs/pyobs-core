@@ -322,6 +322,26 @@ it's a structural gap worth closing while touching this code.
   done consistently (`basetelescope.py`, `focusmodel.py`, the `Script` subclasses don't do it),
   but it's exactly the shape a broader convention should formalize.
 
+  This matters even more for **third-party/vendor SDK exceptions** than for plain Python builtins,
+  and it's not just good hygiene there — it's structurally required. A `PyObsError` subclass
+  survives the RPC round-trip because every pyobs module has `pyobs-core` installed; the type name
+  always resolves on the receiving side. A vendor exception doesn't have that guarantee at all:
+  `pyobs_aravis.aravis.AravisException` (a class vendored from a third-party library,
+  `pyobs-aravis/pyobs_aravis/aravis.py:22-23`) is only importable in a process that happens to have
+  `pyobs-aravis` installed — a scheduler or GUI process receiving a fault naming that type has no
+  way to reconstruct it, with or without Assessment §D's registry improvement, because the
+  defining class simply isn't available there. Vendor exceptions can't be handled better at the
+  wire layer; they have to be converted to a `PyObsError` before they ever leave the module that
+  raised them, because past that point no representation of them could possibly survive. Checked
+  whether `pyobs-aravis` already does this: it doesn't. `araviscamera.py`'s only `try`/`except` is
+  the unrelated background `_capture()` loop swallowing everything silently (see driver survey
+  below); nothing catches `AravisException` where it's actually raised
+  (`aravis.Camera(self._device_name)`, `araviscamera.py:69`). That call happens to sit inside
+  `open()` (module startup), not an RPC-exposed method, so today it only crashes startup rather
+  than leaking a vendor type over an active call — but that's incidental to where the vendor SDK
+  is invoked, not a deliberate boundary, and the same SDK could just as easily raise mid-operation
+  the way `BaseCamera.__expose()`'s hook already anticipates for its own vendor calls.
+
 ### Confirmed in downstream driver projects
 
 Checked the real hardware-driver projects (`pyobs-sbig`, `-fli`, `-aravis`, `-v4l`, `-brot`) for
@@ -569,7 +589,16 @@ of A, not separate work.
 ## Design goals
 
 1. An exception should be logged once, at the place a human can actually act on it — not
-   re-logged at every hop it passes through on the way back to a caller.
+   re-logged at every hop it passes through on the way back to a caller. Concretely: `PyObsError`
+   subclasses are the deliberate, caller-facing API of a failure mode — the module author decided
+   a caller should be able to distinguish and react to this, so the module gets to decide whether
+   it's *also* worth a local line. Anything else (a raw builtin, a third-party/vendor SDK
+   exception) is by definition not part of that deliberate contract — it's unanticipated, which
+   means the fix belongs in the code/hardware that produced it. Those should always be logged
+   loudly, locally, where they happened, with no suppression possible; if a condition like that
+   turns out to recur often enough that callers legitimately need to distinguish and react to it,
+   that's the signal to promote it into a proper `PyObsError` subclass — not to keep passing it
+   through as a string forever.
 2. Anything that crosses an RPC boundary should arrive as a meaningful, typed error on the other
    side, catchable directly as that type. A caller writing `except exc.FocusError:` around a
    proxy call should actually catch it — today it never does (see "Assessment" §A below: every
@@ -602,11 +631,29 @@ class Module:
         ...
         self._disabled_exception_logging: tuple[type[exc.PyObsError], ...] = ()
 
+    _UNSUPPRESSIBLE = (exc.ModuleError, exc.SevereError, exc.UnclassifiedError)
+
     def _disable_exception_logging(self, *exceptions: type[exc.PyObsError]) -> None:
+        for e in exceptions:
+            if issubclass(e, self._UNSUPPRESSIBLE):
+                raise ValueError(f"{e.__name__} cannot be silenced — it always needs local attention.")
         self._disabled_exception_logging = self._disabled_exception_logging + exceptions
 ```
 
-`Module.execute()`'s catch block consults it with `isinstance`, not exact-type match, so
+The type restriction isn't incidental — it follows directly from the same rule that decides which
+exceptions are worth converting into a `PyObsError` in the first place: a `PyObsError` subclass is
+the deliberate, caller-facing API of a failure mode, and the module author who raised it gets to
+decide whether *that* is also worth a local line. `ModuleError`, `SevereError`, and
+`UnclassifiedError` aren't part of that deliberate contract even though they're technically
+`PyObsError` — they each mean, in their own way, "something happened here that wasn't anticipated
+and needs a human's attention at the source," the same category raw builtin exceptions fall into.
+`ModuleError` says the module itself is broken; `SevereError` says a normally-fine failure mode has
+started repeating past a threshold; `UnclassifiedError` (proposal §2) is the wrapper for exactly
+the exceptions this rule says should never have reached the RPC boundary unconverted in the first
+place. Letting a module silence any of the three would undermine the reason they exist — they're
+supposed to be the cases nobody gets to opt out of hearing about.
+
+`Module.execute()`'s catch block consults the list with `isinstance`, not exact-type match, so
 declaring a base class covers its subclasses for free — closing the gap versus `@raises`'s exact
 match:
 
@@ -628,8 +675,25 @@ want a line," `_disable_exception_logging` is the new "log nothing, this is full
 Both read from the same `isinstance` check shape, so the two decorators/methods stay consistent
 with each other instead of one being exact-match and the other subclass-aware.
 
-Open question (see below): should this also suppress the `CommLoggingHandler` broadcast, or only
-the local write to file/console?
+This also settles the `CommLoggingHandler` broadcast question by construction, not by choice: the
+`pass` branch above never calls `e.log(...)`, so no `LogRecord` is created at all — there's nothing
+for `CommLoggingHandler` (`pyobs/comm/comm.py:70-78`, just another handler on the root logger) to
+pick up. "Suppress locally but still broadcast" isn't a flag away; it would need a second,
+deliberate path (e.g. calling `comm.send_event(...)` directly, bypassing `logging` entirely) even
+though the local write is skipped. Deliberately not building that: the two-tier split already
+covers it without new plumbing — `@raises(...)` is "log at INFO, still emit a record" (which,
+being INFO+, still gets picked up and broadcast), `_disable_exception_logging` is the stronger
+"not worth a line to anyone" tier. A module author wanting "quiet locally but still visible to an
+operator watching the fleet" already has `@raises` for that; giving
+`_disable_exception_logging` the same broadcast-preserving behavior would just duplicate it. And
+per Assessment §A, once the caller receives the real typed exception directly rather than buried
+in `InvocationError`, it already has full fidelity — type, message, and (with the correlation id
+from §F) a path back to the origin's detailed log if ever needed — so staying silent isn't losing
+information, it's not re-announcing something the direct recipient already has in full. One scope
+caveat regardless: this only touches the one log call inside `execute()`'s catch block — any other
+`log.info`/`log.warning` a driver makes on its own (e.g. inside a retry loop) is untouched either
+way; `_disable_exception_logging` was never a total-silence guarantee, just a fix for this one
+redundant site.
 
 ### 2. Raise the real reconstructed type directly; `UnclassifiedError` is the only fallback
 
@@ -766,11 +830,8 @@ companion PR alongside the core docstring fix, not something this repo's PR can 
    the rollout that isn't purely additive, so it can't be split across separate PRs the way the
    rest can. Also fixes the `InvocationError`/`ForbiddenError` reconstruction-signature bug as a
    byproduct, since `InvocationError` no longer needs to handle arbitrary reconstructed types.
-   Confirmed (see Open questions) this also breaks `pyobs-monet`'s
-   `searchpattern2.py:134-141` retry loop, which catches `exc.InvocationError` to mean "any
-   remote failure" the same way the four in-tree sites did — so this step needs a companion fix
-   landed in `pyobs-monet` (and a changelog callout, since other out-of-tree consumers can't all
-   be grepped for) before or alongside merging, not purely a pyobs-core-internal change.
+   `pyobs-monet`'s `searchpattern2.py:134-141` has the same reliance on the old wrapping (see Open
+   questions) but is out of scope for now — deferred, not a blocker for this step.
 3. Collapse the two catch/log sites into `Module.execute()` (proposal §3) — mechanical once (2) is
    in place, and extends the `UnclassifiedError` safety net to `LocalComm`/`MultiModule`, not just
    XMPP.
@@ -801,42 +862,21 @@ listed types, precisely to sidestep needing D immediately).
 
 ## Open questions
 
-- Should `_disable_exception_logging` suppress the `CommLoggingHandler` broadcast (§ "Where local
-  logging happens") as well as the direct log write, or are those genuinely separate concerns
-  (local noise vs. system-wide visibility of an expected-but-still-worth-knowing-about event)?
 - `_disable_exception_logging` as an instance method called in `__init__` (matches
   `register_exception`'s existing convention) vs. a class-level decorator like `@raises` — the
   issue text suggests the former (`self._disable_exception_logging(...)`); confirm that's still
   the preference now that `@raises` is being touched anyway.
-- **Resolved by checking**: yes. Grepped every sibling `pyobs-*` project on the `2.0.0.devX` line
-  (`pyobs-alpaca`, `-aravis`, `-asi`, `-brot`, `-fli`, `-flipro`, `-gui`, `-monet`, `-qhyccd`,
-  `-sbig`, `-v4l`, `-zaber`, `-zwoeaf`) for `InvocationError`/`RemoteError`/`except exc.`.
-  `pyobs-gui`'s two hits (`pyobs_gui/base.py:311`, `pyobs_gui/mainwindow.py:577`) catch the broad
-  `exc.PyObsError` and don't touch `.exception`, so they're unaffected either way (and would
-  arguably read slightly better once `str(e)` is the real exception's message instead of
-  `InvocationError`'s wrapper formatting). But `pyobs-monet/pyobs_monet/morisot/searchpattern2.py:
-  134-141` does this, in a retry loop around a proxy call:
-  ```python
-  for x in range(5):
-      try:
-          await acquisition.acquire_target()
-          break
-      except exc.InvocationError:
-          pass
-  else:
-      log.error("Acquisition failed")
-      return
-  ```
-  This relies on *any* remote failure — transport-level or a genuine `exc.AcquisitionError` from
-  the remote module — currently arriving as `InvocationError`, exactly like the four in-tree call
-  sites proposal §2 already flags. Under §2's fix, a real `AcquisitionError` would be raised
-  directly and this `except exc.InvocationError:` would stop catching it, breaking the retry loop
-  in an external, independently-versioned project this PR can't touch. This makes §2 a
-  cross-repo breaking change, not just a four-call-site migration inside this repo — worth either
-  a deprecation window (e.g. a release note plus a companion fix landed in `pyobs-monet` before or
-  alongside the core change) or, at minimum, an explicit, prominent changelog entry, since grepping
-  can only find call sites that name the exception type explicitly — a bare `except Exception:`
-  swallowing the same wrapped failure elsewhere would rely on identical behavior without grep ever
-  surfacing it.
+- Checked every sibling `pyobs-*` project on the `2.0.0.devX` line (`pyobs-alpaca`, `-aravis`,
+  `-asi`, `-brot`, `-fli`, `-flipro`, `-gui`, `-monet`, `-qhyccd`, `-sbig`, `-v4l`, `-zaber`,
+  `-zwoeaf`) for `InvocationError`/`RemoteError`/`except exc.`. `pyobs-gui`'s two hits
+  (`pyobs_gui/base.py:311`, `pyobs_gui/mainwindow.py:577`) catch the broad `exc.PyObsError` and
+  don't touch `.exception`, so they're unaffected either way. `pyobs-monet/pyobs_monet/morisot/
+  searchpattern2.py:134-141` does rely on the old wrapping (a retry loop doing
+  `except exc.InvocationError: pass` around a proxy call, to mean "any remote failure") but that
+  script is out of scope for now — not a current concern for this design, per the project owner.
+  Noting for later regardless: grepping can only find call sites that name the exception type
+  explicitly — a bare `except Exception:` swallowing the same wrapped failure elsewhere wouldn't
+  show up this way, so a changelog callout for proposal §2 is still worth doing when it lands,
+  independent of `searchpattern2.py` specifically.
 - Should Assessment items C/D/E/F/G be tracked as their own follow-up issues now, so they don't
   get lost once #446 itself is closed out by steps 1-5?

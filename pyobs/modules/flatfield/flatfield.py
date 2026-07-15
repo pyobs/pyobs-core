@@ -11,13 +11,16 @@ from pyobs.interfaces import (
     ICamera,
     IFilters,
     IFlatField,
+    IMotion,
     IReady,
     ITelescope,
+    MotionState,
     ReadyState,
 )
 from pyobs.modules import Module, timeout
 from pyobs.robotic.utils.skyflats import FlatFielder
 from pyobs.utils import exceptions as exc
+from pyobs.utils.enums import MotionStatus
 from pyobs.utils.publisher import CsvPublisher
 
 log = logging.getLogger(__name__)
@@ -121,6 +124,9 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         if self._filter is not None:
             await self.comm.set_state(IFilters, FilterState(filter=self._filter))
         await self.comm.set_state(IReady, ReadyState(ready=True))
+        # IFilters extends IMotion, but FlatField isn't itself a moving device -- publish a
+        # static state so the pubsub node exists for anything that subscribes to it
+        await self.comm.set_state(IMotion, MotionState(status=MotionStatus.IDLE))
 
     async def close(self) -> None:
         """Close module."""

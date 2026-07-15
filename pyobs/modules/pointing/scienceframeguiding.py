@@ -4,6 +4,7 @@ from typing import Any
 
 from pyobs.events import Event, NewImageEvent
 from pyobs.images import Image
+from pyobs.interfaces import ExposureTimeState, IExposureTime
 
 from ._baseguiding import BaseGuiding
 
@@ -32,6 +33,10 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         # subscribe to channel with new images
         log.info("Subscribing to new image events...")
         await self.comm.register_event(NewImageEvent, self.add_image)
+
+        # exposure time is dictated by incoming science frames, not settable -- but IAutoGuiding
+        # requires IExposureTime, so publish a placeholder state for the pubsub node to exist
+        await self.comm.set_state(IExposureTime, ExposureTimeState(exposure_time=0.0))
 
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time for the auto-guider.

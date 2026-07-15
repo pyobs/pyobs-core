@@ -616,7 +616,7 @@ place," the fix is to **drop the substitution entirely**:
    of the three non-standard constructors flagged in §E, leaving only `InvocationError`/
    `ForbiddenError` to fix there.
 
-Migration cost is small and fully enumerable: nine in-tree call sites
+Migration cost is small and fully enumerable: ten in-tree call sites
 (`basecamera.py:113`, `flatfield/flatfield.py:93,97,101`, `focusseries.py:82,86`,
 `pointing/_base.py:52,56`, `roof/basedome.py:24`, `basetelescope.py:252`) plus one external
 (`pyobs-alpaca/pyobs_alpaca/focuser.py:37`) need the free-function-to-instance-method rename —
@@ -634,17 +634,66 @@ natural place for e.g. `WeatherDataError`/`FocusTimeoutError`/`MissingSensorErro
 unrelated `exceptions.py` god-file. Those two pulls are in direct tension under the current
 serialization scheme: put a type where it domain-belongs and it silently stops surviving the wire.
 
-I'd replace the hardcoded single-module lookup with an explicit registry — a decorator (e.g.
-`@exc.register` or reusing the existing `_Meta` machinery) that any `PyObsError` subclass opts
-into regardless of which file defines it, populating a flat `name -> class` dict the fault
-deserializer consults instead of `getattr` on one module. This is also a deliberate security
-boundary, not just a convenience: the current design is *accidentally* safe because `getattr` can
-only ever resolve names that exist in one fixed, trusted module — a naive fix ("serialize the
-fully-qualified class path and import it") would trade that away for an open-ended dynamic import
-driven by a value that arrived over the wire, which is a real hole (importing and instantiating an
-arbitrary object based on untrusted network input). An explicit registry keeps the same "only
-things we chose to expose are reconstructable" property the accident currently gives us, while
-decoupling "reconstructable" from "physically defined in this one file."
+**Concrete mechanism**: `__init_subclass__` on `PyobsError` itself, not a decorator — every
+subclass registers automatically the moment its defining module is imported, with zero extra code
+at the declaration site (goal 5's "cost of a new leaf class is low" applies to the registry too,
+not just to minting the type):
+
+```python
+class PyobsError(Exception):
+    _registry: dict[str, type["PyobsError"]] = {}
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        PyobsError._registry[f"{cls.__module__}.{cls.__qualname__}"] = cls
+
+    def __init__(self, message: str | None = None, **context: Any) -> None:
+        self.message = message
+        self.logged = False
+        self.context = context
+        for key, value in context.items():
+            setattr(self, key, value)
+
+    @classmethod
+    def resolve(cls, qualified_name: str) -> type["PyobsError"] | None:
+        return cls._registry.get(qualified_name)
+```
+
+This also finishes what §C already started: with `_Meta` gone and this hook doing the only
+remaining "runs automatically on every subclass" job, there's no metaclass left anywhere in the
+hierarchy — constructing *or subclassing* a `PyobsError` is fully ordinary Python.
+
+Two design decisions worth making explicit, not leaving implicit the way `getattr`'s constraint
+was:
+
+- **Key by fully-qualified name (`module.QualName`), not bare `__name__`**, and change
+  `fault_to_xml`/`xml_to_fault` (`rpc.py:93-121`) to serialize/parse that instead of the bare class
+  name. Goal 5 means many new types across many files — `pyobs-sbig`, `pyobs-aravis`, and
+  `pyobs-core` itself could all plausibly define something called `TimeoutError`-adjacent or
+  `CalibrationError`-adjacent independently, and a bare-name registry would let the second
+  definition silently clobber the first at import time, with whichever one loaded last winning
+  reconstruction for both. This isn't a new security exposure — resolution is still a dict lookup
+  against classes already chosen and already loaded, never a live import driven by wire content —
+  it's purely a correctness fix for a many-files, many-authors world that a single centralized
+  file with unique names never had to worry about.
+- **The real question this raises**: if `WeatherDataError` moves to
+  `pyobs/modules/focus/focusmodel.py`, does `PyobsError._registry` actually contain it in a
+  process that never imported that module — say, a scheduler that only ever talks to a camera?
+  No. `__init_subclass__` only fires when the defining module is imported, and nothing forces a
+  scheduler to import every domain module in the fleet just in case. This looks like a real
+  regression at first — but tracing through who's actually affected shows it isn't: the only
+  callers who'd notice are ones who never imported `WeatherDataError` in the first place, which
+  means they never wrote `except exc.WeatherDataError:` either (you can't reference a name you
+  haven't imported) — they were always going to handle this generically, not distinguish it. For
+  them, receiving `UnclassifiedError(original_type="pyobs.modules.focus.focusmodel.WeatherDataError",
+  ...)` instead of the real type is a graceful, inspectable fallback (the qualified name string
+  survives even when the class doesn't), not a broken one — and it's already strictly better than
+  today's behavior, where an unresolvable name is discarded entirely in favor of a bare
+  `RemoteError`. The only callers who *do* care already import the type to write their `except`
+  clause, and that import is exactly what makes `__init_subclass__` register it in their process
+  before they'd ever need to resolve it. The mechanism self-selects correctly: whoever needs the
+  precise type already has it loaded; whoever doesn't gets a reasonable fallback instead of being
+  unable to construct anything at all.
 
 ### E. Standardize the constructor contract — and retire `InvocationError` entirely
 
@@ -859,7 +908,7 @@ Per Assessment §A, `_on_jabber_rpc_method_fault` should stop wrapping every suc
 reconstructed exception in `InvocationError`:
 
 ```python
-exception_class = registry.get(exc_name)  # see Assessment §D — registry, not getattr on one module
+exception_class = exc.PyobsError.resolve(exc_name)  # see Assessment §D — __init_subclass__ registry
 if exception_class is not None:
     exception = exception_class(msg, **context)   # real type, e.g. FocusError — raised as-is
     exception.remote_module = sender
@@ -867,6 +916,9 @@ else:
     exception = exc.UnclassifiedError(msg, original_type=exc_name, module=sender)
 future.set_exception(exception)
 ```
+
+(`exc_name` here is the fully-qualified `module.QualName` string `fault_to_xml` now serializes,
+per §5.)
 
 `UnclassifiedError` picks up the one remaining job the old `InvocationError` used to do for every
 case — wrapping the unresolved fallback — which means `InvocationError` itself has no job left at
@@ -992,16 +1044,13 @@ near the code that raises them, not bolted onto a growing, unrelated `exceptions
 `pyobs.robotic.scripts` package. Doing that under the current serialization scheme means those
 types silently stop surviving the wire the moment they move.
 
-Fix: replace the hardcoded single-module `getattr` lookup with an explicit registry — a decorator
-(e.g. `@exc.register`) any `PyObsError` subclass applies regardless of which file defines it,
-populating a flat `name -> class` dict the fault deserializer consults instead of reflecting into
-one module. This is a deliberate security boundary, not just refactoring: the current design is
-*accidentally* safe because `getattr` can only ever resolve names that exist in one fixed, trusted
-module; a naive fix ("serialize the fully-qualified class path and import it") would trade that
-away for an open-ended dynamic import driven by a value that arrived over the wire — a real hole.
-An explicit registry keeps the "only things we chose to expose are reconstructable" property the
-accident currently gives us, while decoupling "reconstructable" from "physically defined in
-`pyobs/utils/exceptions.py`."
+The concrete mechanism — `__init_subclass__` on `PyobsError`, keyed by fully-qualified name, plus
+the resolution of the cross-process-import question — is spelled out in full in Assessment §D
+rather than duplicated here. Two changes it requires in `rpc.py`: `fault_to_xml`
+(`rpc.py:93-106`) serializes `f"{type(exception).__module__}.{type(exception).__qualname__}"`
+instead of the bare `type(exception).__name__`, and `_on_jabber_rpc_method_fault`
+(`rpc.py:259-283`) calls `exc.PyobsError.resolve(exc_name)` instead of `getattr(exc, exc_name,
+None)` — both already reflected in proposal §2's code sketch above.
 
 With the registry in place, physically relocate the domain-specific types from §4 to where they
 belong as part of the same sweep: `WeatherDataError`/`FocusTimeoutError`/`MissingSensorError` into
@@ -1030,45 +1079,80 @@ companion PR alongside the core docstring fix, not something this repo's PR can 
 
 The full interface audit (see "Confirmed by a full interface docstring audit" above) turned this
 from "fix two known typos" into a real sweep: 16 of 27 documented interfaces have at least one
-confirmed mismatch. Splitting the findings by what actually needs to change:
+confirmed mismatch. The full per-interface findings, so whoever does this step doesn't have to
+re-derive them:
 
-- **Docs need fixing to match already-correct behavior**: `IAutoFocus.py`'s `Raises:` clause
-  (`ValueError` → `FocusError`, `AbortedError`, matching the method's own `@raises(...)`
-  decorator), `IAcquisition.py`'s `Raises:` clause (`ValueError` → `AbortedError`,
-  `AcquisitionError`, `GeneralError`, same pattern).
-- **Behavior needs fixing to match already-correct docs** (these are just pointers back to §4/§6,
-  not new work): `IData.grab_data` — `BaseSpectrograph`/`BaseVideo` need to actually raise
-  `GrabImageError`; `IMotion.init`/`park` — the dummy/reference implementations need to actually
-  raise `InitError`/`ParkError`; `IPointingRaDec`/`IPointingAltAz`/etc.'s `MoveError` — needs real
-  raise sites once §4's `MissingObserverError`/`AltitudeLimitError`/etc. land, since `MoveError`
-  alone was never actually reachable from a synchronous RPC call to begin with.
-- **Both need fixing, together**: `IFocusModel.py` — add a `Raises:` clause once §4's
-  `WeatherDataError`/`FocusTimeoutError`/`MissingSensorError` fix lands there;
-  `ScienceFrameGuiding.set_exposure_time` and `_DummyTelescopeBase.set_focus_offset` — both
-  unconditionally raise bare `NotImplementedError` contradicting their documented types entirely;
-  once §4's `NotSupportedError` exists, both should raise that instead (it's exactly the
-  "capability not supported" condition `NotSupportedError` was proposed for) and their interfaces'
-  docstrings should document it.
+| Interface (method) | Documents | Actually happens | Verdict | Fix |
+|---|---|---|---|---|
+| `IMotion.init` | `InitError` | Never raised anywhere; `AcquireLockFailed` (non-`PyobsError`) leaks instead | MISMATCH | Behavior (§4/§5) |
+| `IMotion.park` | `ParkError` | Never raised anywhere; `AcquireLockFailed` leaks | MISMATCH | Behavior (§4/§5) |
+| `IFocuser.set_focus` | `MoveError`, `InterruptedError` | `ValueError` (undocumented) + `InterruptedError` (matches) | PARTIAL | Doc: add `ValueError` |
+| `IFocuser.set_focus_offset` | `ValueError`, `MoveError` | `_DummyTelescopeBase` unconditionally raises `NotImplementedError` | MISMATCH | Behavior: use `NotSupportedError` |
+| `IAutoFocus.auto_focus` | `ValueError` | `FocusError`/`AbortedError` (per its own `@raises`) | MISMATCH | Doc only |
+| `IAcquisition.acquire_target` | `ValueError` | `AbortedError`/`AcquisitionError`/`GeneralError` (per its own `@raises`) | MISMATCH | Doc only |
+| `IData.grab_data` | `GrabImageError` | `BaseCamera`: `CameraException`(non-`PyobsError`)+`GrabImageError`+`ValueError`; `BaseSpectrograph`: `ValueError` only; `BaseVideo`: `ValueError` only; `PipelineCamera`: `GrabImageError`+`ValueError` | MISMATCH (3 of 4 implementers wrong) | Behavior (§4) |
+| `IDataSequence.grab_sequence` | `GrabImageError` | `ValueError`/`CameraException`; `GrabImageError` never raised here | MISMATCH | Behavior (§4) |
+| `IDataSequence.abort_sequence` | (none) | No raise | MATCH | — |
+| `IExposureTime.set_exposure_time` | `ValueError` | Mostly no-throw; `ScienceFrameGuiding` unconditionally raises `NotImplementedError` | MISMATCH (`ScienceFrameGuiding` only) | Behavior: use `NotSupportedError` |
+| `IFilters.set_filter` | `ValueError`, `MoveError` | `_DummyTelescopeBase`: `ValueError` matches; `MoveError` unused; `FlatField`'s own docstring has a copy-paste bug ("If binning could not be set") | PARTIAL | Doc: fix `FlatField`'s docstring |
+| `IBinning`/`IGain`/`IImageFormat`/`IWindow`/`ICooling` (setters) | `ValueError` | No validation in any in-repo implementer — aspirational, unexercised | MATCH (weakly, unverifiable in this repo) | — |
+| `IConfig.get_config_value`/`set_config_value` | `ValueError` | `ValueError`, consistently | MATCH (clean) | — |
+| `IMode` (group-set method) | `ValueError`, `MoveError` | `ValueError` matches; `MoveError` unused | MATCH(`ValueError`)/unused(`MoveError`) | — |
+| `ITrackingMode` (set method) | `MoveError`, `ValueError` | `ValueError` matches; `MoveError` unused | MATCH(`ValueError`)/unused(`MoveError`) | — |
+| `ITrackingRate.set_tracking_rate` | `MoveError` | Exactly one raise site in the whole codebase (`basetelescope.py:588`), inside a background task, not synchronously RPC-reachable | MISMATCH (systemic) | Behavior (§4) |
+| `IPointingRaDec.move_radec` | `MoveError` | Undocumented `ValueError` (no observer / altitude limit) + `NotImplementedError` + `AcquireLockFailed` | MISMATCH | Behavior (§4) then doc |
+| `IPointingAltAz.move_altaz` | `MoveError` | Same as `move_radec` | MISMATCH | Behavior (§4) then doc |
+| `IPointingBody.track_body` | `MoveError`, `ValueError` | `ValueError` (body resolution) matches; propagates `move_radec`'s undocumented exceptions | MATCH (primary) / gap (propagated) | Doc: note propagation |
+| `IPointingOrbitalElements.track_orbital_elements` | `MoveError`, `ValueError` | `ValueError` (orbital elements) matches; propagates `move_radec`'s issues | MATCH (primary) / gap (propagated) | Doc: note propagation |
+| `IPointingHeliocentricPolar` | `MoveError` only | Propagates `move_radec`'s undocumented `ValueError`/`AcquireLockFailed` | MISMATCH | Doc: note propagation, once `move_radec` is fixed |
+| `IPointingHeliographicStonyhurst` | `MoveError` only | Same | MISMATCH | Same |
+| `IPointingHelioprojective` | `MoveError` only | Same | MISMATCH | Same |
+| `IOffsetsAltAz` (offset-set method) | `MoveError` | Unused (no raise in any dummy implementer) | MATCH (weakly) | — |
+| `IOffsetsRaDec` (offset-set method) | `MoveError` | Unused | MATCH (weakly) | — |
+| `IStructuredConfig.get/set` | `ValueError` | No implementers anywhere in this repo | Unverifiable | Doc-gap only |
+| `IFocusModel.set_optimal_focus` | (none) | `ValueError` (three failure modes) | MISMATCH (known) | Both (§4 then doc) |
+| `IFlatField.flat_field` | (none) | `ValueError("Already running.")` | MISMATCH | Doc: add clause |
+| `IRunnable.run` | (none) | `ValueError("Already running.")` (`FlatFieldScheduler`, `flatfield/pointing.py`); arbitrary caller-defined exceptions propagate unwrapped via `ScriptRunner` | MISMATCH (moderate–significant) | Doc + §4's `ScriptError` |
+| `IWeather.get_sensor_value` | (none) | `ValueError` (`weather.py`, `mockweather.py`) | MISMATCH | Doc: add clause |
+| `IAbortable.abort` | (none) | No raise, across all 11 implementers checked | MATCH (no clause needed) | — |
+| `ICalibrate`, `ISyncTarget`, `IMultiFiber.set_fiber`, `IPointingSeries`, `IRotation.set_rotation`, `IScriptRunner.run_script` | (none) | Zero concrete implementers anywhere in this repo | Unverifiable | Doc-gap only |
+| `IImageType.set_image_type` | (none) | No raise | MATCH | — |
+| `IModule.reset_error`/`get_permitted_methods` | (none) | No raise | MATCH (trivial) | — |
+| `IStartStop.start`/`stop` | (none) | No raise, across every implementer checked | MATCH | — |
+
+Grouped by what actually needs to change:
+
+- **Docs need fixing to match already-correct behavior**: `IAutoFocus`, `IAcquisition` (as above),
+  `IFocuser.set_focus` (add `ValueError`), `IFilters` (fix `FlatField`'s copy-paste bug),
+  `IPointingBody`/`IPointingOrbitalElements` (note propagation from `move_radec`/`move_altaz`).
+- **Behavior needs fixing to match already-correct docs** (pointers back to §4/§5, not new work):
+  `IData.grab_data`, `IDataSequence.grab_sequence`, `IMotion.init`/`park`,
+  `IPointingRaDec`/`IPointingAltAz`/`ITrackingRate`'s `MoveError`.
+- **Both, together**: `IFocusModel` (add clause once `WeatherDataError`/etc. land),
+  `IFocuser.set_focus_offset`/`IExposureTime.set_exposure_time` on `ScienceFrameGuiding` (raise
+  `NotSupportedError` once it exists, then document it), `IFlatField`, `IRunnable`, `IWeather` (add
+  a clause for the `ValueError` each already raises).
 - **Doc-gap-only, no implementation to check yet**: `ICalibrate`, `ISyncTarget`,
   `IMultiFiber.set_fiber`, `IPointingSeries`, `IRotation`, `IScriptRunner.run_script`,
-  `IStructuredConfig` have zero concrete implementers anywhere in this repo. Add `Raises:` clauses
-  consistent with whatever convention the rest of the sweep settles on (custom type vs. `ValueError`
-  for bad input), so a future implementer — in this repo or a driver project — has a contract to
-  follow instead of guessing, the same guess that produced the `InterruptedError`/`AcquireLockFailed`
-  mismatches found elsewhere in this doc.
+  `IStructuredConfig`. Add `Raises:`
+  clauses consistent with whatever convention the rest of the sweep settles on (custom type vs.
+  `ValueError` for bad input), so a future implementer — in this repo or a driver project — has a
+  contract to follow instead of guessing, the same guess that produced the
+  `InterruptedError`/`AcquireLockFailed` mismatches found elsewhere in this doc.
 - Longer-term, low-priority idea: a lint/test that cross-checks `@raises(...)`/
   `_disable_exception_logging(...)` arguments against the types actually referenced in a method's
   docstring, so the two no longer drift independently. Not required for the initial rollout.
 
-### 8. Standardize the `PyObsError` constructor contract
+### 8. Standardize the `PyobsError` constructor contract
 
 Per Assessment §E, once `InvocationError`/`SevereError` are retired (§2, §3), the remaining
 non-uniform constructors are `RemoteError`/`RemoteTimeoutError` (`__init__(self, module: str,
 message: str | None = None)`, module positional-first) and `ForbiddenError` (`__init__(self,
-sender: str, method: str)`). Standardize the base class itself:
+sender: str, method: str)`). Standardize the base class itself — shown here already renamed, since
+this lands in the same PR as §11's rename:
 
 ```python
-class PyObsError(Exception):
+class PyobsError(Exception):
     def __init__(self, message: str | None = None, **context: Any):
         self.message = message
         self.logged = False
@@ -1171,7 +1255,7 @@ around it; the rest are incremental sweeps with no fixed order among themselves.
    (Assessment §C): move `register_exception`'s counting/threshold check into this same catch-time
    chokepoint as an instance method (`self._register_exception(...)`), fixing the cross-instance
    global-state bug as a byproduct, drop the type-substitution branch entirely, and remove the
-   `_Meta` metaclass. Nine in-tree call sites plus one in `pyobs-alpaca` need the mechanical
+   `_Meta` metaclass. Ten in-tree call sites plus one in `pyobs-alpaca` need the mechanical
    `exc.register_exception(...)` → `self._register_exception(...)` rename; three assertions in
    `tests/utils/test_exceptions.py` need rewriting to check the callback/state-transition instead
    of the (now-removed) type substitution.

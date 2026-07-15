@@ -282,7 +282,10 @@ class FocusModel(Module, IFocusModel):
 
                 # get temperatures
                 async with self.proxy(cfg["module"], ITemperatures) as proxy:
-                    temp_state = proxy.get_state(ITemperatures)
+                    try:
+                        temp_state = await proxy.wait_for_state(ITemperatures)
+                    except TimeoutError:
+                        raise ValueError(f"Timeout waiting for temperatures from module {cfg['module']}.")
                     module_temps[cfg["module"]] = (
                         {r.name: r.value for r in temp_state.readings} if temp_state is not None else {}
                     )

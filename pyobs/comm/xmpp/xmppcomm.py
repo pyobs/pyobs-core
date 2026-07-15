@@ -249,13 +249,13 @@ class XmppComm(Comm):
         # add features
         if self._module is not None:
             for i in self._module.interfaces:
-                self._xmpp["xep_0030"].add_feature(f"urn:pyobs:interface:{i.__name__}:{i.version}")
+                self._xmpp.plugin["xep_0030"].add_feature(f"urn:pyobs:interface:{i.__name__}:{i.version}")
                 if i.has_own_state():
-                    self._xmpp["xep_0030"].add_feature(f"urn:pyobs:state:{i.__name__}:{i.version}")
+                    self._xmpp.plugin["xep_0030"].add_feature(f"urn:pyobs:state:{i.__name__}:{i.version}")
 
         # register custom disco#info handler to inject <capability> elements
         if self._module is not None:
-            self._xmpp["xep_0030"].set_node_handler("get_info", None, None, self._get_disco_info)
+            self._xmpp.plugin["xep_0030"].set_node_handler("get_info", None, None, self._get_disco_info)
 
         # RPC
         self._rpc = RPC(self, self._xmpp, None)
@@ -265,7 +265,7 @@ class XmppComm(Comm):
         self._xmpp.enable_starttls = self._use_tls
         self._xmpp.enable_direct_tls = self._use_tls
         self._xmpp.enable_plaintext = not self._use_tls
-        self._xmpp["feature_mechanisms"].unencrypted_scram = not self._use_tls
+        self._xmpp.plugin["feature_mechanisms"].unencrypted_scram = not self._use_tls  # type: ignore[typeddict-item]
         if self._ignore_cert_errors:
             self._xmpp.ssl_context.check_hostname = False
             self._xmpp.ssl_context.verify_mode = ssl.CERT_NONE
@@ -854,7 +854,7 @@ class XmppComm(Comm):
     async def _get_disco_info(self, jid, node, ifrom, data):
         """Custom disco#info handler that adds <capability> elements for static module values."""
         # Get the default info from the static handler
-        info = self._xmpp["xep_0030"].static.get_info(jid, node, ifrom, data)
+        info = self._xmpp.plugin["xep_0030"].static.get_info(jid, node, ifrom, data)
         if info is None:
             from slixmpp.plugins.xep_0030.stanza import DiscoInfo
 

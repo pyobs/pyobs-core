@@ -143,6 +143,7 @@ class XmppComm(Comm):
         self._loop = asyncio.get_event_loop()
         self._safe_send_attempts = 5
         self._safe_send_wait = 1
+        self._safe_send_timeout = 15.0
 
         # build jid
         if jid:
@@ -799,12 +800,19 @@ class XmppComm(Comm):
         iq = None
         for i in range(self._safe_send_attempts):
             try:
-                # execute method and return result
-                return await method(*args, **kwargs)
+                # execute method and return result, but never wait longer than our own
+                # timeout -- some XMPP servers/slixmpp's own IQ timeout can fail to fire,
+                # which would otherwise hang the caller (and, if called from open(), the
+                # whole module) indefinitely
+                return await asyncio.wait_for(method(*args, **kwargs), timeout=self._safe_send_timeout)
 
             except slixmpp.exceptions.IqTimeout as timeout:
                 # timeout occurred, try again after some wait
                 iq = timeout.iq
+                await asyncio.sleep(self._safe_send_wait)
+
+            except TimeoutError:
+                # our own timeout fired instead of slixmpp's, try again after some wait
                 await asyncio.sleep(self._safe_send_wait)
 
         # never should reach this

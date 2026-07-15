@@ -9,7 +9,7 @@ from typing import Any, NamedTuple
 import numpy as np
 from astropy.io import fits
 
-from pyobs.events import ExposureStatusChangedEvent, NewImageEvent
+from pyobs.events import BadWeatherEvent, Event, ExposureStatusChangedEvent, NewImageEvent
 from pyobs.images import Image
 from pyobs.interfaces import (
     DataSequenceState,
@@ -120,6 +120,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         if self._comm:
             await self.comm.register_event(NewImageEvent)
             await self.comm.register_event(ExposureStatusChangedEvent)
+            await self.comm.register_event(BadWeatherEvent, self._abort_weather)
 
         # publish initial states
         await self.comm.set_state(IExposureTime, ExposureTimeState(exposure_time=self._exposure_time))
@@ -444,6 +445,11 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # wait until state is not EXPOSING anymore
         while self._camera_status == ExposureStatus.EXPOSING:
             await asyncio.sleep(0.1)
+
+    async def _abort_weather(self, event: Event, sender: str, **kwargs: Any) -> bool:
+        """Abort on bad weather."""
+        await self.abort()
+        return True
 
     @staticmethod
     def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int) -> None:

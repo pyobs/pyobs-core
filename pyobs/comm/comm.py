@@ -133,16 +133,14 @@ class Comm:
             except IndexError:
                 return None
 
-            # collect capabilities (fixed at proxy construction time)
-            capabilities: dict[type[Interface], Any] = {}
+            # create new proxy
+            proxy = Proxy(self, client, interfaces)
+
+            # fetch capabilities in the background, so a peer that isn't fully up yet doesn't block
+            # proxy construction -- Proxy.wait_for_capabilities() can be used to wait for the result
             for interface in interfaces:
                 if interface.capabilities is not None:
-                    cap = await self._get_capabilities(client, interface)
-                    if cap is not None:
-                        capabilities[interface] = cap
-
-            # create new proxy
-            proxy = Proxy(self, client, interfaces, capabilities)
+                    asyncio.create_task(self._fetch_and_update_capabilities(client, interface, proxy))
 
             # subscribe to state
             for interface in interfaces:
@@ -151,8 +149,13 @@ class Comm:
 
             self._proxies[client] = proxy
 
-        # return proxy
         return self._proxies[client]
+
+    async def _fetch_and_update_capabilities(self, client: str, interface: type[Interface], proxy: Proxy) -> None:
+        """Fetch capabilities for a single interface and push them into the given proxy once available."""
+        cap = await self._get_capabilities(client, interface)
+        if cap is not None:
+            proxy.update_capabilities(interface, cap)
 
     async def _resolve_proxy(
         self, name_or_object: str | object, obj_type: type[ProxyType] | None = None

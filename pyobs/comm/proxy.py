@@ -62,6 +62,7 @@ class Proxy:
         # store state and capabilities
         self._state: dict[type[Interface], Any] = {}
         self._capabilities: dict[type[Interface], Any] = capabilities if capabilities is not None else {}
+        self._capabilities_events: dict[type[Interface], asyncio.Event] = {}
 
     @property
     def name(self) -> str:
@@ -175,8 +176,18 @@ class Proxy:
         """Latest known state for the given interface, or None if nothing has arrived yet."""
         return self._state.get(interface)
 
+    def update_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
+        """Called by Comm once capabilities for an interface arrive.
+
+        Not intended to be called directly by module code.
+        """
+        self._capabilities[interface] = capabilities
+        event = self._capabilities_events.get(interface)
+        if event is not None:
+            event.set()
+
     def get_capabilities(self, interface: type[Interface]) -> Any | None:
-        """Capabilities for the given interface, populated once at Proxy construction."""
+        """Capabilities for the given interface, or None if not (yet) fetched."""
         return self._capabilities.get(interface)
 
     async def wait_for_state(
@@ -202,6 +213,23 @@ class Proxy:
             await self._comm.unsubscribe_state(self._client, interface, _notify)
 
         return self._state.get(interface)
+
+    async def wait_for_capabilities(
+        self,
+        interface: type[Interface],
+        timeout: float = 10.0,
+    ) -> Any | None:
+        """Return capabilities immediately if available, otherwise wait for the background fetch to complete."""
+        if self._capabilities.get(interface) is not None:
+            return self._capabilities[interface]
+
+        event = self._capabilities_events.setdefault(interface, asyncio.Event())
+        try:
+            await asyncio.wait_for(event.wait(), timeout=timeout)
+        except TimeoutError:
+            pass
+
+        return self._capabilities.get(interface)
 
 
 class _ProxyContext(Generic[ProxyType]):

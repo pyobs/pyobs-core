@@ -909,20 +909,34 @@ class XmppComm(Comm):
         return self._capabilities.get(interface)
 
     async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
-        """Fetch and deserialize capabilities for a remote module's interface."""
+        """Fetch and deserialize capabilities for a remote module's interface.
+
+        Retries a few times, since this may run right as the peer is still starting up and hasn't
+        published its capabilities yet.
+        """
         if interface.capabilities is None:
             return None
-        # Use full JID (with resource) if we know it — bare JID may not route correctly
-        full_jid = next(
-            (jid for jid in self._online_clients if jid.startswith(f"{module}@")),
-            f"{module}@{self._domain}",
-        )
-        jid = full_jid
         ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
-        try:
-            result = await asyncio.wait_for(self.client.plugin["xep_0030"].get_info(jid=JID(jid)), timeout=10.0)
-        except (TimeoutError, Exception) as e:
-            log.warning("Failed to get capabilities for %s from %s: %s", interface.__name__, module, e)
+
+        result = None
+        last_error: BaseException | None = None
+        for attempt in range(3):
+            # Use full JID (with resource) if we know it — bare JID may not route correctly
+            full_jid = next(
+                (jid for jid in self._online_clients if jid.startswith(f"{module}@")),
+                f"{module}@{self._domain}",
+            )
+            try:
+                result = await asyncio.wait_for(
+                    self.client.plugin["xep_0030"].get_info(jid=JID(full_jid)), timeout=10.0
+                )
+                break
+            except (TimeoutError, Exception) as e:
+                last_error = e
+                if attempt < 2:
+                    await asyncio.sleep(2)
+        else:
+            log.warning("Failed to get capabilities for %s from %s: %s", interface.__name__, module, last_error)
             return None
         log.debug("get_capabilities disco result XML: %s", ET.tostring(result.xml).decode()[:500])
         # result.xml is the <iq> — the <query> is its child, capabilities are grandchildren

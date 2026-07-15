@@ -48,7 +48,7 @@ class XmppClient(slixmpp.ClientXMPP):
         self.register_plugin("xep_0199")  # XMPP Ping
 
         # enable keep alive pings
-        self["xep_0199"].enable_keepalive()
+        self.plugin["xep_0199"].enable_keepalive()
 
         # handle session_start and message events
         self.add_event_handler("session_start", self.session_start)

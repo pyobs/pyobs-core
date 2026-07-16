@@ -173,6 +173,13 @@ class RPC:
         iq.enable("rpc_query")
         pmethod = iq["rpc_query"]["method_call"]["method_name"]
 
+        # XEP-0009 already assigns this per call (used elsewhere as the Future dict key) -- reuse
+        # it as a correlation id so an operator can jump from a caller-side exception straight to
+        # the matching origin-side log line, instead of neither side pointing at the other
+        call_id: str | slixmpp.JID = iq["id"]
+        if isinstance(call_id, slixmpp.JID):
+            call_id = call_id.node
+
         try:
             if self._handler is None:
                 return
@@ -211,7 +218,7 @@ class RPC:
                     response.send()
 
             # Call method
-            return_value = await self._handler.execute(pmethod, *params, sender=iq["from"].user)
+            return_value = await self._handler.execute(pmethod, *params, sender=iq["from"].user, call_id=call_id)
 
             # Serialize return value
             return_type = hints.get("return", type(None))
@@ -284,6 +291,10 @@ class RPC:
             # unresolvable: never a PyobsError to begin with, or its defining module was never
             # imported in this process -- the qualified name string still survives as original_type
             exception = exc.UnclassifiedError(msg, original_type=exc_name, remote_module=sender)
+
+        # same correlation id Module.execute() logged on the origin side -- an operator can jump
+        # straight from this caller-side exception to the matching detailed log line, by id
+        setattr(exception, "call_id", jid)
 
         if not future.done():
             future.set_exception(exception)

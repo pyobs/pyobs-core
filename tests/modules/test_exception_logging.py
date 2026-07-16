@@ -34,6 +34,32 @@ async def test_domain_exception_logs_as_info_without_traceback_by_default(caplog
 
 
 @pytest.mark.asyncio
+async def test_call_id_is_attached_to_the_exception_and_included_in_the_log_line(caplog):
+    module = _AbortableModule(exc.FocusError("could not focus"))
+
+    with caplog.at_level(logging.INFO):
+        with pytest.raises(exc.FocusError) as exc_info:
+            await module.execute("abort", sender="tester", call_id="42")
+
+    assert exc_info.value.call_id == "42"
+    record = next(r for r in caplog.records if "Exception was raised in call to abort" in r.message)
+    assert "call_id=42" in record.message
+
+
+@pytest.mark.asyncio
+async def test_call_id_omitted_from_log_line_when_not_given(caplog):
+    module = _AbortableModule(exc.FocusError("could not focus"))
+
+    with caplog.at_level(logging.INFO):
+        with pytest.raises(exc.FocusError) as exc_info:
+            await module.execute("abort", sender="tester")
+
+    assert exc_info.value.call_id is None
+    record = next(r for r in caplog.records if "Exception was raised in call to abort" in r.message)
+    assert "call_id" not in record.message
+
+
+@pytest.mark.asyncio
 async def test_module_error_always_logs_as_error_with_traceback(caplog):
     module = _AbortableModule(exc.ModuleError("broken"))
 

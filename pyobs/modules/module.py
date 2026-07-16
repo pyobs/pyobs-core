@@ -550,6 +550,11 @@ class Module(Object, IModule, IConfig):
 
         # check acl, exempting get_permitted_methods itself so a denied caller can still ask what it's denied from
         sender = kwargs.get("sender", "")
+        # correlation id (XEP-0009's per-call iq id, passed through by the XMPP transport) -- lets
+        # an operator jump from a caller-side exception straight to this log line by id, instead of
+        # neither side pointing at the other. Not set for LocalComm/MultiModule, which are already
+        # in the same log stream as the caller.
+        call_id = kwargs.get("call_id", None)
         if method != "get_permitted_methods" and self._acl_denied(sender, method):
             if self._acl_mode == "enforce":
                 raise exc.ForbiddenError(
@@ -594,15 +599,18 @@ class Module(Object, IModule, IConfig):
             else:
                 original_type = f"{type(raised).__module__}.{type(raised).__qualname__}"
                 e = exc.UnclassifiedError(str(raised), original_type=original_type)
+            setattr(e, "call_id", call_id)
+
+            call_id_suffix = f" (call_id={call_id})" if call_id else ""
 
             # ModuleError/UnclassifiedError always need local attention -- never suppressible, always loud.
             if isinstance(e, self._UNSUPPRESSIBLE):
-                e.log(log, "ERROR", f"Exception was raised in call to {method}: {e}", exc_info=True)
+                e.log(log, "ERROR", f"Exception was raised in call to {method}{call_id_suffix}: {e}", exc_info=True)
             else:
                 # every other domain exception logs as a quiet INFO line by default -- a module opts
                 # out per-type via _disable_exception_logging, it doesn't opt in per-method anymore.
                 if not isinstance(e, self._disabled_exception_logging):
-                    e.log(log, "INFO", f"Exception was raised in call to {method}: {e}", exc_info=False)
+                    e.log(log, "INFO", f"Exception was raised in call to {method}{call_id_suffix}: {e}", exc_info=False)
                 # else: caller already has it; nothing to log locally
 
             self._record_exception(e)

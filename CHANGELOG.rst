@@ -1,5 +1,14 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* RPC calls over XMPP now carry a correlation id end to end: the origin-side log line for a
+  domain exception (``Module.execute()``'s catch block) includes ``(call_id=...)``, and the same
+  id is attached to the exception the caller receives as ``exception.call_id`` -- reusing
+  XEP-0009's existing per-call ``iq["id"]`` rather than adding new plumbing. Lets an operator
+  debugging a caller-side ``FocusError`` jump straight to the matching detailed log on the module
+  that actually raised it, instead of neither side's log line pointing at the other. Purely
+  additive, no migration required; not set for ``LocalComm``/``MultiModule`` calls, which are
+  already in the same log stream as the caller. Fourth step of the exception-handling rollout in
+  ``DESIGN_exception_handling.md`` (tracks #446).
 * Constructing a ``PyobsError`` is now side-effect-free, ordinary Python. ``raise
   exc.FocusError(...)`` always raises a ``FocusError`` -- it no longer risks silently coming back
   as a ``SevereError`` instead, which could happen because the old severity-escalation metaclass

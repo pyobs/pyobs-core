@@ -1,11 +1,24 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* ``ICamera``/``ISpectrograph`` no longer inherit ``IExposure`` -- they're now pure ``IData``
+  identity interfaces ("this module produces images/spectra"), not "...and has an exposure
+  clock." ``BaseCamera`` and ``BaseSpectrograph`` (which push real ``ExposureState``) now declare
+  ``IExposure`` explicitly instead of getting it for free; ``PipelineCamera`` drops ``IExposure``
+  entirely instead of publishing a fabricated, never-updated ``ExposureState`` for a pipeline run
+  that has no exposure to report progress on. Breaking change for any external module that
+  subclasses ``ICamera``/``ISpectrograph`` directly (not via ``BaseCamera``/``BaseSpectrograph``)
+  and relied on inheriting ``IExposure`` implicitly -- it needs to add ``IExposure`` to its own
+  bases now if it actually wants to publish exposure state (e.g. ``pyobs_iagvt``'s ``SunCamera``,
+  tracked separately, not fixed here). ``pyobs-gui``'s ``CameraWidget`` needs no change: its
+  exposure-progress panel was already conditional on ``has_proxy(..., IExposure)``. See
+  ``DESIGN_ICamera_IExposure.md``.
 * Added ``IDataSequence`` (``grab_sequence()``/``abort_sequence()``, pushed ``DataSequenceState``)
   for taking a counted sequence of grabs in one call instead of driving a client-side loop of
   ``grab_data()`` calls. Implemented by ``BaseCamera``. ``grab_sequence()`` returns immediately and
   runs the sequence in the background; ``abort_sequence()`` stops after the current grab finishes,
-  while the existing ``abort()`` now also cancels the rest of a running sequence. See
-  ``DESIGN_IDataSequence.md``.
+  while the existing ``abort()`` now also cancels the rest of a running sequence. ``grab_sequence()``
+  also takes an optional ``delay`` (seconds between grabs, default ``0``), skipped after the last
+  grab and cut short by either abort path.
 * Removed ``pyobs.modules.utils.AutonomousWarning`` (played warning sounds while an ``IAutonomous``
   module was running). Found while writing tests for it: ``started_sound``/``stopped_sound`` were
   stored but never read anywhere, and ``_check_autonomous()``'s sound selection looked inverted (it
@@ -36,6 +49,18 @@ v2.0.0.dev18 (unreleased)
   default; pass ``--no-syslog`` to disable it).
 * Added ``pyobsd logs [module] [journalctl arguments...]``, a thin passthrough to ``journalctl``
   filtered to the module's journal fields.
+* Added ``Image.trim()``, unifying three previously-independent implementations of TRIMSEC parsing
+  (inline in ``ProjectedOffsets``, ``fitssec()``, and ``Pipeline.trim_ccddata()``) into one method
+  that also keeps ``mask``/``uncertainty`` aligned with ``data``. Shifts ``CRPIX1``/``CRPIX2`` to
+  account for the new origin -- a correctness fix, since none of the three prior implementations
+  did this, silently leaving a stale WCS reference pixel after trimming. Raises ``ValueError`` if
+  a catalog is already attached, since its pixel coordinates would otherwise silently go stale
+  against the trimmed frame -- run source detection after trimming, not before. Removed
+  ``Pipeline.trim_ccddata()``; its two call sites now trim the ``Image`` before converting to
+  ``CCDData`` instead of after -- breaking change for any external code calling it directly.
+  ``fitssec()``'s parser is now shared (``pyobs.utils.fits.parse_section_bounds``) and raises a
+  well-defined ``ValueError`` for a malformed section keyword instead of an arbitrary
+  ``IndexError``/``ValueError``. See ``DESIGN_Image_trim.md``.
 
 v2.0.0.dev17 (2026-07-11)
 *************************

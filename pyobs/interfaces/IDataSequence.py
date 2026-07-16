@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from ..utils.time import Time
 from .IAbortable import IAbortable
 
@@ -23,13 +24,18 @@ class IDataSequence(IAbortable, metaclass=ABCMeta):
     state = DataSequenceState
 
     @abstractmethod
-    async def grab_sequence(self, count: int, broadcast: bool = True, **kwargs: Any) -> None:
+    async def grab_sequence(
+        self, count: int, broadcast: bool = True, delay: Annotated[float, Unit.SECONDS] = 0, **kwargs: Any
+    ) -> None:
         """Start a sequence of `count` grabs. Returns immediately; progress is available via
         the pushed DataSequenceState.
 
         Args:
             count: Number of grabs to take.
             broadcast: Broadcast existence of each grab.
+            delay: Seconds to wait between the end of one grab and the start of the next.
+                Does not apply after the last grab. Skipped early if the sequence is aborted
+                during the wait.
 
         Raises:
             GrabImageError: If the device is already busy (exposing or already running a

@@ -243,6 +243,19 @@ converted to named dataclasses, except ``IFlatField.flat_field() -> tuple[int, f
 which stays a tuple deliberately (it's a genuine one-off RPC action result, not a
 State/Capability candidate).
 
+``ICamera``/``ISpectrograph`` no longer imply ``IExposure``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``ICamera`` and ``ISpectrograph`` used to inherit ``IExposure`` (the table above), forcing every
+implementer to carry exposure-progress state even when it doesn't apply -- ``PipelineCamera``
+published a single, never-updated ``ExposureState`` purely to satisfy the type, despite having no
+in-progress exposure to report. Both interfaces are now plain ``IData`` identity interfaces;
+``BaseCamera``/``BaseSpectrograph`` declare ``IExposure`` explicitly alongside them instead of
+inheriting it implicitly, and ``PipelineCamera`` drops it entirely. If you have a module that
+subclasses ``ICamera``/``ISpectrograph`` directly (not via ``BaseCamera``/``BaseSpectrograph``)
+and actually wants exposure-progress semantics, add ``IExposure`` to its own bases explicitly and
+publish ``ExposureState`` via ``self.comm.set_state(...)``.
+
 Deployment / infrastructure
 ------------------------------
 
@@ -423,7 +436,7 @@ individual ``grab_data()`` calls. The new ``IDataSequence`` interface, implement
 .. code-block:: python
 
    async with self.proxy("camera", IDataSequence) as camera:
-       await camera.grab_sequence(10)          # returns immediately, sequence runs in the background
+       await camera.grab_sequence(10, delay=5)  # returns immediately, sequence runs in the background
        state = camera.get_state(IDataSequence)  # DataSequenceState(count_total, count_left, time)
 
        await camera.abort_sequence()  # graceful: lets the current grab finish, stops the rest
@@ -433,7 +446,10 @@ individual ``grab_data()`` calls. The new ``IDataSequence`` interface, implement
 sequence: a blocking call's RPC timeout would have to scale with the caller-supplied count,
 weakening it as a stall-detection sanity check the larger the count gets. Progress is instead
 observed via the pushed ``DataSequenceState``, consistent with how the rest of live state
-works. See ``DESIGN_IDataSequence.md`` in the repository root for the full design writeup.
+works. The optional ``delay`` (seconds between the end of one grab and the start of the next,
+default ``0``) is skipped after the last grab and cut short immediately by either
+``abort_sequence()`` or ``abort()`` instead of idling out the full wait. Dithering/offsets
+between grabs remain out of scope -- that's a pointing-layer concern, not this interface's.
 
 Access control (ACLs)
 ----------------------

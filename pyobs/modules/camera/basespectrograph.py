@@ -23,7 +23,7 @@ class ExposureInfo(NamedTuple):
     start: datetime
 
 
-class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass=ABCMeta):
+class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure, metaclass=ABCMeta):
     """Base class for all spectrograph modules."""
 
     __module__ = "pyobs.modules.camera"

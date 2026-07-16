@@ -261,9 +261,13 @@ class _DummyTelescopeBase(
         await self._move_radec(icrs.ra.degree, icrs.dec.degree, abort_event)
 
     async def set_tracking_mode(self, mode: TrackingMode, **kwargs: Any) -> None:
-        """Switches to the given tracking mode."""
+        """Switches to the given tracking mode.
+
+        Raises:
+            InvalidArgumentError: If mode is not in this module's capabilities.
+        """
         if mode not in self._tracking_modes:
-            raise ValueError(f"Mode {mode} not supported.")
+            raise exc.InvalidArgumentError(f"Mode {mode} not supported.")
         self._tracking_mode = mode
         await self.comm.set_state(ITrackingMode, TrackingModeState(mode=mode))
 
@@ -278,10 +282,11 @@ class _DummyTelescopeBase(
         """Sets new focus.
 
         Raises:
+            InvalidArgumentError: If given value is invalid.
             AbortedError: If setting the focus was cancelled.
         """
         if focus < 0 or focus > 100:
-            raise ValueError("Invalid focus value.")
+            raise exc.InvalidArgumentError("Invalid focus value.")
 
         async with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f...", focus)
@@ -298,9 +303,13 @@ class _DummyTelescopeBase(
             await self.comm.set_state(IFocuser, FocuserState(focus=focus, focus_offset=0.0))
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
-        """Set the current filter."""
+        """Set the current filter.
+
+        Raises:
+            InvalidArgumentError: If an invalid filter was given.
+        """
         if filter_name not in self._filters:
-            raise ValueError("Invalid filter name.")
+            raise exc.InvalidArgumentError("Invalid filter name.")
 
         if filter_name != self._filter_name:
             logging.info("Setting filter to %s", filter_name)

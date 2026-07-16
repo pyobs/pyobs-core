@@ -95,7 +95,7 @@ async def test_grab_sequence_pushes_progressing_state() -> None:
 @pytest.mark.asyncio
 async def test_grab_sequence_rejects_zero_count() -> None:
     camera = make_camera()
-    with pytest.raises(ValueError):
+    with pytest.raises(exc.InvalidArgumentError):
         await camera.grab_sequence(0)
 
 
@@ -189,7 +189,7 @@ async def test_grab_sequence_skips_delay_after_last_grab() -> None:
 @pytest.mark.asyncio
 async def test_grab_sequence_rejects_negative_delay() -> None:
     camera = make_camera()
-    with pytest.raises(ValueError):
+    with pytest.raises(exc.InvalidArgumentError):
         await camera.grab_sequence(2, delay=-1)
 
 

@@ -44,7 +44,8 @@ class IWeather(IStartStop, metaclass=ABCMeta):
             Current reading for the given sensor.
 
         Raises:
-            ValueError: If station or sensor is unknown.
+            InvalidArgumentError: If station or sensor is unknown.
+            ValueError: If the underlying weather station's response is malformed.
         """
         ...
 

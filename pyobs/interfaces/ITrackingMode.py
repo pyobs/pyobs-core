@@ -46,7 +46,7 @@ class ITrackingMode(Interface, metaclass=ABCMeta):
 
         Raises:
             MoveError: If mode could not be set.
-            ValueError: If mode is not in this module's capabilities.
+            InvalidArgumentError: If mode is not in this module's capabilities.
         """
         ...
 

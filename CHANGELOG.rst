@@ -1,5 +1,21 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* New ``InvalidArgumentError`` for bad-argument validation on RPC-exposed methods (unknown filter
+  name, invalid focus value, invalid config parameter, out-of-range ``grab_sequence`` count/delay,
+  ...) -- previously these stayed as plain ``ValueError``, which works fine locally (``LocalComm``,
+  direct calls, tests) but silently degrades to ``UnclassifiedError`` the moment the same call
+  crosses XMPP, since ``ValueError`` is a builtin and never in the registry. That inconsistency is
+  exactly the kind of bug that only shows up once code moves from a local test to a networked
+  deployment. Fixed for ``IConfig.get_config_value``/``get_config_value_options``/
+  ``set_config_value``, ``IDataSequence.grab_sequence``, ``ITrackingMode.set_tracking_mode``,
+  ``IFocuser.set_focus``, ``IFilters.set_filter``, ``IMode.set_mode``, and
+  ``IWeather.get_sensor_value`` (its ``MockWeather`` implementation only -- the real ``Weather``
+  class's ``ValueError`` is about a malformed station response, not a bad argument, and is left
+  as-is). Also reused the existing ``DeviceBusyError`` for ``FlatField.flat_field``/
+  ``FlatFieldScheduler.run``'s "already running" check, which was never actually about a bad
+  argument either. Scoped out first (see ``DESIGN_exception_handling.md``) before touching
+  anything: real driver repos (e.g. ``pyobs-sbig``) likely have the identical ``ValueError``
+  pattern for real hardware and would need the same companion fix, not reachable from this PR.
 * Fixed ``UnclassifiedError.original_type`` silently not surviving the wire: ``Module.execute()``
   wraps a non-domain exception (``IndexError``, a vendor SDK exception, ...) as
   ``UnclassifiedError`` before ``rpc.py`` ever sees it, but ``fault_to_xml`` was serializing the

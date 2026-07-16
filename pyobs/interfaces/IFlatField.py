@@ -23,7 +23,7 @@ class IFlatField(IAbortable, metaclass=ABCMeta):
             Number of images actually taken and total exposure time in seconds
 
         Raises:
-            ValueError: If a flat-fielding run is already in progress.
+            DeviceBusyError: If a flat-fielding run is already in progress.
         """
         ...
 

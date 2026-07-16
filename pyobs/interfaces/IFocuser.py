@@ -31,7 +31,7 @@ class IFocuser(IMotion, metaclass=ABCMeta):
             focus: New focus value in mm.
 
         Raises:
-            ValueError: If given value is invalid.
+            InvalidArgumentError: If given value is invalid.
             AbortedError: If movement was aborted.
             MoveError: If telescope cannot be moved.
         """

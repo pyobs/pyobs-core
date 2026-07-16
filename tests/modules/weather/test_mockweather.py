@@ -6,6 +6,7 @@ from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IRunning, IWeather, WeatherSensorReading
 from pyobs.modules import Module
 from pyobs.modules.weather import MockWeather
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import Unit, WeatherSensors
 
 
@@ -143,7 +144,7 @@ async def test_get_sensor_value() -> None:
 async def test_get_sensor_value_invalid() -> None:
     weather = MockWeather()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(exc.InvalidArgumentError):
         await weather.get_sensor_value("test", WeatherSensors.TIME)
 
 

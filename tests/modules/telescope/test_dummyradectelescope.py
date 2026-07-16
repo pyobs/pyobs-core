@@ -21,6 +21,7 @@ from pyobs.modules.telescope.basetelescope import (
     BodyResolutionError,
 )
 from pyobs.modules.telescope.dummyradectelescope import DummyRaDecTelescope
+from pyobs.utils import exceptions as exc
 
 
 def make_dummyradectelescope(**kwargs) -> DummyRaDecTelescope:
@@ -56,7 +57,7 @@ async def test_set_tracking_mode_valid_updates_state():
 @pytest.mark.asyncio
 async def test_set_tracking_mode_invalid_raises_and_does_not_change_state():
     tel = make_dummyradectelescope()
-    with pytest.raises(ValueError):
+    with pytest.raises(exc.InvalidArgumentError):
         await tel.set_tracking_mode("bogus")  # type: ignore[arg-type]
     assert tel._tracking_mode == TrackingMode.OFF
 

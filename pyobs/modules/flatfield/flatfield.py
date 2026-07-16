@@ -194,11 +194,14 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         Returns:
             Number of images actually taken and total exposure time in seconds
+
+        Raises:
+            DeviceBusyError: If a flat-fielding run is already in progress.
         """
 
         # check
         if self._running:
-            raise ValueError("Already running.")
+            raise exc.DeviceBusyError("Already running.")
         self._running = True
 
         try:

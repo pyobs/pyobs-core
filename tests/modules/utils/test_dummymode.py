@@ -9,6 +9,7 @@ from pyobs.events import ModeChangedEvent
 from pyobs.interfaces import IMode, IMotion, IReady
 from pyobs.modules import Module
 from pyobs.modules.utils.dummymode import DummyMode
+from pyobs.utils import exceptions as exc
 
 
 def _state_for(mock: AsyncMock, interface: object) -> object:
@@ -112,7 +113,7 @@ async def test_set_mode_with_explicit_group(mocker) -> None:
 async def test_set_mode_raises_for_invalid_group() -> None:
     dm = make_dummymode()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(exc.InvalidArgumentError):
         await dm.set_mode("Whatever", group="NoSuchGroup")
 
 

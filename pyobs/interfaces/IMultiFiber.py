@@ -44,7 +44,7 @@ class IMultiFiber(Interface, metaclass=ABCMeta):
             fiber: Name of fiber to set.
 
         Raises:
-            ValueError: If fiber name is invalid.
+            InvalidArgumentError: If fiber name is invalid.
         """
         ...
 

@@ -110,6 +110,19 @@ class NotSupportedError(PyobsError):
     pass
 
 
+class InvalidArgumentError(PyobsError):
+    """The caller passed an argument this method rejects (unknown name, out-of-range value, ...).
+    Unlike a plain ValueError, this survives an RPC round trip as itself, so `except
+    exc.InvalidArgumentError:` around a proxy call actually catches it -- a bare ValueError would
+    silently degrade to UnclassifiedError the moment the call crosses XMPP, even though it works
+    fine locally (LocalComm, direct calls, tests), which is exactly the kind of inconsistency that
+    only shows up once code goes from a local test to a networked deployment. Deliberately one
+    type across every setter-shaped method, not split per method or per argument -- no caller
+    reacts differently to "unknown filter" vs. "invalid focus value."""
+
+    pass
+
+
 class UnclassifiedError(PyobsError):
     """Wraps an exception that isn't part of the deliberate PyobsError contract -- either it never
     was a PyobsError to begin with (a builtin, a vendor SDK exception) and escaped a module's own

@@ -686,16 +686,16 @@ class Module(Object, IModule, IConfig):
             Current value.
 
         Raises:
-            ValueError: If config item of given name does not exist.
+            InvalidArgumentError: If config item of given name does not exist.
         """
 
         # valid parameter?
         if not name:
-            raise ValueError("No parameter name given.")
+            raise exc.InvalidArgumentError("No parameter name given.")
         if name not in self._config_caps:
-            raise ValueError(f"Invalid parameter {name}")
+            raise exc.InvalidArgumentError(f"Invalid parameter {name}")
         if not self._config_caps[name][0]:
-            raise ValueError("Parameter %s is not remotely accessible.")
+            raise exc.InvalidArgumentError("Parameter %s is not remotely accessible.")
 
         # get getter method and call it
         getter = getattr(self, "_get_config_" + name)
@@ -711,16 +711,16 @@ class Module(Object, IModule, IConfig):
             Possible values.
 
         Raises:
-            ValueError: If config item of given name does not exist.
+            InvalidArgumentError: If config item of given name does not exist.
         """
 
         # valid parameter?
         if not name:
-            raise ValueError("No parameter name given.")
+            raise exc.InvalidArgumentError("No parameter name given.")
         if name not in self._config_caps:
-            raise ValueError(f"Invalid parameter {name}")
+            raise exc.InvalidArgumentError(f"Invalid parameter {name}")
         if not self._config_caps[name][2]:
-            raise ValueError("Parameter %s has no list of possible values.")
+            raise exc.InvalidArgumentError("Parameter %s has no list of possible values.")
 
         # get getter method and call it
         options = getattr(self, "_get_config_options_" + name)
@@ -734,16 +734,17 @@ class Module(Object, IModule, IConfig):
             value: New value.
 
         Raises:
-            ValueError: If config item of given name does not exist or value is invalid.
+            InvalidArgumentError: If config item of given name does not exist.
+            ValueError: If value is invalid.
         """
 
         # valid parameter?
         if not name:
-            raise ValueError("No parameter name given.")
+            raise exc.InvalidArgumentError("No parameter name given.")
         if name not in self._config_caps:
-            raise ValueError(f"Invalid parameter {name}")
+            raise exc.InvalidArgumentError(f"Invalid parameter {name}")
         if not self._config_caps[name][1]:
-            raise ValueError("Parameter %s is not remotely settable.")
+            raise exc.InvalidArgumentError("Parameter %s is not remotely settable.")
 
         # get setter and call it
         setter = getattr(self, "_set_config_" + name)

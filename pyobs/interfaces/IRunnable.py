@@ -14,7 +14,7 @@ class IRunnable(IAbortable, metaclass=ABCMeta):
         """Perform module task
 
         Raises:
-            ValueError: If this task is already running.
+            DeviceBusyError: If this task is already running.
             ScriptError: ScriptRunner-based implementations wrap whatever the underlying script
                 raises that isn't already a domain exception.
         """

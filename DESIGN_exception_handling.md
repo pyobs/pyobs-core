@@ -1321,7 +1321,42 @@ it's a real, independent bug worth its own issue regardless of this design doc's
   it (companion fix or explicitly-deferred note) rather than left undiscovered, since it wasn't
   caught by the original repo list above.
 
-## Still open (not resolved by this doc)
+## Bad-argument `ValueError`s: scoped and partially promoted after the rollout
+
+Originally flagged as "still open" (below, kept for history): bad-argument-validation `ValueError`s
+were deliberately left un-promoted during steps 5/8, but since `ValueError` is a builtin, never in
+the `PyobsError` registry, a caller writing `except ValueError:` around a *remote* proxy call
+doesn't catch it (arrives as `UnclassifiedError` instead) even though the identical code works
+fine locally (`LocalComm`, direct calls, tests) -- a real "works in dev, breaks in prod" footgun,
+raised by the project owner after the rollout closed.
+
+Scoped it out before touching anything: of ~60 raw `raise ValueError` sites in `pyobs/modules/`,
+most are constructor/config-time validation, internal event-handler checks, or background-task-only
+code -- never reachable via RPC at all, irrelevant to this problem. What's actually left sorts into
+three shapes:
+
+1. **Genuine bad-argument validation on RPC-exposed methods** -- `IConfig.get_config_value`/
+   `get_config_value_options`/`set_config_value` (`module.py`), `IDataSequence.grab_sequence`'s
+   count/delay (`basecamera.py`), `ITrackingMode.set_tracking_mode`, `IFocuser.set_focus`,
+   `IFilters.set_filter` (all `_dummytelescopebase.py`), `IMode.set_mode` (`dummymode.py`),
+   `IWeather.get_sensor_value` (`mockweather.py`) -- 7 methods, ~16 sites. **Done**: new shared
+   `InvalidArgumentError(PyobsError)`, one type reused everywhere (same shape as `DeviceBusyError`/
+   `NotSupportedError`), not a bespoke leaf per method -- goal 5's own test says no caller reacts
+   differently to "unknown filter" vs. "invalid focus value." Real driver repos likely have the
+   identical pattern for real hardware (e.g. `pyobs-sbig/sbigfiltercamera.py:142`'s own
+   `ValueError(f"Unknown filter: {filter_name}")` for the same `IFilters.set_filter` condition) --
+   companion fix in those repos, not reachable from this PR, same shape as the `AbortedError`
+   situation.
+2. **"Already busy/running" state preconditions, not actually bad arguments** --
+   `FlatField.flat_field`, `FlatFieldScheduler.run`. **Done**: reused the *existing*
+   `DeviceBusyError`, no new type needed.
+3. **Malformed external data** (a weather station's API response, not a caller mistake) --
+   `Weather.get_sensor_value`, `WeatherState.status`'s setter. **Deliberately left as `ValueError`
+   for now** -- a different shape of problem (arguably deserves its own type like
+   `BodyResolutionError` did, not the generic bad-argument bucket), not scoped or implemented in
+   this pass.
+
+### Original "still open" note, for history
 
 - **Bad-argument-validation `ValueError`s are deliberately not promoted to `PyobsError` leaf
   types, but that means they still degrade to `UnclassifiedError` over RPC.** Steps 5/8's sweep
@@ -1338,6 +1373,12 @@ it's a real, independent bug worth its own issue regardless of this design doc's
   actually needs to distinguish "bad argument" domain-uniformly over RPC. Promoting these would be
   a much larger sweep (dozens of call sites across nearly every setter-shaped interface method) and
   is deliberately not part of this rollout.
+
+  **Update**: `IMultiFiber.set_fiber` has zero concrete implementers anywhere in this repo (see
+  step 8's audit), so there's no real raise site to migrate here the way there was for the 7
+  methods above -- but its docstring's `ValueError` placeholder was updated to
+  `InvalidArgumentError` anyway, so a future implementer follows the now-established convention
+  instead of the retired one.
 
 ## Bug found and fixed after the rollout: `original_type` didn't actually survive the wire
 

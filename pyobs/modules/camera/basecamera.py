@@ -382,12 +382,13 @@ class BaseCamera(
                 Does not apply after the last image.
 
         Raises:
+            InvalidArgumentError: If count or delay is out of range.
             DeviceBusyError: If camera is already busy (exposing or already running a sequence).
         """
         if count < 1:
-            raise ValueError("count must be >= 1.")
+            raise exc.InvalidArgumentError("count must be >= 1.")
         if delay < 0:
-            raise ValueError("delay must be >= 0.")
+            raise exc.InvalidArgumentError("delay must be >= 0.")
 
         # already running a sequence, or mid-exposure outside of one?
         if self._sequence_count_left > 0 or self._camera_status != ExposureStatus.IDLE:

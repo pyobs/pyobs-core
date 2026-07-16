@@ -80,6 +80,13 @@ InitError
    :members:
    :undoc-members:
 
+InvalidArgumentError
+^^^^^^^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.InvalidArgumentError
+   :members:
+   :undoc-members:
+
 LoggedException
 ^^^^^^^^^^^^^^^
 

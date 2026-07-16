@@ -83,7 +83,12 @@ class PhotometryFocusSeries(FocusSeries):
 
         # fit focus
         try:
-            foc, err = fit_hyperbola(focus, r, rerr)
+            # fit_hyperbola returns (focus, variance), not (focus, error) -- take the
+            # square root, otherwise the reported error is actually the variance and is
+            # systematically too small (e.g. 0.01 mm true error would be reported as
+            # 0.0001).
+            foc, var = fit_hyperbola(focus, r, rerr)
+            err = np.sqrt(var)
         except (RuntimeError, RuntimeWarning):
             raise ValueError("Could not find best focus.")
 

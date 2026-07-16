@@ -96,7 +96,6 @@ async def test_call_valid(mocker, mock_image):
     mock_image.header["FNAME"] = "file.fits.fz"
 
     calib_image = Image()
-    mocker.patch("pyobs.utils.pipeline.Pipeline.trim_ccddata", return_value=mock_image)
     mocker.patch("ccdproc.ccd_process", return_value=calib_image)
     mocker.patch("pyobs.images.Image.from_ccddata", return_value=calib_image)
     mocker.patch("pyobs.images.Image.to_ccddata", return_value=calib_image)

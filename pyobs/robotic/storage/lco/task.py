@@ -184,6 +184,7 @@ class LcoTask(Task):
         # at least we tried...
         config_status = ConfigStatus()
         script = self.pyobs_model_validate(Script, self.script, by_alias=True)
+        self._running_script = script
 
         try:
             # run it
@@ -232,9 +233,11 @@ class LcoTask(Task):
             Dictionary containing FITS headers.
         """
 
-        # get header from the script
-
-        script = self.pyobs_model_validate(Script, self.script, by_alias=True)
+        # use the actively running script instance if there is one, so we pick up its
+        # accumulated state (e.g. current target name); otherwise fall back to a fresh one
+        script = self._running_script
+        if script is None:
+            script = self.pyobs_model_validate(Script, self.script, by_alias=True)
         hdr = script.get_fits_headers(namespaces)
 
         # return it

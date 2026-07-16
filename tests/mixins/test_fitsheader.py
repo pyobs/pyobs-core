@@ -37,6 +37,7 @@ def make_observer(
     lst.hour = lst_hours
     observer.local_sidereal_time = MagicMock(return_value=lst)
     sunset = MagicMock()
+    sunset.masked = False
     sunset.to_datetime = MagicMock(return_value=MagicMock(date=MagicMock(return_value=night)))
     observer.sun_set_time = MagicMock(return_value=sunset)
     return observer

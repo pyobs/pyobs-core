@@ -58,6 +58,10 @@ class Time(astropy.time.Time):
 
         # get closest sunset
         sunset = observer.sun_set_time(self, which="nearest")
+        if sunset.masked:
+            # sun doesn't cross the horizon within the search window, e.g. polar day/night,
+            # so fall back to the observer's local calendar date
+            return cast(date, self.to_datetime(timezone=observer.timezone).date())
         return sunset.to_datetime().date()
 
 

@@ -13,7 +13,7 @@ from astropy.table import Table
 from numpy.typing import NDArray
 
 import pyobs.utils.exceptions as exc
-from pyobs.utils.fits import FilenameFormatter
+from pyobs.utils.fits import FilenameFormatter, parse_section_bounds
 
 MetaClass = TypeVar("MetaClass")
 
@@ -377,6 +377,46 @@ class Image:
             uncertainty=None if self._uncertainty is None else StdDevUncertainty(self._uncertainty),
             unit="adu",
         )
+
+    def trim(self) -> Image:
+        """Return a copy of this image cropped to its TRIMSEC header, if present.
+
+        If no TRIMSEC is set, returns an unmodified copy. CRPIX1/CRPIX2 are shifted to
+        account for the new origin if present. TRIMSEC/DATASEC/BIASSEC are removed from
+        the result's header, since none remain valid coordinates into the trimmed data.
+
+        Raises:
+            ValueError: If TRIMSEC is malformed, or a catalog is already attached (its
+                pixel coordinates would silently go stale against the trimmed frame).
+        """
+
+        if self._catalog is not None:
+            raise ValueError("Cannot trim an image with an attached catalog.")
+
+        bounds = parse_section_bounds(self._header, "TRIMSEC")
+        trimmed = self.copy()
+        if bounds is None:
+            return trimmed
+
+        x0, x1, y0, y1 = bounds
+        trimmed._data = None if self._data is None else self._data[y0:y1, x0:x1]
+        trimmed._mask = None if self._mask is None else self._mask[y0:y1, x0:x1]
+        trimmed._uncertainty = None if self._uncertainty is None else self._uncertainty[y0:y1, x0:x1]
+
+        if trimmed._data is not None:
+            trimmed._header["NAXIS1"] = trimmed._data.shape[1]
+            trimmed._header["NAXIS2"] = trimmed._data.shape[0]
+
+        if "CRPIX1" in trimmed._header:
+            trimmed._header["CRPIX1"] -= x0
+        if "CRPIX2" in trimmed._header:
+            trimmed._header["CRPIX2"] -= y0
+
+        for keyword in ("TRIMSEC", "DATASEC", "BIASSEC"):
+            if keyword in trimmed._header:
+                del trimmed._header[keyword]
+
+        return trimmed
 
     def format_filename(self, formatter: FilenameFormatter) -> str:
         """Format filename with given formatter."""

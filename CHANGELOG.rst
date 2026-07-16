@@ -4,8 +4,9 @@ v2.0.0.dev18 (unreleased)
   for taking a counted sequence of grabs in one call instead of driving a client-side loop of
   ``grab_data()`` calls. Implemented by ``BaseCamera``. ``grab_sequence()`` returns immediately and
   runs the sequence in the background; ``abort_sequence()`` stops after the current grab finishes,
-  while the existing ``abort()`` now also cancels the rest of a running sequence. See
-  ``DESIGN_IDataSequence.md``.
+  while the existing ``abort()`` now also cancels the rest of a running sequence. ``grab_sequence()``
+  also takes an optional ``delay`` (seconds between grabs, default ``0``), skipped after the last
+  grab and cut short by either abort path.
 * Removed ``pyobs.modules.utils.AutonomousWarning`` (played warning sounds while an ``IAutonomous``
   module was running). Found while writing tests for it: ``started_sound``/``stopped_sound`` were
   stored but never read anywhere, and ``_check_autonomous()``'s sound selection looked inverted (it

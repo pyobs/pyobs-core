@@ -423,7 +423,7 @@ individual ``grab_data()`` calls. The new ``IDataSequence`` interface, implement
 .. code-block:: python
 
    async with self.proxy("camera", IDataSequence) as camera:
-       await camera.grab_sequence(10)          # returns immediately, sequence runs in the background
+       await camera.grab_sequence(10, delay=5)  # returns immediately, sequence runs in the background
        state = camera.get_state(IDataSequence)  # DataSequenceState(count_total, count_left, time)
 
        await camera.abort_sequence()  # graceful: lets the current grab finish, stops the rest
@@ -433,7 +433,10 @@ individual ``grab_data()`` calls. The new ``IDataSequence`` interface, implement
 sequence: a blocking call's RPC timeout would have to scale with the caller-supplied count,
 weakening it as a stall-detection sanity check the larger the count gets. Progress is instead
 observed via the pushed ``DataSequenceState``, consistent with how the rest of live state
-works. See ``DESIGN_IDataSequence.md`` in the repository root for the full design writeup.
+works. The optional ``delay`` (seconds between the end of one grab and the start of the next,
+default ``0``) is skipped after the last grab and cut short immediately by either
+``abort_sequence()`` or ``abort()`` instead of idling out the full wait. Dithering/offsets
+between grabs remain out of scope -- that's a pointing-layer concern, not this interface's.
 
 Access control (ACLs)
 ----------------------

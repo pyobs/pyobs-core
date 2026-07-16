@@ -46,7 +46,9 @@ async def calc_expose_timeout(camera: BaseCamera, *args: Any, **kwargs: Any) -> 
     return camera._exposure_time + 30
 
 
-class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageType, IDataSequence, metaclass=ABCMeta):
+class BaseCamera(
+    Module, ImageFitsHeaderMixin, ICamera, IExposure, IExposureTime, IImageType, IDataSequence, metaclass=ABCMeta
+):
     """Base class for all camera modules."""
 
     __module__ = "pyobs.modules.camera"

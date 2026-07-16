@@ -1,5 +1,17 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* ``ICamera``/``ISpectrograph`` no longer inherit ``IExposure`` -- they're now pure ``IData``
+  identity interfaces ("this module produces images/spectra"), not "...and has an exposure
+  clock." ``BaseCamera`` and ``BaseSpectrograph`` (which push real ``ExposureState``) now declare
+  ``IExposure`` explicitly instead of getting it for free; ``PipelineCamera`` drops ``IExposure``
+  entirely instead of publishing a fabricated, never-updated ``ExposureState`` for a pipeline run
+  that has no exposure to report progress on. Breaking change for any external module that
+  subclasses ``ICamera``/``ISpectrograph`` directly (not via ``BaseCamera``/``BaseSpectrograph``)
+  and relied on inheriting ``IExposure`` implicitly -- it needs to add ``IExposure`` to its own
+  bases now if it actually wants to publish exposure state (e.g. ``pyobs_iagvt``'s ``SunCamera``,
+  tracked separately, not fixed here). ``pyobs-gui``'s ``CameraWidget`` needs no change: its
+  exposure-progress panel was already conditional on ``has_proxy(..., IExposure)``. See
+  ``DESIGN_ICamera_IExposure.md``.
 * Added ``IDataSequence`` (``grab_sequence()``/``abort_sequence()``, pushed ``DataSequenceState``)
   for taking a counted sequence of grabs in one call instead of driving a client-side loop of
   ``grab_data()`` calls. Implemented by ``BaseCamera``. ``grab_sequence()`` returns immediately and

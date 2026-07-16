@@ -243,6 +243,19 @@ converted to named dataclasses, except ``IFlatField.flat_field() -> tuple[int, f
 which stays a tuple deliberately (it's a genuine one-off RPC action result, not a
 State/Capability candidate).
 
+``ICamera``/``ISpectrograph`` no longer imply ``IExposure``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``ICamera`` and ``ISpectrograph`` used to inherit ``IExposure`` (the table above), forcing every
+implementer to carry exposure-progress state even when it doesn't apply -- ``PipelineCamera``
+published a single, never-updated ``ExposureState`` purely to satisfy the type, despite having no
+in-progress exposure to report. Both interfaces are now plain ``IData`` identity interfaces;
+``BaseCamera``/``BaseSpectrograph`` declare ``IExposure`` explicitly alongside them instead of
+inheriting it implicitly, and ``PipelineCamera`` drops it entirely. If you have a module that
+subclasses ``ICamera``/``ISpectrograph`` directly (not via ``BaseCamera``/``BaseSpectrograph``)
+and actually wants exposure-progress semantics, add ``IExposure`` to its own bases explicitly and
+publish ``ExposureState`` via ``self.comm.set_state(...)``.
+
 Deployment / infrastructure
 ------------------------------
 

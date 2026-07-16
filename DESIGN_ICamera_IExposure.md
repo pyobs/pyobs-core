@@ -1,6 +1,6 @@
 # `ICamera`/`IExposure`: decouple camera identity from exposure-progress state
 
-Status: proposed. Tracks #437.
+Status: ready for implementation. Tracks #437.
 
 ## Problem
 
@@ -91,11 +91,19 @@ requirement today, bundled into one base class, even though they're logically se
   import + the fake `set_state` call in `open()`).
   Downstream driver modules that extend `BaseCamera`/`BaseSpectrograph` are unaffected — they
   inherit `IExposure` transitively through the base class either way, unchanged.
-  A hypothetical module that subclasses `ICamera` directly (not via `BaseCamera`/`PipelineCamera`)
-  without declaring `IExposure` itself would lose it; grepping in-tree and the driver repos present
-  locally, every concrete `ICamera`/`ISpectrograph` implementer goes through `BaseCamera`,
-  `BaseSpectrograph`, or `PipelineCamera` — none was found subclassing `ICamera` directly. Worth a
-  changelog note regardless, since it narrows a public base class.
+  A module that subclasses `ICamera` directly (not via `BaseCamera`/`PipelineCamera`) without
+  declaring `IExposure` itself would lose it. Grepping in-tree and the driver repos present
+  locally, this does happen: `pyobs-iagvt`'s `SunCamera` (`pyobs_iagvt/modules/suncamera.py:15`,
+  `class SunCamera(Module, ICamera, IGain, IExposureTime)`) subclasses `ICamera` directly, not via
+  `BaseCamera`. It never calls `self.comm.set_state(IExposure, ...)`, so it gets `isinstance(...,
+  IExposure)` today purely for free from `ICamera` without ever honoring the contract — the same
+  fabricated-conformance pattern this doc uses `PipelineCamera` to justify, which is a point in
+  favor of this change rather than against it. Losing that free (unhonored) conformance is a
+  behavior change for `SunCamera` in principle, but per the pyobs-iagvt maintainer it's deferred,
+  not a blocker for this doc — see the `pyobs-iagvt` project memory note on this gap.
+  (`pyobs-tiptilt` has a second direct-`ICamera` `SunCamera`, but that project is unused/dead and
+  is excluded from consideration here.) Worth a changelog note regardless, since it narrows a
+  public base class.
 - `pyobs-gui`: no changes required (see point 4 above).
 
 ## Alternative considered: generalize `ExposureState` instead of splitting the interface

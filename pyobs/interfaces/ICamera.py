@@ -1,10 +1,9 @@
 from abc import ABCMeta
 
 from .IData import IData
-from .IExposure import IExposure
 
 
-class ICamera(IData, IExposure, metaclass=ABCMeta):
+class ICamera(IData, metaclass=ABCMeta):
     """The module controls a camera."""
 
     __module__ = "pyobs.interfaces"

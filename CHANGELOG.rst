@@ -9,13 +9,20 @@ v2.0.0.dev18 (unreleased)
   deployment. Fixed for ``IConfig.get_config_value``/``get_config_value_options``/
   ``set_config_value``, ``IDataSequence.grab_sequence``, ``ITrackingMode.set_tracking_mode``,
   ``IFocuser.set_focus``, ``IFilters.set_filter``, ``IMode.set_mode``, and
-  ``IWeather.get_sensor_value`` (its ``MockWeather`` implementation only -- the real ``Weather``
-  class's ``ValueError`` is about a malformed station response, not a bad argument, and is left
-  as-is). Also reused the existing ``DeviceBusyError`` for ``FlatField.flat_field``/
+  ``IWeather.get_sensor_value`` (``MockWeather``'s implementation -- the real ``Weather`` class's
+  own ``ValueError`` there is about a malformed station response, not a bad argument; see the next
+  entry). Also reused the existing ``DeviceBusyError`` for ``FlatField.flat_field``/
   ``FlatFieldScheduler.run``'s "already running" check, which was never actually about a bad
   argument either. Scoped out first (see ``DESIGN_exception_handling.md``) before touching
   anything: real driver repos (e.g. ``pyobs-sbig``) likely have the identical ``ValueError``
   pattern for real hardware and would need the same companion fix, not reachable from this PR.
+* New ``WeatherResponseError`` (``pyobs.modules.weather.weather``) for ``Weather.get_sensor_value``
+  getting back a station response missing its ``time``/``value`` fields -- a different shape of
+  problem from the bad-argument case above (an external dependency being flaky, not a caller
+  mistake), same reasoning as ``BodyResolutionError``: plausibly transient, worth retrying, not the
+  caller's fault. ``WeatherStatus.status``'s similar-looking ``ValueError`` (``weather_state.py``)
+  turned out to be unreachable from any RPC caller at all -- it only fires inside a background
+  polling loop that already catches it broadly and just logs a warning -- so it's left untouched.
 * Fixed ``UnclassifiedError.original_type`` silently not surviving the wire: ``Module.execute()``
   wraps a non-domain exception (``IndexError``, a vendor SDK exception, ...) as
   ``UnclassifiedError`` before ``rpc.py`` ever sees it, but ``fault_to_xml`` was serializing the

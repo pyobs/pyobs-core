@@ -1351,10 +1351,14 @@ three shapes:
    `FlatField.flat_field`, `FlatFieldScheduler.run`. **Done**: reused the *existing*
    `DeviceBusyError`, no new type needed.
 3. **Malformed external data** (a weather station's API response, not a caller mistake) --
-   `Weather.get_sensor_value`, `WeatherState.status`'s setter. **Deliberately left as `ValueError`
-   for now** -- a different shape of problem (arguably deserves its own type like
-   `BodyResolutionError` did, not the generic bad-argument bucket), not scoped or implemented in
-   this pass.
+   `Weather.get_sensor_value`. **Done**: new `WeatherResponseError(PyobsError)` in
+   `weather.py` (co-located, per §5's relocation convention), the same reasoning as
+   `BodyResolutionError` -- plausibly transient, worth retrying, not the caller's fault.
+   `WeatherState.status`'s setter (`weather_state.py:25`) turned out, on closer look, to be a
+   mis-scoping on my part: it's only ever called from `_update()`'s background polling loop, which
+   already wraps it in a broad `except Exception: log.warning(...)` -- it never reaches an RPC
+   caller at all, so it's out of scope entirely (same shape as `focusmodel.py`'s
+   `_on_focus_found`/`_calc_focus_model`), not something needing a type change.
 
 ### Original "still open" note, for history
 

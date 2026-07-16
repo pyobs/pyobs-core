@@ -41,6 +41,7 @@ class Task(BaseModel):
 
     _resolved_target: Target | None = PrivateAttr(default=None)
     _cant_run_reason: str | None = None
+    _running_script: Script | None = PrivateAttr(default=None)
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -85,7 +86,9 @@ class Task(BaseModel):
     async def run(self, data: TaskData | None) -> None:
         """Run a task"""
         if self.script is not None:
-            await self.create_script().run(data)
+            script = self.create_script()
+            self._running_script = script
+            await script.run(data)
 
     def is_finished(self) -> bool:
         """Whether task is finished."""
@@ -100,7 +103,9 @@ class Task(BaseModel):
         Returns:
             Dictionary containing FITS headers.
         """
-        return {}
+        if self._running_script is None:
+            return {}
+        return self._running_script.get_fits_headers(namespaces)
 
     def estimate_duration(self, time: Time | None = None) -> float:
         if self.script:

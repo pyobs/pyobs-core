@@ -308,7 +308,14 @@ class BaseTelescope(
 
         # check altitude
         if alt_az.alt.degree < self._min_altitude:
-            raise ValueError("Destination altitude below limit.")
+            raise ValueError(
+                f"Destination altitude below limit: alt={alt_az.alt.degree:.2f}° "
+                f"az={alt_az.az.degree:.2f}° (min={self._min_altitude:.2f}°) for "
+                f"ra={ra:.5f}° dec={dec:.5f}° at {Time.now().isot} from "
+                f"lon={self.observer.location.lon.degree:.4f}° "
+                f"lat={self.observer.location.lat.degree:.4f}° "
+                f"height={self.observer.location.height.value:.1f}m."
+            )
 
         # acquire lock
         async with LockWithAbort(self._lock_moving, self._abort_move):
@@ -382,7 +389,10 @@ class BaseTelescope(
 
         # check altitude
         if alt < self._min_altitude:
-            raise ValueError("Destination altitude below limit.")
+            raise ValueError(
+                f"Destination altitude below limit: alt={alt:.2f}° az={az:.2f}° "
+                f"(min={self._min_altitude:.2f}°) at {Time.now().isot}."
+            )
 
         # acquire lock
         async with LockWithAbort(self._lock_moving, self._abort_move):

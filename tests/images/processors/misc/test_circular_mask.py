@@ -15,5 +15,14 @@ async def test_call():
     image.header["CRPIX2"] = 1.5
     masked_image = await circular_mask(image)
 
-    expected_output = np.array([[0, 0, 0, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 0, 0, 0]])
-    assert np.array_equal(masked_image.data, expected_output)
+    expected_data = np.ones((4, 4))
+    expected_mask = np.array(
+        [
+            [True, True, True, True],
+            [True, False, False, True],
+            [True, False, False, True],
+            [True, True, True, True],
+        ]
+    )
+    assert np.array_equal(masked_image.data, expected_data)
+    assert np.array_equal(masked_image.mask, expected_mask)

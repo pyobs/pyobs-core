@@ -149,6 +149,85 @@ async def test_abort_sequence_lets_current_grab_finish_but_stops_the_rest() -> N
 
 
 @pytest.mark.asyncio
+async def test_grab_sequence_waits_delay_between_grabs() -> None:
+    camera = make_camera()
+    calls = 0
+
+    async def fake_grab_data(broadcast: bool = True, **kwargs: object) -> str:
+        nonlocal calls
+        calls += 1
+        return "f.fits"
+
+    camera.grab_data = fake_grab_data
+
+    await camera.grab_sequence(2, delay=10)
+    await asyncio.sleep(0)
+    # first grab is done, second is now waiting out the delay
+    assert calls == 1
+    assert camera._sequence_task is not None
+    assert not camera._sequence_task.done()
+
+    # clean up the still-waiting background task instead of leaving its 10s timer pending
+    await camera.abort_sequence()
+    await camera._sequence_task
+
+
+@pytest.mark.asyncio
+async def test_grab_sequence_skips_delay_after_last_grab() -> None:
+    camera = make_camera()
+
+    async def fake_grab_data(broadcast: bool = True, **kwargs: object) -> str:
+        return "f.fits"
+
+    camera.grab_data = fake_grab_data
+
+    await asyncio.wait_for(camera.grab_sequence(1, delay=10), timeout=1.0)
+    assert camera._sequence_task is not None
+    await asyncio.wait_for(camera._sequence_task, timeout=1.0)
+
+
+@pytest.mark.asyncio
+async def test_grab_sequence_rejects_negative_delay() -> None:
+    camera = make_camera()
+    with pytest.raises(ValueError):
+        await camera.grab_sequence(2, delay=-1)
+
+
+@pytest.mark.asyncio
+async def test_abort_sequence_cuts_delay_short() -> None:
+    camera = make_camera()
+
+    async def fake_grab_data(broadcast: bool = True, **kwargs: object) -> str:
+        return "f.fits"
+
+    camera.grab_data = fake_grab_data
+
+    await camera.grab_sequence(2, delay=10)
+    await asyncio.sleep(0)  # let the first grab finish and enter the delay wait
+
+    await asyncio.wait_for(camera.abort_sequence(), timeout=1.0)
+    assert camera._sequence_task is not None
+    await asyncio.wait_for(camera._sequence_task, timeout=1.0)  # would time out if delay wasn't cut short
+
+
+@pytest.mark.asyncio
+async def test_abort_cuts_delay_short() -> None:
+    camera = make_camera()
+
+    async def fake_grab_data(broadcast: bool = True, **kwargs: object) -> str:
+        return "f.fits"
+
+    camera.grab_data = fake_grab_data
+
+    await camera.grab_sequence(2, delay=10)
+    await asyncio.sleep(0)  # let the first grab finish and enter the delay wait
+
+    await camera.abort()
+    assert camera._sequence_task is not None
+    await asyncio.wait_for(camera._sequence_task, timeout=1.0)  # would time out if delay wasn't cut short
+
+
+@pytest.mark.asyncio
 async def test_abort_clears_running_sequence() -> None:
     camera = make_camera()
     calls = 0

@@ -32,22 +32,6 @@ class Pipeline(Object, PipelineMixin):
         PipelineMixin.__init__(self, steps)
 
     @staticmethod
-    def trim_ccddata(ccddata: ccdproc.CCDData) -> ccdproc.CCDData:
-        if "TRIMSEC" in ccddata.header:
-            # trim image
-            ccddata = ccdproc.trim_image(ccddata, ccddata.header["TRIMSEC"])
-
-            # remove header(s)
-            del ccddata.header["TRIMSEC"]
-            if "DATASEC" in ccddata.header:
-                del ccddata.header["DATASEC"]
-            if "BIASSEC" in ccddata.header:
-                del ccddata.header["BIASSEC"]
-
-        # done
-        return ccddata
-
-    @staticmethod
     def _combine_calib_images(
         images: list[Image], bias: Image | None = None, normalize: bool = False, method: str = "average"
     ) -> Image:
@@ -66,11 +50,8 @@ class Pipeline(Object, PipelineMixin):
         # prepare images
         data = []
         for image in images:
-            # get CCDData objects
-            d = image.to_ccddata()
-
-            # trim
-            d = Pipeline.trim_ccddata(d)
+            # trim and get CCDData object
+            d = image.trim().to_ccddata()
 
             # subtract bias?
             if bias_data is not None:

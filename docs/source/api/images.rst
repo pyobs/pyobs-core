@@ -73,6 +73,26 @@ mask, uncertainty, source catalog, and raw data are stored in additional extensi
     image3 = Image.from_bytes(raw_bytes)
 
 
+Trimming to TRIMSEC
+^^^^^^^^^^^^^^^^^^^^
+
+CCD images captured with a prescan/overscan region carry ``TRIMSEC``/``DATASEC``/``BIASSEC`` FITS
+header keywords identifying the science region. :meth:`~pyobs.images.Image.trim` crops ``data``,
+``mask``, and ``uncertainty`` to that region in one step::
+
+    trimmed = image.trim()
+
+If no ``TRIMSEC`` is present, ``trim()`` returns an unmodified copy. ``CRPIX1``/``CRPIX2`` are
+shifted to keep the WCS reference pixel valid for the new, smaller frame, and
+``TRIMSEC``/``DATASEC``/``BIASSEC`` are removed from the result's header, so calling ``trim()``
+twice is a no-op rather than a second, wrong crop.
+
+``trim()`` raises ``ValueError`` if a ``catalog`` is already attached: a source catalog's ``x``/``y``
+columns are pixel coordinates into the *current* ``data`` array, and trimming without reprojecting
+them would leave a catalog that silently points at the wrong pixels. Run source detection *after*
+``trim()``, not before.
+
+
 Meta information
 ^^^^^^^^^^^^^^^^
 

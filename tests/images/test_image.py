@@ -323,6 +323,91 @@ def test_to_ccddata(mock_image):
     assert_equal_image(image, original_image)
 
 
+def test_trim_no_trimsec(mock_image):
+    original_image = Image(mock_image)
+    image = original_image.trim()
+
+    assert_equal_image(image, original_image)
+
+
+def test_trim_with_trimsec():
+    data = np.arange(16, dtype=float).reshape(4, 4)
+    mask = np.arange(16, dtype=float).reshape(4, 4)
+    uncertainty = np.arange(16, dtype=float).reshape(4, 4)
+    header = fits.Header()
+    header["TRIMSEC"] = "[2:4,2:4]"
+    header["DATASEC"] = "[2:4,2:4]"
+    header["BIASSEC"] = "[1:1,1:4]"
+    header["CRPIX1"] = 3.0
+    header["CRPIX2"] = 3.0
+
+    image = Image(data, header, mask, uncertainty).trim()
+
+    np.testing.assert_array_equal(image.data, data[1:4, 1:4])
+    np.testing.assert_array_equal(image.mask, mask[1:4, 1:4])
+    np.testing.assert_array_equal(image.uncertainty, uncertainty[1:4, 1:4])
+
+    assert "TRIMSEC" not in image.header
+    assert "DATASEC" not in image.header
+    assert "BIASSEC" not in image.header
+    assert image.header["CRPIX1"] == 2.0
+    assert image.header["CRPIX2"] == 2.0
+    assert image.header["NAXIS1"] == 3
+    assert image.header["NAXIS2"] == 3
+
+
+def test_trim_without_crpix():
+    data = np.arange(16, dtype=float).reshape(4, 4)
+    header = fits.Header()
+    header["TRIMSEC"] = "[2:4,2:4]"
+
+    image = Image(data, header).trim()
+
+    assert "CRPIX1" not in image.header
+    assert "CRPIX2" not in image.header
+
+
+def test_trim_idempotent():
+    data = np.arange(16, dtype=float).reshape(4, 4)
+    header = fits.Header()
+    header["TRIMSEC"] = "[2:4,2:4]"
+
+    once = Image(data, header).trim()
+    twice = once.trim()
+
+    np.testing.assert_array_equal(once.data, twice.data)
+    assert "TRIMSEC" not in twice.header
+
+
+def test_trim_preserves_raw_and_meta(mock_image):
+    raw = copy(mock_image)
+    meta = {"test": 1}
+
+    original_image = Image(mock_image, raw=raw, meta=meta)
+    image = original_image.trim()
+
+    np.testing.assert_array_equal(image.raw, raw)
+    assert image.meta == meta
+
+
+def test_trim_invalid_trimsec(mock_image):
+    header = fits.Header()
+    header["TRIMSEC"] = "INVALID"
+
+    image = Image(mock_image, header)
+
+    with pytest.raises(ValueError):
+        image.trim()
+
+
+def test_trim_with_catalog_raises(mock_image):
+    catalog = astropy.table.Table(np.array([1]))
+    image = Image(mock_image, catalog=catalog)
+
+    with pytest.raises(ValueError):
+        image.trim()
+
+
 def test_format_filename():
     def formatter(_):
         return 1

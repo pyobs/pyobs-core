@@ -3,11 +3,11 @@ from typing import Any
 
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
-from pyobs.interfaces import ExposureState, ICamera, IExposure
+from pyobs.interfaces import ICamera
 from pyobs.mixins import ImageFitsHeaderMixin
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.modules import Module
-from pyobs.utils.enums import ExposureStatus, ImageType
+from pyobs.utils.enums import ImageType
 from pyobs.utils.exceptions import GrabImageError
 
 log = logging.getLogger(__name__)
@@ -23,15 +23,6 @@ class PipelineCamera(Module, ICamera, ImageFitsHeaderMixin, PipelineMixin):
         Module.__init__(self, **kwargs)
         PipelineMixin.__init__(self, **kwargs)
         ImageFitsHeaderMixin.__init__(self, **kwargs)
-
-    async def open(self) -> None:
-        """Open module."""
-        await Module.open(self)
-
-        # publish initial state
-        await self.comm.set_state(
-            IExposure, ExposureState(status=ExposureStatus.IDLE, progress=0.0, exposure_time_left=0.0)
-        )
 
     async def grab_data(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image and returns reference.

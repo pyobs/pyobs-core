@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any, cast
 
+from pyobs.comm.proxy import Proxy
 from pyobs.interfaces import IBinning, IData, IFilters, IWindow
 from pyobs.modules import Module
 
@@ -54,7 +55,10 @@ class CameraSettingsMixin:
             await camera.set_binning(self.__camerasettings_binning, self.__camerasettings_binning)
         if isinstance(camera, IWindow):
             log.info("Set window to full frame...")
-            cap = camera.get_capabilities(IWindow)
+            if isinstance(camera, Proxy):
+                cap = await camera.wait_for_capabilities(IWindow)
+            else:
+                cap = camera.get_capabilities(IWindow)
             if cap is not None:
                 await camera.set_window(cap.full_frame_x, cap.full_frame_y, cap.full_frame_width, cap.full_frame_height)
             else:

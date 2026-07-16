@@ -17,8 +17,9 @@ class CircularMask(ImageProcessor):
 
     This processor reads the circle center from two FITS header keywords
     (e.g., CRPIX1/CRPIX2) and constructs a circular mask in pixel coordinates. Pixels
-    outside the circle are set to zero by in-place multiplication; pixels inside the
-    circle are preserved. The modified image is returned.
+    outside the circle are flagged in ``image.mask``; pixel data are left untouched. Any
+    pre-existing mask on the image is combined (logical OR) with the new one rather than
+    being overwritten.
 
     :param float radius: Radius of the circular pass region in pixels. Pixels with
                          squared distance to the center less than or equal to
@@ -33,17 +34,19 @@ class CircularMask(ImageProcessor):
     --------
     - Reads the circle center from ``image.header[center[0]]`` and
       ``image.header[center[1]]``.
-    - Builds a boolean circular mask on the 2D pixel grid and applies it to
-      ``image.data`` by element-wise multiplication, zeroing pixels outside the
-      circle and keeping those inside (boundary inclusive).
-    - Returns the same image object with modified pixel data; the FITS header and
+    - Builds a boolean mask on the 2D pixel grid that is ``True`` outside the circle
+      and ``False`` inside it (boundary inclusive), and assigns it to a copy of the
+      image's ``mask``. If the image already has a mask, the new mask is combined with
+      it via logical OR instead of replacing it.
+    - Returns a copy of the image with the updated mask; pixel data, header, and
       catalog are not changed.
 
     Input/Output
     ------------
     - Input: :class:`pyobs.images.Image` with 2D pixel data and FITS header containing
       the specified center keywords.
-    - Output: :class:`pyobs.images.Image` with pixel data masked outside the circle.
+    - Output: :class:`pyobs.images.Image` (copied) with pixels outside the circle
+      marked in ``mask``; pixel data are unchanged.
 
     Configuration (YAML)
     --------------------
@@ -70,8 +73,6 @@ class CircularMask(ImageProcessor):
       ensure consistency to avoid off-by-one shifts.
     - The implementation operates on 2D images. Multi-plane/color images are not
       supported by this processor as written.
-    - Masking is performed in place; if you need to preserve the original image data,
-      copy the image before applying this processor.
     """
 
     __module__ = "pyobs.images.processors.misc"
@@ -90,13 +91,13 @@ class CircularMask(ImageProcessor):
         self._radius = radius
 
     async def __call__(self, image: Image) -> Image:
-        """Remove everything outside the given radius from the image.
+        """Mask everything outside the given radius from the image.
 
         Args:
             image: Image to mask.
 
         Returns:
-            Masked Image.
+            Image with pixels outside the circle marked in its mask.
         """
 
         center_x, center_y = image.header[self._center[0]], image.header[self._center[1]]
@@ -105,10 +106,16 @@ class CircularMask(ImageProcessor):
         x, y = np.arange(0, nx), np.arange(0, ny)
         x_coordinates, y_coordinates = np.meshgrid(x, y)
 
-        circ_mask = (x_coordinates - center_x) ** 2 + (y_coordinates - center_y) ** 2 <= self._radius**2
+        outside_circle = (x_coordinates - center_x) ** 2 + (y_coordinates - center_y) ** 2 > self._radius**2
+        outside_circle = outside_circle.transpose()
 
-        image.data *= circ_mask.transpose()
-        return image
+        output_image = image.copy()
+        if output_image.safe_mask is not None:
+            output_image.mask = np.logical_or(output_image.mask, outside_circle)
+        else:
+            output_image.mask = outside_circle
+
+        return output_image
 
 
 __all__ = ["CircularMask"]

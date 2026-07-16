@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from pydantic import PrivateAttr
+
 from pyobs.interfaces import FitsHeaderEntry
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.storage.lco._portal import LcoRequest
@@ -23,6 +25,8 @@ class LcoScript(Script):
 
     request: LcoRequest
     scripts: dict[str, dict[str, Any]] = {}
+
+    _running_script: Script | None = PrivateAttr(default=None)
 
     def _create_script(self) -> Script:
         """Build the script selected via the configuration's extra_params["script_name"].
@@ -55,6 +59,7 @@ class LcoScript(Script):
             InterruptedError: If interrupted
         """
         script = self._create_script()
+        self._running_script = script
         try:
             await script.run(data)
         finally:
@@ -69,7 +74,8 @@ class LcoScript(Script):
         Returns:
             Dictionary containing FITS headers.
         """
-        return self._create_script().get_fits_headers(namespaces)
+        script = self._running_script if self._running_script is not None else self._create_script()
+        return script.get_fits_headers(namespaces)
 
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         """Estimate duration based on the duration calculated by the LCO portal."""

@@ -17,6 +17,43 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
+def parse_section_bounds(header: fits.Header, keyword: str = "TRIMSEC") -> tuple[int, int, int, int] | None:
+    """Parse a FITS section keyword (e.g. TRIMSEC) into 0-based, half-open slice bounds.
+
+    Args:
+        header: Header to look up the keyword in.
+        keyword: Header keyword for section.
+
+    Returns:
+        (x0, x1, y0, y1) such that data[y0:y1, x0:x1] gives the section, or None if
+        the keyword is not present in the header.
+
+    Raises:
+        ValueError: If the keyword is present but its value is malformed.
+    """
+
+    # keyword not given?
+    if keyword not in header:
+        return None
+
+    # get value of section
+    sec = header[keyword]
+
+    # split values
+    try:
+        s = sec[1:-1].split(",")
+        x = s[0].split(":")
+        y = s[1].split(":")
+        x0 = int(x[0]) - 1
+        x1 = int(x[1])
+        y0 = int(y[0]) - 1
+        y1 = int(y[1])
+    except (IndexError, ValueError) as e:
+        raise ValueError(f"Invalid {keyword} value: {sec!r}") from e
+
+    return x0, x1, y0, y1
+
+
 def fitssec(hdu: Any, keyword: str = "TRIMSEC") -> NDArray[Any]:
     """Trim an image to TRIMSEC or BIASSEC.
 
@@ -28,24 +65,14 @@ def fitssec(hdu: Any, keyword: str = "TRIMSEC") -> NDArray[Any]:
         Numpy array with image data.
     """
 
-    # keyword not given?
-    if keyword not in hdu.header:
+    # parse section bounds
+    bounds = parse_section_bounds(hdu.header, keyword)
+    if bounds is None:
         # return whole data
         return cast(NDArray[Any], hdu.data)
 
-    # get value of section
-    sec = hdu.header[keyword]
-
-    # split values
-    s = sec[1:-1].split(",")
-    x = s[0].split(":")
-    y = s[1].split(":")
-    x0 = int(x[0]) - 1
-    x1 = int(x[1])
-    y0 = int(y[0]) - 1
-    y1 = int(y[1])
-
     # return data
+    x0, x1, y0, y1 = bounds
     return cast(NDArray[Any], hdu.data[y0:y1, x0:x1])
 
 
@@ -284,4 +311,4 @@ def format_filename(hdr: fits.Header, fmt: str | list[str], keys: dict[str, Any]
     return ff(hdr)
 
 
-__all__ = ["format_filename", "FilenameFormatter", "fitssec"]
+__all__ = ["format_filename", "FilenameFormatter", "fitssec", "parse_section_bounds"]

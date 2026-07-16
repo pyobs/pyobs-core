@@ -1,5 +1,4 @@
 import logging
-import re
 from typing import Any, cast
 
 import numpy as np
@@ -9,6 +8,7 @@ from scipy.optimize import fmin
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
+from pyobs.utils.fits import fitssec
 
 from .offsets import Offsets
 
@@ -155,16 +155,8 @@ class ProjectedOffsets(Offsets):
             Projected images.
         """
 
-        # get image data and header
-        data, hdr = image.data, image.header
-
-        # trimsec
-        if "TRIMSEC" in hdr:
-            m = re.match(r"\[([0-9]+):([0-9]+),([0-9]+):([0-9]+)\]", hdr["TRIMSEC"])
-            if m is None:
-                raise ValueError("Invalid trimsec.")
-            x0, x1, y0, y1 = [int(f) for f in m.groups()]
-            data = data[y0 - 1 : y1, x0 - 1 : x1]
+        # trim to trimsec, if set
+        data = fitssec(image)
 
         # collapse
         sum_x = np.nansum(data, 0)

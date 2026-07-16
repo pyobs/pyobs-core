@@ -20,7 +20,12 @@ the image array accordingly::
     science_data = fitssec(hdu, "TRIMSEC")   # trim to science region
     bias_data    = fitssec(hdu, "BIASSEC")   # extract overscan strip
 
-If the keyword is absent, the full image array is returned unchanged.
+If the keyword is absent, the full image array is returned unchanged. :func:`~pyobs.utils.fits.fitssec`
+is a thin wrapper around :func:`~pyobs.utils.fits.parse_section_bounds`, which parses the keyword into
+0-based slice bounds without doing the slicing itself -- useful when a caller needs the bounds
+directly, e.g. to shift a WCS reference pixel by the same origin. To trim a whole
+:class:`~pyobs.images.Image` (keeping ``data``, ``mask``, ``uncertainty``, and ``CRPIX1``/``CRPIX2``
+consistent in one step), use :meth:`~pyobs.images.Image.trim` instead of calling ``fitssec`` directly.
 
 
 Filename formatting: ``FilenameFormatter``
@@ -80,6 +85,8 @@ API reference
 ^^^^^^^^^^^^^
 
 .. autofunction:: pyobs.utils.fits.fitssec
+
+.. autofunction:: pyobs.utils.fits.parse_section_bounds
 
 .. autofunction:: pyobs.utils.fits.format_filename
 

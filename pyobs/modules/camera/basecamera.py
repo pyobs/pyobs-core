@@ -268,7 +268,7 @@ class BaseCamera(
             if image is None or image.safe_data is None:
                 raise exc.GrabImageError("Could not take image.")
 
-        except exc.PyObsError:
+        except exc.PyobsError:
             # exposure was not successful (aborted?), so reset everything and re-raise
             self._exposure = None
             raise
@@ -406,7 +406,7 @@ class BaseCamera(
             while self._sequence_count_left > 0:
                 try:
                     await self.grab_data(broadcast=broadcast)
-                except exc.PyObsError:
+                except exc.PyobsError:
                     log.exception("Grab failed during sequence, aborting sequence.")
                     break
                 self._sequence_count_left -= 1

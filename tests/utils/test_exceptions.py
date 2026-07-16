@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from pyobs.utils import exceptions as exc
-from pyobs.utils.exceptions import PyObsError
+from pyobs.utils.exceptions import PyobsError
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -19,7 +19,7 @@ def test_log() -> None:
 
 
 def test_register() -> None:
-    async def cb(exception: PyObsError) -> None:
+    async def cb(exception: PyobsError) -> None:
         pass
 
     exc.register_exception(exc.MotionError, 5, callback=cb)
@@ -35,7 +35,7 @@ def test_empty() -> None:
 async def test_callback() -> None:
     event = asyncio.Event()
 
-    async def cb(exception: PyObsError) -> None:
+    async def cb(exception: PyobsError) -> None:
         assert isinstance(exception, exc.MotionError)
         event.set()
 
@@ -62,7 +62,7 @@ async def test_callback() -> None:
 async def test_raise() -> None:
     event = asyncio.Event()
 
-    async def cb(exception: PyObsError) -> None:
+    async def cb(exception: PyobsError) -> None:
         assert isinstance(exception, exc.MotionError)
         event.set()
 
@@ -85,7 +85,7 @@ async def test_raise() -> None:
 async def test_timespan() -> None:
     event = asyncio.Event()
 
-    async def cb(exception: PyObsError) -> None:
+    async def cb(exception: PyobsError) -> None:
         assert isinstance(exception, exc.MotionError)
         event.set()
 
@@ -109,24 +109,41 @@ async def test_timespan() -> None:
 
 @pytest.mark.asyncio
 async def test_remote() -> None:
-    # get triggered after 3 MotionErrors
-    exc.register_exception(exc.MotionError, 3, throw=True)
+    # a domain exception reconstructed from a fault carries remote_module (set by rpc.py's
+    # _on_jabber_rpc_method_fault, see Assessment §A) instead of arriving wrapped in InvocationError
+    exc.register_exception(exc.MotionError, 3, module="test", throw=True)
 
     # raise two, shouldn't do anything
-    exc.MotionError()
-    exc.MotionError()
+    exc.MotionError(remote_module="test")
+    exc.MotionError(remote_module="test")
     await asyncio.sleep(0.01)
 
-    # one InvocationError should trigger MotionError
+    # third one from the same remote module triggers escalation
     with pytest.raises(exc.SevereError) as exc_info:
-        raise exc.InvocationError(module="test", exception=exc.MotionError())
+        raise exc.MotionError(remote_module="test")
     assert isinstance(exc_info.value, exc.SevereError)
-    assert isinstance(exc_info.value.exception, exc.InvocationError)
-    assert isinstance(exc_info.value.exception.exception, exc.MotionError)
+    assert isinstance(exc_info.value.exception, exc.MotionError)
+
+
+def test_remote_broad_remote_error_handler_still_fires_regardless_of_specific_type() -> None:
+    # AutoFocusSeries-style usage: register_exception(exc.RemoteError, ..., module=X) should still
+    # fire on a remote failure of any specific type, even though that type no longer literally
+    # subclasses RemoteError now that faults raise as their real type instead of wrapped
+    exc.register_exception(exc.RemoteError, 1, module="camera", throw=True)
+
+    with pytest.raises(exc.SevereError) as exc_info:
+        raise exc.GrabImageError("could not grab", remote_module="camera")
+    assert isinstance(exc_info.value, exc.SevereError)
+    assert isinstance(exc_info.value.exception, exc.GrabImageError)
 
 
 def test_forbidden_error() -> None:
-    error = exc.ForbiddenError(sender="scheduler", method="reset_usb")
+    error = exc.ForbiddenError(
+        "Caller 'scheduler' is not permitted to invoke 'reset_usb'.",
+        sender="scheduler",
+        method="reset_usb",
+        module="scheduler",
+    )
     assert isinstance(error, exc.RemoteError)
     assert error.sender == "scheduler"
     assert error.method == "reset_usb"
@@ -134,20 +151,19 @@ def test_forbidden_error() -> None:
 
 
 def test_remote_module() -> None:
-    # get triggered after 3 MotionErrors
+    # get triggered after 1 MotionError specifically from module "test"
     exc.register_exception(exc.MotionError, 1, module="test", throw=True)
 
-    # raise, shouldn't do anything
+    # local (non-remote) MotionErrors shouldn't count
     exc.MotionError()
     exc.MotionError()
 
-    # same with other remote errors with other module
-    exc.InvocationError(module="wrong", exception=exc.MotionError())
-    exc.InvocationError(module="wrong", exception=exc.MotionError())
+    # MotionErrors from a different remote module shouldn't count either
+    exc.MotionError(remote_module="wrong")
+    exc.MotionError(remote_module="wrong")
 
-    # but with correct module, it should
+    # but one from the correct module should trigger
     with pytest.raises(exc.SevereError) as exc_info:
-        raise exc.InvocationError(module="test", exception=exc.MotionError())
+        raise exc.MotionError(remote_module="test")
     assert isinstance(exc_info.value, exc.SevereError)
-    assert isinstance(exc_info.value.exception, exc.InvocationError)
-    assert isinstance(exc_info.value.exception.exception, exc.MotionError)
+    assert isinstance(exc_info.value.exception, exc.MotionError)

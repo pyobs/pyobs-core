@@ -200,17 +200,17 @@ class LcoTask(Task):
                 state="FAILED", reason="Task execution was interrupted.", time_completed=script.exptime_done
             )
 
-        except exc.InvocationError as e:
-            if isinstance(e.exception, exc.AbortedError):
-                log.warning("Task execution was aborted: %s", e.exception)
-                config_status.finish(
-                    state="FAILED", reason="Task execution was aborted.", time_completed=script.exptime_done
-                )
-            else:
-                log.warning("Error during task execution: %s", e.exception)
-                config_status.finish(
-                    state="FAILED", reason="Error during task execution.", time_completed=script.exptime_done
-                )
+        except exc.AbortedError as e:
+            log.warning("Task execution was aborted: %s", e)
+            config_status.finish(
+                state="FAILED", reason="Task execution was aborted.", time_completed=script.exptime_done
+            )
+
+        except exc.PyobsError as e:
+            log.warning("Error during task execution: %s", e)
+            config_status.finish(
+                state="FAILED", reason="Error during task execution.", time_completed=script.exptime_done
+            )
 
         except Exception:
             log.exception("Something went wrong.")

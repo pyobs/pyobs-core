@@ -12,12 +12,21 @@ TODO: Write docs
 __title__ = "Exceptions"
 
 
-class PyObsError(Exception):
+class PyobsError(Exception):
     """Base class for all exceptions"""
 
-    def __init__(self, message: str | None = None, logged: bool = False):
+    _registry: dict[str, type[PyobsError]] = {}
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        PyobsError._registry[f"{cls.__module__}.{cls.__qualname__}"] = cls
+
+    def __init__(self, message: str | None = None, **context: Any) -> None:
         self.message = message
-        self.logged = logged
+        self.logged = False
+        self.context = context
+        for key, value in context.items():
+            setattr(self, key, value)
 
     def __str__(self) -> str:
         msg = f"<{self.__class__.__name__}>"
@@ -31,32 +40,36 @@ class PyObsError(Exception):
         log.log(logging.getLevelName(level), message, **kwargs)
         self.logged = True
 
+    @classmethod
+    def resolve(cls, qualified_name: str) -> type[PyobsError] | None:
+        return cls._registry.get(qualified_name)
+
 
 class _Meta(type):
     """Metaclass for defining exceptions."""
 
-    def __call__(cls, *args: Any, **kwargs: Any) -> PyObsError:
+    def __call__(cls, *args: Any, **kwargs: Any) -> PyobsError:
         """Called when you call MyNewClass()"""
-        exception: PyObsError = type.__call__(cls, *args, **kwargs)
+        exception: PyobsError = type.__call__(cls, *args, **kwargs)
         return handle_exception(exception)
 
 
 #######################################
 
 
-class ModuleError(PyObsError, metaclass=_Meta):
+class ModuleError(PyobsError, metaclass=_Meta):
     pass
 
 
-class GeneralError(PyObsError, metaclass=_Meta):
+class GeneralError(PyobsError, metaclass=_Meta):
     pass
 
 
-class ImageError(PyObsError, metaclass=_Meta):
+class ImageError(PyobsError, metaclass=_Meta):
     pass
 
 
-class MotionError(PyObsError, metaclass=_Meta):
+class MotionError(PyobsError, metaclass=_Meta):
     pass
 
 
@@ -72,74 +85,58 @@ class MoveError(MotionError, metaclass=_Meta):
     pass
 
 
-class GrabImageError(PyObsError, metaclass=_Meta):
+class GrabImageError(PyobsError, metaclass=_Meta):
     pass
 
 
-class AbortedError(PyObsError, metaclass=_Meta):
+class AbortedError(PyobsError, metaclass=_Meta):
     pass
 
 
-class FocusError(PyObsError, metaclass=_Meta):
+class FocusError(PyobsError, metaclass=_Meta):
     pass
 
 
-class AcquisitionError(PyObsError, metaclass=_Meta):
+class AcquisitionError(PyobsError, metaclass=_Meta):
+    pass
+
+
+class UnclassifiedError(PyobsError, metaclass=_Meta):
+    """Wraps an exception that crossed an RPC boundary but couldn't be reconstructed as its real
+    type -- either it was never a PyobsError to begin with (a builtin, a vendor SDK exception), or
+    its defining module was never imported in this process. The original type name survives as
+    `original_type` even when the class itself doesn't."""
+
     pass
 
 
 #######################################
 
 
-class RemoteError(PyObsError, metaclass=_Meta):
+class RemoteError(PyobsError, metaclass=_Meta):
     """Exception for anything related to the communication between modules."""
 
-    def __init__(self, module: str, message: str | None = None):
-        PyObsError.__init__(self, message)
-        self.module = module
+    pass
 
 
 class RemoteTimeoutError(RemoteError, metaclass=_Meta):
     pass
 
 
-class InvocationError(RemoteError, metaclass=_Meta):
-    """Remote exception encapsulating basic exception from other module"""
-
-    def __init__(self, module: str, exception: Exception):
-        RemoteError.__init__(self, module, None)
-        self.module = module
-
-        # never encapsulate a SevereError
-        self.exception: Exception = exception.exception if isinstance(exception, SevereError) else exception
-
-    def __str__(self) -> str:
-        msg = f"<InvocationError> ({self.exception.__class__.__name__})"
-        if hasattr(self.exception, "message"):
-            if self.exception.message is not None:
-                msg += f" {self.exception.message}"
-        else:
-            msg += f": {str(self.exception)}"
-        return msg
-
-
 class ForbiddenError(RemoteError, metaclass=_Meta):
     """Raised when a caller is not permitted to invoke a method under the target module's ACL policy."""
 
-    def __init__(self, sender: str, method: str):
-        RemoteError.__init__(self, sender, f"Caller '{sender}' is not permitted to invoke '{method}'.")
-        self.sender = sender
-        self.method = method
+    pass
 
 
 #######################################
 
 
-class SevereError(PyObsError):
+class SevereError(PyobsError):
     """Severe exception that is raised after multiple raised other exceptions."""
 
-    def __init__(self, exception: PyObsError, module: str | None = None):
-        PyObsError.__init__(self, "A severe error has occurred.")
+    def __init__(self, exception: PyobsError, module: str | None = None):
+        PyobsError.__init__(self, "A severe error has occurred.")
         self.module = module
         # never encapsulate a SevereError
         self.exception: Exception = exception.exception if isinstance(exception, SevereError) else exception
@@ -147,23 +144,23 @@ class SevereError(PyObsError):
 
 class LoggedException(NamedTuple):
     time: float
-    exception: PyObsError
+    exception: PyobsError
 
 
 class ExceptionHandler(NamedTuple):
-    exc_type: type[PyObsError]
+    exc_type: type[PyobsError]
     limit: int
     timespan: float | None = None
     module: str | None = None
-    callback: Callable[[PyObsError], Coroutine[Any, Any, None]] | None = None
+    callback: Callable[[PyobsError], Coroutine[Any, Any, None]] | None = None
     throw: bool = False
 
 
 #######################################
 
 
-_local_exceptions: dict[type[PyObsError], list[LoggedException]] = {}
-_remote_exceptions: dict[tuple[type[PyObsError], str], list[LoggedException]] = {}
+_local_exceptions: dict[type[PyobsError], list[LoggedException]] = {}
+_remote_exceptions: dict[tuple[type[PyobsError], str], list[LoggedException]] = {}
 _handlers: list[ExceptionHandler] = []
 
 
@@ -174,19 +171,20 @@ def clear() -> None:
 
 
 def register_exception(
-    exc_type: type[PyObsError],
+    exc_type: type[PyobsError],
     limit: int,
     timespan: float | None = None,
     module: str | None = None,
-    callback: Callable[[PyObsError], Coroutine[Any, Any, None]] | None = None,
+    callback: Callable[[PyobsError], Coroutine[Any, Any, None]] | None = None,
     throw: bool = False,
 ) -> None:
     _handlers.append(ExceptionHandler(exc_type, limit, timespan, module, callback, throw))
 
 
-def handle_exception(exception: PyObsError) -> PyObsError:
-    # get module and store exception
-    module = exception.module if isinstance(exception, InvocationError) else None
+def handle_exception(exception: PyobsError) -> PyobsError:
+    # get module and store exception -- "remote_module" is set by the RPC layer when reconstructing
+    # a fault from another module (see rpc.py's _on_jabber_rpc_method_fault), not by local raises
+    module = getattr(exception, "remote_module", None)
 
     # store exception itself
     _store_exception(exception, module)
@@ -199,9 +197,9 @@ def handle_exception(exception: PyObsError) -> PyObsError:
     triggered_handlers = _check_severity()
 
     # filter triggered handlers by those that actually handle the exception
-    handlers = list(filter(lambda h: isinstance(exception, h.exc_type), triggered_handlers))
+    handlers = list(filter(lambda h: _matches(exception, h.exc_type), triggered_handlers))
     if hasattr(exception, "exception"):
-        handlers += list(filter(lambda h: isinstance(exception.exception, h.exc_type), triggered_handlers))
+        handlers += list(filter(lambda h: _matches(exception.exception, h.exc_type), triggered_handlers))
 
     # check all handlers
     for h in handlers:
@@ -219,11 +217,30 @@ def handle_exception(exception: PyObsError) -> PyObsError:
     return exception
 
 
-def _store_exception(exception: PyObsError, module: str | None) -> None:
-    # get all classes from mro
-    for e in type(exception).__mro__:
+def _matches(exception: Exception, exc_type: type[PyobsError]) -> bool:
+    """Whether `exception` should count as an instance of `exc_type` for severity-handler matching:
+    true isinstance, or -- mirroring _store_exception's RemoteError special case below -- anything
+    tagged with remote_module counts as a RemoteError even though its own type no longer literally
+    subclasses it now that faults raise as their real type instead of wrapped."""
+    if isinstance(exception, exc_type):
+        return True
+    return exc_type is RemoteError and getattr(exception, "remote_module", None) is not None
+
+
+def _store_exception(exception: PyobsError, module: str | None) -> None:
+    # get all classes from mro -- plus RemoteError if this crossed an RPC boundary (module is not
+    # None, i.e. the exception carries a remote_module tag from rpc.py's fault reconstruction), even
+    # though a directly-reraised domain type (e.g. GrabImageError) no longer subclasses RemoteError
+    # itself now that faults raise as their real type instead of wrapped (see rpc.py, Assessment §A).
+    # Preserves register_exception(exc.RemoteError, ..., module=X)-style "this module keeps failing
+    # remotely, regardless of the specific type" handlers (e.g. AutoFocusSeries).
+    classes: list[type] = list(type(exception).__mro__)
+    if module is not None and RemoteError not in classes:
+        classes.append(RemoteError)
+
+    for e in classes:
         # only pyobs exceptions
-        if not issubclass(e, PyObsError):
+        if not issubclass(e, PyobsError):
             continue
 
         # is it handled by any handler?

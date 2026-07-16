@@ -1,6 +1,29 @@
 v2.0.0.dev18 (unreleased)
 *************************
-* Every RPC-exposed method raising a domain ``PyObsError`` now logs a quiet INFO line locally by
+* A remote domain exception now arrives at the caller as its real type, catchable directly (e.g.
+  ``except exc.FocusError:`` around a proxy call actually fires now) -- previously every remote
+  failure, transport or domain, arrived wrapped in ``InvocationError`` (now retired entirely), so a
+  caller could only catch the broad wrapper and manually unwrap ``.exception``. Exception classes
+  are now resolved via a registry (``PyobsError.resolve()``, populated automatically via
+  ``__init_subclass__``) instead of a ``getattr`` lookup restricted to ``pyobs.utils.exceptions``,
+  so a domain exception can now live anywhere (a driver package, a ``pyobs-core`` submodule) and
+  still survive the wire, keyed by fully-qualified name rather than bare class name. An exception
+  that can't be resolved (a raw builtin, a vendor SDK exception, or a domain type whose defining
+  module was never imported in this process) arrives as the new ``UnclassifiedError`` instead of
+  silently degrading to a generic ``RemoteError`` with only the message surviving -- the original
+  type's qualified name is preserved as ``UnclassifiedError.original_type``. ``UnclassifiedError``
+  joins ``ModuleError``/``SevereError`` as unsuppressible and always-loud.
+  ``PyObsError`` is renamed to ``PyobsError`` (naming consistency with ``PyobsArchive``,
+  ``PyobsCLI``, etc.) and its constructor is now ``PyobsError(message=None, **context)``, storing
+  every keyword generically as an attribute -- ``RemoteError``/``RemoteTimeoutError``/
+  ``ForbiddenError`` no longer have their own constructors, so direct construction now takes
+  ``module=``/``sender=``/``method=`` as keywords instead of fixed positional arguments. Breaking
+  change for any external code constructing these directly, catching ``exc.PyObsError``/
+  ``exc.InvocationError`` by name, or relying on a remote failure always arriving as some
+  ``RemoteError`` subclass (``pyobs-gui``'s ``base.py``/``mainwindow.py`` reference ``PyObsError``
+  by name and need the rename applied). Second step of the exception-handling rollout in
+  ``DESIGN_exception_handling.md`` (tracks #446).
+* Every RPC-exposed method raising a domain ``PyobsError`` now logs a quiet INFO line locally by
   default, without a traceback -- previously this only happened for methods explicitly decorated
   with ``@raises(...)`` (used on exactly two methods), and every other domain exception logged at
   ERROR with a full traceback despite the caller already receiving the same error. ``@raises`` no

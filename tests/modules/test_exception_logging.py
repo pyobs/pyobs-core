@@ -79,7 +79,7 @@ async def test_disable_exception_logging_suppresses_the_local_line(caplog):
 @pytest.mark.asyncio
 async def test_disable_exception_logging_covers_subclasses():
     module = _AbortableModule(exc.FocusError("could not focus"))
-    module._disable_exception_logging(exc.PyObsError)
+    module._disable_exception_logging(exc.PyobsError)
     assert isinstance(exc.FocusError("x"), module._disabled_exception_logging)
 
 

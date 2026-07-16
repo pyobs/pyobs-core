@@ -5,7 +5,8 @@ from __future__ import annotations
 import pytest
 from slixmpp.xmlstream import ET
 
-from pyobs.comm.xmpp.rpc import _NS, _PYOBS_NS, params_to_xml, xml_to_params
+from pyobs.comm.xmpp.rpc import _NS, _PYOBS_NS, fault_to_xml, params_to_xml, xml_to_fault, xml_to_params
+from pyobs.utils import exceptions as exc
 
 
 class TestXmlToParams:
@@ -38,3 +39,26 @@ class TestXmlToParams:
         params.append(param)
         with pytest.raises(ValueError, match=_PYOBS_NS):
             xml_to_params(params, ["x"], {"x": int})
+
+
+class TestFaultXml:
+    """Test fault_to_xml/xml_to_fault, and that the round-tripped name resolves via the registry."""
+
+    def test_round_trip_uses_fully_qualified_name(self) -> None:
+        fault_elem = fault_to_xml(exc.FocusError("could not focus"))
+        exc_name, msg = xml_to_fault(fault_elem)
+        assert exc_name == "pyobs.utils.exceptions.FocusError"
+        assert msg == "<FocusError> could not focus"
+        assert exc.PyobsError.resolve(exc_name) is exc.FocusError
+
+    def test_missing_value_element_falls_back_to_remote_error(self) -> None:
+        fault = ET.Element(f"{{{_NS}}}fault")
+        exc_name, msg = xml_to_fault(fault)
+        assert exc_name == "pyobs.utils.exceptions.RemoteError"
+        assert msg == "Unknown error"
+        assert exc.PyobsError.resolve(exc_name) is exc.RemoteError
+
+    def test_unresolvable_name_has_no_registry_entry(self) -> None:
+        # a builtin, or a domain type whose defining module was never imported here
+        assert exc.PyobsError.resolve("builtins.ValueError") is None
+        assert exc.PyobsError.resolve("some.module.that.was.never.imported.WeatherDataError") is None

@@ -96,7 +96,9 @@ def fault_to_xml(exception: Exception) -> ET.Element:
     value_elem = ET.Element(f"{{{_NS}}}value")
     pyobs_fault = ET.Element(f"{{{_PYOBS_NS}}}fault")
     exc_elem = ET.Element("exception")
-    exc_elem.text = type(exception).__name__
+    # fully-qualified name, not the bare class name -- domain exceptions can live anywhere,
+    # not just in pyobs.utils.exceptions (see PyobsError._registry / resolve())
+    exc_elem.text = f"{type(exception).__module__}.{type(exception).__qualname__}"
     msg_elem = ET.Element("message")
     msg_elem.text = str(exception)
     pyobs_fault.append(exc_elem)
@@ -107,16 +109,17 @@ def fault_to_xml(exception: Exception) -> ET.Element:
 
 
 def xml_to_fault(fault_elem: ET.Element) -> tuple[str, str]:
-    """Parse <fault> and return (exception_class_name, message)."""
+    """Parse <fault> and return (exception_qualified_name, message)."""
+    _fallback_name = f"{exc.RemoteError.__module__}.{exc.RemoteError.__qualname__}"
     value_elem = fault_elem.find(f"{{{_NS}}}value")
     if value_elem is None:
-        return "RemoteError", "Unknown error"
+        return _fallback_name, "Unknown error"
     pyobs_fault = value_elem.find(f"{{{_PYOBS_NS}}}fault")
     if pyobs_fault is None:
-        return "RemoteError", "Unknown error"
+        return _fallback_name, "Unknown error"
     exc_el = pyobs_fault.find("exception")
     msg_el = pyobs_fault.find("message")
-    exc_name = (exc_el.text if exc_el is not None else None) or "RemoteError"
+    exc_name = (exc_el.text if exc_el is not None else None) or _fallback_name
     msg = (msg_el.text if msg_el is not None else None) or ""
     return exc_name, msg
 
@@ -220,7 +223,7 @@ class RPC:
             self._client.plugin["xep_0009"].forbidden(iq).send()
 
         except Exception as e:
-            if isinstance(e, exc.PyObsError):
+            if isinstance(e, exc.PyobsError):
                 e.log(log, "ERROR", f"Exception in call to {pmethod}: {e}", exc_info=True)
             else:
                 log.exception("Unexpected exception in %s.", pmethod)
@@ -269,18 +272,18 @@ class RPC:
         fault_elem = iq["rpc_query"]["method_response"]["fault"]
         exc_name, msg = xml_to_fault(fault_elem)
 
-        exception_class = getattr(exc, exc_name, None)
-        if exception_class is None or not issubclass(exception_class, Exception):
-            exception_class = exc.RemoteError
-
         sender = iq["from"].node
-        if issubclass(exception_class, exc.RemoteError):
-            exception = exception_class(message=msg, module=sender)
+        exception_class = exc.PyobsError.resolve(exc_name)
+        if exception_class is not None:
+            # real registered type (e.g. FocusError) -- raised as itself, not wrapped
+            exception: exc.PyobsError = exception_class(msg, remote_module=sender)
         else:
-            exception = exception_class(msg)
+            # unresolvable: never a PyobsError to begin with, or its defining module was never
+            # imported in this process -- the qualified name string still survives as original_type
+            exception = exc.UnclassifiedError(msg, original_type=exc_name, remote_module=sender)
 
         if not future.done():
-            future.set_exception(exc.InvocationError(module=sender, exception=exception))
+            future.set_exception(exception)
 
     async def _on_jabber_rpc_error(self, iq: Any) -> None:
         pmethod = self._client.plugin["xep_0009"].extract_method(iq["rpc_query"])
@@ -295,12 +298,16 @@ class RPC:
 
         sender = iq["from"].node
         e = {
-            "item-not-found": exc.RemoteError(sender, f"No remote handler for {pmethod} at {iq['from']}!"),
-            "forbidden": exc.RemoteError(sender, f"Forbidden to invoke {pmethod} at {iq['from']}!"),
-            "undefined-condition": exc.RemoteError(sender, f"Unexpected problem invoking {pmethod} at {iq['from']}!"),
-            "service-unavailable": exc.RemoteError(sender, f"Service at {iq['from']} is unavailable."),
-            "remote-server-not-found": exc.RemoteError(sender, f"Could not find remote server for {iq['from']}."),
-        }.get(condition, exc.RemoteError(sender, f"Unexpected exception at {iq['from']}!"))
+            "item-not-found": exc.RemoteError(f"No remote handler for {pmethod} at {iq['from']}!", module=sender),
+            "forbidden": exc.RemoteError(f"Forbidden to invoke {pmethod} at {iq['from']}!", module=sender),
+            "undefined-condition": exc.RemoteError(
+                f"Unexpected problem invoking {pmethod} at {iq['from']}!", module=sender
+            ),
+            "service-unavailable": exc.RemoteError(f"Service at {iq['from']} is unavailable.", module=sender),
+            "remote-server-not-found": exc.RemoteError(
+                f"Could not find remote server for {iq['from']}.", module=sender
+            ),
+        }.get(condition, exc.RemoteError(f"Unexpected exception at {iq['from']}!", module=sender))
 
         callback.set_exception(e)
 

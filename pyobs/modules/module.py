@@ -84,10 +84,10 @@ def timeout(func_timeout: str | int | Callable[..., Any] | None = None) -> Calla
     return timeout_decorator
 
 
-def raises(*exceptions: type[exc.PyObsError]) -> Callable[[F], F]:
+def raises(*exceptions: type[exc.PyobsError]) -> Callable[[F], F]:
     """
     Decorates a method with documentation metadata about which pyobs exceptions it raises. Every domain
-    PyObsError already logs as a quiet INFO line by default (see Module.execute()), regardless of whether
+    PyobsError already logs as a quiet INFO line by default (see Module.execute()), regardless of whether
     it's declared here -- this decorator no longer affects logging. It exists purely for documentation
     purposes: a future cross-check could compare it against a method's docstring or its actual raise sites.
 
@@ -159,21 +159,22 @@ class Module(Object, IModule, IConfig):
         self._quit_parent: Callable[[], None] | None = None  # set by MultiModule
 
         # exception types this module has opted out of logging locally (see _disable_exception_logging)
-        self._disabled_exception_logging: tuple[type[exc.PyObsError], ...] = ()
+        self._disabled_exception_logging: tuple[type[exc.PyobsError], ...] = ()
 
     # exception types that always need local attention, regardless of _disable_exception_logging:
     # ModuleError means the module itself is broken; SevereError means a normally-fine failure mode
-    # has started repeating past a threshold. Neither is part of the deliberate per-type logging
+    # has started repeating past a threshold; UnclassifiedError means something escaped un-typed
+    # across an RPC boundary. None of the three are part of the deliberate per-type logging
     # contract a module author gets to opt out of.
-    _UNSUPPRESSIBLE: tuple[type[exc.PyObsError], ...] = (exc.ModuleError, exc.SevereError)
+    _UNSUPPRESSIBLE: tuple[type[exc.PyobsError], ...] = (exc.ModuleError, exc.SevereError, exc.UnclassifiedError)
 
-    def _disable_exception_logging(self, *exceptions: type[exc.PyObsError]) -> None:
-        """Declare that the given PyObsError types (and their subclasses) fire often enough that even the
+    def _disable_exception_logging(self, *exceptions: type[exc.PyobsError]) -> None:
+        """Declare that the given PyobsError types (and their subclasses) fire often enough that even the
         default quiet INFO line is too much, and should not be logged locally at all -- the caller already
         sees them.
 
         Args:
-            *exceptions: One or more PyObsError subclasses to silence locally.
+            *exceptions: One or more PyobsError subclasses to silence locally.
         """
         for e in exceptions:
             if issubclass(e, self._UNSUPPRESSIBLE):
@@ -259,7 +260,8 @@ class Module(Object, IModule, IConfig):
                 caps = proxy.get_capabilities(IModule)
                 module_version = caps.version if caps is not None else ""
                 remote_location = caps.location if caps is not None else None
-        except exc.RemoteError:
+        except exc.PyobsError:
+            # however this failed (transport or domain), we just skip this module
             return True
 
         # log it
@@ -449,7 +451,12 @@ class Module(Object, IModule, IConfig):
         sender = kwargs.get("sender", "")
         if method != "get_permitted_methods" and self._acl_denied(sender, method):
             if self._acl_mode == "enforce":
-                raise exc.ForbiddenError(sender, method)
+                raise exc.ForbiddenError(
+                    f"Caller '{sender}' is not permitted to invoke '{method}'.",
+                    sender=sender,
+                    method=method,
+                    module=sender,
+                )
             else:
                 log.warning('Caller "%s" would be denied calling "%s" (acl mode=log, allowing).', sender, method)
 
@@ -476,10 +483,11 @@ class Module(Object, IModule, IConfig):
         try:
             response = await func(*func_args, **ba.arguments, **func_kwargs)
         except Exception as e:
-            # ModuleError/SevereError always need local attention -- never suppressible, always loud.
-            if isinstance(e, exc.ModuleError) or isinstance(e, exc.SevereError):
+            # ModuleError/SevereError/UnclassifiedError always need local attention -- never
+            # suppressible, always loud.
+            if isinstance(e, self._UNSUPPRESSIBLE):
                 e.log(log, "ERROR", f"Exception was raised in call to {method}: {e}", exc_info=True)
-            elif isinstance(e, exc.PyObsError):
+            elif isinstance(e, exc.PyobsError):
                 # every other domain exception logs as a quiet INFO line by default -- a module opts
                 # out per-type via _disable_exception_logging, it doesn't opt in per-method anymore.
                 if not isinstance(e, self._disabled_exception_logging):
@@ -660,16 +668,18 @@ class Module(Object, IModule, IConfig):
         sender = kwargs.get("sender", "")
         return [name for name in self._methods if not self._acl_denied(sender, name)]
 
-    async def _default_remote_error_callback(self, exception: exc.PyObsError) -> None:
+    async def _default_remote_error_callback(self, exception: exc.PyobsError) -> None:
         """Called on severe errors.
 
         Args:
             exception: Exception that caused severe error.
         """
 
-        # set error string
-        if isinstance(exception, exc.RemoteError):
-            error = f"Servere error in {exception.module} module: {exception}"
+        # set error string -- "module" is a generic context attribute (see PyobsError.__init__), not
+        # guaranteed to be set, even on a RemoteError, so read it defensively
+        module = getattr(exception, "module", None)
+        if isinstance(exception, exc.RemoteError) and module is not None:
+            error = f"Servere error in {module} module: {exception}"
         else:
             error = f"Severe error: {exception}"
         self.set_error_string(error)

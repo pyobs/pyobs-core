@@ -1,5 +1,16 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* Every RPC-exposed method raising a domain ``PyObsError`` now logs a quiet INFO line locally by
+  default, without a traceback -- previously this only happened for methods explicitly decorated
+  with ``@raises(...)`` (used on exactly two methods), and every other domain exception logged at
+  ERROR with a full traceback despite the caller already receiving the same error. ``@raises`` no
+  longer controls log level (documentation value only, for now); ``Module`` gained
+  ``_disable_exception_logging(*exception_types)`` for a module to opt a high-frequency exception
+  type out of even the quiet line entirely, since the caller already has it.
+  ``ModuleError``/``SevereError`` are exempt from both the quiet default and the opt-out -- they
+  always log loudly, since both mean "this needs a human's attention at the source," not "an
+  anticipated domain failure." Part of the first step of the exception-handling rollout in
+  ``DESIGN_exception_handling.md`` (tracks #446).
 * ``ICamera``/``ISpectrograph`` no longer inherit ``IExposure`` -- they're now pure ``IData``
   identity interfaces ("this module produces images/spectra"), not "...and has an exposure
   clock." ``BaseCamera`` and ``BaseSpectrograph`` (which push real ``ExposureState``) now declare

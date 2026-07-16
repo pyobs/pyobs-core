@@ -86,8 +86,10 @@ def timeout(func_timeout: str | int | Callable[..., Any] | None = None) -> Calla
 
 def raises(*exceptions: type[exc.PyObsError]) -> Callable[[F], F]:
     """
-    Decorates a method with information about which pyobs exceptions it raises. These exceptions are
-    logged in this module, but as INFO without stacktrace.
+    Decorates a method with documentation metadata about which pyobs exceptions it raises. Every domain
+    PyObsError already logs as a quiet INFO line by default (see Module.execute()), regardless of whether
+    it's declared here -- this decorator no longer affects logging. It exists purely for documentation
+    purposes: a future cross-check could compare it against a method's docstring or its actual raise sites.
 
     :param exceptions:  One or more exceptions.
     """
@@ -155,6 +157,28 @@ class Module(Object, IModule, IConfig):
         # close
         self._closing = asyncio.Event()
         self._quit_parent: Callable[[], None] | None = None  # set by MultiModule
+
+        # exception types this module has opted out of logging locally (see _disable_exception_logging)
+        self._disabled_exception_logging: tuple[type[exc.PyObsError], ...] = ()
+
+    # exception types that always need local attention, regardless of _disable_exception_logging:
+    # ModuleError means the module itself is broken; SevereError means a normally-fine failure mode
+    # has started repeating past a threshold. Neither is part of the deliberate per-type logging
+    # contract a module author gets to opt out of.
+    _UNSUPPRESSIBLE: tuple[type[exc.PyObsError], ...] = (exc.ModuleError, exc.SevereError)
+
+    def _disable_exception_logging(self, *exceptions: type[exc.PyObsError]) -> None:
+        """Declare that the given PyObsError types (and their subclasses) fire often enough that even the
+        default quiet INFO line is too much, and should not be logged locally at all -- the caller already
+        sees them.
+
+        Args:
+            *exceptions: One or more PyObsError subclasses to silence locally.
+        """
+        for e in exceptions:
+            if issubclass(e, self._UNSUPPRESSIBLE):
+                raise ValueError(f"{e.__name__} cannot be silenced -- it always needs local attention.")
+        self._disabled_exception_logging = self._disabled_exception_logging + exceptions
 
     async def open(self) -> None:
         # open comm
@@ -452,18 +476,15 @@ class Module(Object, IModule, IConfig):
         try:
             response = await func(*func_args, **ba.arguments, **func_kwargs)
         except Exception as e:
-            # something else went wrong, but only log if not a ModuleError
-            if isinstance(e, exc.PyObsError) and not isinstance(e, exc.ModuleError):
-                # in list of named exceptions?
-                level = (
-                    "INFO"
-                    if hasattr(func, "raises")
-                    and isinstance(getattr(func, "raises"), tuple)
-                    and type(e) in getattr(func, "raises")
-                    else "ERROR"
-                )
-                exc_info = level == "ERROR"
-                e.log(log, level, f"Exception was raised in call to {method}: {e}", exc_info=exc_info)
+            # ModuleError/SevereError always need local attention -- never suppressible, always loud.
+            if isinstance(e, exc.ModuleError) or isinstance(e, exc.SevereError):
+                e.log(log, "ERROR", f"Exception was raised in call to {method}: {e}", exc_info=True)
+            elif isinstance(e, exc.PyObsError):
+                # every other domain exception logs as a quiet INFO line by default -- a module opts
+                # out per-type via _disable_exception_logging, it doesn't opt in per-method anymore.
+                if not isinstance(e, self._disabled_exception_logging):
+                    e.log(log, "INFO", f"Exception was raised in call to {method}: {e}", exc_info=False)
+                # else: caller already has it; nothing to log locally
             raise e
 
         return response

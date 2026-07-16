@@ -1246,9 +1246,9 @@ around it; the rest are incremental sweeps with no fixed order among themselves.
      `lco/task.py:202-203` (→ `except exc.AbortedError:` directly, since `InvocationError` is
      gone). This is the one place in the rollout that isn't purely additive, so it can't be split
      further — all five have to move together with the unwrap fix.
-   - `pyobs-monet`'s `searchpattern2.py:134-141` has the same reliance on the old wrapping (see
-     "Resolved during design" below) but is out of scope for now — deferred, not a blocker for
-     this step.
+   - `pyobs-monet`'s `searchpattern2.py:134-141` and `pyobs-iagvt`'s `sungrid.py:134` both have the
+     same reliance on the old wrapping (see "Resolved during design" below) but are out of scope
+     for now — deferred, not a blocker for this step.
 3. Collapse the two catch/log sites into `Module.execute()` (proposal §3's classification/logging
    portion) — mechanical once (2) is in place, and extends the `UnclassifiedError` safety net to
    `LocalComm`/`MultiModule`, not just XMPP. Retire the `SevereError` substitution in the same pass
@@ -1309,3 +1309,14 @@ it's a real, independent bug worth its own issue regardless of this design doc's
   exception type explicitly — a bare `except Exception:` swallowing the same wrapped failure
   elsewhere wouldn't show up this way, so a changelog callout for proposal §2 is still worth doing
   when it lands, independent of `searchpattern2.py` specifically.
+- **`pyobs-iagvt` was missing from that cross-repo pass and has the identical gap.**
+  `pyobs_iagvt/modules/sungrid.py:134` does
+  `except (ValueError, InvocationError) as e: log.info(f"Something went wrong: {str(e)}")` around
+  `_do_the_wiggle()` (`sungrid.py:91-106`), which itself does proxy calls to a telescope and camera
+  (`sungrid.py:93`) — the same shape as `pyobs-monet/searchpattern2.py`, relying on remote domain
+  exceptions arriving wrapped in `InvocationError` rather than as their real type. Once proposal §2
+  lands (raising the reconstructed type directly, retiring `InvocationError`), this `except` clause
+  silently stops catching remote domain failures from that call. Same disposition as
+  `searchpattern2.py`: out of scope for this PR, not a blocker, but should be called out alongside
+  it (companion fix or explicitly-deferred note) rather than left undiscovered, since it wasn't
+  caught by the original repo list above.

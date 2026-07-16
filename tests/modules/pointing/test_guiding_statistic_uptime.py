@@ -13,7 +13,7 @@ def test_end_to_end() -> None:
 
     header = statistic.add_to_header(client, {})
 
-    assert header["GUIDING UPTIME"].value == 100.0
+    assert header["HIERARCH GUIDING UPTIME"].value == 100.0
 
 
 def test_calc_uptime_percentage() -> None:

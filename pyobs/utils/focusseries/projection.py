@@ -126,14 +126,15 @@ class ProjectionFocusSeries(FocusSeries):
 
         # fit focus
         try:
-            xfoc, xerr = fit_hyperbola(focus, xfwhm, xsig)
-            yfoc, yerr = fit_hyperbola(focus, yfwhm, ysig)
+            # fit_hyperbola returns (focus, variance) for each axis
+            xfoc, xvar = fit_hyperbola(focus, xfwhm, xsig)
+            yfoc, yvar = fit_hyperbola(focus, yfwhm, ysig)
 
-            # weighted mean
-            xerr = np.sqrt(xerr)
-            yerr = np.sqrt(yerr)
-            foc = (xfoc / xerr + yfoc / yerr) / (1.0 / xerr + 1.0 / yerr)
-            err = 2.0 / (1.0 / xerr + 1.0 / yerr)
+            # inverse-variance weighted mean of the two independent axis estimates
+            xweight = 1.0 / xvar
+            yweight = 1.0 / yvar
+            foc = (xfoc * xweight + yfoc * yweight) / (xweight + yweight)
+            err = np.sqrt(1.0 / (xweight + yweight))
         except (RuntimeError, RuntimeWarning):
             raise ValueError("Could not find best focus.")
 

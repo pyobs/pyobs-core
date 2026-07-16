@@ -36,8 +36,8 @@ class GuidingStatisticsPixelOffset(GuidingStatistics[Image, tuple[float, float]]
         rms = self._calc_rms(data)
 
         if rms is not None:
-            header["GUIDING RMS1"] = FitsHeaderEntry(float(rms[0]), "RMS for guiding on axis 1")
-            header["GUIDING RMS2"] = FitsHeaderEntry(float(rms[1]), "RMS for guiding on axis 2")
+            header["HIERARCH GUIDING RMS1"] = FitsHeaderEntry(float(rms[0]), "RMS for guiding on axis 1")
+            header["HIERARCH GUIDING RMS2"] = FitsHeaderEntry(float(rms[1]), "RMS for guiding on axis 2")
 
         return header
 

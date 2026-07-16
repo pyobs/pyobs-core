@@ -44,7 +44,7 @@ class GuidingStatisticsUptime(GuidingStatistics[bool, tuple[bool | None, datetim
         data.append((None, now))
 
         uptime_percentage = self._calc_uptime_percentage(data)
-        return {"GUIDING UPTIME": FitsHeaderEntry(uptime_percentage, "Time the guiding loop was closed [%]")}
+        return {"HIERARCH GUIDING UPTIME": FitsHeaderEntry(uptime_percentage, "Time the guiding loop was closed [%]")}
 
     def _get_session_data(self, input_data: bool) -> tuple[bool | None, datetime] | None:
         now = datetime.now()

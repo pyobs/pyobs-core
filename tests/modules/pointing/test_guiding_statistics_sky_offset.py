@@ -30,8 +30,8 @@ def test_end_to_end(mock_meta_image) -> None:
 
     header = statistic.add_to_header(client, {})
 
-    np.testing.assert_almost_equal(header["GUIDING RMS"].value, 10.0)
-    assert header["GUIDING RMS"].comment == "RMS for guiding on sky"
+    np.testing.assert_almost_equal(header["HIERARCH GUIDING RMS"].value, 10.0)
+    assert header["HIERARCH GUIDING RMS"].comment == "RMS for guiding on sky"
 
 
 def test_build_header_to_few_values() -> None:

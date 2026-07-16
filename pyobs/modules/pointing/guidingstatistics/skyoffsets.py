@@ -37,7 +37,7 @@ class GuidingStatisticsSkyOffset(GuidingStatistics[Image, float]):
         rms = self._calc_rms(data)
 
         if rms is not None:
-            header["GUIDING RMS"] = FitsHeaderEntry(float(rms), "RMS for guiding on sky")
+            header["HIERARCH GUIDING RMS"] = FitsHeaderEntry(float(rms), "RMS for guiding on sky")
 
         return header
 

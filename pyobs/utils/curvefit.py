@@ -29,8 +29,20 @@ def fit_hyperbola(x_arr: list[float], y_arr: list[float], y_err: list[float]) ->
     p0 = [a, b, c]
 
     # fit
+    #
+    # absolute_sigma=True is required here: without it, curve_fit treats y_err as only
+    # relative weights and rescales the returned covariance matrix so that the fit's
+    # reduced chi-square equals 1. That makes the reported variance reflect how well the
+    # hyperbola shape matches this particular focus run rather than the actual per-point
+    # measurement uncertainty passed in via y_err, which silently miscalibrates every
+    # downstream error estimate.
     coeffs, cov = curve_fit(
-        lambda xx, aa, bb, cc: bb * np.sqrt((xx - cc) ** 2 / aa**2 + 1.0), x_arr, y_arr, sigma=y_err, p0=p0
+        lambda xx, aa, bb, cc: bb * np.sqrt((xx - cc) ** 2 / aa**2 + 1.0),
+        x_arr,
+        y_arr,
+        sigma=y_err,
+        p0=p0,
+        absolute_sigma=True,
     )
 
     # return result

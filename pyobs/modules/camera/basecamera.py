@@ -222,6 +222,7 @@ class BaseCamera(
             The actual image.
 
         Raises:
+            AbortedError: If the exposure was cancelled via abort_event.
             GrabImageError: If exposure was not successful.
         """
         ...

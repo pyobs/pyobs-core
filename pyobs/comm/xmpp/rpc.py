@@ -96,11 +96,22 @@ def fault_to_xml(exception: Exception) -> ET.Element:
     value_elem = ET.Element(f"{{{_NS}}}value")
     pyobs_fault = ET.Element(f"{{{_PYOBS_NS}}}fault")
     exc_elem = ET.Element("exception")
-    # fully-qualified name, not the bare class name -- domain exceptions can live anywhere,
-    # not just in pyobs.utils.exceptions (see PyobsError._registry / resolve())
-    exc_elem.text = f"{type(exception).__module__}.{type(exception).__qualname__}"
+    # Fully-qualified name, not the bare class name -- domain exceptions can live anywhere, not
+    # just in pyobs.utils.exceptions (see PyobsError._registry / resolve()). If this is an
+    # UnclassifiedError wrapping something that was never a PyobsError to begin with (see
+    # Module.execute()'s classification), serialize the ORIGINAL type's name instead of
+    # "UnclassifiedError" itself -- original_type never crosses the wire as an attribute (only the
+    # class name and message do), so this is the only way it survives to the caller. The caller's
+    # own registry lookup then decides fresh: an unregistered builtin/vendor type still correctly
+    # falls back to UnclassifiedError, but this time with original_type actually populated.
+    original_type = getattr(exception, "original_type", None)
+    exc_elem.text = original_type if original_type else f"{type(exception).__module__}.{type(exception).__qualname__}"
     msg_elem = ET.Element("message")
-    msg_elem.text = str(exception)
+    # the raw message, not str(exception) -- str() already prepends "<ClassName>", and
+    # reconstruction on the caller's side passes this straight back in as the new instance's
+    # message, so serializing str() here would bake in a doubled "<ClassName> <ClassName> ..." once
+    # the caller's own __str__ formats it again
+    msg_elem.text = getattr(exception, "message", None) or str(exception)
     pyobs_fault.append(exc_elem)
     pyobs_fault.append(msg_elem)
     value_elem.append(pyobs_fault)

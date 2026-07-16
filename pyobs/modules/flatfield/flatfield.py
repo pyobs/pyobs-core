@@ -181,9 +181,6 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         Args:
             filter_name: Name of filter to set.
-
-        Raises:
-            ValueError: If binning could not be set.
         """
         self._filter = filter_name
         await self.comm.set_state(IFilters, FilterState(filter=filter_name))

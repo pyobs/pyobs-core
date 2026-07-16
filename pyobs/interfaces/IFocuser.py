@@ -31,8 +31,9 @@ class IFocuser(IMotion, metaclass=ABCMeta):
             focus: New focus value in mm.
 
         Raises:
+            ValueError: If given value is invalid.
+            AbortedError: If movement was aborted.
             MoveError: If telescope cannot be moved.
-            InterruptedError: If movement was aborted.
         """
         ...
 
@@ -45,6 +46,7 @@ class IFocuser(IMotion, metaclass=ABCMeta):
 
         Raises:
             ValueError: If given value is invalid.
+            NotSupportedError: If this module doesn't support a separate focus offset.
             MoveError: If telescope cannot be moved.
         """
         ...

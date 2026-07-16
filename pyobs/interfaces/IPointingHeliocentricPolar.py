@@ -33,7 +33,9 @@ class IPointingHeliocentricPolar(Interface, metaclass=ABCMeta):
             psi: Position angle around the solar disk, in degrees.
 
         Raises:
-            MoveError: If device could not be moved.
+            MoveError: If device could not be moved. Also propagates whatever the underlying
+                RA/Dec move raises (e.g. MissingObserverError, AltitudeLimitError), since this is
+                typically implemented as converting to RA/Dec and then moving there.
         """
         ...
 

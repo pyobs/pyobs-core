@@ -1,5 +1,50 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* Fixed ``UnclassifiedError.original_type`` silently not surviving the wire: ``Module.execute()``
+  wraps a non-domain exception (``IndexError``, a vendor SDK exception, ...) as
+  ``UnclassifiedError`` before ``rpc.py`` ever sees it, but ``fault_to_xml`` was serializing the
+  wrapper's own class name instead of the original type it was tagged with -- since
+  ``UnclassifiedError`` itself is a registered type, the caller reconstructed a fresh one with
+  ``original_type`` never set, making a remote ``IndexError`` and a remote ``ValueError``
+  indistinguishable. Now serializes the original type name instead, so the caller's own registry
+  lookup runs against it and correctly repopulates ``original_type`` on the (still-unresolvable)
+  ``UnclassifiedError`` it falls back to. Also fixed in the same pass: every exception crossing the
+  wire had its message doubled (``"<ClassName> <ClassName> message"``) once displayed, because the
+  message field serialized ``str(exception)`` (already ``"<ClassName> message"``) instead of the
+  raw message, which reconstruction then fed back in as the new instance's own message before
+  formatting it again.
+* Docstring sweep across every interface flagged by the exception-handling audit (16 of 27
+  documented interfaces had at least one mismatch) -- ``Raises:`` clauses now match what's
+  actually raised: ``IFocuser``/``IPointingRaDec``/``IPointingAltAz``/``IPointingBody``/
+  ``IPointingOrbitalElements``/the Heliocentric*/Helioprojective family gain
+  ``NotSupportedError``/``MissingObserverError``/``AltitudeLimitError``/``BodyResolutionError``/
+  ``InvalidOrbitalElementsError`` (or a note that they propagate from the underlying RA/Dec move);
+  ``IAutoFocus``/``IAcquisition`` now document the types their own ``@raises`` already declared
+  instead of a stale ``ValueError``; ``IData``/``IDataSequence`` document ``DeviceBusyError``;
+  ``IFocusModel`` documents its three new leaf types; ``IExposureTime``/``IFlatField``/``IWeather``
+  gain the clauses their implementations already needed. ``FlatField.set_filter``'s docstring
+  copy-paste bug ("If binning could not be set" on a filter setter) is fixed. The handful of
+  interfaces with zero concrete implementers anywhere in this repo (``ICalibrate``, ``ISyncTarget``,
+  ``IMultiFiber.set_fiber``, ``IPointingSeries``, ``IRotation``, ``IScriptRunner.run_script``) gain
+  a plausible ``Raises:`` clause so a future implementer has a contract to follow instead of
+  guessing -- the same guess that produced several of the mismatches this sweep fixes. Documentation
+  only, no behavior changes. Note: several interface methods still document plain ``ValueError``
+  for bad-argument validation (as opposed to domain operation failures) -- deliberately not
+  promoted to typed exceptions in this sweep; see ``DESIGN_exception_handling.md``'s "Still open"
+  section for the tradeoff.
+* Documented the ``AbortedError`` contract on every ``abort_event``-taking hook in
+  ``pyobs-core`` (``BaseCamera``/``BaseSpectrograph._expose()``, ``BaseTelescope._move_radec``/
+  ``_move_altaz``) -- nothing had ever told driver authors which type to use for "this was
+  cancelled, not a real failure," so two of pyobs-core's own in-tree implementations
+  (``DummyCamera``, ``DummySpectrograph``) had each independently guessed a different wrong type
+  (``InterruptedError``, ``ValueError``) for the exact same condition. Both now raise
+  ``exc.AbortedError``, as does ``_DummyTelescopeBase.set_focus``'s equivalent abort check. (Two
+  more instances of the same guessed-wrong-type pattern, in ``pyobs-sbig``/``pyobs-fli``, are a
+  companion fix in those repos, not something this PR can reach.)
+* Documented the domain/transport split in ``pyobs/utils/exceptions.py`` as a deliberate axis:
+  ``RemoteError`` and its subtree (``RemoteTimeoutError``, ``ForbiddenError``) mean "the call
+  itself didn't reach/return," which doesn't benefit from the same fine-grained-per-reason
+  treatment domain exceptions get -- documentation only, no behavior change.
 * First sweep of concrete exception-typing gaps (goal 5: specific types over generic ones/bare
   builtins). New cross-cutting types in ``pyobs.utils.exceptions``: ``DeviceBusyError`` ("this
   device can't service this request right now, back off and retry") and ``NotSupportedError``

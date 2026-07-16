@@ -301,6 +301,8 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
+            AbortedError: If cancelled via abort_event (optional -- returning normally once
+                abort_event is set is also valid; see _DummyTelescopeBase for that variant).
             MoveError: If telescope cannot be moved.
         """
         ...
@@ -393,6 +395,8 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
+            AbortedError: If cancelled via abort_event (optional -- returning normally once
+                abort_event is set is also valid; see _DummyTelescopeBase for that variant).
             MoveError: If telescope cannot be moved.
         """
         ...

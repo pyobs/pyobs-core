@@ -11,7 +11,11 @@ class ICalibrate(Interface, metaclass=ABCMeta):
 
     @abstractmethod
     async def calibrate(self, **kwargs: Any) -> None:
-        """Calibrate the device."""
+        """Calibrate the device.
+
+        Raises:
+            GeneralError: If calibration failed.
+        """
         ...
 
 

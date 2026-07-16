@@ -42,6 +42,9 @@ class IWeather(IStartStop, metaclass=ABCMeta):
 
         Returns:
             Current reading for the given sensor.
+
+        Raises:
+            ValueError: If station or sensor is unknown.
         """
         ...
 

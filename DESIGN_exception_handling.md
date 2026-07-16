@@ -1320,3 +1320,50 @@ it's a real, independent bug worth its own issue regardless of this design doc's
   `searchpattern2.py`: out of scope for this PR, not a blocker, but should be called out alongside
   it (companion fix or explicitly-deferred note) rather than left undiscovered, since it wasn't
   caught by the original repo list above.
+
+## Still open (not resolved by this doc)
+
+- **Bad-argument-validation `ValueError`s are deliberately not promoted to `PyobsError` leaf
+  types, but that means they still degrade to `UnclassifiedError` over RPC.** Steps 5/8's sweep
+  only promotes *domain operation failures* (e.g. "camera is busy," "body not resolvable") to
+  specific types; plain input validation (e.g. `IFilters.set_filter`'s "unknown filter name",
+  `IFocuser.set_focus`'s "invalid focus value", `IMultiFiber.set_fiber`'s "invalid fiber name")
+  intentionally stays as ordinary `ValueError`, matching Python's own convention for API misuse and
+  matching how the interface audit already treated these as clean matches, not gaps. But since
+  `ValueError` is a builtin, not a `PyobsError` subclass, it's never in the registry -- a caller
+  writing `except ValueError:` around a *remote* proxy call does not catch it (it arrives as
+  `UnclassifiedError` instead); only same-process callers (`LocalComm`) see a real `ValueError`.
+  This was a deliberate scope call, not an oversight -- flagged explicitly per the project owner's
+  request during the docstring sweep (step 8) so it's easy to find later, in case a future caller
+  actually needs to distinguish "bad argument" domain-uniformly over RPC. Promoting these would be
+  a much larger sweep (dozens of call sites across nearly every setter-shaped interface method) and
+  is deliberately not part of this rollout.
+
+## Bug found and fixed after the rollout: `original_type` didn't actually survive the wire
+
+Prompted by the project owner asking, after step 8, "are we catching ALL exceptions on the callee
+side, what happens to `IndexError`/etc.?" -- tracing it through turned up a real gap `UnclassifiedError`
+was supposed to close but didn't.
+
+`Module.execute()` wraps any non-`PyobsError` into `UnclassifiedError(str(raised),
+original_type=...)` *before* `rpc.py` ever sees it (that's the whole point of centralizing
+classification in step 3). But `fault_to_xml` only ever serialized the wrapper's own class name --
+`"pyobs.utils.exceptions.UnclassifiedError"` -- which *resolves successfully* on the caller's side
+(it's a registered type!), so the caller reconstructed a fresh `UnclassifiedError(msg,
+remote_module=sender)` with `original_type` never set at all. `original_type` is a local attribute,
+not part of the two things that actually cross the wire (qualified class name + message), so it was
+silently lost in transit every time -- a remote `IndexError` and a remote `ValueError` arrived as
+indistinguishable `UnclassifiedError`s with no way to tell them apart, even in the message text.
+(`LocalComm` never had this problem -- no serialization step, so the real attribute survives.)
+
+**Fix**: `fault_to_xml` now serializes `original_type` instead of the wrapper's own class name,
+whenever the exception carries one. The caller's own registry lookup then runs against the
+*original* name -- for a builtin/vendor type that's never registered, it correctly falls back to
+`UnclassifiedError` again, but this time with `original_type` actually populated, matching what the
+class's own docstring already claimed.
+
+Found and fixed in the same pass: `fault_to_xml` was also serializing `str(exception)`
+(`"<ClassName> message"`) instead of the raw `.message` for the message field. Reconstruction
+passes that string straight back in as the new instance's `message`, so the *caller's* own
+`__str__` formatted it a second time on top -- every exception that ever crossed the wire arrived
+with a doubled `"<ClassName> <ClassName> message"` once displayed. Now serializes the raw message.

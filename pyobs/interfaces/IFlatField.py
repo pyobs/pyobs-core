@@ -21,6 +21,9 @@ class IFlatField(IAbortable, metaclass=ABCMeta):
 
         Returns:
             Number of images actually taken and total exposure time in seconds
+
+        Raises:
+            ValueError: If a flat-fielding run is already in progress.
         """
         ...
 

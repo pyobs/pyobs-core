@@ -20,6 +20,7 @@ class IData(Interface, metaclass=ABCMeta):
             Name of image that was taken.
 
         Raises:
+            DeviceBusyError: If the device is already busy (exposing or running a sequence).
             GrabImageError: If there was a problem grabbing the image.
         """
         ...

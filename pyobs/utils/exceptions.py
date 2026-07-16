@@ -122,6 +122,17 @@ class UnclassifiedError(PyobsError):
 
 #######################################
 
+# The hierarchy above this point is domain-level: each type means "the operation failed for
+# reason X," and per goal 5, domain exceptions deliberately multiply into fine-grained leaves so a
+# caller can react differently to each one. RemoteError and its subtree below are the other axis
+# entirely -- they mean "the call itself didn't reach/return" (a transport failure), not "the
+# remote operation failed for a domain reason." That distinction doesn't benefit from the same
+# fine-grained treatment: "the call failed to even happen" doesn't usually need to distinguish
+# *why* the way a domain failure does, so RemoteError's own subtree stays deliberately small.
+# A domain exception raised on the far side of an RPC call no longer travels through this
+# subtree at all (see rpc.py's fault reconstruction) -- it arrives as its own real type directly,
+# tagged with `remote_module`, not wrapped in a RemoteError.
+
 
 class RemoteError(PyobsError):
     """Exception for anything related to the communication between modules."""

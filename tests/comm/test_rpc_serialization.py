@@ -48,8 +48,32 @@ class TestFaultXml:
         fault_elem = fault_to_xml(exc.FocusError("could not focus"))
         exc_name, msg = xml_to_fault(fault_elem)
         assert exc_name == "pyobs.utils.exceptions.FocusError"
-        assert msg == "<FocusError> could not focus"
+        assert msg == "could not focus"
         assert exc.PyobsError.resolve(exc_name) is exc.FocusError
+
+    def test_round_trip_message_is_raw_not_str_formatted(self) -> None:
+        # str(exception) is "<ClassName> message" -- serializing that instead of the raw message
+        # would double up once the caller's own __str__ formats the reconstructed instance again
+        fault_elem = fault_to_xml(exc.FocusError("could not focus"))
+        _, msg = xml_to_fault(fault_elem)
+        reconstructed = exc.FocusError(msg, remote_module="camera")
+        assert str(reconstructed) == "<FocusError> could not focus"
+
+    def test_unclassified_error_serializes_original_type_not_its_own_class_name(self) -> None:
+        # Module.execute() wraps a non-PyobsError as UnclassifiedError(original_type=...) before
+        # it ever reaches rpc.py -- the wire must carry the *original* type, not "UnclassifiedError"
+        # itself, or original_type is silently lost for the caller (it's not a wire-serialized
+        # attribute, only the class name and message are)
+        wrapped = exc.UnclassifiedError("Invalid destination", original_type="builtins.IndexError")
+        fault_elem = fault_to_xml(wrapped)
+        exc_name, msg = xml_to_fault(fault_elem)
+        assert exc_name == "builtins.IndexError"
+        assert msg == "Invalid destination"
+        assert exc.PyobsError.resolve(exc_name) is None  # builtins are never registered
+
+        # caller-side reconstruction (mirroring _on_jabber_rpc_method_fault's fallback branch)
+        reconstructed = exc.UnclassifiedError(msg, original_type=exc_name, remote_module="camera")
+        assert reconstructed.original_type == "builtins.IndexError"
 
     def test_missing_value_element_falls_back_to_remote_error(self) -> None:
         fault = ET.Element(f"{{{_NS}}}fault")

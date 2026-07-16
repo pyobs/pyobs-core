@@ -3,6 +3,13 @@ Exceptions (pyobs.utils.exceptions)
 
 .. automodule:: pyobs.utils.exceptions
 
+PyobsError
+^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.PyobsError
+   :members:
+   :undoc-members:
+
 AbortedError
 ^^^^^^^^^^^^
 
@@ -10,10 +17,38 @@ AbortedError
    :members:
    :undoc-members:
 
+AcquisitionError
+^^^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.AcquisitionError
+   :members:
+   :undoc-members:
+
+DeviceBusyError
+^^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.DeviceBusyError
+   :members:
+   :undoc-members:
+
 ExceptionHandler
 ^^^^^^^^^^^^^^^^
 
 .. autoexception:: pyobs.utils.exceptions.ExceptionHandler
+   :members:
+   :undoc-members:
+
+ForbiddenError
+^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.ForbiddenError
+   :members:
+   :undoc-members:
+
+FocusError
+^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.FocusError
    :members:
    :undoc-members:
 
@@ -45,13 +80,6 @@ InitError
    :members:
    :undoc-members:
 
-InvocationError
-^^^^^^^^^^^^^^^
-
-.. autoexception:: pyobs.utils.exceptions.InvocationError
-   :members:
-   :undoc-members:
-
 LoggedException
 ^^^^^^^^^^^^^^^
 
@@ -80,17 +108,17 @@ MoveError
    :members:
    :undoc-members:
 
+NotSupportedError
+^^^^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.NotSupportedError
+   :members:
+   :undoc-members:
+
 ParkError
 ^^^^^^^^^
 
 .. autoexception:: pyobs.utils.exceptions.ParkError
-   :members:
-   :undoc-members:
-
-PyObsError
-^^^^^^^^^^
-
-.. autoexception:: pyobs.utils.exceptions.PyObsError
    :members:
    :undoc-members:
 
@@ -108,17 +136,9 @@ RemoteTimeoutError
    :members:
    :undoc-members:
 
-SevereError
-^^^^^^^^^^^
+UnclassifiedError
+^^^^^^^^^^^^^^^^^
 
-.. autoexception:: pyobs.utils.exceptions.SevereError
+.. autoexception:: pyobs.utils.exceptions.UnclassifiedError
    :members:
    :undoc-members:
-
-_Meta
-^^^^^
-
-.. autoexception:: pyobs.utils.exceptions._Meta
-   :members:
-   :undoc-members:
-

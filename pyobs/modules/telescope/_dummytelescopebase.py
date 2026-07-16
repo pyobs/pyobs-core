@@ -275,7 +275,11 @@ class _DummyTelescopeBase(
 
     @timeout(60)
     async def set_focus(self, focus: float, **kwargs: Any) -> None:
-        """Sets new focus."""
+        """Sets new focus.
+
+        Raises:
+            AbortedError: If setting the focus was cancelled.
+        """
         if focus < 0 or focus > 100:
             raise ValueError("Invalid focus value.")
 
@@ -286,7 +290,7 @@ class _DummyTelescopeBase(
             dfoc = (focus - ifoc) / 300.0
             for i in range(300):
                 if self._abort_focus.is_set():
-                    raise InterruptedError("Setting focus was interrupted.")
+                    raise exc.AbortedError("Setting focus was interrupted.")
                 self._focus = ifoc + i * dfoc
                 await asyncio.sleep(0.01)
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFocuser")

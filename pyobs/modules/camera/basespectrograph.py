@@ -81,6 +81,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure
             The actual image and, if present, a filename.
 
         Raises:
+            AbortedError: If the exposure was cancelled via abort_event.
             ValueError: If exposure was not successful.
         """
         ...

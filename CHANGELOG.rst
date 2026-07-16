@@ -37,6 +37,18 @@ v2.0.0.dev18 (unreleased)
   default; pass ``--no-syslog`` to disable it).
 * Added ``pyobsd logs [module] [journalctl arguments...]``, a thin passthrough to ``journalctl``
   filtered to the module's journal fields.
+* Added ``Image.trim()``, unifying three previously-independent implementations of TRIMSEC parsing
+  (inline in ``ProjectedOffsets``, ``fitssec()``, and ``Pipeline.trim_ccddata()``) into one method
+  that also keeps ``mask``/``uncertainty`` aligned with ``data``. Shifts ``CRPIX1``/``CRPIX2`` to
+  account for the new origin -- a correctness fix, since none of the three prior implementations
+  did this, silently leaving a stale WCS reference pixel after trimming. Raises ``ValueError`` if
+  a catalog is already attached, since its pixel coordinates would otherwise silently go stale
+  against the trimmed frame -- run source detection after trimming, not before. Removed
+  ``Pipeline.trim_ccddata()``; its two call sites now trim the ``Image`` before converting to
+  ``CCDData`` instead of after -- breaking change for any external code calling it directly.
+  ``fitssec()``'s parser is now shared (``pyobs.utils.fits.parse_section_bounds``) and raises a
+  well-defined ``ValueError`` for a malformed section keyword instead of an arbitrary
+  ``IndexError``/``ValueError``. See ``DESIGN_Image_trim.md``.
 
 v2.0.0.dev17 (2026-07-11)
 *************************

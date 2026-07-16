@@ -249,7 +249,7 @@ class BaseTelescope(
         )
 
         # register exception
-        exc.register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
+        self._register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
 
     @property
     def _position_radec(self) -> tuple[float, float] | None:

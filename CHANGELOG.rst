@@ -1,5 +1,26 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* Constructing a ``PyobsError`` is now side-effect-free, ordinary Python. ``raise
+  exc.FocusError(...)`` always raises a ``FocusError`` -- it no longer risks silently coming back
+  as a ``SevereError`` instead, which could happen because the old severity-escalation metaclass
+  intercepted *construction*, not raising or catching. ``SevereError`` is retired entirely: nothing
+  in this repo or any sibling project ever caught it specifically, its only real consumer was
+  ``register_exception``'s ``callback`` (already used everywhere; production code never actually
+  set ``throw=True``), which already does the meaningful part itself (``set_state(ModuleState.ERROR)``).
+  ``register_exception``/``handle_exception`` move from module-level free functions with
+  process-global state to ``Module._register_exception()``/an internal ``_record_exception()``,
+  called from ``Module.execute()``'s catch block (the same chokepoint that already classifies and
+  logs) -- fixing a real cross-instance bug as a byproduct, where two ``Module`` instances in the
+  same process (e.g. under ``MultiModule``, or two instances watching the same remote module) used
+  to share one counter. Ten in-tree call sites plus one in ``pyobs-alpaca`` need the mechanical
+  ``exc.register_exception(...)`` -> ``self._register_exception(...)`` rename (the ``throw``
+  parameter is gone with the substitution it existed for). Also: any non-``PyobsError`` exception
+  escaping a module's method body is now wrapped as ``UnclassifiedError`` right in ``execute()``,
+  not only on the XMPP fault path, so ``LocalComm``/``MultiModule`` get the same safety net as XMPP;
+  ``RPC._on_jabber_rpc_method_call`` no longer logs domain exceptions itself since ``execute()``
+  already did (it still logs failures that never reach ``execute()``, like malformed RPC
+  parameters). Third step of the exception-handling rollout in ``DESIGN_exception_handling.md``
+  (tracks #446).
 * A remote domain exception now arrives at the caller as its real type, catchable directly (e.g.
   ``except exc.FocusError:`` around a proxy call actually fires now) -- previously every remote
   failure, transport or domain, arrived wrapped in ``InvocationError`` (now retired entirely), so a

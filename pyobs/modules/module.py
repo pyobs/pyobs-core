@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import time
 import typing
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from typing import Any, TypeVar, cast
 
 import packaging.version
@@ -161,12 +162,18 @@ class Module(Object, IModule, IConfig):
         # exception types this module has opted out of logging locally (see _disable_exception_logging)
         self._disabled_exception_logging: tuple[type[exc.PyobsError], ...] = ()
 
+        # severity-escalation state (see _register_exception/_record_exception) -- instance-scoped,
+        # not module-level globals, so two Module instances in the same process (e.g. under
+        # MultiModule) never share counters
+        self._exception_log: dict[type[exc.PyobsError], list[exc.LoggedException]] = {}
+        self._remote_exception_log: dict[tuple[type[exc.PyobsError], str], list[exc.LoggedException]] = {}
+        self._exception_handlers: list[exc.ExceptionHandler] = []
+
     # exception types that always need local attention, regardless of _disable_exception_logging:
-    # ModuleError means the module itself is broken; SevereError means a normally-fine failure mode
-    # has started repeating past a threshold; UnclassifiedError means something escaped un-typed
-    # across an RPC boundary. None of the three are part of the deliberate per-type logging
-    # contract a module author gets to opt out of.
-    _UNSUPPRESSIBLE: tuple[type[exc.PyobsError], ...] = (exc.ModuleError, exc.SevereError, exc.UnclassifiedError)
+    # ModuleError means the module itself is broken; UnclassifiedError means something escaped
+    # un-typed, either locally or across an RPC boundary. Neither is part of the deliberate
+    # per-type logging contract a module author gets to opt out of.
+    _UNSUPPRESSIBLE: tuple[type[exc.PyobsError], ...] = (exc.ModuleError, exc.UnclassifiedError)
 
     def _disable_exception_logging(self, *exceptions: type[exc.PyobsError]) -> None:
         """Declare that the given PyobsError types (and their subclasses) fire often enough that even the
@@ -180,6 +187,100 @@ class Module(Object, IModule, IConfig):
             if issubclass(e, self._UNSUPPRESSIBLE):
                 raise ValueError(f"{e.__name__} cannot be silenced -- it always needs local attention.")
         self._disabled_exception_logging = self._disabled_exception_logging + exceptions
+
+    def _register_exception(
+        self,
+        exc_type: type[exc.PyobsError],
+        limit: int,
+        timespan: float | None = None,
+        module: str | None = None,
+        callback: Callable[[exc.PyobsError], Coroutine[Any, Any, None]] | None = None,
+    ) -> None:
+        """Watch for repeated occurrences of exc_type -- optionally scoped to a specific remote
+        module -- and fire callback once limit occurrences are seen (optionally within timespan
+        seconds). Call from __init__.
+
+        Args:
+            exc_type: Exception type (or a shared ancestor, e.g. RemoteError) to watch for.
+            limit: Number of occurrences that triggers the callback.
+            timespan: If given, only count occurrences within the last timespan seconds.
+            module: If given, only count occurrences tagged as coming from this remote module
+                (see _record_exception) instead of ones raised locally.
+            callback: Coroutine called with the triggering exception once the threshold is hit.
+        """
+        self._exception_handlers.append(exc.ExceptionHandler(exc_type, limit, timespan, module, callback))
+
+    def _record_exception(self, exception: exc.PyobsError) -> None:
+        """Records exception for severity tracking (see _register_exception) and fires any handler
+        whose threshold is now met. Call from execute()'s catch block -- every exception it lets
+        through is already a PyobsError by then (see execute()'s UnclassifiedError wrapping)."""
+        module = getattr(exception, "remote_module", None)
+        self._store_exception(exception, module)
+
+        triggered = self._check_exception_severity()
+        handlers = [h for h in triggered if self._exception_matches(exception, h.exc_type)]
+        for h in handlers:
+            if h.callback is not None:
+                asyncio.create_task(h.callback(exception))
+
+    def _exception_matches(self, exception: Exception, exc_type: type[exc.PyobsError]) -> bool:
+        """Whether exception should count as an instance of exc_type for severity-handler matching:
+        true isinstance, or -- mirroring _store_exception's RemoteError special case below --
+        anything tagged with remote_module counts as a RemoteError even though its own type no
+        longer literally subclasses it now that faults raise as their real type instead of wrapped."""
+        if isinstance(exception, exc_type):
+            return True
+        return exc_type is exc.RemoteError and getattr(exception, "remote_module", None) is not None
+
+    def _store_exception(self, exception: exc.PyobsError, module: str | None) -> None:
+        # get all classes from mro -- plus RemoteError if this crossed an RPC boundary (module is
+        # not None, i.e. the exception carries a remote_module tag from rpc.py's fault
+        # reconstruction), even though a directly-reraised domain type (e.g. GrabImageError) no
+        # longer subclasses RemoteError itself now that faults raise as their real type instead of
+        # wrapped (see rpc.py, Assessment §A). Preserves
+        # _register_exception(exc.RemoteError, ..., module=X)-style "this module keeps failing
+        # remotely, regardless of the specific type" handlers (e.g. AutoFocusSeries).
+        classes: list[type] = list(type(exception).__mro__)
+        if module is not None and exc.RemoteError not in classes:
+            classes.append(exc.RemoteError)
+
+        for e in classes:
+            # only pyobs exceptions
+            if not issubclass(e, exc.PyobsError):
+                continue
+
+            # is it handled by any handler?
+            if not any(e == h.exc_type for h in self._exception_handlers):
+                continue
+
+            # log
+            le = exc.LoggedException(time=time.time(), exception=exception)
+
+            # store it
+            if module is None:
+                self._exception_log.setdefault(e, []).append(le)
+            else:
+                self._remote_exception_log.setdefault((e, module), []).append(le)
+
+    def _check_exception_severity(self) -> list[exc.ExceptionHandler]:
+        """Checks all handlers against all recorded exceptions and returns those whose threshold is met."""
+        triggered: list[exc.ExceptionHandler] = []
+        for h in self._exception_handlers:
+            if h.module is None:
+                exceptions = self._exception_log.get(h.exc_type, [])
+            else:
+                exceptions = self._remote_exception_log.get((h.exc_type, h.module), [])
+
+            if h.timespan is None:
+                count = len(exceptions)
+            else:
+                earliest = time.time() - h.timespan
+                count = len([le for le in exceptions if le.time >= earliest])
+
+            if count >= h.limit:
+                triggered.append(h)
+
+        return triggered
 
     async def open(self) -> None:
         # open comm
@@ -482,17 +583,29 @@ class Module(Object, IModule, IConfig):
 
         try:
             response = await func(*func_args, **ba.arguments, **func_kwargs)
-        except Exception as e:
-            # ModuleError/SevereError/UnclassifiedError always need local attention -- never
-            # suppressible, always loud.
+        except Exception as raised:
+            # classify: anything that isn't a domain PyobsError wasn't part of the deliberate
+            # contract (goal 5) -- wrap it so every transport (XMPP, LocalComm, MultiModule) and
+            # every caller can rely on always receiving a PyobsError, regardless of what actually
+            # escaped. exc_info=True below still captures the real traceback via sys.exc_info(),
+            # and raising a freshly-constructed exception here chains it as __context__ for free.
+            if isinstance(raised, exc.PyobsError):
+                e: exc.PyobsError = raised
+            else:
+                original_type = f"{type(raised).__module__}.{type(raised).__qualname__}"
+                e = exc.UnclassifiedError(str(raised), original_type=original_type)
+
+            # ModuleError/UnclassifiedError always need local attention -- never suppressible, always loud.
             if isinstance(e, self._UNSUPPRESSIBLE):
                 e.log(log, "ERROR", f"Exception was raised in call to {method}: {e}", exc_info=True)
-            elif isinstance(e, exc.PyobsError):
+            else:
                 # every other domain exception logs as a quiet INFO line by default -- a module opts
                 # out per-type via _disable_exception_logging, it doesn't opt in per-method anymore.
                 if not isinstance(e, self._disabled_exception_logging):
                     e.log(log, "INFO", f"Exception was raised in call to {method}: {e}", exc_info=False)
                 # else: caller already has it; nothing to log locally
+
+            self._record_exception(e)
             raise e
 
         return response

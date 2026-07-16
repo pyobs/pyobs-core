@@ -223,9 +223,12 @@ class RPC:
             self._client.plugin["xep_0009"].forbidden(iq).send()
 
         except Exception as e:
-            if isinstance(e, exc.PyobsError):
-                e.log(log, "ERROR", f"Exception in call to {pmethod}: {e}", exc_info=True)
-            else:
+            # Module.execute() already classified and logged anything raised by the call itself
+            # (every transport gets the same treatment there now), so there's nothing left to do
+            # here but serialize and send the fault -- except for failures that never reached
+            # execute() at all (e.g. malformed RPC parameters during deserialization above), which
+            # this is the only place that will ever log
+            if not isinstance(e, exc.PyobsError):
                 log.exception("Unexpected exception in %s.", pmethod)
             self._client.plugin["xep_0009"].send_fault(iq, fault_to_xml(e))
 

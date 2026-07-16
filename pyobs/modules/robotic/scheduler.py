@@ -281,14 +281,18 @@ class Scheduler(Module, IStartStop, IRunnable):
             # sleep a little
             await asyncio.sleep(1)
 
-    @staticmethod
-    def _log_scheduled_task(scheduled_tasks: ObservationList) -> None:
+    def _log_scheduled_task(self, scheduled_tasks: ObservationList) -> None:
+        observer = self._scheduler._observer
         for scheduled_task in scheduled_tasks:
             msg = f"  - {scheduled_task.start.strftime('%H:%M:%S')} to {scheduled_task.end.strftime('%H:%M:%S')}: "
             msg += f"{scheduled_task.task.name} ({scheduled_task.task.id}"
             if scheduled_task.priority is not None:
                 msg += f", priority: {scheduled_task.priority}"
             msg += ")"
+            if scheduled_task.target is not None and observer is not None:
+                start = Time(scheduled_task.start)
+                altaz = observer.altaz(start, scheduled_task.target.coordinates(start))
+                msg += f" [{scheduled_task.target.name}: alt={altaz.alt.degree:.1f}°, airmass={float(altaz.secz):.2f}]"
             log.info(msg)
 
     async def run(self, **kwargs: Any) -> None:

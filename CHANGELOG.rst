@@ -1,5 +1,32 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* First sweep of concrete exception-typing gaps (goal 5: specific types over generic ones/bare
+  builtins). New cross-cutting types in ``pyobs.utils.exceptions``: ``DeviceBusyError`` ("this
+  device can't service this request right now, back off and retry") and ``NotSupportedError``
+  ("this module doesn't implement this optional capability at all"). ``CameraException``
+  (``BaseCamera``) and ``AcquireLockFailed`` (``LockWithAbort``, a plain ``Exception`` that leaked
+  out of ``move_radec``/``move_altaz``/``set_focus``/``stop_motion``/roof ``init``/``park``
+  unconverted) are retired -- both meant the same thing, "device busy," now unified as
+  ``DeviceBusyError``. The telescope/roof ``init()``/``park()`` boundary specifically translates a
+  lock-acquisition failure (or any other failure) into ``InitError``/``ParkError`` instead, per
+  ``IMotion``'s own documented contract, following ``BaseCamera.__expose()``'s existing
+  catch-and-translate pattern. Capability-check ``NotImplementedError`` sites (an alt/az-only
+  telescope's ``move_radec``, ``ScienceFrameAutoGuiding.set_exposure_time``, a dummy telescope's
+  ``set_focus_offset``) now raise ``NotSupportedError`` instead. ``BaseTelescope`` gained
+  ``MissingObserverError``/``AltitudeLimitError``/``BodyResolutionError``/
+  ``InvalidOrbitalElementsError`` (all ``MotionError``) for its previously-bare ``ValueError``
+  sites. ``FocusModel`` gained ``WeatherDataError``/``FocusTimeoutError``/``MissingSensorError``
+  (all ``FocusError``). New ``ScriptError`` (``pyobs.robotic.scripts``) wraps whatever a script's
+  ``run()`` raises that isn't already a domain exception, following the same pattern;
+  ``AutoFocusScript.can_run()`` now checks for a target itself instead of only discovering its
+  absence after ``run()`` has already started. ``BaseVideo``/``BaseSpectrograph.grab_data()``'s
+  "no image" ``ValueError`` sites now raise ``GrabImageError``, matching ``BaseCamera``. All new
+  leaf types live next to the code that raises them (``basetelescope.py``, ``focusmodel.py``,
+  ``pyobs.robotic.scripts``), not bolted onto ``exceptions.py``, now that the registry from the
+  previous step lets a domain exception survive the wire regardless of which module defines it.
+  Fifth step of the exception-handling rollout in ``DESIGN_exception_handling.md`` (tracks #446);
+  remaining items in that sweep (``ScriptRunner``'s per-script leaves if ever wanted, driver-repo
+  ``AbortedError``/``NotImplementedError`` fixes) are out of scope for a ``pyobs-core`` PR alone.
 * RPC calls over XMPP now carry a correlation id end to end: the origin-side log line for a
   domain exception (``Module.execute()``'s catch block) includes ``(call_id=...)``, and the same
   id is attached to the exception the caller receives as ``exception.call_id`` -- reusing

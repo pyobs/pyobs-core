@@ -18,6 +18,7 @@ from pyobs.interfaces import (
 from pyobs.modules.telescope.basetelescope import (
     _DEFAULT_REFRESH_INTERVAL_SECONDS,
     _MOON_FALLBACK_REFRESH_INTERVAL_SECONDS,
+    BodyResolutionError,
 )
 from pyobs.modules.telescope.dummyradectelescope import DummyRaDecTelescope
 
@@ -160,7 +161,7 @@ async def test_track_body_moon_slews_and_uses_native_lunar_mode():
 
 
 @pytest.mark.asyncio
-async def test_track_body_unresolvable_raises_value_error():
+async def test_track_body_unresolvable_raises_body_resolution_error():
     tel = make_dummyradectelescope(speed=100000.0)
 
     def _raise(*args, **kwargs):
@@ -168,7 +169,7 @@ async def test_track_body_unresolvable_raises_value_error():
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr("pyobs.modules.telescope.basetelescope.Horizons", MagicMock(side_effect=_raise))
-        with pytest.raises(ValueError):
+        with pytest.raises(BodyResolutionError):
             await tel.track_body("definitely-not-a-real-body-xyz")
 
 

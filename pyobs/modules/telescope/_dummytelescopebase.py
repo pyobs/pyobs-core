@@ -39,6 +39,7 @@ from pyobs.interfaces import (
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules import timeout
 from pyobs.modules.telescope.basetelescope import BaseTelescope
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
@@ -326,17 +327,24 @@ class _DummyTelescopeBase(
 
     @timeout(60)
     async def park(self, **kwargs: Any) -> None:
-        """Park telescope."""
+        """Park telescope.
+
+        Raises:
+            ParkError: If the telescope could not be parked (e.g. another motion is in progress).
+        """
         log.info("Parking telescope...")
-        async with LockWithAbort(self._lock_moving, self._abort_move):
-            await self._change_motion_status(MotionStatus.PARKING)
-            self._dest_coords = None
-            try:
-                await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
-                return
-            except TimeoutError:
-                pass
-            await self._change_motion_status(MotionStatus.PARKED)
+        try:
+            async with LockWithAbort(self._lock_moving, self._abort_move):
+                await self._change_motion_status(MotionStatus.PARKING)
+                self._dest_coords = None
+                try:
+                    await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
+                    return
+                except TimeoutError:
+                    pass
+                await self._change_motion_status(MotionStatus.PARKED)
+        except Exception as e:
+            raise exc.ParkError(str(e)) from e
         log.info("Telescope parked.")
 
     async def get_fits_header_before(
@@ -358,7 +366,12 @@ class _DummyTelescopeBase(
             await self._change_motion_status(MotionStatus.IDLE)
 
     async def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
-        raise NotImplementedError
+        """Set the focus offset.
+
+        Raises:
+            NotSupportedError: This dummy telescope doesn't support a separate focus offset.
+        """
+        raise exc.NotSupportedError("This dummy telescope does not support a separate focus offset.")
 
 
 __all__ = ["_DummyTelescopeBase"]

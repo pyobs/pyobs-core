@@ -12,6 +12,7 @@ from pyobs.events import ExposureStatusChangedEvent, NewSpectrumEvent
 from pyobs.interfaces import ExposureState, IExposure, ISpectrograph
 from pyobs.mixins.fitsheader import SpectrumFitsHeaderMixin
 from pyobs.modules import Module, timeout
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus
 
 log = logging.getLogger(__name__)
@@ -169,17 +170,21 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure
 
         Returns:
             Name of image that was taken.
+
+        Raises:
+            DeviceBusyError: If the spectrograph is already busy (exposing).
+            GrabImageError: If there was a problem grabbing the spectrum.
         """
 
         # are we exposing?
         if self._spectrograph_status != ExposureStatus.IDLE:
-            raise ValueError("Cannot start new exposure because spectrograph is not idle.")
+            raise exc.DeviceBusyError("Cannot start new exposure because spectrograph is not idle.")
         await self._change_exposure_status(ExposureStatus.EXPOSING)
 
         # expose
         hdu, filename = await self.__expose(broadcast)
         if hdu is None:
-            raise ValueError("Could not take spectrum.")
+            raise exc.GrabImageError("Could not take spectrum.")
         else:
             if filename is None:
                 raise ValueError("Spectrum has not been saved, so cannot be retrieved by filename.")

@@ -30,10 +30,6 @@ from pyobs.utils.enums import ExposureStatus, ImageType
 log = logging.getLogger(__name__)
 
 
-class CameraException(Exception):
-    pass
-
-
 class ExposureInfo(NamedTuple):
     """Info about a running exposure."""
 
@@ -349,12 +345,13 @@ class BaseCamera(
             Name of image that was taken.
 
         Raises:
+            DeviceBusyError: If the camera is already busy (exposing or running a sequence).
             GrabImageError: If there was a problem grabbing the image.
         """
 
         # are we exposing?
         if self._camera_status != ExposureStatus.IDLE:
-            raise CameraException("Cannot start new exposure because camera is not idle.")
+            raise exc.DeviceBusyError("Cannot start new exposure because camera is not idle.")
         await self._change_exposure_status(ExposureStatus.EXPOSING)
 
         # expose
@@ -384,7 +381,7 @@ class BaseCamera(
                 Does not apply after the last image.
 
         Raises:
-            CameraException: If camera is already busy (exposing or already running a sequence).
+            DeviceBusyError: If camera is already busy (exposing or already running a sequence).
         """
         if count < 1:
             raise ValueError("count must be >= 1.")
@@ -393,7 +390,7 @@ class BaseCamera(
 
         # already running a sequence, or mid-exposure outside of one?
         if self._sequence_count_left > 0 or self._camera_status != ExposureStatus.IDLE:
-            raise CameraException("Cannot start new sequence because camera is not idle.")
+            raise exc.DeviceBusyError("Cannot start new sequence because camera is not idle.")
 
         log.info("Starting sequence of %d images...", count)
         self._sequence_count_left = count
@@ -546,4 +543,4 @@ class BaseCamera(
                 image.data = image.data[::-1, ::-1]
 
 
-__all__ = ["BaseCamera", "CameraException"]
+__all__ = ["BaseCamera"]

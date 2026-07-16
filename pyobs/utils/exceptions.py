@@ -90,6 +90,26 @@ class AcquisitionError(PyobsError):
     pass
 
 
+class DeviceBusyError(PyobsError):
+    """The device can't service this request right now because it's already busy with another
+    operation (e.g. an exposure/sequence already running, or another motion in progress) -- back
+    off and retry, as opposed to GrabImageError/MoveError/etc., which mean the operation was
+    actually attempted and failed. Deliberately one type across camera/telescope/roof/focuser
+    modules alike, not split by device or by which specific operation was busy -- no caller reacts
+    differently to those variants."""
+
+    pass
+
+
+class NotSupportedError(PyobsError):
+    """This module doesn't support the requested operation at all -- a capability the module only
+    optionally implements (e.g. an alt/az-only telescope asked to move_radec) isn't available,
+    as opposed to a specific attempt at that operation failing. Cross-cutting: any module with an
+    optional-capability mixin can raise this, not just telescopes."""
+
+    pass
+
+
 class UnclassifiedError(PyobsError):
     """Wraps an exception that isn't part of the deliberate PyobsError contract -- either it never
     was a PyobsError to begin with (a builtin, a vendor SDK exception) and escaped a module's own

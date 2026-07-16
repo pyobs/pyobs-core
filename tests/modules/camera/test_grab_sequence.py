@@ -14,7 +14,7 @@ import pytest
 
 from pyobs.interfaces import IDataSequence
 from pyobs.modules.camera import DummyCamera
-from pyobs.modules.camera.basecamera import CameraException
+from pyobs.utils import exceptions as exc
 
 
 def make_camera() -> DummyCamera:
@@ -111,7 +111,7 @@ async def test_grab_sequence_rejects_while_already_running() -> None:
     camera.grab_data = fake_grab_data
 
     await camera.grab_sequence(3)
-    with pytest.raises(CameraException):
+    with pytest.raises(exc.DeviceBusyError):
         await camera.grab_sequence(2)
 
     gate.set()

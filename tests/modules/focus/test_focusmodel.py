@@ -5,7 +5,7 @@ import pytest
 
 from pyobs.interfaces import IFocusModel, IWeather, OptimalFocusState, WeatherSensorReading
 from pyobs.modules import Module
-from pyobs.modules.focus.focusmodel import FocusModel
+from pyobs.modules.focus.focusmodel import FocusModel, WeatherDataError
 from pyobs.utils.enums import WeatherSensors
 
 
@@ -33,7 +33,7 @@ async def test_get_values_raises_on_none_value() -> None:
     weather = _weather_mock(None)
     fm = FocusModel(weather=weather, model="temp")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(WeatherDataError):
         await fm._get_values()
 
 

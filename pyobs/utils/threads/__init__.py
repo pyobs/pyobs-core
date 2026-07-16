@@ -1,3 +1,3 @@
-from .lockwithabort import AcquireLockFailed, LockWithAbort
+from .lockwithabort import LockWithAbort
 
-__all__ = ["LockWithAbort", "AcquireLockFailed"]
+__all__ = ["LockWithAbort"]

@@ -39,6 +39,7 @@ from pyobs.interfaces import (
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules import timeout
 from pyobs.modules.telescope.basetelescope import BaseTelescope
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
@@ -260,9 +261,13 @@ class _DummyTelescopeBase(
         await self._move_radec(icrs.ra.degree, icrs.dec.degree, abort_event)
 
     async def set_tracking_mode(self, mode: TrackingMode, **kwargs: Any) -> None:
-        """Switches to the given tracking mode."""
+        """Switches to the given tracking mode.
+
+        Raises:
+            InvalidArgumentError: If mode is not in this module's capabilities.
+        """
         if mode not in self._tracking_modes:
-            raise ValueError(f"Mode {mode} not supported.")
+            raise exc.InvalidArgumentError(f"Mode {mode} not supported.")
         self._tracking_mode = mode
         await self.comm.set_state(ITrackingMode, TrackingModeState(mode=mode))
 
@@ -274,9 +279,14 @@ class _DummyTelescopeBase(
 
     @timeout(60)
     async def set_focus(self, focus: float, **kwargs: Any) -> None:
-        """Sets new focus."""
+        """Sets new focus.
+
+        Raises:
+            InvalidArgumentError: If given value is invalid.
+            AbortedError: If setting the focus was cancelled.
+        """
         if focus < 0 or focus > 100:
-            raise ValueError("Invalid focus value.")
+            raise exc.InvalidArgumentError("Invalid focus value.")
 
         async with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f...", focus)
@@ -285,7 +295,7 @@ class _DummyTelescopeBase(
             dfoc = (focus - ifoc) / 300.0
             for i in range(300):
                 if self._abort_focus.is_set():
-                    raise InterruptedError("Setting focus was interrupted.")
+                    raise exc.AbortedError("Setting focus was interrupted.")
                 self._focus = ifoc + i * dfoc
                 await asyncio.sleep(0.01)
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFocuser")
@@ -293,9 +303,13 @@ class _DummyTelescopeBase(
             await self.comm.set_state(IFocuser, FocuserState(focus=focus, focus_offset=0.0))
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
-        """Set the current filter."""
+        """Set the current filter.
+
+        Raises:
+            InvalidArgumentError: If an invalid filter was given.
+        """
         if filter_name not in self._filters:
-            raise ValueError("Invalid filter name.")
+            raise exc.InvalidArgumentError("Invalid filter name.")
 
         if filter_name != self._filter_name:
             logging.info("Setting filter to %s", filter_name)
@@ -326,17 +340,24 @@ class _DummyTelescopeBase(
 
     @timeout(60)
     async def park(self, **kwargs: Any) -> None:
-        """Park telescope."""
+        """Park telescope.
+
+        Raises:
+            ParkError: If the telescope could not be parked (e.g. another motion is in progress).
+        """
         log.info("Parking telescope...")
-        async with LockWithAbort(self._lock_moving, self._abort_move):
-            await self._change_motion_status(MotionStatus.PARKING)
-            self._dest_coords = None
-            try:
-                await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
-                return
-            except TimeoutError:
-                pass
-            await self._change_motion_status(MotionStatus.PARKED)
+        try:
+            async with LockWithAbort(self._lock_moving, self._abort_move):
+                await self._change_motion_status(MotionStatus.PARKING)
+                self._dest_coords = None
+                try:
+                    await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
+                    return
+                except TimeoutError:
+                    pass
+                await self._change_motion_status(MotionStatus.PARKED)
+        except Exception as e:
+            raise exc.ParkError(str(e)) from e
         log.info("Telescope parked.")
 
     async def get_fits_header_before(
@@ -358,7 +379,12 @@ class _DummyTelescopeBase(
             await self._change_motion_status(MotionStatus.IDLE)
 
     async def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
-        raise NotImplementedError
+        """Set the focus offset.
+
+        Raises:
+            NotSupportedError: This dummy telescope doesn't support a separate focus offset.
+        """
+        raise exc.NotSupportedError("This dummy telescope does not support a separate focus offset.")
 
 
 __all__ = ["_DummyTelescopeBase"]

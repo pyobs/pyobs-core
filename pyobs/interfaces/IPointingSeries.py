@@ -12,7 +12,11 @@ class IPointingSeries(Interface, metaclass=ABCMeta):
 
     @abstractmethod
     async def add_pointing_measurement(self, **kwargs: Any) -> None:
-        """Add a new measurement to the pointing series."""
+        """Add a new measurement to the pointing series.
+
+        Raises:
+            GeneralError: If the measurement could not be added.
+        """
         ...
 
 

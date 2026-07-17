@@ -115,6 +115,10 @@ Script base class
    :members:
    :show-inheritance:
 
+.. autoexception:: pyobs.robotic.scripts.ScriptError
+   :members:
+   :show-inheritance:
+
 
 Built-in scripts
 ^^^^^^^^^^^^^^^^^

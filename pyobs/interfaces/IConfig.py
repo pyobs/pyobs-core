@@ -33,7 +33,7 @@ class IConfig(Interface, metaclass=ABCMeta):
             Current value.
 
         Raises:
-            ValueError: If config item of given name does not exist.
+            InvalidArgumentError: If config item of given name does not exist.
         """
         ...
 
@@ -46,7 +46,8 @@ class IConfig(Interface, metaclass=ABCMeta):
             value: New value.
 
         Raises:
-            ValueError: If config item of given name does not exist or value is invalid.
+            InvalidArgumentError: If config item of given name does not exist.
+            ValueError: If value is invalid.
         """
         ...
 

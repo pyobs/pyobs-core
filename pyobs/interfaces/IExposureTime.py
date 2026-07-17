@@ -31,6 +31,8 @@ class IExposureTime(Interface, metaclass=ABCMeta):
 
         Raises:
             ValueError: If exposure time could not be set.
+            NotSupportedError: If this module doesn't support setting exposure time directly (e.g.
+                it's dictated by something else, like incoming science frames).
         """
         ...
 

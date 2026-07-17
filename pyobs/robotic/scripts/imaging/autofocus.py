@@ -28,6 +28,11 @@ class AutoFocusScript(Script):
             True if script can run now.
         """
 
+        # we need a target to focus on
+        if data is None or data.task is None or data.task.target is None:
+            self._cant_run_reason = "No target given."
+            return False
+
         # we need a camera
         if not await self.comm.has_proxy(self.autofocus, IAutoFocus):
             self._cant_run_reason = "No autofocus found."

@@ -1,5 +1,164 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* New ``InvalidArgumentError`` for bad-argument validation on RPC-exposed methods (unknown filter
+  name, invalid focus value, invalid config parameter, out-of-range ``grab_sequence`` count/delay,
+  ...) -- previously these stayed as plain ``ValueError``, which works fine locally (``LocalComm``,
+  direct calls, tests) but silently degrades to ``UnclassifiedError`` the moment the same call
+  crosses XMPP, since ``ValueError`` is a builtin and never in the registry. That inconsistency is
+  exactly the kind of bug that only shows up once code moves from a local test to a networked
+  deployment. Fixed for ``IConfig.get_config_value``/``get_config_value_options``/
+  ``set_config_value``, ``IDataSequence.grab_sequence``, ``ITrackingMode.set_tracking_mode``,
+  ``IFocuser.set_focus``, ``IFilters.set_filter``, ``IMode.set_mode``, and
+  ``IWeather.get_sensor_value`` (``MockWeather``'s implementation -- the real ``Weather`` class's
+  own ``ValueError`` there is about a malformed station response, not a bad argument; see the next
+  entry). Also reused the existing ``DeviceBusyError`` for ``FlatField.flat_field``/
+  ``FlatFieldScheduler.run``'s "already running" check, which was never actually about a bad
+  argument either. Scoped out first (see ``DESIGN_exception_handling.md``) before touching
+  anything: real driver repos (e.g. ``pyobs-sbig``) likely have the identical ``ValueError``
+  pattern for real hardware and would need the same companion fix, not reachable from this PR.
+* New ``WeatherResponseError`` (``pyobs.modules.weather.weather``) for ``Weather.get_sensor_value``
+  getting back a station response missing its ``time``/``value`` fields -- a different shape of
+  problem from the bad-argument case above (an external dependency being flaky, not a caller
+  mistake), same reasoning as ``BodyResolutionError``: plausibly transient, worth retrying, not the
+  caller's fault. ``WeatherStatus.status``'s similar-looking ``ValueError`` (``weather_state.py``)
+  turned out to be unreachable from any RPC caller at all -- it only fires inside a background
+  polling loop that already catches it broadly and just logs a warning -- so it's left untouched.
+* Fixed ``UnclassifiedError.original_type`` silently not surviving the wire: ``Module.execute()``
+  wraps a non-domain exception (``IndexError``, a vendor SDK exception, ...) as
+  ``UnclassifiedError`` before ``rpc.py`` ever sees it, but ``fault_to_xml`` was serializing the
+  wrapper's own class name instead of the original type it was tagged with -- since
+  ``UnclassifiedError`` itself is a registered type, the caller reconstructed a fresh one with
+  ``original_type`` never set, making a remote ``IndexError`` and a remote ``ValueError``
+  indistinguishable. Now serializes the original type name instead, so the caller's own registry
+  lookup runs against it and correctly repopulates ``original_type`` on the (still-unresolvable)
+  ``UnclassifiedError`` it falls back to. Also fixed in the same pass: every exception crossing the
+  wire had its message doubled (``"<ClassName> <ClassName> message"``) once displayed, because the
+  message field serialized ``str(exception)`` (already ``"<ClassName> message"``) instead of the
+  raw message, which reconstruction then fed back in as the new instance's own message before
+  formatting it again.
+* Docstring sweep across every interface flagged by the exception-handling audit (16 of 27
+  documented interfaces had at least one mismatch) -- ``Raises:`` clauses now match what's
+  actually raised: ``IFocuser``/``IPointingRaDec``/``IPointingAltAz``/``IPointingBody``/
+  ``IPointingOrbitalElements``/the Heliocentric*/Helioprojective family gain
+  ``NotSupportedError``/``MissingObserverError``/``AltitudeLimitError``/``BodyResolutionError``/
+  ``InvalidOrbitalElementsError`` (or a note that they propagate from the underlying RA/Dec move);
+  ``IAutoFocus``/``IAcquisition`` now document the types their own ``@raises`` already declared
+  instead of a stale ``ValueError``; ``IData``/``IDataSequence`` document ``DeviceBusyError``;
+  ``IFocusModel`` documents its three new leaf types; ``IExposureTime``/``IFlatField``/``IWeather``
+  gain the clauses their implementations already needed. ``FlatField.set_filter``'s docstring
+  copy-paste bug ("If binning could not be set" on a filter setter) is fixed. The handful of
+  interfaces with zero concrete implementers anywhere in this repo (``ICalibrate``, ``ISyncTarget``,
+  ``IMultiFiber.set_fiber``, ``IPointingSeries``, ``IRotation``, ``IScriptRunner.run_script``) gain
+  a plausible ``Raises:`` clause so a future implementer has a contract to follow instead of
+  guessing -- the same guess that produced several of the mismatches this sweep fixes. Documentation
+  only, no behavior changes. Note: several interface methods still document plain ``ValueError``
+  for bad-argument validation (as opposed to domain operation failures) -- deliberately not
+  promoted to typed exceptions in this sweep; see ``DESIGN_exception_handling.md``'s "Still open"
+  section for the tradeoff.
+* Documented the ``AbortedError`` contract on every ``abort_event``-taking hook in
+  ``pyobs-core`` (``BaseCamera``/``BaseSpectrograph._expose()``, ``BaseTelescope._move_radec``/
+  ``_move_altaz``) -- nothing had ever told driver authors which type to use for "this was
+  cancelled, not a real failure," so two of pyobs-core's own in-tree implementations
+  (``DummyCamera``, ``DummySpectrograph``) had each independently guessed a different wrong type
+  (``InterruptedError``, ``ValueError``) for the exact same condition. Both now raise
+  ``exc.AbortedError``, as does ``_DummyTelescopeBase.set_focus``'s equivalent abort check. (Two
+  more instances of the same guessed-wrong-type pattern, in ``pyobs-sbig``/``pyobs-fli``, are a
+  companion fix in those repos, not something this PR can reach.)
+* Documented the domain/transport split in ``pyobs/utils/exceptions.py`` as a deliberate axis:
+  ``RemoteError`` and its subtree (``RemoteTimeoutError``, ``ForbiddenError``) mean "the call
+  itself didn't reach/return," which doesn't benefit from the same fine-grained-per-reason
+  treatment domain exceptions get -- documentation only, no behavior change.
+* First sweep of concrete exception-typing gaps (goal 5: specific types over generic ones/bare
+  builtins). New cross-cutting types in ``pyobs.utils.exceptions``: ``DeviceBusyError`` ("this
+  device can't service this request right now, back off and retry") and ``NotSupportedError``
+  ("this module doesn't implement this optional capability at all"). ``CameraException``
+  (``BaseCamera``) and ``AcquireLockFailed`` (``LockWithAbort``, a plain ``Exception`` that leaked
+  out of ``move_radec``/``move_altaz``/``set_focus``/``stop_motion``/roof ``init``/``park``
+  unconverted) are retired -- both meant the same thing, "device busy," now unified as
+  ``DeviceBusyError``. The telescope/roof ``init()``/``park()`` boundary specifically translates a
+  lock-acquisition failure (or any other failure) into ``InitError``/``ParkError`` instead, per
+  ``IMotion``'s own documented contract, following ``BaseCamera.__expose()``'s existing
+  catch-and-translate pattern. Capability-check ``NotImplementedError`` sites (an alt/az-only
+  telescope's ``move_radec``, ``ScienceFrameAutoGuiding.set_exposure_time``, a dummy telescope's
+  ``set_focus_offset``) now raise ``NotSupportedError`` instead. ``BaseTelescope`` gained
+  ``MissingObserverError``/``AltitudeLimitError``/``BodyResolutionError``/
+  ``InvalidOrbitalElementsError`` (all ``MotionError``) for its previously-bare ``ValueError``
+  sites. ``FocusModel`` gained ``WeatherDataError``/``FocusTimeoutError``/``MissingSensorError``
+  (all ``FocusError``). New ``ScriptError`` (``pyobs.robotic.scripts``) wraps whatever a script's
+  ``run()`` raises that isn't already a domain exception, following the same pattern;
+  ``AutoFocusScript.can_run()`` now checks for a target itself instead of only discovering its
+  absence after ``run()`` has already started. ``BaseVideo``/``BaseSpectrograph.grab_data()``'s
+  "no image" ``ValueError`` sites now raise ``GrabImageError``, matching ``BaseCamera``. All new
+  leaf types live next to the code that raises them (``basetelescope.py``, ``focusmodel.py``,
+  ``pyobs.robotic.scripts``), not bolted onto ``exceptions.py``, now that the registry from the
+  previous step lets a domain exception survive the wire regardless of which module defines it.
+  Fifth step of the exception-handling rollout in ``DESIGN_exception_handling.md`` (tracks #446);
+  remaining items in that sweep (``ScriptRunner``'s per-script leaves if ever wanted, driver-repo
+  ``AbortedError``/``NotImplementedError`` fixes) are out of scope for a ``pyobs-core`` PR alone.
+* RPC calls over XMPP now carry a correlation id end to end: the origin-side log line for a
+  domain exception (``Module.execute()``'s catch block) includes ``(call_id=...)``, and the same
+  id is attached to the exception the caller receives as ``exception.call_id`` -- reusing
+  XEP-0009's existing per-call ``iq["id"]`` rather than adding new plumbing. Lets an operator
+  debugging a caller-side ``FocusError`` jump straight to the matching detailed log on the module
+  that actually raised it, instead of neither side's log line pointing at the other. Purely
+  additive, no migration required; not set for ``LocalComm``/``MultiModule`` calls, which are
+  already in the same log stream as the caller. Fourth step of the exception-handling rollout in
+  ``DESIGN_exception_handling.md`` (tracks #446).
+* Constructing a ``PyobsError`` is now side-effect-free, ordinary Python. ``raise
+  exc.FocusError(...)`` always raises a ``FocusError`` -- it no longer risks silently coming back
+  as a ``SevereError`` instead, which could happen because the old severity-escalation metaclass
+  intercepted *construction*, not raising or catching. ``SevereError`` is retired entirely: nothing
+  in this repo or any sibling project ever caught it specifically, its only real consumer was
+  ``register_exception``'s ``callback`` (already used everywhere; production code never actually
+  set ``throw=True``), which already does the meaningful part itself (``set_state(ModuleState.ERROR)``).
+  ``register_exception``/``handle_exception`` move from module-level free functions with
+  process-global state to ``Module._register_exception()``/an internal ``_record_exception()``,
+  called from ``Module.execute()``'s catch block (the same chokepoint that already classifies and
+  logs) -- fixing a real cross-instance bug as a byproduct, where two ``Module`` instances in the
+  same process (e.g. under ``MultiModule``, or two instances watching the same remote module) used
+  to share one counter. Ten in-tree call sites plus one in ``pyobs-alpaca`` need the mechanical
+  ``exc.register_exception(...)`` -> ``self._register_exception(...)`` rename (the ``throw``
+  parameter is gone with the substitution it existed for). Also: any non-``PyobsError`` exception
+  escaping a module's method body is now wrapped as ``UnclassifiedError`` right in ``execute()``,
+  not only on the XMPP fault path, so ``LocalComm``/``MultiModule`` get the same safety net as XMPP;
+  ``RPC._on_jabber_rpc_method_call`` no longer logs domain exceptions itself since ``execute()``
+  already did (it still logs failures that never reach ``execute()``, like malformed RPC
+  parameters). Third step of the exception-handling rollout in ``DESIGN_exception_handling.md``
+  (tracks #446).
+* A remote domain exception now arrives at the caller as its real type, catchable directly (e.g.
+  ``except exc.FocusError:`` around a proxy call actually fires now) -- previously every remote
+  failure, transport or domain, arrived wrapped in ``InvocationError`` (now retired entirely), so a
+  caller could only catch the broad wrapper and manually unwrap ``.exception``. Exception classes
+  are now resolved via a registry (``PyobsError.resolve()``, populated automatically via
+  ``__init_subclass__``) instead of a ``getattr`` lookup restricted to ``pyobs.utils.exceptions``,
+  so a domain exception can now live anywhere (a driver package, a ``pyobs-core`` submodule) and
+  still survive the wire, keyed by fully-qualified name rather than bare class name. An exception
+  that can't be resolved (a raw builtin, a vendor SDK exception, or a domain type whose defining
+  module was never imported in this process) arrives as the new ``UnclassifiedError`` instead of
+  silently degrading to a generic ``RemoteError`` with only the message surviving -- the original
+  type's qualified name is preserved as ``UnclassifiedError.original_type``. ``UnclassifiedError``
+  joins ``ModuleError``/``SevereError`` as unsuppressible and always-loud.
+  ``PyObsError`` is renamed to ``PyobsError`` (naming consistency with ``PyobsArchive``,
+  ``PyobsCLI``, etc.) and its constructor is now ``PyobsError(message=None, **context)``, storing
+  every keyword generically as an attribute -- ``RemoteError``/``RemoteTimeoutError``/
+  ``ForbiddenError`` no longer have their own constructors, so direct construction now takes
+  ``module=``/``sender=``/``method=`` as keywords instead of fixed positional arguments. Breaking
+  change for any external code constructing these directly, catching ``exc.PyObsError``/
+  ``exc.InvocationError`` by name, or relying on a remote failure always arriving as some
+  ``RemoteError`` subclass (``pyobs-gui``'s ``base.py``/``mainwindow.py`` reference ``PyObsError``
+  by name and need the rename applied). Second step of the exception-handling rollout in
+  ``DESIGN_exception_handling.md`` (tracks #446).
+* Every RPC-exposed method raising a domain ``PyobsError`` now logs a quiet INFO line locally by
+  default, without a traceback -- previously this only happened for methods explicitly decorated
+  with ``@raises(...)`` (used on exactly two methods), and every other domain exception logged at
+  ERROR with a full traceback despite the caller already receiving the same error. ``@raises`` no
+  longer controls log level (documentation value only, for now); ``Module`` gained
+  ``_disable_exception_logging(*exception_types)`` for a module to opt a high-frequency exception
+  type out of even the quiet line entirely, since the caller already has it.
+  ``ModuleError``/``SevereError`` are exempt from both the quiet default and the opt-out -- they
+  always log loudly, since both mean "this needs a human's attention at the source," not "an
+  anticipated domain failure." Part of the first step of the exception-handling rollout in
+  ``DESIGN_exception_handling.md`` (tracks #446).
 * ``ICamera``/``ISpectrograph`` no longer inherit ``IExposure`` -- they're now pure ``IData``
   identity interfaces ("this module produces images/spectra"), not "...and has an exposure
   clock." ``BaseCamera`` and ``BaseSpectrograph`` (which push real ``ExposureState``) now declare

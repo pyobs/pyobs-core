@@ -15,6 +15,9 @@ class IScriptRunner(Interface, metaclass=ABCMeta):
 
         Args:
             script: Script to run.
+
+        Raises:
+            ScriptError: If the script failed.
         """
         ...
 

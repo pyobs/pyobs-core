@@ -21,7 +21,13 @@ class IFocusModel(Interface, metaclass=ABCMeta):
 
     @abstractmethod
     async def set_optimal_focus(self, **kwargs: Any) -> None:
-        """Sets optimal focus."""
+        """Sets optimal focus.
+
+        Raises:
+            WeatherDataError: If the weather station returned an invalid temperature reading.
+            FocusTimeoutError: If a temperature module didn't respond in time.
+            MissingSensorError: If a configured sensor isn't in a module's temperature data.
+        """
         ...
 
 

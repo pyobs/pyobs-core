@@ -8,6 +8,7 @@ import numpy as np
 from astropy.io import fits
 
 from pyobs.modules.camera.basespectrograph import BaseSpectrograph
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus
 
 log = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class DummySpectrograph(BaseSpectrograph):
             The actual image and, if present, a filename.
 
         Raises:
-            ValueError: If exposure was not successful.
+            AbortedError: If the exposure was cancelled via abort_event.
         """
 
         # do exposure
@@ -50,7 +51,7 @@ class DummySpectrograph(BaseSpectrograph):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
                 await self._change_exposure_status(ExposureStatus.IDLE)
-                raise ValueError("Exposure was aborted.")
+                raise exc.AbortedError("Exposure was aborted.")
             time.sleep(exposure_time / steps)
         self._exposing = False
 

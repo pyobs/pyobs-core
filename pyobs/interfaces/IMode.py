@@ -36,7 +36,7 @@ class IMode(Interface, metaclass=ABCMeta):
             group: Name of the group to set the mode for.
 
         Raises:
-            ValueError: If an invalid mode or group was given.
+            InvalidArgumentError: If an invalid mode or group was given.
             MoveError: If mode selector cannot be moved.
         """
         ...

@@ -37,9 +37,12 @@ class IPointingOrbitalElements(Interface, metaclass=ABCMeta):
             elements: Orbital elements of the body to track.
 
         Raises:
-            MoveError: If telescope could not be moved.
-            ValueError: If elements are incomplete or inconsistent (neither mean_anomaly
-                nor perihelion_time given).
+            NotSupportedError: If this device doesn't support orbital-element tracking.
+            InvalidOrbitalElementsError: If elements are incomplete or inconsistent (neither
+                mean_anomaly nor perihelion_time given).
+            MoveError: If telescope could not be moved. Also propagates whatever the underlying
+                RA/Dec move raises (e.g. MissingObserverError, AltitudeLimitError), since tracking
+                orbital elements is implemented as propagating them and then moving there.
         """
         ...
 

@@ -8,6 +8,7 @@ from pyobs.events import ModeChangedEvent
 from pyobs.interfaces import IMode, IMotion, ModeCapabilities, ModeState
 from pyobs.mixins import MotionStatusMixin
 from pyobs.modules import Module
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)
@@ -55,13 +56,13 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
             group: Name of the group to set the mode for.
 
         Raises:
-            ValueError: If an invalid mode or group was given.
+            InvalidArgumentError: If an invalid mode or group was given.
             MoveError: If mode selector cannot be moved.
         """
         if not group:
             group = next(iter(self._mode_options.keys()))
         if group not in self._mode_options:
-            raise ValueError(f"Invalid group: {group}")
+            raise exc.InvalidArgumentError(f"Invalid group: {group}")
         await self._change_motion_status(MotionStatus.SLEWING)
         try:
             await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=3.0)

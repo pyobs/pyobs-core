@@ -8,6 +8,7 @@ from . import LcoTask
 from ._portal import LcoRequest
 
 if TYPE_CHECKING:
+    from pyobs.robotic.scheduler.targets import Target
     from pyobs.robotic.task import Task
 
 
@@ -24,11 +25,12 @@ class LcoTaskRunner(TaskRunner):
         TaskRunner.__init__(self, **kwargs)
         self.scripts = scripts
 
-    async def run_task(self, task: Task) -> bool:
+    async def run_task(self, task: Task, target: Target | None = None) -> bool:
         """Run a task.
 
         Args:
             task: Task to run
+            target: Resolved target for this specific run, e.g. from the scheduled observation.
 
         Returns:
             Success or not
@@ -36,13 +38,14 @@ class LcoTaskRunner(TaskRunner):
         if not isinstance(task, LcoTask):
             raise ValueError("Not an LCO task")
         task.script = self._get_config_script(task.request)
-        return await TaskRunner.run_task(self, task)
+        return await TaskRunner.run_task(self, task, target)
 
-    async def can_run(self, task: Task) -> bool:
+    async def can_run(self, task: Task, target: Target | None = None) -> bool:
         """Checks whether this task could run now.
 
         Args:
             task: Task to run
+            target: Resolved target for this specific run, e.g. from the scheduled observation.
 
         Returns:
             True, if the task can run now.
@@ -50,7 +53,7 @@ class LcoTaskRunner(TaskRunner):
         if not isinstance(task, LcoTask):
             raise ValueError("Not an LCO task")
         task.script = self._get_config_script(task.request)
-        return await TaskRunner.can_run(self, task)
+        return await TaskRunner.can_run(self, task, target)
 
     def _get_config_script(self, request: LcoRequest) -> dict[str, Any]:
         """Get config script for given configuration.

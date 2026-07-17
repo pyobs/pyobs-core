@@ -1,12 +1,33 @@
+"""The pyobs exception hierarchy, used both for local errors and to carry failures across the RPC
+boundary between modules.
+
+Two independent axes live in this hierarchy:
+
+- **Domain exceptions** (everything above `RemoteError` below) mean "the operation failed for
+  reason X." These deliberately multiply into fine-grained leaves (`MoveError`, `FocusError`,
+  `GrabImageError`, ...) so a caller can react differently to each one, rather than catching one
+  broad type and inspecting a message string.
+- **`RemoteError`** and its small subtree mean "the call itself didn't reach/return" (a transport
+  failure), not "the remote operation failed for a domain reason." That distinction doesn't
+  benefit from the same fine-grained treatment, so it stays deliberately small.
+
+A domain exception raised on the far side of an RPC call is looked up in the registry below by its
+fully-qualified name and re-raised locally as its real type, tagged with `remote_module` (see
+`comm/xmpp/rpc.py`'s fault reconstruction) -- it does not travel wrapped in a `RemoteError`. If the
+type can't be resolved (its defining module was never imported in this process, or it was never a
+`PyobsError` to begin with), it arrives as `UnclassifiedError` instead, with the original type name
+preserved as `original_type`.
+
+Every subclass registers itself automatically via `__init_subclass__` (`PyobsError._registry`);
+there's nothing to do at definition time beyond subclassing the right branch of the hierarchy.
+"""
+
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Coroutine
 from typing import Any, NamedTuple
 
-"""
-TODO: Write docs
-"""
 __title__ = "Exceptions"
 
 
@@ -135,20 +156,12 @@ class UnclassifiedError(PyobsError):
 
 #######################################
 
-# The hierarchy above this point is domain-level: each type means "the operation failed for
-# reason X," and per goal 5, domain exceptions deliberately multiply into fine-grained leaves so a
-# caller can react differently to each one. RemoteError and its subtree below are the other axis
-# entirely -- they mean "the call itself didn't reach/return" (a transport failure), not "the
-# remote operation failed for a domain reason." That distinction doesn't benefit from the same
-# fine-grained treatment: "the call failed to even happen" doesn't usually need to distinguish
-# *why* the way a domain failure does, so RemoteError's own subtree stays deliberately small.
-# A domain exception raised on the far side of an RPC call no longer travels through this
-# subtree at all (see rpc.py's fault reconstruction) -- it arrives as its own real type directly,
-# tagged with `remote_module`, not wrapped in a RemoteError.
-
 
 class RemoteError(PyobsError):
-    """Exception for anything related to the communication between modules."""
+    """The call itself didn't reach/return -- a transport failure, not a domain exception raised
+    by the remote operation (see the module docstring for that distinction). Kept deliberately
+    small: "the call failed to even happen" doesn't need the same fine-grained treatment as a
+    domain failure."""
 
     pass
 

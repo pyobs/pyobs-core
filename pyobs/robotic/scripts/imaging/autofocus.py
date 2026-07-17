@@ -29,7 +29,7 @@ class AutoFocusScript(Script):
         """
 
         # we need a target to focus on
-        if data is None or data.task is None or data.task.target is None:
+        if data is None or data.task is None or data.resolved_target is None:
             self._cant_run_reason = "No target given."
             return False
 
@@ -60,7 +60,7 @@ class AutoFocusScript(Script):
         if data is None or data.task is None:
             return
 
-        target = data.task.target
+        target = data.resolved_target
         if target is None:
             raise ValueError("No target given.")
         log.info("Picked target %s for auto focus...", target)

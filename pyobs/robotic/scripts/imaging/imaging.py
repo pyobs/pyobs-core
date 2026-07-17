@@ -163,7 +163,7 @@ class ImagingScript(Script):
 
     async def _track_target(self, data: TaskData | None) -> tuple[Future | asyncio.Task[Any], Target | None]:
         # got a target?
-        target = data.task.target if data is not None and data.task is not None else None
+        target = data.resolved_target if data is not None and data.task is not None else None
         track: Future | asyncio.Task[Any] = Future(empty=True)
         if ImageType.OBJECT in self._image_types() and target is not None:
             log.info("Moving to target %s...", target.name)

@@ -38,7 +38,7 @@ async def test_rpc_void_return_bool_float_params(make_xmpp_comm, make_camera_com
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
             assert ok
@@ -59,7 +59,7 @@ async def test_rpc_float_return(make_xmpp_comm, make_camera_comm) -> None:
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
             assert ok
@@ -83,7 +83,7 @@ async def test_rpc_float_param_float_return(make_xmpp_comm, make_camera_comm) ->
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
             assert ok
@@ -112,7 +112,7 @@ async def test_rpc_int_params_void_return(make_xmpp_comm, make_camera_comm) -> N
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
             assert ok
@@ -133,7 +133,7 @@ async def test_rpc_exception_fault(make_xmpp_comm, make_camera_comm) -> None:
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
             assert ok
@@ -158,7 +158,7 @@ async def test_rpc_bool_float_roundtrip(make_xmpp_comm, make_camera_comm) -> Non
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
             assert ok

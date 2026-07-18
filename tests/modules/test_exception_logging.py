@@ -7,14 +7,21 @@ import pytest
 from pyobs.interfaces import IAbortable
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
+from pyobs.utils.enums import ModuleState
 
 
 class _AbortableModule(Module, IAbortable):
-    """Minimal test module whose abort() raises whatever exception it's given."""
+    """Minimal test module whose abort() raises whatever exception it's given.
+
+    Starts in ModuleState.READY rather than the real STARTING default -- these tests
+    exercise execute()'s exception classification/logging, not startup gating (that's
+    covered separately in tests/modules/test_startup_gating.py).
+    """
 
     def __init__(self, to_raise: Exception, **kwargs: Any):
         Module.__init__(self, **kwargs)
         self._to_raise = to_raise
+        self._state = ModuleState.READY
 
     async def abort(self, **kwargs: Any) -> None:
         raise self._to_raise

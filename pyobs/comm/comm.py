@@ -530,6 +530,21 @@ class Comm:
     async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:
         pass
 
+    async def mark_ready(self) -> None:
+        """Signal that the module has finished its own startup (reached ModuleState.READY) and is
+        safe for peers to discover.
+
+        Called by Module once it transitions to READY. Transports that announce a module to peers
+        independently of RPC dispatch (e.g. XmppComm's XMPP presence, which drives other modules'
+        peer-discovery reaction) hold that announcement back until this fires, so peers never read
+        capabilities that are still mid-publish. Transports without such an announcement (e.g.
+        LocalComm) don't need to override this.
+        """
+        await self._mark_ready()
+
+    async def _mark_ready(self) -> None:
+        pass
+
     def get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
         """Return the last known presence state of a connected module.
 

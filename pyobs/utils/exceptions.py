@@ -122,6 +122,15 @@ class DeviceBusyError(PyobsError):
     pass
 
 
+class ModuleStartingError(PyobsError):
+    """The module hasn't finished its own startup yet (still inside `open()`, e.g. connecting to
+    hardware) and isn't safe to command -- distinct from DeviceBusyError, which means the module is
+    fully up but its device is occupied with another operation. Back off and retry once the module
+    reports ModuleState.READY, rather than treating this as a domain failure."""
+
+    pass
+
+
 class NotSupportedError(PyobsError):
     """This module doesn't support the requested operation at all -- a capability the module only
     optionally implements (e.g. an alt/az-only telescope asked to move_radec) isn't available,

@@ -101,6 +101,13 @@ ModuleError
    :members:
    :undoc-members:
 
+ModuleStartingError
+^^^^^^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.ModuleStartingError
+   :members:
+   :undoc-members:
+
 MotionError
 ^^^^^^^^^^^
 

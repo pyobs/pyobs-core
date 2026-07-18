@@ -5,6 +5,7 @@ import pytest
 
 from pyobs.modules.test import StandAlone
 from pyobs.utils import exceptions as exc
+from pyobs.utils.enums import ModuleState
 
 
 def test_default():
@@ -108,6 +109,7 @@ def test_acl_allow_unknown_entry_kept_as_plain_method_name():
 @pytest.mark.asyncio
 async def test_execute_allow_interface_name_sugar_permits_interface_methods():
     module = StandAlone(acl={"allow": {"scheduler": ["IConfig"]}})
+    module._state = ModuleState.READY  # set_config_value isn't in the STARTING whitelist
     with pytest.raises(exc.ForbiddenError):
         await module.execute("reset_error", sender="scheduler")
     # set_config_value is part of IConfig, so it's permitted by the "IConfig" sugar entry --

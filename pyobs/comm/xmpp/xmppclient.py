@@ -34,6 +34,9 @@ class XmppClient(slixmpp.ClientXMPP):
         self._jid_conflict = False
         self._conflict_reason: str | None = None
 
+        # module startup gating -- see send_presence()/mark_ready() below
+        self._module_ready = False
+
         # auto-accept invitations
         self.auto_authorize = True
 
@@ -57,6 +60,33 @@ class XmppClient(slixmpp.ClientXMPP):
         self.add_event_handler("failed_all_auth", self.failed_all_auth)
         self.add_event_handler("stream_error", self._stream_error)
         self.add_filter("in", self._filter_messages)
+
+    def send_presence(self, *args: Any, **kwargs: Any) -> Any:
+        """Override slixmpp's send_presence to hold back every presence broadcast -- the initial
+        online announcement (session_start) as well as re-broadcasts triggered by capability
+        updates (XmppComm._register_events) or lifecycle state changes (XmppComm._set_presence) --
+        until mark_ready() fires. This keeps the module invisible to peers' online-discovery
+        (_got_online/ModuleOpenedEvent) while it's still starting up, so peers never read
+        capabilities that are still mid-publish. Calls made before mark_ready() are simply dropped;
+        mark_ready() sends its own presence once, which is enough to announce the module (any
+        entity-capabilities hash update from a dropped call in the meantime is still picked up,
+        since update_caps() itself isn't gated).
+        """
+        if not self._module_ready:
+            return None
+        return super().send_presence(*args, **kwargs)
+
+    def mark_ready(self) -> None:
+        """Allow send_presence() to actually transmit from here on -- called either once the owning
+        Module first reaches ModuleState.READY (on the live, already-connected client: announce
+        immediately), or by XmppComm._connect() on a freshly created client for a reconnect after
+        the module was already READY (not connected yet -- session_start() will send presence as
+        soon as it fires, now that gating allows it). No-op if already marked ready."""
+        if self._module_ready:
+            return
+        self._module_ready = True
+        if self._connect_event.is_set():
+            self.send_presence()
 
     def reconnect(self, wait: int | float = 2.0, reason: str = "Reconnecting") -> Any:
         """Disconnect only, instead of slixmpp's default reconnect-in-place.

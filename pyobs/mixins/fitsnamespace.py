@@ -17,7 +17,7 @@ class FitsNamespaceMixin:
         self.__namespaces = {} if fits_namespaces is None else fits_namespaces
 
     def _filter_fits_namespace(
-        self, hdr: dict[str, FitsHeaderEntry], sender: str, namespaces: list[str] | None = None
+        self, hdr: dict[str, FitsHeaderEntry], sender: str, namespaces: list[str] | None = None, **kwargs: Any
     ) -> dict[str, FitsHeaderEntry]:
         """Filter FITS header keywords by given namespaces. If no namespaces are given, let all through. Always
         let keywords with this module's name as namespace pass.

@@ -503,10 +503,10 @@ class XmppComm(Comm):
             # RPC layer's jabber_rpc_error event handling ever gets a chance to act on it,
             # so the IQ-level "forbidden" condition (see Module ACLs) has to be read here.
             if e.iq["error"]["condition"] == "forbidden":
-                raise exc.RemoteError(client, f"Forbidden to invoke {method} on {client}.")
-            raise exc.RemoteError(client, f"Could not call {method} on {client}.")
+                raise exc.RemoteError(f"Forbidden to invoke {method} on {client}.", module=client)
+            raise exc.RemoteError(f"Could not call {method} on {client}.", module=client)
         except slixmpp.exceptions.IqTimeout:
-            raise exc.RemoteTimeoutError(client, f"Call to {method} on {client} timed out.")
+            raise exc.RemoteTimeoutError(f"Call to {method} on {client} timed out.", module=client)
 
     async def _got_online(self, msg: Any) -> None:
         """If a new client connects, add it to list.

@@ -15,11 +15,31 @@ if TYPE_CHECKING:
 from pyobs.events import Event, FilterChangedEvent, FocusFoundEvent
 from pyobs.interfaces import IFilters, IFocuser, IFocusModel, IReady, ITemperatures, IWeather
 from pyobs.modules import Module, timeout
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
+
+
+class WeatherDataError(exc.FocusError):
+    """The weather station returned an invalid/missing reading -- plausibly transient, worth retrying."""
+
+    pass
+
+
+class FocusTimeoutError(exc.FocusError):
+    """Timed out waiting for a temperature reading from another module -- plausibly transient, worth retrying."""
+
+    pass
+
+
+class MissingSensorError(exc.FocusError):
+    """The configured sensor name isn't in the responding module's temperature data -- a config
+    bug, retrying never fixes it."""
+
+    pass
 
 
 class FocusModel(Module, IFocusModel):
@@ -227,7 +247,9 @@ class FocusModel(Module, IFocusModel):
             Optimum focus calculated from model.
 
         Raises:
-            ValueError: If anything went wrong.
+            WeatherDataError: If the weather station returned an invalid temperature reading.
+            FocusTimeoutError: If a temperature module didn't respond in time.
+            MissingSensorError: If a configured sensor isn't in a module's temperature data.
         """
 
         # get values for variables
@@ -263,6 +285,11 @@ class FocusModel(Module, IFocusModel):
 
         Returns:
             Dictionary containing all values required by the model.
+
+        Raises:
+            WeatherDataError: If the weather station returned an invalid temperature reading.
+            FocusTimeoutError: If a temperature module didn't respond in time.
+            MissingSensorError: If a configured sensor isn't in a module's temperature data.
         """
 
         # variables for model evaluation
@@ -275,7 +302,7 @@ class FocusModel(Module, IFocusModel):
             async with self.proxy(self._weather, IWeather) as weather:
                 reading = await weather.get_sensor_value(self._temp_station, self._temp_sensor)
                 if reading.value is None:
-                    raise ValueError("Received invalid temperature from weather station.")
+                    raise WeatherDataError("Received invalid temperature from weather station.")
 
             # get temperature
             variables["temp"] = reading.value
@@ -293,7 +320,7 @@ class FocusModel(Module, IFocusModel):
                     try:
                         temp_state = await proxy.wait_for_state(ITemperatures)
                     except TimeoutError:
-                        raise ValueError(f"Timeout waiting for temperatures from module {cfg['module']}.")
+                        raise FocusTimeoutError(f"Timeout waiting for temperatures from module {cfg['module']}.")
                     module_temps[cfg["module"]] = (
                         {r.name: r.value for r in temp_state.readings} if temp_state is not None else {}
                     )
@@ -304,7 +331,9 @@ class FocusModel(Module, IFocusModel):
 
             # store, what we need
             if cfg["sensor"] not in module_temps[cfg["module"]]:
-                raise ValueError(f"Temperature for sensor {cfg['sensor']} not in data from module {cfg['module']}.")
+                raise MissingSensorError(
+                    f"Temperature for sensor {cfg['sensor']} not in data from module {cfg['module']}."
+                )
             variables[var] = module_temps[cfg["module"]][cfg["sensor"]]
 
         # log
@@ -319,7 +348,9 @@ class FocusModel(Module, IFocusModel):
             filter_name: Name of filter to use.
 
         Raises:
-            ValueError: If anything went wrong.
+            WeatherDataError: If the weather station returned an invalid temperature reading.
+            FocusTimeoutError: If a temperature module didn't respond in time.
+            MissingSensorError: If a configured sensor isn't in a module's temperature data.
         """
 
         # get focus
@@ -336,7 +367,9 @@ class FocusModel(Module, IFocusModel):
         """Sets optimal focus.
 
         Raises:
-            ValueError: If anything went wrong.
+            WeatherDataError: If the weather station returned an invalid temperature reading.
+            FocusTimeoutError: If a temperature module didn't respond in time.
+            MissingSensorError: If a configured sensor isn't in a module's temperature data.
         """
         await self._set_optimal_focus()
 

@@ -11,6 +11,7 @@ from pyobs.events import NewImageEvent
 from pyobs.interfaces import IImageType, IVideo
 from pyobs.modules import Module
 from pyobs.modules.camera.basevideo import BaseVideo, ImageRequest, LastImage, NextImage
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ImageType
 
 
@@ -469,7 +470,7 @@ async def test_grab_data_raises_when_never_gets_filename() -> None:
 
     asyncio.create_task(fulfill_with_no_filename())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(exc.GrabImageError):
         await bv.grab_data()
 
 

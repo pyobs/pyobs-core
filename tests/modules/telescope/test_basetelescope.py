@@ -8,6 +8,7 @@ from astroplan import Observer
 from pyobs.interfaces import OrbitalElements
 from pyobs.modules.telescope import DummyRaDecTelescope
 from pyobs.modules.telescope.basetelescope import (
+    InvalidOrbitalElementsError,
     _orbital_plane_to_ecliptic_cartesian,
     _propagate_elements,
     _solve_barker_equation,
@@ -116,7 +117,7 @@ def test_propagate_elements_requires_mean_anomaly_or_perihelion_time():
         longitude_ascending_node=10.0,
         argument_of_periapsis=20.0,
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidOrbitalElementsError):
         _propagate_elements(elements, Time("2024-01-01T00:00:00"))
 
 

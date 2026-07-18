@@ -20,8 +20,11 @@ class IPointingBody(Interface, metaclass=ABCMeta):
                   asteroid/comet designation known to JPL Horizons).
 
         Raises:
-            MoveError: If telescope could not be moved.
-            ValueError: If body name is not resolvable.
+            NotSupportedError: If this device doesn't support body tracking.
+            BodyResolutionError: If body name is not resolvable.
+            MoveError: If telescope could not be moved. Also propagates whatever the underlying
+                RA/Dec move raises (e.g. MissingObserverError, AltitudeLimitError), since tracking
+                a body is implemented as resolving it and then moving there.
         """
         ...
 

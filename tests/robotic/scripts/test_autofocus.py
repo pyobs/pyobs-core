@@ -53,14 +53,28 @@ async def test_can_run_true_when_ready() -> None:
     telescope = make_telescope(ready=True)
     script._comm.has_proxy = AsyncMock(return_value=True)
     script._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(telescope))
-    assert await script.can_run(None) is True
+    target = SiderealTarget(name="Vega", ra=279.23, dec=38.78)
+    assert await script.can_run(make_task(target=target)) is True
+
+
+@pytest.mark.asyncio
+async def test_can_run_false_when_no_data() -> None:
+    script = make_script()
+    assert await script.can_run(None) is False
+
+
+@pytest.mark.asyncio
+async def test_can_run_false_when_no_target() -> None:
+    script = make_script()
+    assert await script.can_run(make_task(target=None)) is False
 
 
 @pytest.mark.asyncio
 async def test_can_run_false_when_autofocus_unavailable() -> None:
     script = make_script()
     script._comm.has_proxy = AsyncMock(return_value=False)
-    assert await script.can_run(None) is False
+    target = SiderealTarget(name="Vega", ra=279.23, dec=38.78)
+    assert await script.can_run(make_task(target=target)) is False
 
 
 @pytest.mark.asyncio
@@ -69,7 +83,8 @@ async def test_can_run_false_when_telescope_not_ready() -> None:
     telescope = make_telescope(ready=False)
     script._comm.has_proxy = AsyncMock(return_value=True)
     script._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(telescope))
-    assert await script.can_run(None) is False
+    target = SiderealTarget(name="Vega", ra=279.23, dec=38.78)
+    assert await script.can_run(make_task(target=target)) is False
 
 
 # ── run ───────────────────────────────────────────────────────────────────────

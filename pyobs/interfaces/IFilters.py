@@ -35,7 +35,7 @@ class IFilters(IMotion, metaclass=ABCMeta):
             filter_name: Name of filter to set.
 
         Raises:
-            ValueError: If an invalid filter was given.
+            InvalidArgumentError: If an invalid filter was given.
             MoveError: If filter wheel cannot be moved.
         """
         ...

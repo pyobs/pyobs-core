@@ -7,6 +7,7 @@ from pyobs.modules import Module, timeout
 from pyobs.object import get_object
 from pyobs.robotic.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.robotic.utils.skyflats.scheduler import Scheduler
+from pyobs.utils import exceptions as exc
 from pyobs.utils.parallel import event_wait
 from pyobs.utils.time import Time
 
@@ -77,11 +78,15 @@ class FlatFieldScheduler(Module, IRunnable):
 
     @timeout(7200)
     async def run(self, **kwargs: Any) -> None:
-        """Perform flat-fielding"""
+        """Perform flat-fielding
+
+        Raises:
+            DeviceBusyError: If a flat-fielding run is already in progress.
+        """
 
         # check
         if self._running:
-            raise ValueError("Already running.")
+            raise exc.DeviceBusyError("Already running.")
         self._running = True
 
         try:

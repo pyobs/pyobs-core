@@ -90,15 +90,15 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         # register exceptions
         if isinstance(camera, str):
-            exc.register_exception(
+            self._register_exception(
                 exc.RemoteError, 3, timespan=600, module=camera, callback=self._default_remote_error_callback
             )
         if isinstance(telescope, str):
-            exc.register_exception(
+            self._register_exception(
                 exc.RemoteError, 3, timespan=600, module=telescope, callback=self._default_remote_error_callback
             )
         if isinstance(filters, str):
-            exc.register_exception(
+            self._register_exception(
                 exc.RemoteError, 3, timespan=600, module=filters, callback=self._default_remote_error_callback
             )
 
@@ -181,9 +181,6 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         Args:
             filter_name: Name of filter to set.
-
-        Raises:
-            ValueError: If binning could not be set.
         """
         self._filter = filter_name
         await self.comm.set_state(IFilters, FilterState(filter=filter_name))
@@ -197,11 +194,14 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         Returns:
             Number of images actually taken and total exposure time in seconds
+
+        Raises:
+            DeviceBusyError: If a flat-fielding run is already in progress.
         """
 
         # check
         if self._running:
-            raise ValueError("Already running.")
+            raise exc.DeviceBusyError("Already running.")
         self._running = True
 
         try:

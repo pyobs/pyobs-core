@@ -12,7 +12,11 @@ class ISyncTarget(Interface, metaclass=ABCMeta):
 
     @abstractmethod
     async def sync_target(self, **kwargs: Any) -> None:
-        """Synchronize device on current target."""
+        """Synchronize device on current target.
+
+        Raises:
+            GeneralError: If synchronization failed.
+        """
         ...
 
 

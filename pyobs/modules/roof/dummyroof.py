@@ -7,6 +7,7 @@ from typing import Any
 from pyobs.events import RoofClosingEvent, RoofOpenedEvent
 from pyobs.interfaces import IRoof
 from pyobs.modules import timeout
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 
@@ -48,19 +49,22 @@ class DummyRoof(BaseRoof, IRoof):
         """Open the roof.
 
         Raises:
-            AcquireLockFailed: If current motion could not be aborted.
+            InitError: If the roof could not be initialized (e.g. another motion is in progress).
         """
 
         if self._is_open():
             return
 
-        async with LockWithAbort(self._lock_motion, self._abort_motion):
-            await self._change_motion_status(MotionStatus.INITIALIZING)
+        try:
+            async with LockWithAbort(self._lock_motion, self._abort_motion):
+                await self._change_motion_status(MotionStatus.INITIALIZING)
 
-            await self._move_roof(self._ROOF_OPEN_PERCENTAGE)
+                await self._move_roof(self._ROOF_OPEN_PERCENTAGE)
 
-            await self._change_motion_status(MotionStatus.IDLE)
-            await self.comm.send_event(RoofOpenedEvent())
+                await self._change_motion_status(MotionStatus.IDLE)
+                await self.comm.send_event(RoofOpenedEvent())
+        except Exception as e:
+            raise exc.InitError(str(e)) from e
 
     def _is_open(self) -> bool:
         return self._open_percentage == self._ROOF_OPEN_PERCENTAGE
@@ -70,19 +74,22 @@ class DummyRoof(BaseRoof, IRoof):
         """Close the roof.
 
         Raises:
-            AcquireLockFailed: If current motion could not be aborted.
+            ParkError: If the roof could not be parked (e.g. another motion is in progress).
         """
 
         if self._is_closed():
             return
 
-        async with LockWithAbort(self._lock_motion, self._abort_motion):
-            await self._change_motion_status(MotionStatus.PARKING)
-            await self.comm.send_event(RoofClosingEvent())
+        try:
+            async with LockWithAbort(self._lock_motion, self._abort_motion):
+                await self._change_motion_status(MotionStatus.PARKING)
+                await self.comm.send_event(RoofClosingEvent())
 
-            await self._move_roof(self._ROOF_CLOSED_PERCENTAGE)
+                await self._move_roof(self._ROOF_CLOSED_PERCENTAGE)
 
-            await self._change_motion_status(MotionStatus.PARKED)
+                await self._change_motion_status(MotionStatus.PARKED)
+        except Exception as e:
+            raise exc.ParkError(str(e)) from e
 
     def _is_closed(self) -> bool:
         return self._open_percentage == self._ROOF_CLOSED_PERCENTAGE
@@ -109,7 +116,7 @@ class DummyRoof(BaseRoof, IRoof):
             device: Name of device to stop, or None for all.
 
         Raises:
-            AcquireLockFailed: If current motion could not be aborted.
+            DeviceBusyError: If current motion could not be aborted.
         """
 
         await self._change_motion_status(MotionStatus.ABORTING)

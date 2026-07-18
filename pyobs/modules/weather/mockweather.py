@@ -7,6 +7,7 @@ from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderBefore, IRunning, IWeat
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.modules.weather.weather import FITS_HEADERS, SENSOR_UNITS
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import WeatherSensors
 
 DEFAULT_SENSOR_VALUES: dict[WeatherSensors, float] = {
@@ -119,9 +120,12 @@ class MockWeather(Module, IWeather, IFitsHeaderBefore):
 
         Returns:
             Current reading for the given sensor.
+
+        Raises:
+            InvalidArgumentError: If sensor is unknown.
         """
         if sensor not in self._sensors:
-            raise ValueError(f"Unknown sensor: {sensor}")
+            raise exc.InvalidArgumentError(f"Unknown sensor: {sensor}")
 
         return WeatherSensorReading(sensor=sensor, value=self._sensors[sensor], unit=SENSOR_UNITS[sensor])
 

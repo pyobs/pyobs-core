@@ -20,6 +20,7 @@ from pyobs.interfaces.IBinning import Binning
 from pyobs.modules import Module
 from pyobs.modules.flatfield.flatfield import FlatField
 from pyobs.robotic.utils.skyflats import FlatFielder
+from pyobs.utils import exceptions as exc
 from tests.helpers import make_proxy_cm
 
 
@@ -248,7 +249,7 @@ async def test_flat_field_raises_when_already_running() -> None:
     task = asyncio.create_task(ff.flat_field())
     await asyncio.sleep(0.05)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(exc.DeviceBusyError):
         await ff.flat_field()
 
     block.set()

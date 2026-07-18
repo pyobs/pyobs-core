@@ -34,6 +34,9 @@ class IPointingRaDec(Interface, metaclass=ABCMeta):
             dec: Dec in deg to track.
 
         Raises:
+            NotSupportedError: If this device doesn't support RA/Dec pointing.
+            MissingObserverError: If no observer is configured.
+            AltitudeLimitError: If the destination is below the configured altitude limit.
             MoveError: If device could not be moved.
         """
         ...

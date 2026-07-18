@@ -16,6 +16,7 @@ from pyobs.robotic import (
     TaskArchive,
     TaskRunner,
 )
+from pyobs.robotic.scheduler.targets import Target
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -62,6 +63,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
         # observation name and exposure number
         self._task: Task | None = None
+        self._task_target: Target | None = None
 
     async def open(self) -> None:
         """Open module."""
@@ -118,7 +120,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 await asyncio.sleep(10)
                 continue
 
-            if not await self._task_runner.can_run(observation.task):
+            if not await self._task_runner.can_run(observation.task, observation.target):
                 reason = self._task_runner.cant_run_reason(observation.task)
                 if reason is not None:
                     last = self._last_cant_run_reason.get(observation.task.id)
@@ -153,6 +155,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
             # task is definitely not None here
             self._task = observation.task
+            self._task_target = observation.target
 
             # ETA
             now = Time.now()
@@ -168,7 +171,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             # run task in thread
             log.info("Running task %s...", self._task.name)
             try:
-                await self._task_runner.run_task(self._task)
+                await self._task_runner.run_task(self._task, self._task_target)
             except Exception:
                 # something went wrong
                 log.exception("Task %s failed.", self._task.name)
@@ -177,6 +180,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 await self._observation_archive.update_observation(observation)
                 await self.comm.send_event(TaskFailedEvent(name=self._task.name, id=self._task.id))
                 self._task = None
+                self._task_target = None
                 continue
 
             # send event and change state
@@ -188,6 +192,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             # finish
             log.info("Finished task %s.", self._task.name)
             self._task = None
+            self._task_target = None
 
             # sleep?
             await asyncio.sleep(self._after_task_sleep)

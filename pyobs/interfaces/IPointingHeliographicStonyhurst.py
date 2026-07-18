@@ -35,7 +35,9 @@ class IPointingHeliographicStonyhurst(Interface, metaclass=ABCMeta):
             lat: Latitude in deg to track.
 
         Raises:
-            MoveError: If device could not be moved.
+            MoveError: If device could not be moved. Also propagates whatever the underlying
+                RA/Dec move raises (e.g. MissingObserverError, AltitudeLimitError), since this is
+                typically implemented as converting to RA/Dec and then moving there.
         """
         ...
 

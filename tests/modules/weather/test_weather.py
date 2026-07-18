@@ -9,6 +9,7 @@ from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, WeatherSensorReading
 from pyobs.modules import Module
 from pyobs.modules.weather import Weather
+from pyobs.modules.weather.weather import WeatherResponseError
 from pyobs.utils.enums import Unit, WeatherSensors
 from pyobs.utils.time import Time
 
@@ -74,7 +75,7 @@ async def test_get_sensor_value_invalid_response():
     weather = Weather("example.com/")
 
     weather._api.get_sensor_value = AsyncMock(return_value={})
-    with pytest.raises(ValueError):
+    with pytest.raises(WeatherResponseError):
         await weather.get_sensor_value("test", WeatherSensors.RAIN)
 
 

@@ -24,7 +24,11 @@ class IRotation(IMotion, metaclass=ABCMeta):
 
     @abstractmethod
     async def set_rotation(self, angle: Annotated[float, Unit.DEGREES], **kwargs: Any) -> None:
-        """Sets the rotation angle to the given value in degrees."""
+        """Sets the rotation angle to the given value in degrees.
+
+        Raises:
+            MoveError: If the device could not be rotated.
+        """
         ...
 
 

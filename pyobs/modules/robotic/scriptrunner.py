@@ -5,7 +5,8 @@ from typing import Any
 
 from pyobs.interfaces import IRunnable
 from pyobs.modules import Module, timeout
-from pyobs.robotic.scripts import Script
+from pyobs.robotic.scripts import Script, ScriptError
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -45,9 +46,18 @@ class ScriptRunner(Module, IRunnable):
 
     @timeout(calc_run_timeout)
     async def run(self, **kwargs: Any) -> None:
-        """Run script."""
+        """Run script.
+
+        Raises:
+            ScriptError: If the script failed (e.g. a proxy/network failure reaching a dependency).
+        """
         script = self.get_object(self.script, Script)
-        await script.run(None)
+        try:
+            await script.run(None)
+        except exc.PyobsError:
+            raise
+        except Exception as e:
+            raise ScriptError(str(e)) from e
 
     async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""

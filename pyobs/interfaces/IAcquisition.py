@@ -59,7 +59,10 @@ class IAcquisition(IRunning, IAbortable, metaclass=ABCMeta):
             Result with time, ra, dec, alt, az, and an offset in whichever frame the mount supports.
 
         Raises:
-            ValueError: If target could not be acquired.
+            AbortedError: If the acquisition was aborted.
+            GeneralError: If a dependency (e.g. the camera) failed.
+            ImageError: If the calculated offset was too large or otherwise unusable.
+            AcquisitionError: If target could not be acquired within the given tolerance.
         """
         ...
 

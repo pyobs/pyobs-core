@@ -143,7 +143,7 @@ async def test_rpc_exception_fault(make_xmpp_comm, make_camera_comm) -> None:
 
             async with observer_comm.proxy("camera", IExposure) as cam:
                 # abort_exposure when not exposing should raise
-                with pytest.raises((exc.RemoteError, exc.InvocationError, Exception)):
+                with pytest.raises((exc.RemoteError, exc.PyobsError, Exception)):
                     await cam.abort_exposure()
 
         finally:

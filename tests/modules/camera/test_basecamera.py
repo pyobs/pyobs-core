@@ -1,10 +1,31 @@
+import asyncio
+
 import pytest
 from astropy.io import fits
 
 from pyobs.events import BadWeatherEvent
 from pyobs.modules.camera import DummyCamera
+from pyobs.utils import exceptions as exc
 
 pytest_plugins = ("pytest_asyncio",)
+
+
+@pytest.mark.asyncio
+async def test_aborted_exposure_raises_aborted_error():
+    """DummyCamera's _expose() must raise AbortedError, not some guessed builtin, when cancelled
+    via abort_event -- see DESIGN_exception_handling.md's AbortedError contract."""
+    camera = DummyCamera()
+    await camera.open()
+    await camera.set_exposure_time(0.5)
+
+    task = asyncio.create_task(camera.grab_data())
+    await asyncio.sleep(0.1)
+    await camera.abort()
+
+    with pytest.raises(exc.AbortedError):
+        await task
+
+    await camera.close()
 
 
 @pytest.mark.asyncio

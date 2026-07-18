@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import time
 import typing
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from typing import Any, TypeVar, cast
 
 import packaging.version
@@ -84,10 +85,12 @@ def timeout(func_timeout: str | int | Callable[..., Any] | None = None) -> Calla
     return timeout_decorator
 
 
-def raises(*exceptions: type[exc.PyObsError]) -> Callable[[F], F]:
+def raises(*exceptions: type[exc.PyobsError]) -> Callable[[F], F]:
     """
-    Decorates a method with information about which pyobs exceptions it raises. These exceptions are
-    logged in this module, but as INFO without stacktrace.
+    Decorates a method with documentation metadata about which pyobs exceptions it raises. Every domain
+    PyobsError already logs as a quiet INFO line by default (see Module.execute()), regardless of whether
+    it's declared here -- this decorator no longer affects logging. It exists purely for documentation
+    purposes: a future cross-check could compare it against a method's docstring or its actual raise sites.
 
     :param exceptions:  One or more exceptions.
     """
@@ -155,6 +158,129 @@ class Module(Object, IModule, IConfig):
         # close
         self._closing = asyncio.Event()
         self._quit_parent: Callable[[], None] | None = None  # set by MultiModule
+
+        # exception types this module has opted out of logging locally (see _disable_exception_logging)
+        self._disabled_exception_logging: tuple[type[exc.PyobsError], ...] = ()
+
+        # severity-escalation state (see _register_exception/_record_exception) -- instance-scoped,
+        # not module-level globals, so two Module instances in the same process (e.g. under
+        # MultiModule) never share counters
+        self._exception_log: dict[type[exc.PyobsError], list[exc.LoggedException]] = {}
+        self._remote_exception_log: dict[tuple[type[exc.PyobsError], str], list[exc.LoggedException]] = {}
+        self._exception_handlers: list[exc.ExceptionHandler] = []
+
+    # exception types that always need local attention, regardless of _disable_exception_logging:
+    # ModuleError means the module itself is broken; UnclassifiedError means something escaped
+    # un-typed, either locally or across an RPC boundary. Neither is part of the deliberate
+    # per-type logging contract a module author gets to opt out of.
+    _UNSUPPRESSIBLE: tuple[type[exc.PyobsError], ...] = (exc.ModuleError, exc.UnclassifiedError)
+
+    def _disable_exception_logging(self, *exceptions: type[exc.PyobsError]) -> None:
+        """Declare that the given PyobsError types (and their subclasses) fire often enough that even the
+        default quiet INFO line is too much, and should not be logged locally at all -- the caller already
+        sees them.
+
+        Args:
+            *exceptions: One or more PyobsError subclasses to silence locally.
+        """
+        for e in exceptions:
+            if issubclass(e, self._UNSUPPRESSIBLE):
+                raise ValueError(f"{e.__name__} cannot be silenced -- it always needs local attention.")
+        self._disabled_exception_logging = self._disabled_exception_logging + exceptions
+
+    def _register_exception(
+        self,
+        exc_type: type[exc.PyobsError],
+        limit: int,
+        timespan: float | None = None,
+        module: str | None = None,
+        callback: Callable[[exc.PyobsError], Coroutine[Any, Any, None]] | None = None,
+    ) -> None:
+        """Watch for repeated occurrences of exc_type -- optionally scoped to a specific remote
+        module -- and fire callback once limit occurrences are seen (optionally within timespan
+        seconds). Call from __init__.
+
+        Args:
+            exc_type: Exception type (or a shared ancestor, e.g. RemoteError) to watch for.
+            limit: Number of occurrences that triggers the callback.
+            timespan: If given, only count occurrences within the last timespan seconds.
+            module: If given, only count occurrences tagged as coming from this remote module
+                (see _record_exception) instead of ones raised locally.
+            callback: Coroutine called with the triggering exception once the threshold is hit.
+        """
+        self._exception_handlers.append(exc.ExceptionHandler(exc_type, limit, timespan, module, callback))
+
+    def _record_exception(self, exception: exc.PyobsError) -> None:
+        """Records exception for severity tracking (see _register_exception) and fires any handler
+        whose threshold is now met. Call from execute()'s catch block -- every exception it lets
+        through is already a PyobsError by then (see execute()'s UnclassifiedError wrapping)."""
+        module = getattr(exception, "remote_module", None)
+        self._store_exception(exception, module)
+
+        triggered = self._check_exception_severity()
+        handlers = [h for h in triggered if self._exception_matches(exception, h.exc_type)]
+        for h in handlers:
+            if h.callback is not None:
+                asyncio.create_task(h.callback(exception))
+
+    def _exception_matches(self, exception: Exception, exc_type: type[exc.PyobsError]) -> bool:
+        """Whether exception should count as an instance of exc_type for severity-handler matching:
+        true isinstance, or -- mirroring _store_exception's RemoteError special case below --
+        anything tagged with remote_module counts as a RemoteError even though its own type no
+        longer literally subclasses it now that faults raise as their real type instead of wrapped."""
+        if isinstance(exception, exc_type):
+            return True
+        return exc_type is exc.RemoteError and getattr(exception, "remote_module", None) is not None
+
+    def _store_exception(self, exception: exc.PyobsError, module: str | None) -> None:
+        # get all classes from mro -- plus RemoteError if this crossed an RPC boundary (module is
+        # not None, i.e. the exception carries a remote_module tag from rpc.py's fault
+        # reconstruction), even though a directly-reraised domain type (e.g. GrabImageError) no
+        # longer subclasses RemoteError itself now that faults raise as their real type instead of
+        # wrapped (see rpc.py, Assessment §A). Preserves
+        # _register_exception(exc.RemoteError, ..., module=X)-style "this module keeps failing
+        # remotely, regardless of the specific type" handlers (e.g. AutoFocusSeries).
+        classes: list[type] = list(type(exception).__mro__)
+        if module is not None and exc.RemoteError not in classes:
+            classes.append(exc.RemoteError)
+
+        for e in classes:
+            # only pyobs exceptions
+            if not issubclass(e, exc.PyobsError):
+                continue
+
+            # is it handled by any handler?
+            if not any(e == h.exc_type for h in self._exception_handlers):
+                continue
+
+            # log
+            le = exc.LoggedException(time=time.time(), exception=exception)
+
+            # store it
+            if module is None:
+                self._exception_log.setdefault(e, []).append(le)
+            else:
+                self._remote_exception_log.setdefault((e, module), []).append(le)
+
+    def _check_exception_severity(self) -> list[exc.ExceptionHandler]:
+        """Checks all handlers against all recorded exceptions and returns those whose threshold is met."""
+        triggered: list[exc.ExceptionHandler] = []
+        for h in self._exception_handlers:
+            if h.module is None:
+                exceptions = self._exception_log.get(h.exc_type, [])
+            else:
+                exceptions = self._remote_exception_log.get((h.exc_type, h.module), [])
+
+            if h.timespan is None:
+                count = len(exceptions)
+            else:
+                earliest = time.time() - h.timespan
+                count = len([le for le in exceptions if le.time >= earliest])
+
+            if count >= h.limit:
+                triggered.append(h)
+
+        return triggered
 
     async def open(self) -> None:
         # open comm
@@ -235,7 +361,8 @@ class Module(Object, IModule, IConfig):
                 caps = proxy.get_capabilities(IModule)
                 module_version = caps.version if caps is not None else ""
                 remote_location = caps.location if caps is not None else None
-        except exc.RemoteError:
+        except exc.PyobsError:
+            # however this failed (transport or domain), we just skip this module
             return True
 
         # log it
@@ -423,9 +550,19 @@ class Module(Object, IModule, IConfig):
 
         # check acl, exempting get_permitted_methods itself so a denied caller can still ask what it's denied from
         sender = kwargs.get("sender", "")
+        # correlation id (XEP-0009's per-call iq id, passed through by the XMPP transport) -- lets
+        # an operator jump from a caller-side exception straight to this log line by id, instead of
+        # neither side pointing at the other. Not set for LocalComm/MultiModule, which are already
+        # in the same log stream as the caller.
+        call_id = kwargs.get("call_id", None)
         if method != "get_permitted_methods" and self._acl_denied(sender, method):
             if self._acl_mode == "enforce":
-                raise exc.ForbiddenError(sender, method)
+                raise exc.ForbiddenError(
+                    f"Caller '{sender}' is not permitted to invoke '{method}'.",
+                    sender=sender,
+                    method=method,
+                    module=sender,
+                )
             else:
                 log.warning('Caller "%s" would be denied calling "%s" (acl mode=log, allowing).', sender, method)
 
@@ -451,19 +588,32 @@ class Module(Object, IModule, IConfig):
 
         try:
             response = await func(*func_args, **ba.arguments, **func_kwargs)
-        except Exception as e:
-            # something else went wrong, but only log if not a ModuleError
-            if isinstance(e, exc.PyObsError) and not isinstance(e, exc.ModuleError):
-                # in list of named exceptions?
-                level = (
-                    "INFO"
-                    if hasattr(func, "raises")
-                    and isinstance(getattr(func, "raises"), tuple)
-                    and type(e) in getattr(func, "raises")
-                    else "ERROR"
-                )
-                exc_info = level == "ERROR"
-                e.log(log, level, f"Exception was raised in call to {method}: {e}", exc_info=exc_info)
+        except Exception as raised:
+            # classify: anything that isn't a domain PyobsError wasn't part of the deliberate
+            # contract (goal 5) -- wrap it so every transport (XMPP, LocalComm, MultiModule) and
+            # every caller can rely on always receiving a PyobsError, regardless of what actually
+            # escaped. exc_info=True below still captures the real traceback via sys.exc_info(),
+            # and raising a freshly-constructed exception here chains it as __context__ for free.
+            if isinstance(raised, exc.PyobsError):
+                e: exc.PyobsError = raised
+            else:
+                original_type = f"{type(raised).__module__}.{type(raised).__qualname__}"
+                e = exc.UnclassifiedError(str(raised), original_type=original_type)
+            setattr(e, "call_id", call_id)
+
+            call_id_suffix = f" (call_id={call_id})" if call_id else ""
+
+            # ModuleError/UnclassifiedError always need local attention -- never suppressible, always loud.
+            if isinstance(e, self._UNSUPPRESSIBLE):
+                e.log(log, "ERROR", f"Exception was raised in call to {method}{call_id_suffix}: {e}", exc_info=True)
+            else:
+                # every other domain exception logs as a quiet INFO line by default -- a module opts
+                # out per-type via _disable_exception_logging, it doesn't opt in per-method anymore.
+                if not isinstance(e, self._disabled_exception_logging):
+                    e.log(log, "INFO", f"Exception was raised in call to {method}{call_id_suffix}: {e}", exc_info=False)
+                # else: caller already has it; nothing to log locally
+
+            self._record_exception(e)
             raise e
 
         return response
@@ -536,16 +686,16 @@ class Module(Object, IModule, IConfig):
             Current value.
 
         Raises:
-            ValueError: If config item of given name does not exist.
+            InvalidArgumentError: If config item of given name does not exist.
         """
 
         # valid parameter?
         if not name:
-            raise ValueError("No parameter name given.")
+            raise exc.InvalidArgumentError("No parameter name given.")
         if name not in self._config_caps:
-            raise ValueError(f"Invalid parameter {name}")
+            raise exc.InvalidArgumentError(f"Invalid parameter {name}")
         if not self._config_caps[name][0]:
-            raise ValueError("Parameter %s is not remotely accessible.")
+            raise exc.InvalidArgumentError("Parameter %s is not remotely accessible.")
 
         # get getter method and call it
         getter = getattr(self, "_get_config_" + name)
@@ -561,16 +711,16 @@ class Module(Object, IModule, IConfig):
             Possible values.
 
         Raises:
-            ValueError: If config item of given name does not exist.
+            InvalidArgumentError: If config item of given name does not exist.
         """
 
         # valid parameter?
         if not name:
-            raise ValueError("No parameter name given.")
+            raise exc.InvalidArgumentError("No parameter name given.")
         if name not in self._config_caps:
-            raise ValueError(f"Invalid parameter {name}")
+            raise exc.InvalidArgumentError(f"Invalid parameter {name}")
         if not self._config_caps[name][2]:
-            raise ValueError("Parameter %s has no list of possible values.")
+            raise exc.InvalidArgumentError("Parameter %s has no list of possible values.")
 
         # get getter method and call it
         options = getattr(self, "_get_config_options_" + name)
@@ -584,16 +734,17 @@ class Module(Object, IModule, IConfig):
             value: New value.
 
         Raises:
-            ValueError: If config item of given name does not exist or value is invalid.
+            InvalidArgumentError: If config item of given name does not exist.
+            ValueError: If value is invalid.
         """
 
         # valid parameter?
         if not name:
-            raise ValueError("No parameter name given.")
+            raise exc.InvalidArgumentError("No parameter name given.")
         if name not in self._config_caps:
-            raise ValueError(f"Invalid parameter {name}")
+            raise exc.InvalidArgumentError(f"Invalid parameter {name}")
         if not self._config_caps[name][1]:
-            raise ValueError("Parameter %s is not remotely settable.")
+            raise exc.InvalidArgumentError("Parameter %s is not remotely settable.")
 
         # get setter and call it
         setter = getattr(self, "_set_config_" + name)
@@ -639,16 +790,18 @@ class Module(Object, IModule, IConfig):
         sender = kwargs.get("sender", "")
         return [name for name in self._methods if not self._acl_denied(sender, name)]
 
-    async def _default_remote_error_callback(self, exception: exc.PyObsError) -> None:
+    async def _default_remote_error_callback(self, exception: exc.PyobsError) -> None:
         """Called on severe errors.
 
         Args:
             exception: Exception that caused severe error.
         """
 
-        # set error string
-        if isinstance(exception, exc.RemoteError):
-            error = f"Servere error in {exception.module} module: {exception}"
+        # set error string -- "module" is a generic context attribute (see PyobsError.__init__), not
+        # guaranteed to be set, even on a RemoteError, so read it defensively
+        module = getattr(exception, "module", None)
+        if isinstance(exception, exc.RemoteError) and module is not None:
+            error = f"Servere error in {module} module: {exception}"
         else:
             error = f"Severe error: {exception}"
         self.set_error_string(error)

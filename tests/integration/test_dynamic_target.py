@@ -167,8 +167,8 @@ async def test_mastermind_receives_resolved_target() -> None:
     seen_targets = []
 
     class TrackingRunner(QuickRunner):
-        async def run_task(self, t) -> bool:
-            seen_targets.append(t.target)
+        async def run_task(self, t, target=None) -> bool:
+            seen_targets.append(target)
             await asyncio.sleep(0.05)
             return True
 

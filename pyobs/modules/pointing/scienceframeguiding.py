@@ -5,6 +5,7 @@ from typing import Any
 from pyobs.events import Event, NewImageEvent
 from pyobs.images import Image
 from pyobs.interfaces import ExposureTimeState, IExposureTime
+from pyobs.utils import exceptions as exc
 
 from ._baseguiding import BaseGuiding
 
@@ -43,8 +44,11 @@ class ScienceFrameAutoGuiding(BaseGuiding):
 
         Args:
             exposure_time: Exposure time in secs.
+
+        Raises:
+            NotSupportedError: Exposure time is dictated by incoming science frames, not settable.
         """
-        raise NotImplementedError
+        raise exc.NotSupportedError("Exposure time is dictated by incoming science frames, not settable.")
 
     async def add_image(self, event: Event, sender: str, **kwargs: Any) -> bool:
         """Processes an image asynchronously, returns immediately.

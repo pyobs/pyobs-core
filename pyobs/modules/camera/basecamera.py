@@ -30,10 +30,6 @@ from pyobs.utils.enums import ExposureStatus, ImageType
 log = logging.getLogger(__name__)
 
 
-class CameraException(Exception):
-    pass
-
-
 class ExposureInfo(NamedTuple):
     """Info about a running exposure."""
 
@@ -113,7 +109,7 @@ class BaseCamera(
         self._sequence_delay_abort = asyncio.Event()
 
         # register exception
-        exc.register_exception(exc.GrabImageError, 3, timespan=600, callback=self._default_remote_error_callback)
+        self._register_exception(exc.GrabImageError, 3, timespan=600, callback=self._default_remote_error_callback)
 
     async def open(self) -> None:
         """Open module."""
@@ -226,6 +222,7 @@ class BaseCamera(
             The actual image.
 
         Raises:
+            AbortedError: If the exposure was cancelled via abort_event.
             GrabImageError: If exposure was not successful.
         """
         ...
@@ -268,7 +265,7 @@ class BaseCamera(
             if image is None or image.safe_data is None:
                 raise exc.GrabImageError("Could not take image.")
 
-        except exc.PyObsError:
+        except exc.PyobsError:
             # exposure was not successful (aborted?), so reset everything and re-raise
             self._exposure = None
             raise
@@ -349,12 +346,13 @@ class BaseCamera(
             Name of image that was taken.
 
         Raises:
+            DeviceBusyError: If the camera is already busy (exposing or running a sequence).
             GrabImageError: If there was a problem grabbing the image.
         """
 
         # are we exposing?
         if self._camera_status != ExposureStatus.IDLE:
-            raise CameraException("Cannot start new exposure because camera is not idle.")
+            raise exc.DeviceBusyError("Cannot start new exposure because camera is not idle.")
         await self._change_exposure_status(ExposureStatus.EXPOSING)
 
         # expose
@@ -384,16 +382,17 @@ class BaseCamera(
                 Does not apply after the last image.
 
         Raises:
-            CameraException: If camera is already busy (exposing or already running a sequence).
+            InvalidArgumentError: If count or delay is out of range.
+            DeviceBusyError: If camera is already busy (exposing or already running a sequence).
         """
         if count < 1:
-            raise ValueError("count must be >= 1.")
+            raise exc.InvalidArgumentError("count must be >= 1.")
         if delay < 0:
-            raise ValueError("delay must be >= 0.")
+            raise exc.InvalidArgumentError("delay must be >= 0.")
 
         # already running a sequence, or mid-exposure outside of one?
         if self._sequence_count_left > 0 or self._camera_status != ExposureStatus.IDLE:
-            raise CameraException("Cannot start new sequence because camera is not idle.")
+            raise exc.DeviceBusyError("Cannot start new sequence because camera is not idle.")
 
         log.info("Starting sequence of %d images...", count)
         self._sequence_count_left = count
@@ -406,7 +405,7 @@ class BaseCamera(
             while self._sequence_count_left > 0:
                 try:
                     await self.grab_data(broadcast=broadcast)
-                except exc.PyObsError:
+                except exc.PyobsError:
                     log.exception("Grab failed during sequence, aborting sequence.")
                     break
                 self._sequence_count_left -= 1
@@ -546,4 +545,4 @@ class BaseCamera(
                 image.data = image.data[::-1, ::-1]
 
 
-__all__ = ["BaseCamera", "CameraException"]
+__all__ = ["BaseCamera"]

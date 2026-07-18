@@ -96,9 +96,22 @@ def fault_to_xml(exception: Exception) -> ET.Element:
     value_elem = ET.Element(f"{{{_NS}}}value")
     pyobs_fault = ET.Element(f"{{{_PYOBS_NS}}}fault")
     exc_elem = ET.Element("exception")
-    exc_elem.text = type(exception).__name__
+    # Fully-qualified name, not the bare class name -- domain exceptions can live anywhere, not
+    # just in pyobs.utils.exceptions (see PyobsError._registry / resolve()). If this is an
+    # UnclassifiedError wrapping something that was never a PyobsError to begin with (see
+    # Module.execute()'s classification), serialize the ORIGINAL type's name instead of
+    # "UnclassifiedError" itself -- original_type never crosses the wire as an attribute (only the
+    # class name and message do), so this is the only way it survives to the caller. The caller's
+    # own registry lookup then decides fresh: an unregistered builtin/vendor type still correctly
+    # falls back to UnclassifiedError, but this time with original_type actually populated.
+    original_type = getattr(exception, "original_type", None)
+    exc_elem.text = original_type if original_type else f"{type(exception).__module__}.{type(exception).__qualname__}"
     msg_elem = ET.Element("message")
-    msg_elem.text = str(exception)
+    # the raw message, not str(exception) -- str() already prepends "<ClassName>", and
+    # reconstruction on the caller's side passes this straight back in as the new instance's
+    # message, so serializing str() here would bake in a doubled "<ClassName> <ClassName> ..." once
+    # the caller's own __str__ formats it again
+    msg_elem.text = getattr(exception, "message", None) or str(exception)
     pyobs_fault.append(exc_elem)
     pyobs_fault.append(msg_elem)
     value_elem.append(pyobs_fault)
@@ -107,16 +120,17 @@ def fault_to_xml(exception: Exception) -> ET.Element:
 
 
 def xml_to_fault(fault_elem: ET.Element) -> tuple[str, str]:
-    """Parse <fault> and return (exception_class_name, message)."""
+    """Parse <fault> and return (exception_qualified_name, message)."""
+    _fallback_name = f"{exc.RemoteError.__module__}.{exc.RemoteError.__qualname__}"
     value_elem = fault_elem.find(f"{{{_NS}}}value")
     if value_elem is None:
-        return "RemoteError", "Unknown error"
+        return _fallback_name, "Unknown error"
     pyobs_fault = value_elem.find(f"{{{_PYOBS_NS}}}fault")
     if pyobs_fault is None:
-        return "RemoteError", "Unknown error"
+        return _fallback_name, "Unknown error"
     exc_el = pyobs_fault.find("exception")
     msg_el = pyobs_fault.find("message")
-    exc_name = (exc_el.text if exc_el is not None else None) or "RemoteError"
+    exc_name = (exc_el.text if exc_el is not None else None) or _fallback_name
     msg = (msg_el.text if msg_el is not None else None) or ""
     return exc_name, msg
 
@@ -170,6 +184,13 @@ class RPC:
         iq.enable("rpc_query")
         pmethod = iq["rpc_query"]["method_call"]["method_name"]
 
+        # XEP-0009 already assigns this per call (used elsewhere as the Future dict key) -- reuse
+        # it as a correlation id so an operator can jump from a caller-side exception straight to
+        # the matching origin-side log line, instead of neither side pointing at the other
+        call_id: str | slixmpp.JID = iq["id"]
+        if isinstance(call_id, slixmpp.JID):
+            call_id = call_id.node
+
         try:
             if self._handler is None:
                 return
@@ -208,7 +229,7 @@ class RPC:
                     response.send()
 
             # Call method
-            return_value = await self._handler.execute(pmethod, *params, sender=iq["from"].user)
+            return_value = await self._handler.execute(pmethod, *params, sender=iq["from"].user, call_id=call_id)
 
             # Serialize return value
             return_type = hints.get("return", type(None))
@@ -220,9 +241,12 @@ class RPC:
             self._client.plugin["xep_0009"].forbidden(iq).send()
 
         except Exception as e:
-            if isinstance(e, exc.PyObsError):
-                e.log(log, "ERROR", f"Exception in call to {pmethod}: {e}", exc_info=True)
-            else:
+            # Module.execute() already classified and logged anything raised by the call itself
+            # (every transport gets the same treatment there now), so there's nothing left to do
+            # here but serialize and send the fault -- except for failures that never reached
+            # execute() at all (e.g. malformed RPC parameters during deserialization above), which
+            # this is the only place that will ever log
+            if not isinstance(e, exc.PyobsError):
                 log.exception("Unexpected exception in %s.", pmethod)
             self._client.plugin["xep_0009"].send_fault(iq, fault_to_xml(e))
 
@@ -269,18 +293,22 @@ class RPC:
         fault_elem = iq["rpc_query"]["method_response"]["fault"]
         exc_name, msg = xml_to_fault(fault_elem)
 
-        exception_class = getattr(exc, exc_name, None)
-        if exception_class is None or not issubclass(exception_class, Exception):
-            exception_class = exc.RemoteError
-
         sender = iq["from"].node
-        if issubclass(exception_class, exc.RemoteError):
-            exception = exception_class(message=msg, module=sender)
+        exception_class = exc.PyobsError.resolve(exc_name)
+        if exception_class is not None:
+            # real registered type (e.g. FocusError) -- raised as itself, not wrapped
+            exception: exc.PyobsError = exception_class(msg, remote_module=sender)
         else:
-            exception = exception_class(msg)
+            # unresolvable: never a PyobsError to begin with, or its defining module was never
+            # imported in this process -- the qualified name string still survives as original_type
+            exception = exc.UnclassifiedError(msg, original_type=exc_name, remote_module=sender)
+
+        # same correlation id Module.execute() logged on the origin side -- an operator can jump
+        # straight from this caller-side exception to the matching detailed log line, by id
+        setattr(exception, "call_id", jid)
 
         if not future.done():
-            future.set_exception(exc.InvocationError(module=sender, exception=exception))
+            future.set_exception(exception)
 
     async def _on_jabber_rpc_error(self, iq: Any) -> None:
         pmethod = self._client.plugin["xep_0009"].extract_method(iq["rpc_query"])
@@ -295,12 +323,16 @@ class RPC:
 
         sender = iq["from"].node
         e = {
-            "item-not-found": exc.RemoteError(sender, f"No remote handler for {pmethod} at {iq['from']}!"),
-            "forbidden": exc.RemoteError(sender, f"Forbidden to invoke {pmethod} at {iq['from']}!"),
-            "undefined-condition": exc.RemoteError(sender, f"Unexpected problem invoking {pmethod} at {iq['from']}!"),
-            "service-unavailable": exc.RemoteError(sender, f"Service at {iq['from']} is unavailable."),
-            "remote-server-not-found": exc.RemoteError(sender, f"Could not find remote server for {iq['from']}."),
-        }.get(condition, exc.RemoteError(sender, f"Unexpected exception at {iq['from']}!"))
+            "item-not-found": exc.RemoteError(f"No remote handler for {pmethod} at {iq['from']}!", module=sender),
+            "forbidden": exc.RemoteError(f"Forbidden to invoke {pmethod} at {iq['from']}!", module=sender),
+            "undefined-condition": exc.RemoteError(
+                f"Unexpected problem invoking {pmethod} at {iq['from']}!", module=sender
+            ),
+            "service-unavailable": exc.RemoteError(f"Service at {iq['from']} is unavailable.", module=sender),
+            "remote-server-not-found": exc.RemoteError(
+                f"Could not find remote server for {iq['from']}.", module=sender
+            ),
+        }.get(condition, exc.RemoteError(f"Unexpected exception at {iq['from']}!", module=sender))
 
         callback.set_exception(e)
 

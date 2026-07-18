@@ -12,10 +12,19 @@ from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.modules.weather.weather_api import WeatherApi
 from pyobs.modules.weather.weather_state import WeatherStatus
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import Unit, WeatherSensors
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
+
+
+class WeatherResponseError(exc.PyobsError):
+    """The weather station's API response was malformed or incomplete (missing an expected field)
+    -- plausibly transient (a flaky station/network), worth retrying, as opposed to a caller
+    passing a bad station/sensor name."""
+
+    pass
 
 
 FITS_HEADERS = {
@@ -167,6 +176,9 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         Returns:
             Current reading for the given sensor.
+
+        Raises:
+            WeatherResponseError: If the weather station's response is malformed.
         """
 
         # do request
@@ -174,7 +186,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         # to json
         if "time" not in status or "value" not in status:
-            raise ValueError("Time and/or value parameters not found in response from weather station.")
+            raise WeatherResponseError("Time and/or value parameters not found in response from weather station.")
 
         # return reading
         return WeatherSensorReading(

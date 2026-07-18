@@ -38,6 +38,7 @@ from pyobs.interfaces import (
     WindowState,
 )
 from pyobs.modules.camera.basecamera import BaseCamera
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus, ImageFormat, ImageType
 from pyobs.utils.time import Time
 
@@ -292,7 +293,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
                 await self._change_exposure_status(ExposureStatus.IDLE)
-                raise InterruptedError("Exposure was aborted.")
+                raise exc.AbortedError("Exposure was aborted.")
             await asyncio.sleep(exposure_time / steps)
         self._exposing = False
 

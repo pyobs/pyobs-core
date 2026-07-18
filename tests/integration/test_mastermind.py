@@ -20,10 +20,10 @@ from pyobs.utils.time import Time
 class QuickRunner(TaskRunner):
     """TaskRunner that immediately completes any task."""
 
-    async def can_run(self, task) -> bool:
+    async def can_run(self, task, target=None) -> bool:
         return True
 
-    async def run_task(self, task) -> bool:
+    async def run_task(self, task, target=None) -> bool:
         await asyncio.sleep(0.05)
         return True
 
@@ -31,10 +31,10 @@ class QuickRunner(TaskRunner):
 class FailingRunner(TaskRunner):
     """TaskRunner that always raises."""
 
-    async def can_run(self, task) -> bool:
+    async def can_run(self, task, target=None) -> bool:
         return True
 
-    async def run_task(self, task) -> bool:
+    async def run_task(self, task, target=None) -> bool:
         raise RuntimeError("intentional failure")
 
 

@@ -38,7 +38,8 @@ class IDataSequence(IAbortable, metaclass=ABCMeta):
                 during the wait.
 
         Raises:
-            GrabImageError: If the device is already busy (exposing or already running a
+            InvalidArgumentError: If count or delay is out of range.
+            DeviceBusyError: If the device is already busy (exposing or already running a
                 sequence).
         """
         ...

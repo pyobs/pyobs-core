@@ -24,6 +24,7 @@ import pytest
 
 from pyobs.events import ModuleClosedEvent
 from pyobs.interfaces import CoolingState, ICooling
+from pyobs.utils.enums import ModuleState
 from tests.integration.conftest import make_module
 
 # Applies asyncio/integration/xmpp marks to every test in this module.
@@ -68,6 +69,7 @@ async def test_subscriber_receives_initial_value_on_subscribe(make_xmpp_comm, ma
         comm = make_unopened_comm("camera")
         make_module([ICooling], comm)
         camera_comm = await make_xmpp_comm("camera", comm=comm)
+        await camera_comm.set_presence(ModuleState.READY)
         await camera_comm.set_state(ICooling, CoolingState(setpoint=-20.0, power=65, enabled=True))
 
         # Brief pause to let ejabberd persist the item before observer subscribes
@@ -94,6 +96,7 @@ async def test_subscriber_receives_live_update(make_xmpp_comm, make_unopened_com
         comm = make_unopened_comm("camera")
         make_module([ICooling], comm)
         camera_comm = await make_xmpp_comm("camera", comm=comm)
+        await camera_comm.set_presence(ModuleState.READY)
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
 
@@ -120,6 +123,7 @@ async def test_proxy_state_method_reflects_latest_value(make_xmpp_comm, make_uno
         comm = make_unopened_comm("camera")
         make_module([ICooling], comm)
         camera_comm = await make_xmpp_comm("camera", comm=comm)
+        await camera_comm.set_presence(ModuleState.READY)
         await camera_comm.set_state(ICooling, CoolingState(setpoint=-15.0, power=50, enabled=True))
         await asyncio.sleep(0.5)
 
@@ -147,6 +151,7 @@ async def test_disconnect_cleans_up_subscriptions(make_xmpp_comm, make_unopened_
         comm = make_unopened_comm("camera")
         make_module([ICooling], comm)
         camera_comm = await make_xmpp_comm("camera", comm=comm)
+        await camera_comm.set_presence(ModuleState.READY)
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
 
@@ -176,6 +181,7 @@ async def test_reconnect_resubscribes_with_fresh_proxy(make_xmpp_comm, make_unop
         comm = make_unopened_comm("camera")
         make_module([ICooling], comm)
         camera_comm = await make_xmpp_comm("camera", comm=comm)
+        await camera_comm.set_presence(ModuleState.READY)
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
 
@@ -190,6 +196,7 @@ async def test_reconnect_resubscribes_with_fresh_proxy(make_xmpp_comm, make_unop
         comm2 = make_unopened_comm("camera")
         make_module([ICooling], comm2)
         camera_comm2 = await make_xmpp_comm("camera", comm=comm2)
+        await camera_comm2.set_presence(ModuleState.READY)
         await camera_comm2.set_state(ICooling, CoolingState(setpoint=-30.0, power=90, enabled=True))
 
         await wait_for_peer(observer_comm, "camera")

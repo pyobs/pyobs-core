@@ -92,6 +92,7 @@ async def test_presence_error_state_delivered(make_xmpp_comm, make_unopened_comm
         comm = make_unopened_comm("camera")
         make_module([ICooling], comm)
         camera_comm = await make_xmpp_comm("camera", comm=comm)
+        await camera_comm.set_presence(ModuleState.READY)
 
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
@@ -120,6 +121,7 @@ async def test_presence_local_state_delivered(make_xmpp_comm, make_unopened_comm
         comm = make_unopened_comm("camera")
         make_module([ICooling], comm)
         camera_comm = await make_xmpp_comm("camera", comm=comm)
+        await camera_comm.set_presence(ModuleState.READY)
 
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
@@ -147,9 +149,16 @@ async def test_set_state_automatically_updates_presence(make_xmpp_comm, make_uno
         make_module([ICooling], comm)
         camera_comm = await make_xmpp_comm("camera", comm=comm)
         observer_comm = await make_xmpp_comm("observer")
-        await wait_for_peer(observer_comm, "camera")
 
         m = Module(comm=camera_comm)
+
+        # establish visibility first, via the same automatic set_state() -> presence path
+        # this test exercises -- a first-ever "came online" broadcast reaching a subscriber
+        # that connected before camera ever announced itself isn't guaranteed by every XMPP
+        # deployment's roster/subscription setup, so route through READY like every other
+        # peer-discovery test here before exercising the ERROR update this test is about.
+        await m.set_state(ModuleState.READY)
+        await wait_for_peer(observer_comm, "camera")
 
         await m.set_state(ModuleState.ERROR, "disk full")
 
@@ -214,6 +223,7 @@ async def test_imodule_capabilities_in_disco_info(make_xmpp_comm, make_unopened_
 
         # publish capabilities explicitly (normally done by Module.open())
         await camera_comm.set_capabilities(IModule, ModuleCapabilities(version="2.0.0.dev1", label="My Camera"))
+        await camera_comm.set_presence(ModuleState.READY)
 
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
@@ -243,6 +253,7 @@ async def test_iwindow_capabilities_in_disco_info(make_xmpp_comm, make_unopened_
             IWindow,
             WindowCapabilities(full_frame_x=0, full_frame_y=0, full_frame_width=4096, full_frame_height=4096),
         )
+        await camera_comm.set_presence(ModuleState.READY)
 
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
@@ -269,6 +280,7 @@ async def test_multiple_interface_capabilities(make_xmpp_comm, make_unopened_com
             IWindow,
             WindowCapabilities(full_frame_x=0, full_frame_y=0, full_frame_width=512, full_frame_height=512),
         )
+        await camera_comm.set_presence(ModuleState.READY)
 
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")
@@ -298,6 +310,7 @@ async def test_get_capabilities_api(make_xmpp_comm, make_unopened_comm) -> None:
             IWindow,
             WindowCapabilities(full_frame_x=0, full_frame_y=0, full_frame_width=4096, full_frame_height=4096),
         )
+        await camera_comm.set_presence(ModuleState.READY)
 
         observer_comm = await make_xmpp_comm("observer")
         await wait_for_peer(observer_comm, "camera")

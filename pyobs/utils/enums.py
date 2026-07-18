@@ -14,12 +14,14 @@ class ModuleState(StrEnum):
 
     Attributes:
         CLOSED: Module is closed.
+        STARTING: Module is starting up and not yet ready to accept commands.
         READY: Module is ready.
         ERROR: Module has an error.
         LOCAL: Module is in local mode and cannot be used remotely.
     """
 
     CLOSED = "closed"
+    STARTING = "starting"
     READY = "ready"
     ERROR = "error"
     LOCAL = "local"

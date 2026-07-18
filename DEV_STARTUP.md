@@ -250,14 +250,17 @@ worth recording since they weren't visible from code reading alone:
   Whitelist trimmed to `("get_permitted_methods", "reset_error")`, the only
   two methods actually callable through `execute()`.
 
-- **`Module.start()` added, not just `Application` calling `open()` then
+- **`Module.startup()` added, not just `Application` calling `open()` then
   `set_state(READY)`.** `MultiModule._run_module()` (`module.py`) calls
   `await mod.open()` directly for each sub-module, with no follow-up
   `set_state(READY)` -- under the original plan every module running inside
   a `MultiModule` process would stay `STARTING` forever, rejecting all
-  RPC calls. Fixed by adding `Module.start()` (`open()` then
+  RPC calls. Fixed by adding `Module.startup()` (`open()` then
   `set_state(READY)`) and having both `Application._main()` and
-  `MultiModule._run_module()` call it instead of `open()` directly.
+  `MultiModule._run_module()` call it instead of `open()` directly. (Named
+  `startup()`, not `start()` -- see the follow-up entry below; the original
+  landed version of this doc/commit used `start()` and shipped a real bug
+  because of it.)
 
 - **Presence gating had to become opt-in per-comm, not global per-client.**
   The original design gated every `XmppClient.send_presence()` call behind
@@ -328,3 +331,37 @@ details:
   presence in the first place, so no peer could ever have observed it stuck
   in `STARTING` — the state is unobservable and the process is gone moments
   later anyway.
+
+## Post-landing regression: `start()` collided with `IStartStop.start()`
+
+Found via a real `pyobs-gui` `full.yaml` run: `guiding` (a `DummyAutoGuiding`,
+which implements `IAutoGuiding` → `IStartStop`) never left `STARTING`, so a
+GUI client resolving a typed proxy for it hit `ValueError: ... is not of
+requested type "IModule"`.
+
+Root cause: `IStartStop` (`pyobs/interfaces/IStartStop.py`) declares an
+abstract RPC method `async def start(self, **kwargs) -> None` ("start this
+service"), implemented by several module families (`DummyAutoGuiding`,
+`Mastermind`, robotic `Pointing`, `Trigger`, `Scheduler`, `Kiosk`,
+`Weather`/`MockWeather`, ...). `Module.start()`, the new lifecycle helper
+added above, has the exact same name -- Python method resolution silently
+picks the subclass's `IStartStop.start()` override instead, so
+`MultiModule._run_module()`'s `await mod.start()` (and
+`Application._main()`'s `await self._module.start()`) called the RPC
+command, not the lifecycle helper, for every one of those module types.
+`open()` never ran, `_state` never left `STARTING`, and the module rejected
+every RPC call (or, in `LocalComm`, never even attached to its `Comm`,
+since `self.comm.module = self` is the first line of `Module.open()`)
+indefinitely -- not a race, a hard failure, for as long as the process ran.
+
+The existing test suite didn't catch this: `test_startup_gating.py` uses an
+`IAbortable`-only fixture module, and every XMPP integration test that
+switched `open()` → `start()` uses `DummyCamera`, which doesn't implement
+`IStartStop` either. No test in the gating commit exercised a module that
+actually implements `IStartStop`.
+
+Fix: renamed the lifecycle helper to `Module.startup()` everywhere (its own
+definition, `MultiModule._run_module()`, `Application._main()`, and every
+test/doc that called `.start()` expecting the lifecycle meaning). `open()`
+and `close()` were checked and confirmed not to collide with any interface
+method name, so they were left as-is.

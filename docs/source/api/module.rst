@@ -80,13 +80,16 @@ XMPP peer discovery (see :ref:`module-startup-gating`). This matters if your own
 calls into another module via ``self.proxy(...)`` — that module may itself still be
 ``STARTING``.
 
-A module doesn't call :meth:`~pyobs.modules.Module.start` on itself; whatever launches it
+A module doesn't call :meth:`~pyobs.modules.Module.startup` on itself; whatever launches it
 (``Application``, the normal ``pyobs``/``pyobsd`` entry point, or
-:class:`~pyobs.modules.MultiModule`) calls ``start()``, which runs ``open()`` and then
+:class:`~pyobs.modules.MultiModule`) calls ``startup()``, which runs ``open()`` and then
 transitions the module to
-:attr:`~pyobs.utils.enums.ModuleState.READY`. You only need to call ``start()`` yourself
+:attr:`~pyobs.utils.enums.ModuleState.READY`. You only need to call ``startup()`` yourself
 when opening a module outside of those two (a test, a standalone script) — ``open()`` alone
-leaves it in ``STARTING`` indefinitely.
+leaves it in ``STARTING`` indefinitely. It's named ``startup()`` rather than ``start()``
+because ``start()`` is already :class:`~pyobs.interfaces.IStartStop`'s abstract RPC method —
+a plain ``start()`` here would be silently shadowed by any module implementing that
+interface.
 
 
 Interfaces

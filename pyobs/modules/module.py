@@ -327,7 +327,7 @@ class Module(Object, IModule, IConfig):
                 ConfigCapabilities(caps=self._config_caps),
             )
 
-    async def start(self) -> None:
+    async def startup(self) -> None:
         """Open the module and mark it ready for RPC dispatch.
 
         Runs the full open() override chain (base Module setup plus every subclass's own
@@ -337,6 +337,11 @@ class Module(Object, IModule, IConfig):
         this instead of open() directly -- otherwise the module stays in STARTING forever.
         Callers that need finer-grained control (e.g. tests exercising STARTING behavior
         directly) can call open() and set_state() separately instead.
+
+        Named startup() rather than start() because start() is already IStartStop's abstract
+        RPC method -- a plain start() here would be silently shadowed by any module
+        implementing that interface (guiding, mastermind, scheduler, weather, kiosk, ...),
+        which would then never leave STARTING under Application/MultiModule.
         """
         await self.open()
         await self.set_state(ModuleState.READY)
@@ -947,7 +952,7 @@ class MultiModule(Module):
 
         _module_name_var.set(name)
         try:
-            await mod.start()
+            await mod.startup()
             await mod.main()
         except asyncio.CancelledError:
             pass

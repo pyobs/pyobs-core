@@ -133,17 +133,20 @@ still mid-publish. This only applies to a comm with an actual starting ``Module`
 attached — a bare/GUI-style ``XmppComm`` with no module announces itself immediately, same
 as before.
 
-The new ``Module.start()`` runs ``open()`` and then transitions the module to ``READY``:
+The new ``Module.startup()`` runs ``open()`` and then transitions the module to ``READY``
+(named ``startup()`` rather than ``start()`` because ``start()`` is already
+``IStartStop``'s abstract RPC method — a plain ``start()`` here would be silently shadowed
+by any module implementing that interface, e.g. guiding, scheduler, weather):
 
 .. code-block:: python
 
    # equivalent to open() in 1.x/early 2.0 -- runs open(), then unblocks RPC/presence
-   await module.start()
+   await module.startup()
 
 ``Application`` (the normal ``pyobs``/``pyobsd`` entry point) and ``MultiModule`` both call
-``start()`` instead of ``open()`` now, so this is transparent for any module launched the
+``startup()`` instead of ``open()`` now, so this is transparent for any module launched the
 usual way. If you open a module standalone — a test, a script, anything that isn't
-``Application``/``MultiModule`` — call ``start()`` instead of ``open()``, or the module
+``Application``/``MultiModule`` — call ``startup()`` instead of ``open()``, or the module
 stays in ``STARTING`` indefinitely and rejects every non-whitelisted call. Calling
 ``open()`` directly still works for cases that specifically want to inspect
 pre-``READY`` behavior; just follow it with ``await module.set_state(ModuleState.READY)``
@@ -567,7 +570,7 @@ GUI/client), check for, in roughly descending order of how likely they are to af
 #. Any interface you *call through a proxy* whose getter was removed — switch to
    ``get_state``/``wait_for_state`` or ``get_capabilities``.
 #. Any place that calls ``module.open()`` directly outside of ``Application``/
-   ``MultiModule`` (a test, a standalone script) — switch to ``module.start()``, or the
+   ``MultiModule`` (a test, a standalone script) — switch to ``module.startup()``, or the
    module never leaves ``STARTING`` (see `Modules reject RPC calls until fully started`_
    above).
 #. If you run your own ejabberd server, apply the ``mod_pubsub`` config change above.

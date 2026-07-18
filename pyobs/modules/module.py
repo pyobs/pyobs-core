@@ -148,8 +148,9 @@ class Module(Object, IModule, IConfig):
         self._device_name = self.comm.name
         self._label = label if label is not None else self._device_name
 
-        # state
-        self._state = ModuleState.READY
+        # state -- starts STARTING, moved to READY once Application finishes the full open() chain
+        # (see Module.execute()'s guard and Application._main)
+        self._state = ModuleState.STARTING
         self._error_string = ""
 
         # own?
@@ -174,6 +175,12 @@ class Module(Object, IModule, IConfig):
     # un-typed, either locally or across an RPC boundary. Neither is part of the deliberate
     # per-type logging contract a module author gets to opt out of.
     _UNSUPPRESSIBLE: tuple[type[exc.PyobsError], ...] = (exc.ModuleError, exc.UnclassifiedError)
+
+    # methods still callable while the module is ModuleState.STARTING -- introspection/recovery
+    # only, nothing that touches a device that may not be initialized yet. get_version/get_label
+    # are deliberately not listed: they aren't declared on IModule, so they never appear in
+    # self._methods and can't be called via execute() at all, in any state.
+    _STARTING_WHITELIST: tuple[str, ...] = ("get_permitted_methods", "reset_error")
 
     def _disable_exception_logging(self, *exceptions: type[exc.PyobsError]) -> None:
         """Declare that the given PyobsError types (and their subclasses) fire often enough that even the
@@ -319,6 +326,20 @@ class Module(Object, IModule, IConfig):
                 IConfig,
                 ConfigCapabilities(caps=self._config_caps),
             )
+
+    async def start(self) -> None:
+        """Open the module and mark it ready for RPC dispatch.
+
+        Runs the full open() override chain (base Module setup plus every subclass's own
+        setup) and only then transitions ModuleState.STARTING -> READY, so Module.execute()
+        starts accepting non-whitelisted calls exactly once startup has actually finished.
+        Every caller that opens a module standalone (Application, MultiModule) should call
+        this instead of open() directly -- otherwise the module stays in STARTING forever.
+        Callers that need finer-grained control (e.g. tests exercising STARTING behavior
+        directly) can call open() and set_state() separately instead.
+        """
+        await self.open()
+        await self.set_state(ModuleState.READY)
 
     async def close(self) -> None:
         """Close module."""
@@ -538,6 +559,10 @@ class Module(Object, IModule, IConfig):
         Raises:
             KeyError: If method does not exist.
         """
+
+        # is module still starting up?
+        if self._state == ModuleState.STARTING and method not in self._STARTING_WHITELIST:
+            raise exc.ModuleStartingError("Module is still starting up, please try again shortly.")
 
         # is module in error state?
         if self._state == ModuleState.ERROR:
@@ -771,6 +796,11 @@ class Module(Object, IModule, IConfig):
         if self._comm is not None:
             await self._comm.set_presence(state, error_string if error_string is not None else self._error_string)
 
+            # first time reaching READY, tell the transport it may now announce this module to
+            # peers -- e.g. XmppComm delays its initial XMPP presence until here, see mark_ready()
+            if state == ModuleState.READY:
+                await self._comm.mark_ready()
+
     async def get_state(self, **kwargs: Any) -> ModuleState:  # type: ignore[override]
         """Returns current state of module."""
         return self._state
@@ -917,7 +947,7 @@ class MultiModule(Module):
 
         _module_name_var.set(name)
         try:
-            await mod.open()
+            await mod.start()
             await mod.main()
         except asyncio.CancelledError:
             pass

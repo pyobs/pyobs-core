@@ -170,6 +170,12 @@ class XmppComm(Comm):
         self._xmpp: XmppClient | None = None
         self._rpc: RPC | None = None
 
+        # module readiness (see mark_ready()) -- lives here rather than solely on XmppClient
+        # because _connect() replaces self._xmpp with a brand-new instance on every reconnect,
+        # and a reconnect after the module is already READY must announce presence immediately
+        # rather than re-gating it
+        self._module_ready = False
+
         # pubsub for states
         self._pubsub_service = f"pubsub.{self._domain}"
         self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
@@ -212,6 +218,18 @@ class XmppComm(Comm):
 
         # create client
         self._xmpp = XmppClient(self._jid, self._password)
+
+        # presence gating (see mark_ready()) only applies to a comm with an actual Module
+        # attached that hasn't finished starting yet -- a module-less XmppComm (a GUI, an
+        # admin tool, a bare observer in tests) has no such lifecycle and must announce
+        # itself immediately as before, or peers relying on presence-based discovery would
+        # never see it. Likewise, if the module already reached READY on a previous
+        # connection, tell the new client right away -- it isn't connected yet, so this
+        # doesn't send anything itself, but it means session_start() will announce presence
+        # immediately once (re)connected instead of holding it back as if this were the
+        # initial startup.
+        if self._module_ready or not self.has_module:
+            self._xmpp.mark_ready()
 
         # self._xmpp = slixmpp.ClientXMPP(self._jid, password)
         # Register directly with an XML mask rather than via pubsub_publish.
@@ -957,6 +975,14 @@ class XmppComm(Comm):
             CLOSED → handled by normal disconnect (unavailable)
         error_string rides as <status> text when state is ERROR.
         """
+        # publishing any lifecycle state at all is itself a readiness signal -- covers direct
+        # set_presence() callers that don't go through Module.set_state() (see mark_ready()).
+        # Idempotent: unlocks send_presence() once, then this call's own send below goes through.
+        # Goes through self._mark_ready() (not just self.client.mark_ready()) so self._module_ready
+        # is set too -- otherwise a later reconnect (_connect() creates a brand-new XmppClient)
+        # would re-gate presence on the new client despite this module already being announced.
+        await self._mark_ready()
+
         _show_map: dict[ModuleState, str | None] = {
             ModuleState.READY: None,
             ModuleState.ERROR: "dnd",
@@ -965,6 +991,12 @@ class XmppComm(Comm):
         show = _show_map.get(state)
         status = error_string if state == ModuleState.ERROR and error_string else None
         self.client.send_presence(pshow=show, pstatus=status)
+
+    async def _mark_ready(self) -> None:
+        """See Comm.mark_ready(). Remembers readiness on self (survives client recreation on
+        reconnect, see _connect()) and lets the live client announce presence now."""
+        self._module_ready = True
+        self.client.mark_ready()
 
     async def _subscribe_presence(self, module: str, callback: Callable[[ModuleState, str], None]) -> None:
         self._presence_callbacks.setdefault(module, []).append(callback)

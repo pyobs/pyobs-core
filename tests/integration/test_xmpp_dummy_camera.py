@@ -32,7 +32,7 @@ async def test_dummy_camera_publishes_cooling_state(make_xmpp_comm, make_camera_
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.start()
 
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
@@ -66,7 +66,7 @@ async def test_dummy_camera_cooling_state_reflects_set_cooling(make_xmpp_comm, m
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.start()
 
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
@@ -102,7 +102,7 @@ async def test_dummy_camera_publishes_iwindow_capabilities(make_xmpp_comm, make_
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.start()
 
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
@@ -129,7 +129,7 @@ async def test_dummy_camera_publishes_imodule_capabilities(make_xmpp_comm, make_
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.start()
 
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
@@ -156,7 +156,7 @@ async def test_dummy_camera_no_capabilities_for_unconfigured_interface(make_xmpp
 
         camera = DummyCamera(name="camera", comm=make_camera_comm)
         try:
-            await camera.open()
+            await camera.start()
 
             observer_comm = await make_xmpp_comm("observer")
             ok = await wait_for(lambda: "camera" in observer_comm.clients)

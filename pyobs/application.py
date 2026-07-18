@@ -224,7 +224,7 @@ class Application:
         try:
             # open module
             log.info("Opening module...")
-            await self._module.open()
+            await self._module.start()
             log.info("Started successfully.")
 
             # run module

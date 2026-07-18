@@ -110,6 +110,45 @@ Modules and configuration
   from the XMPP server due to a JID conflict (a duplicate login, or an admin-issued kick,
   both surface as the same stream-error condition).
 
+.. _module-startup-gating:
+
+Modules reject RPC calls until fully started
+------------------------------------------------
+
+A module is no longer reachable over RPC, nor visible to peer discovery, the instant it
+connects to its ``Comm`` — only once it has actually finished starting up. Some drivers
+(a camera module connecting to hardware, say) take a while inside ``open()``; previously
+they accepted commands and were discoverable the moment the XMPP connection came up, long
+before ``open()`` returned.
+
+A module's state now starts at ``ModuleState.STARTING`` (rather than ``READY``) and stays
+there until the *entire* ``open()`` override chain — the base ``Module`` setup and every
+subclass's own — has completed. While ``STARTING``, ``Module.execute()`` rejects any RPC
+call outside a small introspection/recovery whitelist (``get_permitted_methods``,
+``reset_error``) with a new ``exc.ModuleStartingError``. ``XmppComm``/``XmppClient`` also
+hold back the module's initial XMPP presence broadcast until it reaches ``READY``, so a
+peer reacting to the module coming online never reads capabilities (e.g. a camera's
+``IWindow``/``IBinning``, published only once the sensor is actually connected) that are
+still mid-publish. This only applies to a comm with an actual starting ``Module``
+attached — a bare/GUI-style ``XmppComm`` with no module announces itself immediately, same
+as before.
+
+The new ``Module.start()`` runs ``open()`` and then transitions the module to ``READY``:
+
+.. code-block:: python
+
+   # equivalent to open() in 1.x/early 2.0 -- runs open(), then unblocks RPC/presence
+   await module.start()
+
+``Application`` (the normal ``pyobs``/``pyobsd`` entry point) and ``MultiModule`` both call
+``start()`` instead of ``open()`` now, so this is transparent for any module launched the
+usual way. If you open a module standalone — a test, a script, anything that isn't
+``Application``/``MultiModule`` — call ``start()`` instead of ``open()``, or the module
+stays in ``STARTING`` indefinitely and rejects every non-whitelisted call. Calling
+``open()`` directly still works for cases that specifically want to inspect
+pre-``READY`` behavior; just follow it with ``await module.set_state(ModuleState.READY)``
+once ready.
+
 Removed and renamed interfaces / RPC methods
 ----------------------------------------------
 
@@ -527,4 +566,8 @@ GUI/client), check for, in roughly descending order of how likely they are to af
    answering the (now-removed) RPC getter.
 #. Any interface you *call through a proxy* whose getter was removed — switch to
    ``get_state``/``wait_for_state`` or ``get_capabilities``.
+#. Any place that calls ``module.open()`` directly outside of ``Application``/
+   ``MultiModule`` (a test, a standalone script) — switch to ``module.start()``, or the
+   module never leaves ``STARTING`` (see `Modules reject RPC calls until fully started`_
+   above).
 #. If you run your own ejabberd server, apply the ``mod_pubsub`` config change above.

@@ -67,6 +67,28 @@ The matching YAML configuration::
     ``location`` are passed down from the YAML configuration.
 
 
+Startup and ``ModuleState.STARTING``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A module starts in :attr:`~pyobs.utils.enums.ModuleState.STARTING` and stays there for the
+whole ``open()`` override chain — including everything a subclass's own ``open()`` does
+after calling ``await Module.open(self)``, e.g. connecting to hardware. While
+``STARTING``, :meth:`~pyobs.modules.Module.execute` rejects any call from another module
+except ``get_permitted_methods``/``reset_error``, raising
+:class:`~pyobs.utils.exceptions.ModuleStartingError`, and the module stays invisible to
+XMPP peer discovery (see :ref:`module-startup-gating`). This matters if your own ``open()``
+calls into another module via ``self.proxy(...)`` — that module may itself still be
+``STARTING``.
+
+A module doesn't call :meth:`~pyobs.modules.Module.start` on itself; whatever launches it
+(``Application``, the normal ``pyobs``/``pyobsd`` entry point, or
+:class:`~pyobs.modules.MultiModule`) calls ``start()``, which runs ``open()`` and then
+transitions the module to
+:attr:`~pyobs.utils.enums.ModuleState.READY`. You only need to call ``start()`` yourself
+when opening a module outside of those two (a test, a standalone script) — ``open()`` alone
+leaves it in ``STARTING`` indefinitely.
+
+
 Interfaces
 ^^^^^^^^^^
 

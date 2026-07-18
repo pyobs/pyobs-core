@@ -1,5 +1,21 @@
 v2.0.0.dev18 (unreleased)
 *************************
+* Modules no longer accept RPC calls until they've actually finished starting up. Some drivers
+  (e.g. camera modules connecting to hardware) take a while inside ``open()``, but were previously
+  reachable over XMPP -- and visible to peer discovery -- the instant they connected to the server,
+  long before ``open()`` returned. New ``ModuleState.STARTING``, set at construction and cleared by
+  the new ``Module.start()`` once the full ``open()`` override chain (base setup plus every
+  subclass's own) has completed; ``Module.execute()`` now rejects any call outside a small
+  introspection/recovery whitelist (``get_permitted_methods``, ``reset_error``) with the new
+  ``ModuleStartingError`` while a module is still ``STARTING``. ``XmppComm``/``XmppClient`` also
+  hold back the initial XMPP presence broadcast until a module reaches ``READY``, closing a race
+  where a peer reacting to ``_got_online`` could read capabilities (e.g. hardware-dependent ones
+  like ``IWindow``/``IBinning``) that hadn't been published yet -- scoped to comms with an actual
+  starting ``Module`` attached, so bare/GUI-style ``XmppComm`` usage announces itself exactly as
+  before. ``Application`` and ``MultiModule`` both call ``Module.start()`` instead of ``open()``
+  directly now; any other code that opens a module standalone (a custom script, a test) needs to do
+  the same, or call ``set_state(ModuleState.READY)`` itself after ``open()`` -- see
+  :ref:`module-startup-gating`.
 * New ``InvalidArgumentError`` for bad-argument validation on RPC-exposed methods (unknown filter
   name, invalid focus value, invalid config parameter, out-of-range ``grab_sequence`` count/delay,
   ...) -- previously these stayed as plain ``ValueError``, which works fine locally (``LocalComm``,

@@ -2,13 +2,10 @@ import asyncio
 import logging
 from typing import Any
 
+from pyobs.utils import exceptions as exc
 from pyobs.utils.parallel import acquire_lock
 
 log = logging.getLogger(__name__)
-
-
-class AcquireLockFailed(Exception):
-    pass
 
 
 class LockWithAbort:
@@ -33,8 +30,8 @@ class LockWithAbort:
 
             # still not successful?
             if not self.acquired:
-                # raise exception
-                raise AcquireLockFailed()
+                # the device is already busy handling another motion request -- back off and retry
+                raise exc.DeviceBusyError("Could not acquire lock.")
 
         # got lock, so unset abort and remember that we were successful
         self.event.clear()
@@ -46,4 +43,4 @@ class LockWithAbort:
             self.acquired = False
 
 
-__all__ = ["LockWithAbort", "AcquireLockFailed"]
+__all__ = ["LockWithAbort"]

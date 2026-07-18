@@ -21,7 +21,7 @@ class BaseDome(IDome, BaseRoof, metaclass=ABCMeta):
         """Initialize a new base dome."""
         BaseRoof.__init__(self, **kwargs)
 
-        exc.register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
+        self._register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any

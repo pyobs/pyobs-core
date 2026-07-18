@@ -54,7 +54,8 @@ class IAutoFocus(IRunning, IAbortable, metaclass=ABCMeta):
             Result of autofocus.
 
         Raises:
-            ValueError: If focus could not be obtained.
+            AbortedError: If the autofocus series was aborted.
+            FocusError: If focus could not be obtained.
         """
         ...
 

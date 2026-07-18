@@ -1,6 +1,13 @@
 # Exception handling across the RPC boundary
 
-Status: proposed. Tracks #446.
+Status: implemented (rolled out across #669 and follow-ups); the documentation sweep (rollout steps
+6-8) and every known driver-repo companion fix have since landed too — `pyobs-brot` (silent
+init/park failure), `pyobs-sbig`/`pyobs-fli` (`AbortedError` on abort), and `pyobs-sbig` again
+(`InvalidArgumentError` on unknown filter name) — see the updated notes on those items below. Tracks
+#446, closed. One known gap remains, deliberately unaddressed: `pyobs-iagvt`'s stale
+`InvocationError` import (see "Resolved during design" below) — currently a hard `ImportError` at
+module load, confirmed by direct import, not just a silently-degrading catch as originally
+described. Left as-is per current decision, not because it isn't real.
 
 ## Problem
 
@@ -1246,9 +1253,9 @@ around it; the rest are incremental sweeps with no fixed order among themselves.
      `lco/task.py:202-203` (→ `except exc.AbortedError:` directly, since `InvocationError` is
      gone). This is the one place in the rollout that isn't purely additive, so it can't be split
      further — all five have to move together with the unwrap fix.
-   - `pyobs-monet`'s `searchpattern2.py:134-141` has the same reliance on the old wrapping (see
-     "Resolved during design" below) but is out of scope for now — deferred, not a blocker for
-     this step.
+   - `pyobs-monet`'s `searchpattern2.py:134-141` and `pyobs-iagvt`'s `sungrid.py:134` both have the
+     same reliance on the old wrapping (see "Resolved during design" below) but are out of scope
+     for now — deferred, not a blocker for this step.
 3. Collapse the two catch/log sites into `Module.execute()` (proposal §3's classification/logging
    portion) — mechanical once (2) is in place, and extends the `UnclassifiedError` safety net to
    `LocalComm`/`MultiModule`, not just XMPP. Retire the `SevereError` substitution in the same pass
@@ -1276,21 +1283,37 @@ around it; the rest are incremental sweeps with no fixed order among themselves.
    pressure to do this sweep all at once.
 6. Document the domain/transport split explicitly in `pyobs/utils/exceptions.py` (proposal §10,
    Assessment §G) — documentation only, natural once (2) stops blurring the split by wrapping
-   domain exceptions in a transport-level type.
+   domain exceptions in a transport-level type. **Done.** The module docstring was, until this
+   pass, a dead string literal placed after `from __future__ import annotations` — it was never
+   actually `__doc__` (confirmed: `pyobs.utils.exceptions.__doc__` was `None`), so `docs/`'s
+   `automodule` page rendered nothing. Moved to the true first statement in the file, and the
+   split's rationale (previously a `#`-comment above `RemoteError`, invisible to
+   `autoexception`/`automodule`) is now in the module docstring plus `RemoteError`'s own docstring.
 7. Document the `AbortedError` contract on `_expose()`/abortable hooks (proposal §6) — purely
-   additive to `pyobs-core`'s docstrings, doesn't depend on anything else in this rollout.
+   additive to `pyobs-core`'s docstrings, doesn't depend on anything else in this rollout. **Done**
+   in `pyobs-core` (`BaseCamera._expose()` documents `AbortedError`). The companion driver-repo
+   fixes are now done too: `pyobs-sbig` (`sbigcamera.py:162`, `sbigfiltercamera.py:168`) and
+   `pyobs-fli` (`flicamera.py:169`) all raise `exc.AbortedError` instead of bare `InterruptedError`
+   now.
 8. Docstring sweep across every interface flagged in the audit (proposal §7) — the mismatches that
    are pure documentation fixes (`IAutoFocus`, `IAcquisition`) can go immediately; the ones that
    need §4's behavior fixes first (`IData`, `IMotion`, the pointing/tracking `MoveError` family,
    `IFocusModel`) land alongside those; the doc-gap-only interfaces with no implementers
-   (`ICalibrate`, `ISyncTarget`, etc.) can go any time.
+   (`ICalibrate`, `ISyncTarget`, etc.) can go any time. **Done** — spot-checked against the audit
+   table above: `IAutoFocus`, `IData.grab_data`, `IPointingRaDec.move_radec`, and
+   `FlatField.set_filter`/`flat_field` all match current behavior, and every doc-gap-only interface
+   (`ICalibrate`, `ISyncTarget`, `IMultiFiber`, `IPointingSeries`, `IRotation`, `IScriptRunner`,
+   `IStructuredConfig`) now has a `Raises:` clause using the new exception vocabulary
+   (`GeneralError`/`InvalidArgumentError`/`MoveError`/`ScriptError`).
 
-Two items surfaced by the driver survey are explicitly **not** part of this rollout because they
-live in other repositories and can't be fixed by a pyobs-core PR alone: the `AbortedError` fix in
-`pyobs-sbig`/`pyobs-fli` (companion to step 7) and, more importantly, `pyobs-brot`'s roof/dome/
+One item surfaced by the driver survey was explicitly **not** part of this rollout because it lives
+in another repository and can't be fixed by a pyobs-core PR alone: `pyobs-brot`'s roof/dome/
 telescope silently returning success instead of raising `InitError`/`ParkError` on hardware
-failure — see "Confirmed in downstream driver projects" above. The latter isn't blocking #446, but
-it's a real, independent bug worth its own issue regardless of this design doc's fate.
+failure — see "Confirmed in downstream driver projects" above. **Done** — `BrotRoof`/`BrotDome`/
+`BrotBaseTelescope`'s `init()`/`park()` now raise the documented exception (in addition to the
+existing logging/state-change) at every `_error_state(...)` call site reachable synchronously from
+those two methods; background/status-polling call sites were left alone since nothing is waiting
+on their result.
 
 ## Resolved during design
 
@@ -1302,10 +1325,123 @@ it's a real, independent bug worth its own issue regardless of this design doc's
   `-sbig`, `-v4l`, `-zaber`, `-zwoeaf`) for `InvocationError`/`RemoteError`/`except exc.`.
   `pyobs-gui`'s two hits (`pyobs_gui/base.py:311`, `pyobs_gui/mainwindow.py:577`) catch the broad
   `exc.PyObsError` and don't touch `.exception`, so they're unaffected either way.
-  `pyobs-monet/pyobs_monet/morisot/searchpattern2.py:134-141` does rely on the old wrapping (a
+  `pyobs-monet/pyobs_monet/morisot/searchpattern2.py:134-141` relied on the old wrapping (a
   retry loop doing `except exc.InvocationError: pass` around a proxy call, to mean "any remote
-  failure") but that script is out of scope for now — not a current concern for this design, per
-  the project owner. Noted for later regardless: grepping can only find call sites that name the
-  exception type explicitly — a bare `except Exception:` swallowing the same wrapped failure
-  elsewhere wouldn't show up this way, so a changelog callout for proposal §2 is still worth doing
-  when it lands, independent of `searchpattern2.py` specifically.
+  failure"). **Fixed**: once proposal §2 actually landed and retired `InvocationError`, this
+  wasn't a quiet degradation as originally assumed — `exc.InvocationError` no longer resolves at
+  all, so evaluating the `except` clause on the first acquisition miss raised `AttributeError` and
+  killed the whole search-pattern run instead of retrying. Changed to `except exc.PyobsError:`,
+  matching the same widening this repo did at its own five now-too-narrow call sites in step 2.
+  Noted for later regardless: grepping can only find call sites that name the exception type
+  explicitly — a bare `except Exception:` swallowing the same wrapped failure elsewhere wouldn't
+  show up this way, so a changelog callout for proposal §2 is still worth doing independent of
+  `searchpattern2.py` specifically.
+- **`pyobs-iagvt` was missing from that cross-repo pass and has a worse version of the identical
+  gap — confirmed still open, deliberately left unfixed.** `pyobs_iagvt/modules/sungrid.py:7` does
+  `from pyobs.utils.exceptions import InvocationError` (a direct import, not an attribute access
+  like `searchpattern2.py`'s), used at line 134 in
+  `except (ValueError, InvocationError) as e: log.info(f"Something went wrong: {str(e)}")` around
+  `_do_the_wiggle()` (`sungrid.py:91-106`), which itself does proxy calls to a telescope and camera
+  (`sungrid.py:93`). This is not "silently stops catching" as originally assumed here — confirmed
+  by actually importing the module: since `InvocationError` was fully removed rather than
+  deprecated, the `from ... import InvocationError` line itself raises `ImportError` at module
+  load, so anything importing `sungrid.py` currently fails to start outright. Explicitly deferred
+  by current decision (told to ignore it for now) rather than fixed alongside the other three
+  driver-repo companion fixes above — this note exists so the gap isn't rediscovered from scratch
+  later.
+
+## Bad-argument `ValueError`s: scoped and partially promoted after the rollout
+
+Originally flagged as "still open" (below, kept for history): bad-argument-validation `ValueError`s
+were deliberately left un-promoted during steps 5/8, but since `ValueError` is a builtin, never in
+the `PyobsError` registry, a caller writing `except ValueError:` around a *remote* proxy call
+doesn't catch it (arrives as `UnclassifiedError` instead) even though the identical code works
+fine locally (`LocalComm`, direct calls, tests) -- a real "works in dev, breaks in prod" footgun,
+raised by the project owner after the rollout closed.
+
+Scoped it out before touching anything: of ~60 raw `raise ValueError` sites in `pyobs/modules/`,
+most are constructor/config-time validation, internal event-handler checks, or background-task-only
+code -- never reachable via RPC at all, irrelevant to this problem. What's actually left sorts into
+three shapes:
+
+1. **Genuine bad-argument validation on RPC-exposed methods** -- `IConfig.get_config_value`/
+   `get_config_value_options`/`set_config_value` (`module.py`), `IDataSequence.grab_sequence`'s
+   count/delay (`basecamera.py`), `ITrackingMode.set_tracking_mode`, `IFocuser.set_focus`,
+   `IFilters.set_filter` (all `_dummytelescopebase.py`), `IMode.set_mode` (`dummymode.py`),
+   `IWeather.get_sensor_value` (`mockweather.py`) -- 7 methods, ~16 sites. **Done**: new shared
+   `InvalidArgumentError(PyobsError)`, one type reused everywhere (same shape as `DeviceBusyError`/
+   `NotSupportedError`), not a bespoke leaf per method -- goal 5's own test says no caller reacts
+   differently to "unknown filter" vs. "invalid focus value." Real driver repos likely have the
+   identical pattern for real hardware (e.g. `pyobs-sbig/sbigfiltercamera.py`'s own
+   `ValueError(f"Unknown filter: {filter_name}")` for the same `IFilters.set_filter` condition) --
+   companion fix in those repos, not reachable from this PR, same shape as the `AbortedError`
+   situation. **Done** — `pyobs-sbig/sbigfiltercamera.py`'s `set_filter()` now raises
+   `exc.InvalidArgumentError`, and its `Raises:` clause (a copy-paste leftover, "If binning could
+   not be set," on a filter-setting method) is fixed alongside it. Its `open()`'s own `ValueError`
+   (filter-wheel-model setup) was left alone -- that one's local-lifecycle/startup code, not
+   RPC-reachable, same scoping rule as the rest of this section.
+2. **"Already busy/running" state preconditions, not actually bad arguments** --
+   `FlatField.flat_field`, `FlatFieldScheduler.run`. **Done**: reused the *existing*
+   `DeviceBusyError`, no new type needed.
+3. **Malformed external data** (a weather station's API response, not a caller mistake) --
+   `Weather.get_sensor_value`. **Done**: new `WeatherResponseError(PyobsError)` in
+   `weather.py` (co-located, per §5's relocation convention), the same reasoning as
+   `BodyResolutionError` -- plausibly transient, worth retrying, not the caller's fault.
+   `WeatherState.status`'s setter (`weather_state.py:25`) turned out, on closer look, to be a
+   mis-scoping on my part: it's only ever called from `_update()`'s background polling loop, which
+   already wraps it in a broad `except Exception: log.warning(...)` -- it never reaches an RPC
+   caller at all, so it's out of scope entirely (same shape as `focusmodel.py`'s
+   `_on_focus_found`/`_calc_focus_model`), not something needing a type change.
+
+### Original "still open" note, for history
+
+- **Bad-argument-validation `ValueError`s are deliberately not promoted to `PyobsError` leaf
+  types, but that means they still degrade to `UnclassifiedError` over RPC.** Steps 5/8's sweep
+  only promotes *domain operation failures* (e.g. "camera is busy," "body not resolvable") to
+  specific types; plain input validation (e.g. `IFilters.set_filter`'s "unknown filter name",
+  `IFocuser.set_focus`'s "invalid focus value", `IMultiFiber.set_fiber`'s "invalid fiber name")
+  intentionally stays as ordinary `ValueError`, matching Python's own convention for API misuse and
+  matching how the interface audit already treated these as clean matches, not gaps. But since
+  `ValueError` is a builtin, not a `PyobsError` subclass, it's never in the registry -- a caller
+  writing `except ValueError:` around a *remote* proxy call does not catch it (it arrives as
+  `UnclassifiedError` instead); only same-process callers (`LocalComm`) see a real `ValueError`.
+  This was a deliberate scope call, not an oversight -- flagged explicitly per the project owner's
+  request during the docstring sweep (step 8) so it's easy to find later, in case a future caller
+  actually needs to distinguish "bad argument" domain-uniformly over RPC. Promoting these would be
+  a much larger sweep (dozens of call sites across nearly every setter-shaped interface method) and
+  is deliberately not part of this rollout.
+
+  **Update**: `IMultiFiber.set_fiber` has zero concrete implementers anywhere in this repo (see
+  step 8's audit), so there's no real raise site to migrate here the way there was for the 7
+  methods above -- but its docstring's `ValueError` placeholder was updated to
+  `InvalidArgumentError` anyway, so a future implementer follows the now-established convention
+  instead of the retired one.
+
+## Bug found and fixed after the rollout: `original_type` didn't actually survive the wire
+
+Prompted by the project owner asking, after step 8, "are we catching ALL exceptions on the callee
+side, what happens to `IndexError`/etc.?" -- tracing it through turned up a real gap `UnclassifiedError`
+was supposed to close but didn't.
+
+`Module.execute()` wraps any non-`PyobsError` into `UnclassifiedError(str(raised),
+original_type=...)` *before* `rpc.py` ever sees it (that's the whole point of centralizing
+classification in step 3). But `fault_to_xml` only ever serialized the wrapper's own class name --
+`"pyobs.utils.exceptions.UnclassifiedError"` -- which *resolves successfully* on the caller's side
+(it's a registered type!), so the caller reconstructed a fresh `UnclassifiedError(msg,
+remote_module=sender)` with `original_type` never set at all. `original_type` is a local attribute,
+not part of the two things that actually cross the wire (qualified class name + message), so it was
+silently lost in transit every time -- a remote `IndexError` and a remote `ValueError` arrived as
+indistinguishable `UnclassifiedError`s with no way to tell them apart, even in the message text.
+(`LocalComm` never had this problem -- no serialization step, so the real attribute survives.)
+
+**Fix**: `fault_to_xml` now serializes `original_type` instead of the wrapper's own class name,
+whenever the exception carries one. The caller's own registry lookup then runs against the
+*original* name -- for a builtin/vendor type that's never registered, it correctly falls back to
+`UnclassifiedError` again, but this time with `original_type` actually populated, matching what the
+class's own docstring already claimed.
+
+Found and fixed in the same pass: `fault_to_xml` was also serializing `str(exception)`
+(`"<ClassName> message"`) instead of the raw `.message` for the message field. Reconstruction
+passes that string straight back in as the new instance's `message`, so the *caller's* own
+`__str__` formatted it a second time on top -- every exception that ever crossed the wire arrived
+with a doubled `"<ClassName> <ClassName> message"` once displayed. Now serializes the raw message.

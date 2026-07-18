@@ -51,6 +51,33 @@ _MOON_FALLBACK_REFRESH_INTERVAL_SECONDS = 60.0
 _POSITION_NUDGE_INTERVAL_SECONDS = 600.0
 
 
+class MissingObserverError(exc.MotionError):
+    """No observer configured -- a config bug, retrying never fixes it."""
+
+    pass
+
+
+class AltitudeLimitError(exc.MotionError):
+    """Destination altitude is below the configured limit -- an expected, deferrable condition
+    from a scheduler's point of view, not a failure to alert on."""
+
+    pass
+
+
+class BodyResolutionError(exc.MotionError):
+    """Could not resolve a named body's ephemeris -- transient/network-dependent (a Horizons
+    query), worth retrying."""
+
+    pass
+
+
+class InvalidOrbitalElementsError(exc.MotionError):
+    """Orbital elements are incomplete (neither mean_anomaly nor perihelion_time given) -- a
+    config/input bug, retrying never fixes it."""
+
+    pass
+
+
 def _solve_kepler_equation(mean_anomaly: float, eccentricity: float, tol: float = 1e-12, max_iter: int = 50) -> float:
     """Solves M = E - e*sin(E) for the eccentric anomaly E, via Newton-Raphson.
 
@@ -173,7 +200,7 @@ def _propagate_elements(elements: OrbitalElements, t: Time) -> tuple[float, floa
         nu = 2 * math.atan(d)
         r = q * (1 + d**2)
     else:
-        raise ValueError("OrbitalElements must set either mean_anomaly or perihelion_time.")
+        raise InvalidOrbitalElementsError("OrbitalElements must set either mean_anomaly or perihelion_time.")
 
     x_pf = r * math.cos(nu)
     y_pf = r * math.sin(nu)
@@ -249,7 +276,7 @@ class BaseTelescope(
         )
 
         # register exception
-        exc.register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
+        self._register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
 
     @property
     def _position_radec(self) -> tuple[float, float] | None:
@@ -274,6 +301,8 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
+            AbortedError: If cancelled via abort_event (optional -- returning normally once
+                abort_event is set is also valid; see _DummyTelescopeBase for that variant).
             MoveError: If telescope cannot be moved.
         """
         ...
@@ -287,12 +316,15 @@ class BaseTelescope(
             dec: Dec in deg to track.
 
         Raises:
+            NotSupportedError: If this telescope doesn't support RA/Dec pointing.
+            MissingObserverError: If no observer is configured.
+            AltitudeLimitError: If the destination is below the configured altitude limit.
             MoveError: If telescope cannot be moved.
         """
 
         # no RA/Dec telescope?
         if not isinstance(self, IPointingRaDec):
-            raise NotImplementedError
+            raise exc.NotSupportedError("This telescope does not support RA/Dec pointing.")
 
         # do nothing, if initializing, parking or parked
         if self.motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
@@ -300,7 +332,7 @@ class BaseTelescope(
 
         # check observer
         if self.observer is None:
-            raise ValueError("No observer given.")
+            raise MissingObserverError("No observer given.")
 
         # to alt/az
         ra_dec = SkyCoord(ra * u.deg, dec * u.deg, frame=ICRS)
@@ -308,7 +340,7 @@ class BaseTelescope(
 
         # check altitude
         if alt_az.alt.degree < self._min_altitude:
-            raise ValueError(
+            raise AltitudeLimitError(
                 f"Destination altitude below limit: alt={alt_az.alt.degree:.2f}° "
                 f"az={alt_az.az.degree:.2f}° (min={self._min_altitude:.2f}°) for "
                 f"ra={ra:.5f}° dec={dec:.5f}° at {Time.now().isot} from "
@@ -363,6 +395,8 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
+            AbortedError: If cancelled via abort_event (optional -- returning normally once
+                abort_event is set is also valid; see _DummyTelescopeBase for that variant).
             MoveError: If telescope cannot be moved.
         """
         ...
@@ -376,12 +410,14 @@ class BaseTelescope(
             az: Az in deg to move to.
 
         Raises:
+            NotSupportedError: If this telescope doesn't support Alt/Az pointing.
+            AltitudeLimitError: If the destination is below the configured altitude limit.
             MoveError: If telescope cannot be moved.
         """
 
         # no Alt/Az telescope?
         if not isinstance(self, IPointingAltAz):
-            raise NotImplementedError
+            raise exc.NotSupportedError("This telescope does not support Alt/Az pointing.")
 
         # do nothing, if initializing, parking or parked
         if self.motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
@@ -389,7 +425,7 @@ class BaseTelescope(
 
         # check altitude
         if alt < self._min_altitude:
-            raise ValueError(
+            raise AltitudeLimitError(
                 f"Destination altitude below limit: alt={alt:.2f}° az={az:.2f}° "
                 f"(min={self._min_altitude:.2f}°) at {Time.now().isot}."
             )
@@ -505,13 +541,13 @@ class BaseTelescope(
         try:
             return await loop.run_in_executor(None, _query)
         except Exception as e:
-            raise ValueError(f"Could not resolve body '{body}'.") from e
+            raise BodyResolutionError(f"Could not resolve body '{body}'.") from e
 
     async def _resolve_body(self, body: str) -> tuple[float, float]:
         """Resolves a body name to (ra, dec) in degrees, ICRS.
 
         Raises:
-            ValueError: If body name is not resolvable.
+            BodyResolutionError: If body name is not resolvable.
         """
         ra, dec, _, _ = await self._resolve_body_with_rate(body)
         return ra, dec
@@ -524,11 +560,12 @@ class BaseTelescope(
                   asteroid/comet designation known to JPL Horizons).
 
         Raises:
+            NotSupportedError: If this telescope doesn't support body tracking.
             MoveError: If telescope could not be moved.
-            ValueError: If body name is not resolvable.
+            BodyResolutionError: If body name is not resolvable.
         """
         if not isinstance(self, IPointingBody):
-            raise NotImplementedError
+            raise exc.NotSupportedError("This telescope does not support body tracking.")
         ra, dec = await self._resolve_body(body)
         await self.move_radec(ra, dec)
         self._tracked_body = body
@@ -544,13 +581,15 @@ class BaseTelescope(
             elements: Orbital elements of the body to track.
 
         Raises:
+            NotSupportedError: If this telescope doesn't support orbital-element tracking.
             MoveError: If telescope could not be moved.
-            ValueError: If elements are incomplete (neither mean_anomaly nor perihelion_time given).
+            InvalidOrbitalElementsError: If elements are incomplete (neither mean_anomaly nor
+                perihelion_time given).
         """
         if not isinstance(self, IPointingOrbitalElements):
-            raise NotImplementedError
+            raise exc.NotSupportedError("This telescope does not support orbital-element tracking.")
         if elements.mean_anomaly is None and elements.perihelion_time is None:
-            raise ValueError("OrbitalElements must set either mean_anomaly or perihelion_time.")
+            raise InvalidOrbitalElementsError("OrbitalElements must set either mean_anomaly or perihelion_time.")
         ra, dec = _propagate_elements(elements, Time.now())
         await self.move_radec(ra, dec)
         self._tracked_elements = elements

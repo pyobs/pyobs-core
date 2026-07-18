@@ -34,6 +34,8 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
             az: Az in deg to move to.
 
         Raises:
+            NotSupportedError: If this device doesn't support Alt/Az pointing.
+            AltitudeLimitError: If the destination is below the configured altitude limit.
             MoveError: If device could not be moved.
         """
         ...

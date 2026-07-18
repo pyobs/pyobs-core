@@ -17,6 +17,7 @@ from pyobs.images import Image
 from pyobs.interfaces import IExposureTime, IImageType, ImageTypeState, IVideo, VideoCapabilities
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
+from pyobs.utils import exceptions as exc
 from pyobs.utils.cache import DataCache
 from pyobs.utils.enums import ImageType
 
@@ -451,6 +452,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         Returns:
             Name of image that was taken.
+
+        Raises:
+            GrabImageError: If there was a problem grabbing the image.
         """
 
         # activate camera
@@ -473,7 +477,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # no image?
         if image_request.image is None or image_request.filename is None:
-            raise ValueError("Could not take image.")
+            raise exc.GrabImageError("Could not take image.")
 
         # finished
         return image_request.filename

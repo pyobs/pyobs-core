@@ -193,7 +193,9 @@ class AstroplanScheduler(TaskScheduler):
                 raise ValueError(f"Could not find task with id '{task_id}'")
 
             # create scheduled task
-            scheduled_tasks.append(Observation(task=task, start=block.start_time, end=block.end_time))
+            scheduled_tasks.append(
+                Observation(task=task, start=block.start_time, end=block.end_time, target=task.target)
+            )
 
         return scheduled_tasks
 

@@ -25,6 +25,13 @@ class TaskData:
     task: Task
     observation_archive: ObservationArchive | None = None
     task_archive: TaskArchive | None = None
+    target: Target | None = None
+
+    @property
+    def resolved_target(self) -> Target | None:
+        """Target for this specific run: the observation's own record if known,
+        otherwise the task's live (possibly shared/reused) target."""
+        return self.target if self.target is not None else self.task.target
 
 
 class Task(BaseModel):

@@ -10,6 +10,7 @@ from pyobs.interfaces import IBinning, IFilters, IFlatField
 from pyobs.modules.flatfield.scheduler import FlatFieldScheduler
 from pyobs.robotic.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.robotic.utils.skyflats.scheduler import Scheduler, SchedulerItem
+from pyobs.utils import exceptions as exc
 from tests.helpers import make_proxy_cm
 
 
@@ -68,7 +69,7 @@ async def test_run_raises_when_already_running() -> None:
     task = asyncio.create_task(module.run())
     await asyncio.sleep(0.05)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(exc.DeviceBusyError):
         await module.run()
 
     block.set()

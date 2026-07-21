@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import copy
 import io
+import warnings
 from typing import Any, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
 from astropy.io import fits
 from astropy.io.fits import ImageHDU, table_to_hdu
+from astropy.io.fits.verify import VerifyWarning
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.table import Table
 from numpy.typing import NDArray
@@ -351,8 +353,13 @@ class Image:
             hdu.name = "RAW"
             hdu_list.append(hdu)
 
-        # write it
-        hdu_list.writeto(f, *args, **kwargs)
+        # write it -- a header value long enough to leave no room for its comment within FITS's
+        # 80-char card limit is expected (header entries come from many different modules we
+        # don't control); astropy already truncates the comment to comply and leaves the value
+        # (the actual data) untouched, so the warning has nothing actionable to tell us
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", VerifyWarning)
+            hdu_list.writeto(f, *args, **kwargs)
 
     def to_bytes(self) -> bytes:
         """Write to a bytes array and return it."""

@@ -95,6 +95,16 @@ class XmppComm(Comm):
     Finally, always make sure that ``use_tls`` is set according to the server's settings, i.e. if it uses TLS, this
     parameter must be True, and False otherwise. Cryptic error messages will follow, if one does not set this properly.
 
+    ``ping_interval``/``ping_timeout`` control the XEP-0199 keepalive ping that detects a dead connection.
+    ``ping_timeout`` in particular may need raising above its 30s default on a server whose shaper can delay an IQ
+    reply that long under load -- otherwise a merely-slow reply is indistinguishable from a dead connection and
+    triggers a reconnect that didn't need to happen::
+
+        comm:
+            class: pyobs.comm.xmpp.XmppComm
+            jid: someuser@example.com/pyobs
+            ping_timeout: 60
+
     """
 
     __module__ = "pyobs.comm.xmpp"
@@ -109,6 +119,8 @@ class XmppComm(Comm):
         server: str | None = None,
         use_tls: bool = False,
         ignore_cert_errors: bool = False,
+        ping_interval: float = 300.0,
+        ping_timeout: float = 30.0,
         *args: Any,
         **kwargs: Any,
     ):
@@ -124,6 +136,8 @@ class XmppComm(Comm):
             password: Password for given JID.
             server: Server to connect to. If not given, domain from JID is used.
             use_tls: Whether to use TLS.
+            ping_interval: Seconds between XEP-0199 keepalive pings.
+            ping_timeout: Seconds to wait for a ping reply before reconnecting.
         """
         Comm.__init__(self, *args, **kwargs)
 
@@ -140,6 +154,8 @@ class XmppComm(Comm):
         self._server = server
         self._use_tls = use_tls
         self._ignore_cert_errors = ignore_cert_errors
+        self._ping_interval = ping_interval
+        self._ping_timeout = ping_timeout
         self._loop = asyncio.get_event_loop()
         self._safe_send_attempts = 5
         self._safe_send_wait = 1
@@ -217,7 +233,9 @@ class XmppComm(Comm):
             self._xmpp.abort()
 
         # create client
-        self._xmpp = XmppClient(self._jid, self._password)
+        self._xmpp = XmppClient(
+            self._jid, self._password, ping_interval=self._ping_interval, ping_timeout=self._ping_timeout
+        )
 
         # presence gating (see mark_ready()) only applies to a comm with an actual Module
         # attached that hasn't finished starting yet -- a module-less XmppComm (a GUI, an

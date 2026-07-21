@@ -24,6 +24,7 @@ class WeatherAwareMixin:
         self.__last_park_attempt: float | None = None
         self.__weatheraware_is_error_state = False
         self.__weatheraware_lock = asyncio.Lock()
+        self.__weather_check_failures = 0
         this = self
         if isinstance(self, Module):
             if weather is not None:
@@ -122,10 +123,16 @@ class WeatherAwareMixin:
                         async with module.proxy(this.__weather, IWeather) as proxy:
                             weather_state = await proxy.wait_for_state(IWeather, timeout=5.0)
                             this.__is_weather_good = weather_state.good if weather_state is not None else False
+                        this.__weather_check_failures = 0
 
                     except Exception:
-                        # could either not connect or weather is not good
-                        this.__is_weather_good = False
+                        # could not reach the weather module. This can be a real outage, but
+                        # right after startup it's usually just that presence/roster hasn't
+                        # settled yet, so don't jump to "bad weather" (and park) on the very
+                        # first hiccup -- only once it persists across a few checks.
+                        this.__weather_check_failures += 1
+                        if this.__weather_check_failures >= 3:
+                            this.__is_weather_good = False
 
                 # if not good, park now
                 if this.__is_weather_good is False:

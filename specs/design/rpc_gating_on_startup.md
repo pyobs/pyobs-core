@@ -1,5 +1,9 @@
 # Gating RPC commands until module startup completes
 
+Status: implemented (#673), closed. A same-day regression — `Module.start()` colliding with
+`IStartStop.start()` — was found and fixed by renaming to `Module.startup()`; see "Post-landing
+regression" below.
+
 ## Problem
 
 Some modules (e.g. camera drivers like FLI) take a while to boot: connecting

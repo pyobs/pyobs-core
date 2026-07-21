@@ -416,6 +416,17 @@ class XmppComm(Comm):
         if "@" not in client:
             client = f"{client}@{self._domain}/{self._resource}"
 
+        # the client's cache entry is only created once its presence has been processed
+        # (_got_online) -- that can lag slightly behind this module's own startup (e.g. a
+        # background task's very first tick can run before presence has even arrived), so wait
+        # briefly for it instead of failing instantly on a transient "not discovered yet"
+        for _ in range(20):
+            if client in self._interface_cache:
+                break
+            await asyncio.sleep(0.25)
+        else:
+            raise IndexError(f"Client {client} not found.")
+
         # return them from cache
         return await self._interface_cache[client]
 

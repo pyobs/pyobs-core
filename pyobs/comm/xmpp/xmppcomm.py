@@ -4,6 +4,7 @@ import asyncio
 import functools
 import json
 import logging
+import random
 import re
 import ssl
 import time
@@ -34,6 +35,17 @@ if TYPE_CHECKING:
     from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
+
+
+def _retry_delay(attempt: int, cap: float = 30.0, base: float = 1.0) -> float:
+    """Capped exponential backoff with full jitter.
+
+    Used for retry loops that can end up running on every module in the fleet at once (e.g.
+    every module reconnecting to ejabberd simultaneously after a mass restart). Fixed-interval
+    retries stay in lockstep across all of them, repeatedly hammering the server at the same
+    instants; jitter decorrelates that so retries spread out over time instead.
+    """
+    return random.uniform(0, min(cap, base * (2**attempt)))
 
 
 class EventStanza(ElementBase):
@@ -947,8 +959,12 @@ class XmppComm(Comm):
     async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
         """Fetch and deserialize capabilities for a remote module's interface.
 
-        Retries a few times, since this may run right as the peer is still starting up and hasn't
-        published its capabilities yet.
+        Retries indefinitely (capped exponential backoff with jitter) instead of giving up after
+        a fixed budget -- a peer that's merely slow to respond (e.g. every module in the fleet
+        reconnecting to ejabberd at once) must still eventually get its capabilities fetched
+        without requiring a full disconnect/reconnect of that peer to retrigger discovery. Only
+        stops if the peer itself goes offline in the meantime, since a fresh fetch is triggered
+        from scratch the next time it comes back online (see _got_online).
         """
         if interface.capabilities is None:
             return None
@@ -956,24 +972,36 @@ class XmppComm(Comm):
 
         result = None
         last_error: BaseException | None = None
-        for attempt in range(3):
+        attempt = 0
+        while True:
             # Use full JID (with resource) if we know it — bare JID may not route correctly
-            full_jid = next(
-                (jid for jid in self._online_clients if jid.startswith(f"{module}@")),
-                f"{module}@{self._domain}",
-            )
+            full_jid = next((jid for jid in self._online_clients if jid.startswith(f"{module}@")), None)
+            if full_jid is None and attempt > 0:
+                log.debug(
+                    "Giving up fetching capabilities for %s from %s: peer went offline",
+                    interface.__name__,
+                    module,
+                )
+                return None
             try:
                 result = await asyncio.wait_for(
-                    self.client.plugin["xep_0030"].get_info(jid=JID(full_jid)), timeout=10.0
+                    self.client.plugin["xep_0030"].get_info(jid=JID(full_jid or f"{module}@{self._domain}")),
+                    timeout=10.0,
                 )
                 break
-            except (TimeoutError, Exception) as e:
+            except Exception as e:
                 last_error = e
-                if attempt < 2:
-                    await asyncio.sleep(2)
-        else:
-            log.warning("Failed to get capabilities for %s from %s: %s", interface.__name__, module, last_error)
-            return None
+                attempt += 1
+                if attempt == 3:
+                    log.warning(
+                        "Still failing to get capabilities for %s from %s after %d attempts (%s), "
+                        "will keep retrying",
+                        interface.__name__,
+                        module,
+                        attempt,
+                        last_error,
+                    )
+                await asyncio.sleep(_retry_delay(attempt))
         log.debug("get_capabilities disco result XML: %s", ET.tostring(result.xml).decode()[:500])
         # result.xml is the <iq> — the <query> is its child, capabilities are grandchildren
         for child in result.xml:
@@ -1030,17 +1058,30 @@ class XmppComm(Comm):
     async def _subscribe_with_retry(self, node: str, interface: type[Interface]) -> None:
         """Subscribe to a pubsub node, retrying until the node exists.
 
-        Runs as a background task so _subscribe_state returns immediately.
+        Runs as a background task so _subscribe_state returns immediately. Retries indefinitely
+        (capped exponential backoff with jitter) instead of giving up after a fixed budget -- a
+        node that's merely slow to appear (e.g. every module in the fleet reconnecting to
+        ejabberd at once, or the publisher hasn't started up yet) must still eventually get
+        subscribed without manual intervention. Stops only if _unsubscribe_state removes the
+        last callback for this node in the meantime -- the while condition then goes False,
+        which exits the loop into the else clause (not the break path) and returns.
         Once subscribed, fetches the current value and dispatches it.
         """
-        for _attempt in range(30):
+        attempt = 0
+        while node in self._state_node_handlers:
             try:
                 await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
                 break
             except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
-                await asyncio.sleep(1)
+                attempt += 1
+                if attempt == 30:
+                    log.warning(
+                        "Still failing to subscribe to state node %s after %d attempts, will keep retrying",
+                        node,
+                        attempt,
+                    )
+                await asyncio.sleep(_retry_delay(attempt))
         else:
-            log.warning("Could not subscribe to state node %s after 30 attempts", node)
             return
 
         # Fetch current value immediately after subscribing

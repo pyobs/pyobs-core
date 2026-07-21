@@ -15,7 +15,14 @@ log = logging.getLogger(__name__)
 class XmppClient(slixmpp.ClientXMPP):
     """XMPP client for pyobs."""
 
-    def __init__(self, jid: str, password: str, **kwargs: Any):
+    def __init__(
+        self,
+        jid: str,
+        password: str,
+        ping_interval: float = 300.0,
+        ping_timeout: float = 30.0,
+        **kwargs: Any,
+    ):
         """Create a new XMPP client.
 
         An XmppClient handles the actual XMPP communication for the XmppComm module.
@@ -23,6 +30,12 @@ class XmppClient(slixmpp.ClientXMPP):
         Args:
             jid: Connect to the XMPP server with the given JID.
             password: Password to use for connection.
+            ping_interval: Seconds between XEP-0199 keepalive pings.
+            ping_timeout: Seconds to wait for a ping reply before treating the connection as
+                dead and reconnecting. If the server-side shaper can delay an IQ reply by more
+                than this, keepalive pings misfire as false disconnects -- raise this to be more
+                tolerant of a throttled/slow server instead of only tolerating a genuinely dead
+                connection.
         """
 
         slixmpp.ClientXMPP.__init__(self, jid, password, **kwargs)
@@ -51,7 +64,7 @@ class XmppClient(slixmpp.ClientXMPP):
         self.register_plugin("xep_0199")  # XMPP Ping
 
         # enable keep alive pings
-        self.plugin["xep_0199"].enable_keepalive()
+        self.plugin["xep_0199"].enable_keepalive(interval=ping_interval, timeout=ping_timeout)
 
         # handle session_start and message events
         self.add_event_handler("session_start", self.session_start)

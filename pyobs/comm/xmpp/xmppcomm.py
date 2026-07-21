@@ -1019,7 +1019,7 @@ class XmppComm(Comm):
             try:
                 await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
                 break
-            except slixmpp.exceptions.IqError:
+            except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
                 await asyncio.sleep(1)
         else:
             log.warning("Could not subscribe to state node %s after 30 attempts", node)

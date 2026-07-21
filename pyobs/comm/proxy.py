@@ -195,7 +195,13 @@ class Proxy:
         interface: type[Interface],
         timeout: float = 10.0,
     ) -> Any:
-        """Return state immediately if available, otherwise wait for the first update."""
+        """Return state immediately if available, otherwise wait for the first update.
+
+        Returns None on timeout rather than raising -- every caller across the codebase already
+        does `if state is not None else ...` right after calling this, so that's the contract
+        actually being relied on; letting asyncio.wait_for's TimeoutError propagate would just
+        turn "peer hasn't published yet" into an unhandled exception for all of them.
+        """
         if self._state.get(interface) is not None:
             return self._state[interface]
 
@@ -209,6 +215,8 @@ class Proxy:
         await self._comm.subscribe_state(self._client, interface, _notify)
         try:
             await asyncio.wait_for(event.wait(), timeout=timeout)
+        except TimeoutError:
+            pass
         finally:
             await self._comm.unsubscribe_state(self._client, interface, _notify)
 

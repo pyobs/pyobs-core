@@ -663,7 +663,27 @@ class Comm:
                 # handle it
                 ret = handler(event, from_client)
                 if asyncio.iscoroutine(ret):
-                    asyncio.create_task(ret)
+                    task = asyncio.create_task(ret)
+                    task.add_done_callback(functools.partial(self._log_handler_exception, handler=handler, event=event))
+
+    @staticmethod
+    def _log_handler_exception(task: asyncio.Task[Any], handler: Callable[..., Any], event: Event) -> None:
+        """Log an event handler's exception with context, instead of leaving it to asyncio's own
+        "Task exception was never retrieved" warning at garbage-collection time, which gives no
+        indication of which handler or event actually failed -- every event handler is dispatched
+        as a fire-and-forget task (see _send_event_to_module), so this is the only place any of
+        them get their exceptions surfaced at all.
+        """
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            log.error(
+                "Unhandled exception in event handler %s for %s.",
+                getattr(handler, "__qualname__", handler),
+                event.__class__.__name__,
+                exc_info=exc,
+            )
 
 
 __all__ = ["Comm"]

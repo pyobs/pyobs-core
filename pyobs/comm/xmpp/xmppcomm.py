@@ -844,7 +844,12 @@ class XmppComm(Comm):
             Return value from method.
         """
 
-        # try multiple times
+        # try multiple times -- unlike _get_capabilities/_subscribe_with_retry this still gives up
+        # after a fixed budget instead of retrying indefinitely, since some callers run from open()
+        # and need to know a send failed rather than hang forever (see #664/#666). But the wait
+        # between attempts is jittered for the same reason as those: many modules' _safe_send calls
+        # can end up retrying around the same moment (e.g. a fleet-wide restart), and a fixed wait
+        # keeps them all retrying in lockstep instead of spreading the load out.
         iq = None
         for i in range(self._safe_send_attempts):
             try:
@@ -857,11 +862,11 @@ class XmppComm(Comm):
             except slixmpp.exceptions.IqTimeout as timeout:
                 # timeout occurred, try again after some wait
                 iq = timeout.iq
-                await asyncio.sleep(self._safe_send_wait)
+                await asyncio.sleep(_retry_delay(i + 1, cap=self._safe_send_wait * 4, base=self._safe_send_wait))
 
             except TimeoutError:
                 # our own timeout fired instead of slixmpp's, try again after some wait
-                await asyncio.sleep(self._safe_send_wait)
+                await asyncio.sleep(_retry_delay(i + 1, cap=self._safe_send_wait * 4, base=self._safe_send_wait))
 
         # never should reach this
         raise slixmpp.exceptions.IqTimeout(iq)

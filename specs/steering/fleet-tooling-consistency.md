@@ -10,10 +10,14 @@ Every GitHub-hosted repo in the core and connected tiers should have:
 0. **`uv` as the Python build backend/package manager** — not Poetry, not plain pip/setuptools.
    `pyproject.toml` should declare `uv` (`[build-system] requires = ["uv_build>=..."]` or
    equivalent), and the repo should carry a `uv.lock`, not a `poetry.lock`/`requirements.txt`.
-   Known exceptions still on Poetry as of the 2026-07-22 survey: `pyobs-andor`, `pyobs-gemini` —
-   these need an actual migration (not just a Dependabot ecosystem accommodation) to get in line;
-   Dependabot is configured against `pip` for them in the meantime, which is the closest
-   Dependabot ecosystem to a Poetry-managed `pyproject.toml`, not a long-term fix.
+   `pyobs-andor` and `pyobs-gemini` (the two found still on Poetry in the 2026-07-22 survey) were
+   migrated the same day, alongside a best-effort pass at their 2.0 API compatibility (state
+   publishing, `motion_status()`/`FitsHeaderEntry` signature changes, and — for `pyobs-andor` —
+   removing a mislabeled, never-functional FLI driver file, and — for `pyobs-gemini` — fixing a
+   missing `await` on `register_event()` and a reference to a nonexistent `TelescopeMovingEvent`
+   class). **Neither has been tested against real hardware** — no such hardware was available
+   during the migration. Treat both as unverified until someone with the actual devices confirms
+   they work; don't assume today's migration means they're production-ready.
 1. **Lint/type-check pipeline**, matching pyobs-core's own setup exactly:
    - `.pre-commit-config.yaml` running `black` (via the `psf/black-pre-commit-mirror`) and `ruff`
      (via `astral-sh/ruff-pre-commit`).

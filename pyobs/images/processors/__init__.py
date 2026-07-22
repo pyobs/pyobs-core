@@ -172,3 +172,7 @@ What about units and coordinate systems?
   positions use FITS 1-based or NumPy 0-based conventions, and state units for
   thresholds and offsets (ADU, electrons, arcseconds, pixels).
 """
+
+from .exceptionhandler import (ExceptionHandler)
+
+__all__ = ["ExceptionHandler"]

@@ -1,27 +1,33 @@
 # Plan: Systematic ejabberd throughput/latency benchmarking
 
-Status: draft — merge with prior results
+Status: draft — headline number known, original methodology unrecoverable
 
-**This doc was drafted without the actual data.** An earlier session (different machine) already ran
-some throughput testing against ejabberd and found that simultaneous state pushes were slower than
-sequential ones, but the numbers, methodology, and exact scenario weren't available when this draft
-was written — neither in this repo, this session's memory, nor `specs/design/pyobs_2_0_wire_protocol.md`
-(which has a *different*, unrelated concurrency measurement: 5 simulated devices, `gather` vs.
-sequential, 0.5s vs 0.1s — not ejabberd, not state pushes). **Fill in the "Prior finding" section
-below with the real details before treating this as anything but a test plan**, and check whether the
-scenarios below actually reproduce what was seen, adjusting them if the original setup differed
-(payload size, node count, client count, local vs. remote ejabberd, etc).
+**The magnitude is known: simultaneous state pushes took ~15x longer than sequential ones.** That
+draft/test run was done on another machine and isn't retrievable — not in this repo, not in
+session memory beyond the headline ratio, nor in `specs/design/pyobs_2_0_wire_protocol.md` (which
+has a *different*, unrelated concurrency measurement: 5 simulated devices, `gather` vs. sequential,
+0.5s vs 0.1s — not ejabberd, not state pushes). The remaining "Prior finding" checklist items below
+are **not going to be recovered by more digging** — either they're recalled directly, or they stay
+unknown and the scenarios below need to be run fresh to get real, reproducible numbers rather than
+trying to match an unrecoverable prior run.
 
-## Prior finding (needs filling in from the other session)
+## Prior finding
 
+- [x] What "slower" meant concretely: aggregate wall-clock time for a batch of concurrent pushes
+      vs. the same batch done sequentially — **~15x** worse for the concurrent case.
 - [ ] Exact scenario: how many concurrent pushes, to how many distinct PubSub nodes, what payload?
-- [ ] What "slower" meant concretely — per-message latency, total wall time, throughput ceiling hit?
-- [ ] Numbers, if any were recorded.
+- [ ] Precise numbers behind the 15x ratio (absolute latencies, not just the ratio).
 - [ ] Was concurrency via `asyncio.gather` on one client, or multiple independent clients/modules
       publishing at the same time?
 - [ ] Local docker-compose ejabberd, or a different (production-like?) server?
-- [ ] Any hypothesis already formed (e.g. shaper throttling, single-connection head-of-line blocking,
-      server-side pubsub node contention)?
+- [ ] Any hypothesis already formed. The ejabberd shaper root-cause found separately for #664/#666
+      (per-connection outbound byte/sec throttling with queuing rather than dropping, capable of
+      minutes-long delay on a healthy-looking connection — see `state-freshness-max-age.md`'s
+      Problem section) is a strong candidate mechanism for concurrent-worse-than-sequential too: a
+      burst of simultaneous publishes from one connection would exhaust the shaper's burst
+      allowance immediately, where the same publishes spread out sequentially might stay under it.
+      Not yet confirmed as *the* cause of the 15x figure specifically — scenario 2 below plus the
+      shaper-introspection step should confirm or rule it out.
 
 ## Problem
 

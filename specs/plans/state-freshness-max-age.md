@@ -30,6 +30,25 @@ pubsub subscription stay up, `WeatherAwareMixin` keeps treating the last publish
 current indefinitely. This is the one place in `pyobs-core` where stale state has a physical
 consequence (a dome/roof left open in bad weather because nothing noticed the feed had died).
 
+There's also a transport-level way for the same symptom to occur even when `Weather`'s update loop
+is healthy: the ejabberd shaper incident (#664/#666) found that a connection can look fully alive
+(TCP `ESTABLISHED`, no error) while ejabberd's per-connection shaper throttles outbound bytes/sec
+and queues stanzas — observed delays of minutes, once ~24 minutes, before a stanza got through. A
+`publish` IQ for a fresh `WeatherState` could sit shaped on the wire for that long, so "the pubsub
+subscription stays up" is not sufficient evidence that state is current — reinforcing that a
+freshness check needs to be based on the state's own timestamp (see Implementation §1), not on
+connection liveness.
+
+A second, distinct transport effect points the same way: separate throughput testing (headline
+number recovered, original test run itself unrecoverable — see
+`ejabberd-throughput-benchmarking.md`) found simultaneous state pushes taking roughly **15x longer**
+than the same pushes done sequentially — plausibly the same shaper mechanism (a burst of concurrent
+publishes exhausts the per-connection burst allowance immediately, where sequential publishes might
+not), but not yet confirmed as the specific cause. Unlike the single delayed-IQ case, this one
+scales with how many modules in a fleet happen to publish state at once, which is exactly the
+"10-100 agents" regime `pyobs_2_0_wire_protocol.md` assumes is fine without measurement — so
+staleness risk from this mechanism is a fleet-size question, not just a per-module one.
+
 ## Decision
 
 Add an optional `max_age: float | None = None` keyword parameter to both `get_state()` and
@@ -162,6 +181,18 @@ tight enough to catch a genuinely dead update loop within a couple of `__weather
 (which itself polls every 10s, `weatheraware.py:142`). This is a judgment call, not a derived
 constant — flagged here so it can be revisited against real deployment behavior rather than
 treated as load-bearing.
+
+This default is sized against the *application* failure mode (dead update loop), not the
+*transport* one from the shaper incident noted above. A shaper-throttled connection delaying a
+publish by minutes will correctly make `wait_for_state` report `None` past 120s — that's the
+fail-safe behavior working as intended, not a false positive, since a delayed reading really is
+stale by the time the caller would act on it. But it does mean `weather_max_age=120.0` will trip
+during ordinary shaper contention on a deployment like pyobs-iagvt's (pre-fix: unbounded delay,
+post-fix: still shaped, just no longer an unbounded hang), which is a legitimate-but-currently-
+unquantified false-positive rate this plan doesn't yet have data for. `ejabberd-throughput-
+benchmarking.md` (headline ~15x ratio known, absolute latencies not) would be the place to get an
+actual publish-latency distribution under shaper load before treating 120s as tuned rather than
+guessed.
 
 With `weather_state` now `None` both when the module hasn't published yet *and* when its last
 publish is too old, no other change is needed in `__weather_check()` — line 125's existing

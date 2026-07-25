@@ -154,7 +154,9 @@ class Application:
         from pyobs.utils.logging.context import module_name
 
         log = logging.getLogger(__name__)
-        module_name.set(Path(self._config).stem)
+
+        # set (maybe temporary) module name to filename without leading underscores
+        module_name.set(Path(self._config).stem.lstrip("_"))
 
         # load config
         log.info("Loading configuration from %s...", self._config)

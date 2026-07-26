@@ -68,14 +68,6 @@ class FlatFieldScheduler(Module, IRunnable):
             count=count,
         )
 
-    async def open(self) -> None:
-        """Open module"""
-        await Module.open(self)
-
-        # check flat field
-        if not await self.has_proxy(self._flatfield, IFlatField):
-            log.warning("Flatfield module does not exist or is not of correct type at the moment.")
-
     @timeout(7200)
     async def run(self, **kwargs: Any) -> None:
         """Perform flat-fielding

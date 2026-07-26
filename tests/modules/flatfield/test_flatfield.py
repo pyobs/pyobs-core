@@ -65,7 +65,6 @@ def test_init_accepts_filter_wheel_with_filter_support() -> None:
 @pytest.mark.asyncio
 async def test_open_publishes_binning_and_ready_state(mocker) -> None:
     ff = make_flatfield()
-    ff._comm.has_proxy = AsyncMock(return_value=True)
     ff._comm.register_event = AsyncMock()
     ff._comm.set_state = AsyncMock()
     mocker.patch.object(Module, "open", AsyncMock())
@@ -84,7 +83,6 @@ async def test_open_publishes_empty_filter_state_when_unset(mocker) -> None:
     # for anything that subscribes to it -- otherwise subscribers retry forever against a node
     # that never gets created
     ff = make_flatfield()
-    ff._comm.has_proxy = AsyncMock(return_value=True)
     ff._comm.register_event = AsyncMock()
     ff._comm.set_state = AsyncMock()
     mocker.patch.object(Module, "open", AsyncMock())
@@ -98,7 +96,6 @@ async def test_open_publishes_empty_filter_state_when_unset(mocker) -> None:
 @pytest.mark.asyncio
 async def test_open_publishes_filter_state_once_set(mocker) -> None:
     ff = make_flatfield()
-    ff._comm.has_proxy = AsyncMock(return_value=True)
     ff._comm.register_event = AsyncMock()
     ff._comm.set_state = AsyncMock()
     mocker.patch.object(Module, "open", AsyncMock())

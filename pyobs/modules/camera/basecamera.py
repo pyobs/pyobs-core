@@ -464,8 +464,11 @@ class BaseCamera(
             await asyncio.sleep(0.1)
 
     async def _abort_weather(self, event: Event, sender: str, **kwargs: Any) -> bool:
-        """Abort on bad weather."""
-        await self.abort()
+        """Abort on bad weather, unless the shutter is closed (dark/bias) -- those don't
+        expose anything to the weather, and image_type is fixed for a whole sequence, so
+        this also lets an in-progress dark/bias sequence run to completion undisturbed."""
+        if self._image_type not in (ImageType.BIAS, ImageType.DARK):
+            await self.abort()
         return True
 
     @staticmethod

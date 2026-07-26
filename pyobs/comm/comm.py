@@ -535,10 +535,10 @@ class Comm:
         safe for peers to discover.
 
         Called by Module once it transitions to READY. Transports that announce a module to peers
-        independently of RPC dispatch (e.g. XmppComm's XMPP presence, which drives other modules'
-        peer-discovery reaction) hold that announcement back until this fires, so peers never read
-        capabilities that are still mid-publish. Transports without such an announcement (e.g.
-        LocalComm) don't need to override this.
+        independently of RPC dispatch (e.g. XmppComm's XMPP presence, or LocalComm's direct
+        ModuleOpenedEvent dispatch to already-connected peers) hold that announcement back until
+        this fires, so peers never read capabilities that are still mid-publish. Transports without
+        such an announcement don't need to override this.
         """
         await self._mark_ready()
 

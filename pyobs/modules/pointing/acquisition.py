@@ -99,12 +99,6 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         """Open module"""
         await Module.open(self)
 
-        # check telescope and camera
-        if not await self.has_proxy(self._telescope, ITelescope):
-            log.warning("Telescope does not exist or is not of correct type at the moment.")
-        if not await self.has_proxy(self._camera, ICamera):
-            log.warning("Camera does not exist or is not of correct type at the moment.")
-
         # publish initial states
         await self.comm.set_state(IAcquisition, AcquisitionState())
         await self.comm.set_state(IRunning, RunningState(running=False))

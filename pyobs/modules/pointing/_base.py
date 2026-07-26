@@ -57,17 +57,5 @@ class BasePointing(Module, PipelineMixin, metaclass=ABCMeta):
                 exc.RemoteError, 3, timespan=600, module=telescope, callback=self._default_remote_error_callback
             )
 
-    async def open(self) -> None:
-        """Open module."""
-        await Module.open(self)
-
-        # check telescope
-        if not await self.has_proxy(self._telescope, ITelescope):
-            log.warning("Given telescope does not exist or is not of correct type at the moment.")
-
-        # check camera
-        if not await self.has_proxy(self._camera, ICamera):
-            log.warning("Given camera does not exist or is not of correct type at the moment.")
-
 
 __all__ = ["BasePointing"]

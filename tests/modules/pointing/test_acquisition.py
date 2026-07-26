@@ -115,7 +115,6 @@ async def test_open_publishes_initial_states(mocker) -> None:
     from pyobs.modules import Module
 
     acq = make_acquisition()
-    acq._comm.has_proxy = AsyncMock(return_value=True)
     acq._comm.set_state = AsyncMock()
     mocker.patch.object(Module, "open", AsyncMock())
 

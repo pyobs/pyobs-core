@@ -79,7 +79,10 @@ async def test_open_publishes_binning_and_ready_state(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_open_does_not_publish_filter_state_when_unset(mocker) -> None:
+async def test_open_publishes_empty_filter_state_when_unset(mocker) -> None:
+    # even with no filter selected yet, the state must be published so the pubsub node exists
+    # for anything that subscribes to it -- otherwise subscribers retry forever against a node
+    # that never gets created
     ff = make_flatfield()
     ff._comm.has_proxy = AsyncMock(return_value=True)
     ff._comm.register_event = AsyncMock()
@@ -88,8 +91,8 @@ async def test_open_does_not_publish_filter_state_when_unset(mocker) -> None:
 
     await ff.open()
 
-    for call in ff._comm.set_state.await_args_list:
-        assert call.args[0] is not IFilters
+    filter_state = _state_for(ff._comm.set_state, IFilters)
+    assert filter_state.filter == ""
 
 
 @pytest.mark.asyncio

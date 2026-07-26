@@ -195,10 +195,12 @@ class Application:
         if not isinstance(self._module, MultiModule):
             config_stem = Path(self._config).stem
             if self._module.name != config_stem:
-                raise ValueError(
-                    f"Config file stem ({config_stem!r}) does not match module's own name "
-                    f"({self._module.name!r}). Rename the config file or fix the module's "
-                    f"comm configuration so they match."
+                log.warning(
+                    "Config file stem (%s) does not match module's own name "
+                    "(%s). Rename the config file or fix the module's "
+                    "comm configuration so they match.",
+                    config_stem,
+                    self._module.name,
                 )
 
     def run(self) -> None:

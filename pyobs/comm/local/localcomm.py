@@ -5,7 +5,7 @@ from typing import Any
 
 from pyobs.comm import Comm
 from pyobs.comm.comm import PresenceCallback
-from pyobs.events import Event
+from pyobs.events import Event, ModuleOpenedEvent
 from pyobs.interfaces import Interface
 from pyobs.utils.enums import ModuleState
 
@@ -26,6 +26,7 @@ class LocalComm(Comm):
         self._capabilities: dict[type[Interface], Any] = {}  # interface -> Capabilities object
         self._presence: tuple[ModuleState, str] = (ModuleState.READY, "")
         self._presence_callbacks: dict[str, list[PresenceCallback]] = {}
+        self._ready = False
 
     @property
     def name(self) -> str:
@@ -158,3 +159,15 @@ class LocalComm(Comm):
             callback(*remote._presence)
         except KeyError:
             pass
+
+    async def _mark_ready(self) -> None:
+        """Announce this module to already-connected peers, mirroring XmppComm's presence-based
+        discovery (_got_online sending ModuleOpenedEvent) -- without this, a module that joins the
+        LocalNetwork after a peer has already started is invisible to that peer's ModuleOpenedEvent
+        handlers until the peer restarts (see #677). Guarded so a later re-READY doesn't re-announce."""
+        if self._ready:
+            return
+        self._ready = True
+        for client in self._network.get_clients():
+            if client is not self:
+                client._send_event_to_module(ModuleOpenedEvent(), self._name)

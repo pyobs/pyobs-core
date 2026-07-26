@@ -6,6 +6,7 @@ from astropy.io import fits
 from pyobs.events import BadWeatherEvent
 from pyobs.modules.camera import DummyCamera
 from pyobs.utils import exceptions as exc
+from pyobs.utils.enums import ImageType
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -60,6 +61,24 @@ async def test_abort_weather_aborts_camera():
 
     assert camera.expose_abort.is_set()
     assert camera._sequence_count_left == 0
+
+    await camera.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("image_type", [ImageType.BIAS, ImageType.DARK])
+async def test_abort_weather_does_not_abort_closed_shutter_sequence(image_type):
+    """#672: a BadWeatherEvent must not interrupt a dark/bias sequence -- the shutter stays
+    closed, so bad weather doesn't affect it, and image_type is fixed for the whole sequence."""
+    camera = DummyCamera()
+    await camera.open()
+    await camera.set_image_type(image_type)
+    camera._sequence_count_left = 3  # simulate a running grab_sequence()
+
+    await camera._abort_weather(BadWeatherEvent(), "weather")
+
+    assert not camera.expose_abort.is_set()
+    assert camera._sequence_count_left == 3
 
     await camera.close()
 

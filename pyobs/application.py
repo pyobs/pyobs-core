@@ -193,7 +193,7 @@ class Application:
         # (module.py), never meant to match a filename -- each child module is already
         # correctly distinguished via execute()/BackgroundTask.
         if not isinstance(self._module, MultiModule):
-            config_stem = Path(self._config).stem
+            config_stem = Path(self._config).stem.lstrip("_")
             if self._module.name != config_stem:
                 log.warning(
                     "Config file stem (%s) does not match module's own name "

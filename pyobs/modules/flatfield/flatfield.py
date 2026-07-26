@@ -106,14 +106,6 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """Open module"""
         await Module.open(self)
 
-        # check telescope, camera, and filters
-        if (
-            not await self.has_proxy(self._telescope, ITelescope)
-            or not await self.has_proxy(self._camera, ICamera)
-            or not await self.has_proxy(self._filter_wheel, IFilters)
-        ):
-            log.warning("Either telescope, camera or filters do not exist or are not of correct type at the moment.")
-
         # subscribe to events
         if self._comm:
             await self.comm.register_event(BadWeatherEvent, self._abort_weather)

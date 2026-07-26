@@ -95,10 +95,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         await self.comm.register_event(FocusFoundEvent)
         await self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
 
-        # check focuser and camera
-        if not await self.has_proxy(self._focuser, IFocuser) or not await self.has_proxy(self._camera, IData):
-            log.warning("Either camera or focuser do not exist or are not of correct type at the moment.")
-
         # publish initial states
         await self.comm.set_state(IAutoFocus, AutoFocusState())
         await self.comm.set_state(IRunning, RunningState(running=False))

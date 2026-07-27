@@ -256,6 +256,13 @@ class Application:
             # module_factory hadn't resolved yet (e.g. a login dialog still open), since
             # self._module.quit() is what normally unblocks run_forever()/main otherwise.
             pass
+        except RuntimeError:
+            # Qt-backed loops (qasync, used by pyobs-gui) can report the underlying Qt event
+            # loop as stopped before _main_task is done -- e.g. when the GUI's native window
+            # close triggers Qt's own quit independently of self._module.quit(). _main_task
+            # keeps running as a plain asyncio task regardless; the cancel/gather below still
+            # drains it, so this is a benign race in loop bookkeeping, not a failed shutdown.
+            log.warning("Event loop reported as stopped before shutdown finished; continuing cleanup.")
 
         # main finished, cancel all tasks
         tasks = asyncio.all_tasks(self._loop)
@@ -263,7 +270,11 @@ class Application:
             log.debug("Task %s still running, cancelling it...", t)
             t.cancel()
         group = asyncio.gather(*tasks, return_exceptions=True)
-        self._loop.run_until_complete(group)
+        try:
+            self._loop.run_until_complete(group)
+        except RuntimeError:
+            # same benign qasync race as above, now on the cancellation gather itself.
+            log.warning("Event loop reported as stopped before task cancellation finished.")
 
         # finished
         log.info("Closing loop...")

@@ -1,0 +1,7 @@
+services:
+  ejabberd:
+    volumes:
+      # Path is relative to tests/xmpp/ (docker compose resolves relative bind-mount
+      # paths against the *first* -f file's directory) — always invoke with
+      # tests/xmpp/docker-compose.yml passed first, this file passed after.
+      - ../../scripts/xmpp/ejabberd-shaper-10x.yml:/home/ejabberd/conf/ejabberd.yml:ro

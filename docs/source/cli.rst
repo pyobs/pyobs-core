@@ -130,15 +130,22 @@ The command accepts the following optional parameters:
 :-r/--run-path <path>:
     Defines the path in which to store PID files, defaults to **/opt/pyobs/run**.
 
-:-r/--run-path <path>:
-    Defines the path in which to store log files, defaults to **/opt/pyobs/log**.
+:-l/--log-path <path>:
+    Defines the path in which to store log files, defaults to **/opt/pyobs/log**. Only used if
+    **--file-log** is given.
 
 :--log-level <level>:
     One of critical, error, warning, info, debug. Indicates the level of logging.
 
-:--syslog:
-    If given, forwards **--syslog** to every started module, so their log messages are also sent to the
-    systemd journal.
+:--syslog/--no-syslog:
+    Forwards **--syslog** to every started module, so their log messages are also sent to the
+    systemd journal. Defaults to enabled.
+
+:--file-log/--no-file-log:
+    Forwards **--log-file <log-path>/<module>.log** to every started module, so their log messages
+    are also written to a per-module file. Defaults to disabled -- **--syslog** already covers log
+    capture under systemd; pass **--file-log** explicitly if you also want (or, without systemd,
+    instead need) per-module log files.
 
 :--chuid <user>\:<group>:
     Switches user to the given user in the given group when starting/stopping a module, defaults to **pyobs**.

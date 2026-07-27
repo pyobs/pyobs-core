@@ -125,14 +125,6 @@ async def test_open_publishes_initial_states(mocker) -> None:
     _state_for(acq._comm.set_state, IAcquisition)  # just needs to exist
 
 
-@pytest.mark.asyncio
-async def test_is_running_reflects_flag() -> None:
-    acq = make_acquisition()
-    assert await acq.is_running() is False
-    acq._is_running = True
-    assert await acq.is_running() is True
-
-
 # ── acquire_target ──────────────────────────────────────────────────────────
 
 

@@ -119,10 +119,6 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._running = False
         await self.comm.set_state(IRunning, RunningState(running=self._running))
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether scheduler is running."""
-        return self._running
-
     async def _update_schedule(self) -> None:
         # get schedulable tasks and sort them
         log.info("Found update in schedulable block, downloading them...")

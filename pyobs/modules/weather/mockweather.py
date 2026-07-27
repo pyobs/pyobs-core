@@ -70,10 +70,6 @@ class MockWeather(Module, IWeather, IFitsHeaderBefore):
         self._active = False
         await self._publish_state()
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return self._active
-
     async def set_good(self, good: bool) -> None:
         """Set the simulated weather-good state, for use in tests and simulations.
 

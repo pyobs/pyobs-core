@@ -22,6 +22,10 @@ def test_name_is_module(comm: DummyComm) -> None:
     assert comm.name == "module"
 
 
+def test_name_can_be_overridden() -> None:
+    assert DummyComm(name="filecache").name == "filecache"
+
+
 def test_clients_is_empty(comm: DummyComm) -> None:
     assert comm.clients == []
 

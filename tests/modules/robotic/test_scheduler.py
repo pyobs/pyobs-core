@@ -146,7 +146,7 @@ async def test_open_registers_events_and_publishes_state(mocker) -> None:
     assert state.running is True
 
 
-# ── start / stop / is_running ────────────────────────────────────────────────
+# ── start / stop ─────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -172,14 +172,6 @@ async def test_stop_clears_running() -> None:
     assert scheduler._running is False
     state = _state_for(scheduler._comm.set_state, IRunning)
     assert state.running is False
-
-
-@pytest.mark.asyncio
-async def test_is_running_reflects_flag() -> None:
-    scheduler = make_scheduler()
-    assert await scheduler.is_running() is True
-    scheduler._running = False
-    assert await scheduler.is_running() is False
 
 
 # ── _update_schedule ─────────────────────────────────────────────────────────

@@ -102,7 +102,7 @@ async def test_open_publishes_initial_states(mocker) -> None:
     assert guiding_state.loop_closed is False
 
 
-# ── start / stop / is_running ───────────────────────────────────────────────
+# ── start / stop ─────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -147,14 +147,6 @@ async def test_stop_waits_until_camera_idle(mocker) -> None:
     await ag.stop()
 
     assert camera.get_state.call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_is_running_reflects_enabled_flag() -> None:
-    ag = make_guiding()
-    assert await ag.is_running() is False
-    ag._enabled = True
-    assert await ag.is_running() is True
 
 
 # ── set_exposure_time (AutoGuiding-specific) ────────────────────────────────

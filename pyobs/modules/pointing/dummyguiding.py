@@ -56,9 +56,6 @@ class DummyAutoGuiding(Module, IAutoGuiding):
         await self.comm.set_state(IRunning, RunningState(running=False))
         await self._publish_guiding_state(loop_closed=False)
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        return self._running
-
     async def _publish_guiding_state(self, loop_closed: bool) -> None:
         await self.comm.set_state(
             IAutoGuiding,

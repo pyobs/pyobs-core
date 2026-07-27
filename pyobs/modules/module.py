@@ -383,11 +383,14 @@ class Module(Object, IModule, IConfig):
         """
         await self.open()
 
-        # warn if any stateful interface hasn't published state yet
+        # a stateful interface with no published state by now isn't a transient, self-healing
+        # condition -- it's a standing defect (missing placeholder publish in open()) that sits
+        # there on every single startup until fixed, so this is an error, not a warning, even
+        # though it doesn't block startup itself (see specs/plans/enforce-state-publishing.md)
         if self._comm is not None:
             missing = self._comm.missing_published_state(self._interfaces)
             for iface in missing:
-                log.warning(
+                log.error(
                     "Module %s implements %s which declares state, but no state has been published for it yet.",
                     self.name,
                     iface.__name__,

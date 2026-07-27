@@ -1018,7 +1018,7 @@ class XmppComm(Comm):
                 attempt += 1
                 if attempt == 3:
                     log.warning(
-                        "Still failing to get capabilities for %s from %s after %d attempts (%s), "
+                        "Still failing to get capabilities for %s from %s after %d attempts (%r), "
                         "will keep retrying",
                         interface.__name__,
                         module,

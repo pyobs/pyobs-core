@@ -1,6 +1,8 @@
 # Plan: Enforce state publishing for stateful interfaces
 
 Status: implemented, closed.
+Repos: pyobs-brot (BrotRaDecTelescope hit the same bug this convention exists to catch — see
+2026-07-27 addendum below)
 
 Implementation note: writing the option-3 test (`tests/modules/test_module_state_publishing.py`)
 found that the Problem section's claim "today all concrete modules in pyobs-core happen to
@@ -12,6 +14,43 @@ telescope dummies (`DummyAltAzTelescope`/`DummyRaDecTelescope`/`DummySolarTelesc
 similar miss in an early dry run but weren't — `IPointingAltAz` is legitimately gated on an
 `Observer` being configured, and the test now passes one in for those three, matching how their
 existing per-module unit tests already do.
+
+## 2026-07-27 addendum: two more instances of the same bug found in production, plus a severity change
+
+**`FocusModel` (pyobs-core).** `open()` tried to compute a real `IFocusModel` state by fetching
+live temperature data from the configured `weather` module before ever publishing anything — if
+`weather` wasn't reachable yet (an ordinary startup-ordering race, not a real failure), the publish
+was skipped entirely and the interface's state stayed permanently unpublished for that run. Same
+fix as `Weather`/`DummyCamera`: publish a placeholder (`focus=0.0`) synchronously in `open()` when
+the real computation fails, and let the existing background `_update()` loop overwrite it with a
+real value once `weather` becomes reachable.
+
+**`BrotRaDecTelescope` (pyobs-brot)**, found while investigating an unrelated production XMPP
+incident on `pyobs-iag50` (see `specs/plans/ejabberd-throughput-benchmarking.md`'s "Full incident
+timeline" section for the full story) — the log line that led here was literally this plan's own
+runtime check firing: `"Module telescope implements ITemperatures which declares state, but no
+state has been published for it yet."` Same shape as `DummyCamera`'s original miss: `readings` was
+only ever built from live MQTT telemetry inside `_update()`, gated behind `if readings:`, with
+nothing published if the list came back empty — which it always would be synchronously in `open()`,
+since the MQTT client (`asyncio.create_task(self.mqtt.run())`, started earlier in the same `open()`)
+hasn't had a chance to receive anything yet. Fixed by publishing `TemperaturesState(readings=[])`
+synchronously in `open()`, same placeholder-then-overwrite shape as everywhere else.
+
+**Severity change: the runtime warning is now `log.error`, not `log.warning`**
+(`pyobs/modules/module.py`, `Module.startup()`). Prompted by the `BrotRaDecTelescope` case above
+actually firing this check in production and a direct question of whether that check should be a
+"hard error" — worth being precise about what changed, since the original Decision section below
+explicitly rejected "a hard error in `startup()`," which could read as though this contradicts that.
+It doesn't: that rejection was specifically about raising/crashing startup, which is unchanged and
+still rejected for the same blast-radius reasons (a third-party module updated more slowly than
+`pyobs-core` still shouldn't hard-crash on this). What changed is purely the log *level* — still
+non-fatal, still just a log line — from `WARNING` to `ERROR`. Rationale: with the placeholder
+convention in place, this check's steady state is supposed to be "never fires" (a true invariant,
+per the Consequences section below), unlike e.g. the XMPP capability-retry warnings elsewhere in
+`xmppcomm.py`, which are *expected* to fire during an ordinary reconnect and self-heal. A module
+missing published state for a declared interface isn't a transient, self-correcting condition — it
+recurs on every single startup until someone fixes the module's `open()` — which is a reasonable
+bar for `ERROR` rather than `WARNING`, even though it still doesn't block startup itself.
 
 ## Problem
 

@@ -15,13 +15,18 @@ log = logging.getLogger(__name__)
 
 
 async def get_coords(
-    obj: IPointingAltAz | IPointingRaDec, mode: type[IPointingAltAz | IPointingRaDec]
+    obj: IPointingAltAz | IPointingRaDec,
+    mode: type[IPointingAltAz | IPointingRaDec],
+    max_age: float | None = None,
 ) -> tuple[float, float]:
     """Gets coordinates from object
 
     Args:
         obj: Object to fetch coordinates from.
         mode: IAltAz or IRaDec.
+        max_age: If obj is a remote Proxy, treat cached state older than this many seconds the
+            same as "not available" (raises ValueError below). Ignored for a Module, whose own
+            state is always current from its own perspective.
 
     Returns:
         Return from method call.
@@ -29,7 +34,7 @@ async def get_coords(
 
     if mode == IPointingAltAz:
         if isinstance(obj, Proxy):
-            state: AltAzState | None = obj.get_state(IPointingAltAz)
+            state: AltAzState | None = obj.get_state(IPointingAltAz, max_age=max_age)
         elif isinstance(obj, Module):
             state = obj.comm.get_own_state(IPointingAltAz)
         else:
@@ -39,7 +44,7 @@ async def get_coords(
         return state.alt, state.az
     elif mode == IPointingRaDec:
         if isinstance(obj, Proxy):
-            state2: RaDecState | None = obj.get_state(IPointingRaDec)
+            state2: RaDecState | None = obj.get_state(IPointingRaDec, max_age=max_age)
         elif isinstance(obj, Module):
             state2 = obj.comm.get_own_state(IPointingRaDec)
         else:
@@ -80,6 +85,7 @@ class FollowMixin:
         interval: float = 10,
         tolerance: float = 1,
         only_follow_when_ready: bool = True,
+        follow_max_age: float | None = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -91,6 +97,11 @@ class FollowMixin:
             tolerance: Tolerance in degrees between both devices to trigger new movement.
             mode: Set to "altaz" to follow Alt/Az coordinates or "radec" to follow RA/Dec.
             only_follow_when_ready: Only follow if is_ready() is True.
+            follow_max_age: Treat the followed device's cached position as unavailable once
+                it's older than this many seconds -- guards against silently following a frozen
+                position if the followed device's own position-publish loop dies while its
+                connection stays up. Defaults to 3x interval (loose enough to tolerate a slow
+                tick, tight enough to notice a dead feed within a few position checks).
         """
 
         # store
@@ -99,6 +110,7 @@ class FollowMixin:
         self.__follow_tolerance = tolerance
         self.__follow_mode = mode
         self.__follow_only_when_ready = only_follow_when_ready
+        self.__follow_max_age = follow_max_age if follow_max_age is not None else interval * 3
 
         # store self for later
         this = self
@@ -154,7 +166,7 @@ class FollowMixin:
                 else:
                     continue
                 async with module.proxy(this.__follow_device, this.__follow_mode) as proxy:
-                    xy_coords = await get_coords(proxy, this.__follow_mode)
+                    xy_coords = await get_coords(proxy, this.__follow_mode, max_age=this.__follow_max_age)
                 if xy_coords is None:
                     continue
                 other_coords = build_skycoord(xy_coords, this.__follow_mode)

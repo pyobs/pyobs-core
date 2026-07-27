@@ -84,7 +84,7 @@ class FocusModel(Module, IFocusModel):
         focuser: str | None = None,
         weather: str | None = None,
         interval: int = 300,
-        temperatures: dict[str, dict[str, float]] | None = None,
+        temperatures: dict[str, dict[str, str]] | None = None,
         model: str | None = None,
         coefficients: dict[str, float] | None = None,
         update: bool = False,
@@ -96,6 +96,7 @@ class FocusModel(Module, IFocusModel):
         filter_offsets: dict[str, float] | None = None,
         filter_wheel: str | None = None,
         auto_focus: str | list[str] | None = None,
+        temp_max_age: float | None = None,
         **kwargs: Any,
     ):
         """Initialize a focus model.
@@ -115,6 +116,9 @@ class FocusModel(Module, IFocusModel):
             filter_offsets: Offsets for different filters. If None, they are not modeled.
             filter_wheel: Name of filter wheel module to use for fetching filter before setting focus.
             auto_focus: Name or list of names of auto-focus modules to accept focus values from.
+            temp_max_age: Treat a temperature module's cached ITemperatures reading as unavailable
+                once it's older than this many seconds -- guards against silently feeding a frozen
+                reading (from a dead sensor module) into the focus model. Defaults to 2x interval.
         """
         Module.__init__(self, **kwargs)
 
@@ -130,7 +134,8 @@ class FocusModel(Module, IFocusModel):
         self._focuser = focuser
         self._weather = weather
         self._interval = interval
-        self._temperatures: dict[str, dict[str, float]] = {} if temperatures is None else temperatures
+        self._temperatures: dict[str, dict[str, str]] = {} if temperatures is None else temperatures
+        self._temp_max_age = temp_max_age if temp_max_age is not None else float(interval) * 2
         self._focuser_ready = True
         self._coefficients = {} if coefficients is None else coefficients
         self._update_model = update
@@ -318,7 +323,7 @@ class FocusModel(Module, IFocusModel):
                 # get temperatures
                 async with self.proxy(cfg["module"], ITemperatures) as proxy:
                     try:
-                        temp_state = await proxy.wait_for_state(ITemperatures)
+                        temp_state = await proxy.wait_for_state(ITemperatures, max_age=self._temp_max_age)
                     except TimeoutError:
                         raise FocusTimeoutError(f"Timeout waiting for temperatures from module {cfg['module']}.")
                     module_temps[cfg["module"]] = (

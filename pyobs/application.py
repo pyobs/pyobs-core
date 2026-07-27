@@ -5,6 +5,7 @@ import os
 import platform
 import signal
 import warnings
+from collections.abc import Awaitable, Callable
 from io import StringIO
 from typing import Any, TypedDict
 
@@ -55,7 +56,9 @@ class Application:
 
     def __init__(
         self,
-        config: str,
+        config: str | None = None,
+        module_factory: Callable[[], Awaitable[Module]] | None = None,
+        loop_module_class: type[Module] | None = None,
         log_file: str | None = None,
         log_level: str = "info",
         syslog: bool = False,
@@ -64,18 +67,36 @@ class Application:
     ):
         """Initializes a pyobs application.
 
+        Exactly one of `config`/`module_factory` must be given.
+
         Args:
             config: Name of config file.
+            module_factory: Async factory that builds the Module once the event loop is already
+                running, instead of parsing a config file synchronously in __init__ -- lets the
+                factory `await` things (e.g. a login dialog's submit signal) before the module
+                (and its comm connection) exists at all. Mutually exclusive with `config`.
+            loop_module_class: Module class to pick `new_event_loop()` from when `module_factory`
+                is given (the caller already knows which module class it's about to build, e.g.
+                `GUI` in pyobs-gui's case). Required when `module_factory` is given, ignored
+                otherwise.
             log_file: Name of log file, if any.
             log_level: Logging level.
             syslog: Send log to systemd journal, tagged with SYSLOG_IDENTIFIER=pyobs
                     and PYOBS_MODULE=<module name>. Requires logging-journald.
             influx_log: Log to influx DB.
         """
+        if (config is None) == (module_factory is None):
+            raise ValueError("Exactly one of 'config' or 'module_factory' must be given.")
+        if module_factory is not None and loop_module_class is None:
+            raise ValueError("loop_module_class is required when module_factory is given.")
 
         # get config name without path and extension
         self._config = config
-        config_base = os.path.splitext(os.path.basename(config))[0]
+        config_base = (
+            os.path.splitext(os.path.basename(config))[0]
+            if config is not None
+            else loop_module_class.__name__.lower()  # type: ignore[union-attr]
+        )
 
         # filter that injects %(pyobs_module)s into every LogRecord from the context var
         module_name_filter = ModuleNameFilter()
@@ -155,65 +176,86 @@ class Application:
 
         log = logging.getLogger(__name__)
 
-        # set (maybe temporary) module name to filename without leading underscores
-        module_name.set(Path(self._config).stem.lstrip("_"))
+        # set (maybe temporary) module name -- filename without leading underscores for the
+        # config path, or a placeholder derived from loop_module_class for the factory path
+        # (there's no real name yet until the factory resolves the actual module/comm identity)
+        module_name.set(Path(self._config).stem.lstrip("_") if self._config is not None else config_base)
 
-        # load config
-        log.info("Loading configuration from %s...", self._config)
-        with StringIO(pre_process_yaml(self._config)) as f:
-            cfg: dict[str, Any] = yaml.safe_load(f)
+        self._module: Module | None = None
+        self._module_factory = module_factory
 
-        # get module class
-        class_name = cfg["class"]
-        klass = get_class_from_string(class_name)
+        if config is not None:
+            # load config
+            log.info("Loading configuration from %s...", config)
+            with StringIO(pre_process_yaml(config)) as f:
+                cfg: dict[str, Any] = yaml.safe_load(f)
 
-        # create event loop — if top-level class doesn't override new_event_loop,
-        # check child modules for one that does (e.g. pyobs_gui.GUI in a MultiModule)
-        loop_class = klass
-        if klass.new_event_loop is Module.new_event_loop:
-            for mod_cfg in cfg.get("modules", {}).values():
-                if isinstance(mod_cfg, dict) and "class" in mod_cfg:
-                    child_klass = get_class_from_string(mod_cfg["class"])
-                    if child_klass.new_event_loop is not Module.new_event_loop:
-                        loop_class = child_klass
-                        break
-        self._loop = loop_class.new_event_loop()
-        asyncio.set_event_loop(self._loop)
+            # get module class
+            class_name = cfg["class"]
+            klass = get_class_from_string(class_name)
 
-        # create module and open it
-        log.info("Creating module from class %s...", klass.__name__)
-        self._module = get_object(cfg, Module)
+            # create event loop — if top-level class doesn't override new_event_loop,
+            # check child modules for one that does (e.g. pyobs_gui.GUI in a MultiModule)
+            loop_class = klass
+            if klass.new_event_loop is Module.new_event_loop:
+                for mod_cfg in cfg.get("modules", {}).values():
+                    if isinstance(mod_cfg, dict) and "class" in mod_cfg:
+                        child_klass = get_class_from_string(mod_cfg["class"])
+                        if child_klass.new_event_loop is not Module.new_event_loop:
+                            loop_class = child_klass
+                            break
+            self._loop = loop_class.new_event_loop()
+            asyncio.set_event_loop(self._loop)
 
-        # a config file whose stem doesn't match its own module's name silently splits
-        # PYOBS_MODULE log tagging in two: logging that falls through both execute()
-        # (module.py) and BackgroundTask (background_task.py) stays on the filename set
-        # above, while logging covered by either of those uses the module's real
-        # Comm-derived name -- refuse to start rather than let that drift run undetected.
-        # MultiModule is exempt: its own .name is always the fixed placeholder "multi"
-        # (module.py), never meant to match a filename -- each child module is already
-        # correctly distinguished via execute()/BackgroundTask.
-        if not isinstance(self._module, MultiModule):
-            config_stem = Path(self._config).stem.lstrip("_")
-            if self._module.name != config_stem:
-                log.warning(
-                    "Config file stem (%s) does not match module's own name "
-                    "(%s). Rename the config file or fix the module's "
-                    "comm configuration so they match.",
-                    config_stem,
-                    self._module.name,
-                )
+            # create module and open it
+            log.info("Creating module from class %s...", klass.__name__)
+            self._module = get_object(cfg, Module)
+
+            # a config file whose stem doesn't match its own module's name silently splits
+            # PYOBS_MODULE log tagging in two: logging that falls through both execute()
+            # (module.py) and BackgroundTask (background_task.py) stays on the filename set
+            # above, while logging covered by either of those uses the module's real
+            # Comm-derived name -- refuse to start rather than let that drift run undetected.
+            # MultiModule is exempt: its own .name is always the fixed placeholder "multi"
+            # (module.py), never meant to match a filename -- each child module is already
+            # correctly distinguished via execute()/BackgroundTask.
+            if not isinstance(self._module, MultiModule):
+                config_stem = Path(config).stem.lstrip("_")
+                if self._module.name != config_stem:
+                    log.warning(
+                        "Config file stem (%s) does not match module's own name "
+                        "(%s). Rename the config file or fix the module's "
+                        "comm configuration so they match.",
+                        config_stem,
+                        self._module.name,
+                    )
+        else:
+            # module_factory path: pick the event loop from the class the caller already knows
+            # it's about to build -- the module itself gets built later, inside the running
+            # loop (see _main()), since only there can the factory await anything.
+            assert loop_module_class is not None  # validated above
+            self._loop = loop_module_class.new_event_loop()
+            asyncio.set_event_loop(self._loop)
 
     def run(self) -> None:
         """Run app."""
+
+        # run main task forever -- created before the signal handlers are registered below, so
+        # a signal arriving the instant it's registered can never find self._main_task unset
+        self._main_task = self._loop.create_task(self._main())
 
         # signals
         for sig in (signal.SIGTERM, signal.SIGINT):
             self._loop.add_signal_handler(sig, self._signal_handler, sig)
 
-        # run main task forever
-        main = self._loop.create_task(self._main())
         self._loop.run_forever()
-        self._loop.run_until_complete(main)
+        try:
+            self._loop.run_until_complete(self._main_task)
+        except asyncio.CancelledError:
+            # _signal_handler() cancelled _main_task directly -- only reachable while
+            # module_factory hadn't resolved yet (e.g. a login dialog still open), since
+            # self._module.quit() is what normally unblocks run_forever()/main otherwise.
+            pass
 
         # main finished, cancel all tasks
         tasks = asyncio.all_tasks(self._loop)
@@ -230,7 +272,14 @@ class Application:
     def _signal_handler(self, sig: int) -> None:
         """React to signals and quit the module."""
 
-        self._module.quit()
+        if self._module is not None:
+            self._module.quit()
+        else:
+            # module_factory hasn't resolved yet (e.g. a login dialog still open) -- nothing to
+            # quit, so cancel the pending factory wait directly instead. Module.quit() would
+            # otherwise have called loop.stop() itself (module.py); mirror that here too.
+            self._main_task.cancel()
+            self._loop.stop()
 
         # reset signal handlers
         log.info("Got signal: %s, shutting down.", sig)
@@ -243,6 +292,15 @@ class Application:
 
         # everything in a try/except/finally, so that we can shut down gracefully
         try:
+            # resolve the module from the factory, if we're in that mode and haven't yet --
+            # runs inside the running loop, so the factory can await anything it needs to
+            # (e.g. a login dialog's submit signal) before the module/comm connection exists
+            if self._module is None:
+                assert self._module_factory is not None  # validated in __init__
+                log.info("Waiting for module factory to resolve...")
+                self._module = await self._module_factory()
+                log.info("Module factory resolved.")
+
             # open module
             log.info("Opening module...")
             await self._module.startup()

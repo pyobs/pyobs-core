@@ -1,6 +1,7 @@
 # Plan: Interactive login/settings dialog for `pyobs-gui`, deferring `Application`'s module construction
 
-Status: draft
+Status: implemented, closed. The pyobs-core side (this doc's scope) landed 2026-07-27; the
+pyobs-gui-side login window itself is `gui-login-window.md`, not yet started.
 Repos: pyobs-core (this plan's scope — see Non-goals), pyobs-gui (follow-on, depends on this)
 See `specs/design/gui-standalone-binary.md` for the bigger picture this is one piece of, and
 `specs/plans/gui-login-window.md` for the pyobs-gui-side follow-on this unblocks.
@@ -123,33 +124,35 @@ right point in the lifecycle; it has no opinion on what's inside it.
 
 ## Implementation checklist
 
-- [ ] `Application.__init__`: add `module_factory` and `loop_module_class` params; validate
-      exactly one of `config`/`module_factory` is given.
-- [ ] Guard the existing config-parsing block (`application.py:161-204`, including the name-mismatch
-      warning at `195-204`, which is meaningless without a config file) behind `if config is not
-      None:`.
-- [ ] Event-loop creation (`application.py:170-181`): when `module_factory` is given, use
-      `loop_module_class` directly instead of the config-derived `klass`/child-module scan.
-- [ ] Store `self._module: Module | None = None` and `self._module_factory` when in factory mode.
-- [ ] `_main()`: resolve `self._module` from the factory as the first step inside `try`, if not
+All done 2026-07-27, on `feature/standalone-binary` (`pyobs/application.py`,
+`tests/test_application.py`, 9 tests, all pre-existing tests unaffected).
+
+- [x] `Application.__init__`: add `module_factory` and `loop_module_class` params; validate
+      exactly one of `config`/`module_factory` is given (also validates `loop_module_class` is
+      given whenever `module_factory` is).
+- [x] Guard the existing config-parsing block (including the name-mismatch warning, which is
+      meaningless without a config file) behind `if config is not None:`.
+- [x] Event-loop creation: when `module_factory` is given, use `loop_module_class` directly
+      instead of the config-derived `klass`/child-module scan.
+- [x] Store `self._module: Module | None = None` and `self._module_factory` when in factory mode.
+- [x] `_main()`: resolve `self._module` from the factory as the first step inside `try`, if not
       already set.
-- [ ] `_signal_handler()`: guard `self._module.quit()` for the `self._module is None` case.
-- [ ] Tests: config-file path unchanged (existing coverage should still pass as-is); new tests for
-      factory-mode construction, the exactly-one-of validation, and signal handling before the
-      factory has resolved.
-- [ ] Update this doc's `Status:` to `implemented` once landed, per `CLAUDE.md`'s convention for
-      `specs/design/` (this file lives in `specs/plans/` per the checklist convention, but keep the
-      same status-update habit).
+- [x] `_signal_handler()`: guard `self._module.quit()` for the `self._module is None` case —
+      cancels `self._main_task` and stops the loop directly instead (mirroring what
+      `Module.quit()` itself would have done).
+- [x] Tests: config-file path unchanged (verified via a real `Application(config=...)`
+      construction, not just by inspection); new tests for factory-mode construction, the
+      exactly-one-of validation, signal handling before the factory has resolved, and the factory
+      raising (see Open questions below — confirmed, not just assumed).
 
 ## Open questions
 
 - Does `loop_module_class` need to be a full class, or would passing an already-bound
   `new_event_loop` classmethod/callable be cleaner? Leaning toward the class, since
   `Application` already does `klass.new_event_loop()` for the config path and this keeps both
-  paths symmetric.
-- Should `module_factory` be allowed to raise/cancel (e.g. user closes the login window without
-  connecting) and have `Application` shut down cleanly in that case, rather than only supporting
-  "eventually resolves"? Needs an answer before `pyobs-gui` can implement "Cancel" or window-close
-  on the login dialog. Current lean: yes, `_main()`'s existing `except Exception: log.exception(...)`
-  plus `finally` (which already guards `self._module is not None`) should handle this for free —
-  worth a dedicated test rather than assuming.
+  paths symmetric. (Went with the class — implemented as leaned.)
+- ~~Should `module_factory` be allowed to raise/cancel...~~ **Resolved, confirmed by test**
+  (`test_main_handles_factory_raising_gracefully`): yes, it already falls into `_main()`'s
+  existing `except Exception: log.exception(...)` plus `finally` (which already guards
+  `self._module is not None`, so it correctly skips trying to `close()` a module that was never
+  built) — no new code needed for this case, exactly as leaned, now verified rather than assumed.

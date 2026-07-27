@@ -93,6 +93,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             await self.comm.register_event(GoodWeatherEvent)
 
         await self.comm.set_state(IRunning, RunningState(running=self._active))
+        await self._publish_state()
 
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
@@ -150,6 +151,9 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
                 await self.comm.send_event(BadWeatherEvent())
 
         # publish state
+        await self._publish_state()
+
+    async def _publish_state(self) -> None:
         is_good = True if not self._active else self._weather.is_good
         await self.comm.set_state(IWeather, WeatherState(good=is_good, readings=self._get_readings()))
 

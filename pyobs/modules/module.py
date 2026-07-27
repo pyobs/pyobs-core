@@ -344,6 +344,17 @@ class Module(Object, IModule, IConfig):
         which would then never leave STARTING under Application/MultiModule.
         """
         await self.open()
+
+        # warn if any stateful interface hasn't published state yet
+        if self._comm is not None:
+            missing = self._comm.missing_published_state(self._interfaces)
+            for iface in missing:
+                log.warning(
+                    "Module %s implements %s which declares state, but no state has been published for it yet.",
+                    self.name,
+                    iface.__name__,
+                )
+
         await self.set_state(ModuleState.READY)
 
     async def close(self) -> None:

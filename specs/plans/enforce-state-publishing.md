@@ -1,6 +1,17 @@
 # Plan: Enforce state publishing for stateful interfaces
 
-Status: proposed
+Status: implemented, closed.
+
+Implementation note: writing the option-3 test (`tests/modules/test_module_state_publishing.py`)
+found that the Problem section's claim "today all concrete modules in pyobs-core happen to
+publish state correctly" was not quite true — `DummyCamera` had the identical bug to `Weather`'s:
+`ITemperatures` was only ever published from the background `_cooling_thread()` loop, never
+synchronously from `open()`. Fixed the same way as `Weather` (a synchronous placeholder publish,
+using the existing default `CoolingStatus.temperatures`, added to `DummyCamera.open()`). The
+telescope dummies (`DummyAltAzTelescope`/`DummyRaDecTelescope`/`DummySolarTelescope`) looked like a
+similar miss in an early dry run but weren't — `IPointingAltAz` is legitimately gated on an
+`Observer` being configured, and the test now passes one in for those three, matching how their
+existing per-module unit tests already do.
 
 ## Problem
 

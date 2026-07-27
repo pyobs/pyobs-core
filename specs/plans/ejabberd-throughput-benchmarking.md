@@ -76,14 +76,152 @@ All three environment blockers are now resolved — scenario 1 (and the rest) ca
 - [ ] Was concurrency via `asyncio.gather` on one client, or multiple independent clients/modules
       publishing at the same time?
 - [ ] Local docker-compose ejabberd, or a different (production-like?) server?
-- [ ] Any hypothesis already formed. The ejabberd shaper root-cause found separately for #664/#666
-      (per-connection outbound byte/sec throttling with queuing rather than dropping, capable of
-      minutes-long delay on a healthy-looking connection — see `state-freshness-max-age.md`'s
-      Problem section) is a strong candidate mechanism for concurrent-worse-than-sequential too: a
-      burst of simultaneous publishes from one connection would exhaust the shaper's burst
-      allowance immediately, where the same publishes spread out sequentially might stay under it.
-      Not yet confirmed as *the* cause of the 15x figure specifically — scenario 2 below plus the
-      shaper-introspection step should confirm or rule it out.
+- [x] Any hypothesis already formed. The shaper hypothesis was tested and **refuted** — see
+      "First real results" below: the shaper is not the mechanism.
+
+## First real results (2026-07-27)
+
+Ran `scripts/xmpp/benchmark_state_throughput.py` against all three shaper configs (default
+3k/20k, 10x 30k/200k, fast-track 100k/no-cap — a 33x rate spread with one variant having no burst
+cap at all). Local docker-compose, single container, `EJABBERD_HOST_PORT=25222` (see Environment
+above). Raw per-message JSONL + full command log not committed (ephemeral local run) — numbers
+below are the aggregated summary.
+
+**The shaper hypothesis is refuted.** `concurrent-single` (one client, N=500 publishes fired via
+`asyncio.gather`) gives statistically indistinguishable results across all three shaper configs:
+
+| shaper config        | mean latency | p95    | aggregate wall time |
+|-----------------------|-------------:|-------:|---------------------:|
+| default (3k/20k)      |      329.9ms | 353.8ms | 0.64s |
+| 10x (30k/200k)        |      346.0ms | 362.4ms | 0.64s |
+| fast-track (100k/none)|      355.5ms | 376.5ms | 0.66s |
+
+A 33x sustained-rate difference and removing the burst cap entirely produced no measurable
+improvement. Whatever causes concurrent per-message latency to balloon at N=500, it isn't
+ejabberd's c2s shaper — something else (client-side `_safe_send`/gather scheduling, slixmpp's IQ
+result-callback handling, or server-side non-shaper PubSub/Mnesia serialization) is the real
+mechanism. Not yet root-caused; a fresh investigation should start from there, not from the shaper.
+
+**The original "concurrent ~15x slower in aggregate" framing doesn't reproduce either** — at
+N=500 under any shaper config, `concurrent-single`'s *aggregate* wall time (0.64-0.66s) was
+actually *faster* than `sequential`'s (0.95-1.09s for the same N), not slower. What's dramatically
+worse for concurrent is *per-message* latency (mean ~330-355ms vs. sequential's ~1.5ms — a ~220x
+per-message ratio), not the aggregate batch completion time the original observation was framed
+around. This is a real, reproduced effect, just not the effect originally described — worth
+keeping the distinction sharp: concurrent bursts pay dramatically worse tail latency per message
+(classic head-of-line queuing signature) while the batch as a whole may finish comparably fast or
+faster than doing the same N sequentially.
+
+Effect only shows up at scale: at N=30 or N=100, `concurrent-single` mean latency (22.8ms, 60.2ms)
+was nowhere near the N=500 numbers (~330ms+) — whatever the mechanism, it has a threshold/scaling
+behavior worth characterizing (binary search between 100 and 500 would narrow it down).
+
+`concurrent-many` (5 independent clients, N=30 each = 150 total), `sequential` (small/large
+payload), and `rpc-baseline` all came back consistent and unremarkable across all three shaper
+configs (single-digit-to-low-double-digit ms means) — no shaper sensitivity there either at these
+scales.
+
+## Deeper dig: isolating the real mechanism (2026-07-27, same day)
+
+Went past the harness script to raw slixmpp reproductions (bypassing `XmppComm` entirely) to rule
+candidate mechanisms in or out one at a time. Each step's result is what motivated the next step:
+
+1. **pyobs's own code is not the cause.** A raw slixmpp script (no `XmppComm`, no `_safe_send`, no
+   module wrapper — just `xep_0060.publish()` in a loop vs. via `asyncio.gather`) reproduces the
+   same effect at the same magnitude (N=500 concurrent: mean 274.2ms, vs. sequential's 1.0ms).
+   Whatever this is, it's in slixmpp's IQ handling and/or ejabberd's pubsub processing, not in
+   pyobs's retry/module-wrapper logic.
+2. **Scaling is worse than linear.** Per-item cost (wall time / N) at N=200/500/1000/3000:
+   0.45ms → 0.68ms → 0.89ms → 2.29ms. Item cost keeps growing as N grows — not a fixed per-message
+   overhead.
+3. **Not same-node Mnesia contention.** Publishing all N items to one shared pubsub node vs. N
+   distinct auto-created nodes barely changed anything (274ms → 232ms at N=500) — nowhere near
+   ruling this in as the dominant mechanism.
+4. **Not per-connection/session serialization either.** Splitting the same N=500 total across 2
+   independent client connections (camera + observer, each firing 250 concurrently, both bursts
+   running at the same time) gave per-connection means of 275ms and 219ms — essentially the same
+   magnitude as one connection doing all 500, not the ~60-70ms you'd expect if halving the
+   per-connection burst size linearly halved the effect. Two independent sessions don't insulate
+   each other from whatever this is, so it isn't ejabberd doing one-process-per-c2s-session
+   serialization.
+5. **Not CPU-bound on either side.** During a long burst (N=3000, 6.9-8.1s wall), `docker stats`
+   on the ejabberd container showed mostly near-0% CPU with occasional brief spikes (80-255%) —
+   not a sustained compute bottleneck. Client-side `ps` sampling during the same burst showed the
+   Python process at 0.4-1.5% CPU throughout — also not compute-bound. Both sides are mostly
+   *idle*, not busy, while wall time balloons.
+6. **Definitively not the shaper, even at N=3000.** Re-ran the raw N=3000 concurrent burst under
+   the fast-track config (100000 B/s, no burst cap, camera specifically exempted from the throttled
+   `normal` shaper) — result was statistically identical to the default (most restrictive) shaper:
+   6.91s wall / 5330.6ms mean vs. default's 6.88s / 5343.1ms. A config with literally no rate cap
+   produces the same multi-second delay as one capped at 3000 B/s. This closes the door on the
+   shaper hypothesis at any scale tested, not just N=500.
+7. **The original "concurrent slower in aggregate" framing *does* reproduce, at large enough N.**
+   At N=3000: sequential wall time 2.71s (mean 0.9ms/item, flat) vs. concurrent wall time 6.88-6.91s
+   (mean ~5.3s/item) — concurrent is now ~2.5x slower in aggregate, not faster as it was at N=500.
+   So there's a real crossover somewhere between N=500 and N=3000 where concurrent bursts stop being
+   an aggregate-throughput win and start being a net loss too, on top of the per-message latency
+   that was already bad at N=500.
+
+**Root cause confirmed**: it's client-side, CPU-bound, and quadratic. (The "TCP/asyncio
+backpressure" idea floated in an earlier pass of this doc was wrong — see below for what
+disproved it.)
+
+Re-checked CPU on the client process specifically (the earlier "both sides mostly idle" reading was
+a mistake — `ps`/`top` had latched onto the wrong PID, the `uv run` wrapper, not the actual `python3`
+interpreter). Sampling the correct PID during an N=3000 burst shows it **pegged at 100% of one core
+for the entire multi-second burst**, not idle at all.
+
+That points straight at slixmpp's own stanza dispatch. `slixmpp/xmlstream/xmlstream.py:1434`:
+
+```python
+matched_handlers = [h for h in self.__handlers if h.match(stanza)]
+```
+
+Every `Iq.send()` registers a fresh one-shot handler matched by IQ id (`stanza/iq.py`'s
+`Iq.send()`, `MatcherId`). `__handlers` is a plain per-connection Python list, and *every incoming
+stanza* is dispatched by linearly scanning the *entire* list for a match. With N publishes fired
+concurrently, up to N handlers are registered and pending at once — so each of the N incoming
+replies costs an O(N) scan (checked against the full backlog, most of it not yet resolved), and N
+replies × O(N) each is O(N²) total, done in Python, on the single-threaded asyncio event loop.
+Nothing about the network, the server, or the shaper is involved — it's a linear-search-over-a-list
+bug (well, design limitation — a dict keyed by IQ id would be O(1) per lookup instead) in slixmpp's
+core dispatch path, triggered by having many IQs in flight on one connection at once.
+
+This is a clean, complete explanation for every earlier observation: reproduces without pyobs code
+(core slixmpp), grows worse than linearly with N (genuine O(N²), not a fixed overhead), doesn't
+care about shaper config (the client's own CPU is the bottleneck, ejabberd barely gets a vote), and
+splitting N across 2 connections in the *same process* only halved the work rather than eliminating
+it (each connection's own `__handlers` list is smaller, but it's still the same one OS thread
+grinding through the combined O((N/2)²) × 2 total comparisons).
+
+**Confirmed and fixed.** Patched a fork (`~/code/3rdparty/slixmpp`, branch
+`fix-o2-iq-handler-dispatch`) with exactly this: an id-keyed dict fast path for
+`MatcherId`/`MatchIDSender` handlers in `register_handler`/`remove_handler`/`_spawn_event`. Re-ran
+the same benchmarks with the patched slixmpp swapped into pyobs-core's venv (editable install,
+`uv run --no-sync`): per-item cost went from growing with N (0.68ms → 2.29ms at N=500 → 3000, the
+O(N²) signature) to flat (~0.45-0.50ms regardless of N) — genuinely O(N) now. ~2x faster at N=500,
+~7.4x faster at N=3000. Full `pytest -m integration` suite (72 tests) still passes against the
+patched fork — no correctness regression.
+
+Filed upstream: [poezio/slixmpp#3786](https://codeberg.org/poezio/slixmpp/issues/3786).
+
+**Practical implication for the wire protocol doc**: firing a large number of concurrent publishes
+from a *single* connection is where this bites (`concurrent-single`); spreading the same total load
+across independent connections (`concurrent-many`, one per module — already how the fleet model
+works) stayed fast and unremarkable throughout every test in this session, and now we know why:
+each connection's own O(N²) is bounded by its own (small, per-module) N, not the fleet's total
+message count. The realistic fleet scenario (many modules, each its own connection, each publishing
+at its own pace) doesn't hit this at all — it's specifically "one module bursting
+hundreds-to-thousands of concurrent state pushes from itself on one connection" that's expensive,
+which is an unusual pattern for a single device to begin with and not something the current design
+does anywhere.
+
+Two possible follow-ups, neither done here: (1) file/check for an existing upstream slixmpp issue
+about O(N²) handler dispatch under many in-flight IQs — this is a generic library limitation, not
+pyobs-specific, so it may already be known; (2) if pyobs ever does need one module to fire many
+concurrent state pushes at once, cap in-flight concurrency client-side (a semaphore around
+`set_state()`/`_safe_send()`, not a design change to the wire protocol) rather than relying on
+`asyncio.gather` with no bound.
 
 ## Problem
 
@@ -137,11 +275,10 @@ reproduce under a controlled test.
   on ejabberd's built-in default: `shaper.normal = {rate: 3000, burst_size: 20000}`, and
   `shaper_rules.c2s_shaper = {none: admin, normal: all}` — since neither `camera` nor `observer`
   (the test accounts) is `admin@localhost`, every benchmark client is throttled to 3000 B/s
-  sustained with only a 20000-byte burst allowance. This is a strong, concrete mechanism for the
-  earlier 15x concurrent-vs-sequential finding: a burst of simultaneous `set_state()` IQs can
-  exhaust the 20000-byte bucket almost immediately, after which everything queued behind it pays
-  queuing delay at 3000 B/s — whereas the same messages spread out sequentially may never cross the
-  bucket.
+  sustained with only a 20000-byte burst allowance. At the time this was a strong, concrete
+  candidate mechanism for the earlier 15x concurrent-vs-sequential finding — **since refuted by
+  actual measurement, see "First real results" below**: a 33x rate spread across all three shaper
+  configs produced no measurable difference in the observed concurrent-latency effect.
   - Made explicit in `tests/xmpp/ejabberd.yml` (was implicit) so the baseline is visible and
     reproducible rather than a silent default. This one stays under `tests/xmpp/` since it's the
     config the `-m xmpp` integration suite also loads.
@@ -185,8 +322,16 @@ reproduce under a controlled test.
 
 New script(s) under `scripts/xmpp/`, alongside the existing `list_pubsub_nodes.py` /
 `check_ejabberd_notify.py` / `show_module_info.py` (`scripts/xmpp/`, added in 4bfec0c4) — matches
-existing precedent for standalone XMPP tooling that isn't part of the pytest suite. Proposed:
-`scripts/xmpp/benchmark_state_throughput.py`.
+existing precedent for standalone XMPP tooling that isn't part of the pytest suite.
+
+**Built**: `scripts/xmpp/benchmark_state_throughput.py` (2026-07-27). Implements sequential,
+concurrent-single, concurrent-many, rpc (baseline and under concurrent-many background load), and
+payload-size-sweep scenarios; JSONL output tagged with `--shaper-label`; `--register-via
+<container>` auto-registers the extra `bench<N>` accounts concurrent-many/rpc need beyond
+camera/observer. Smoke-tested live against a throwaway container — every scenario runs cleanly
+end-to-end (`sequential`, `concurrent-single`, `concurrent-many`, `rpc`, `rpc --rpc-with-load`,
+`payload`, `all`). Passes `black`/`ruff`/`pyrefly` clean. Not yet run for real, load-bearing numbers
+across all three shaper configs — that's the next step, not part of building the harness itself.
 
 Deliberately **not** added as a `pytest -m xmpp` integration test: these are long-running,
 resource-heavy runs meant to be triggered manually and produce a data file for analysis, not fast

@@ -98,10 +98,20 @@ comm = XmppComm(
     jid=jid_field.text(),
     password=password_field.text(),
     server=f"{host}:{port}" if override_checked else None,
+    use_tls=use_tls_checkbox.isChecked(),
     ignore_cert_errors=skip_tls_checkbox.isChecked(),
 )
 return GUI(comm=comm, ...)
 ```
+
+**Correction (2026-07-27):** the snippet above originally omitted `use_tls` entirely — `XmppComm.use_tls`
+defaults to `False`, so without an explicit "Use SSL/TLS" checkbox the login window couldn't connect
+to any TLS-requiring server at all. Added a `_use_tls_checkbox`, defaulting to **checked** (secure-by-
+default for a login window aimed at potentially non-technical remote users, even though `XmppComm`
+itself defaults to `False` — more appropriate for its own trusted-local-network callers). Unchecking
+it also disables and unchecks "skip TLS certificate verification," since that only means anything
+when TLS itself is on. `Account`/`SavedAccountsModel` persist `use_tls` per saved account the same
+way they already did `insecure_skip_tls`.
 
 `XmppComm.server` is a single `"host:port"` string (port defaults to 5222 if omitted,
 `xmppcomm.py:289-294`) — the two separate host/port fields in the UI get combined into that one

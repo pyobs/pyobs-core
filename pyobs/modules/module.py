@@ -126,6 +126,12 @@ class Module(Object, IModule, IConfig):
         """
         Object.__init__(self, **kwargs)
 
+        # detect the event loop itself stalling (e.g. a blocking call somewhere in this
+        # module or one of its background tasks) directly in this module's own log, instead
+        # of only showing up indirectly as this module failing to answer other modules'
+        # requests in time
+        self.add_background_task(self._watch_event_loop_lag)
+
         # get list of client interfaces
         self._interfaces: list[type[Interface]] = []
         self._methods: dict[str, tuple[Callable[..., Any], inspect.Signature, dict[Any, Any]]] = {}
@@ -169,6 +175,38 @@ class Module(Object, IModule, IConfig):
         self._exception_log: dict[type[exc.PyobsError], list[exc.LoggedException]] = {}
         self._remote_exception_log: dict[tuple[type[exc.PyobsError], str], list[exc.LoggedException]] = {}
         self._exception_handlers: list[exc.ExceptionHandler] = []
+
+    # how often to check for event loop lag, and how much lag counts as worth a warning
+    _LOOP_LAG_CHECK_INTERVAL = 1.0
+    _LOOP_LAG_WARN_THRESHOLD = 0.5
+
+    async def _watch_event_loop_lag(self) -> None:
+        """Detects the event loop stalling by timing its own wakeups against how long it
+        actually asked to sleep for. Works even though it runs on the loop it's measuring:
+        if something else blocks the loop synchronously, this task's own wakeup is delayed
+        right along with everything else, and the resulting gap shows up here retroactively.
+
+        Logs once when a stall starts and once when it clears, rather than on every check
+        while it persists -- a single long block only ever produces one check anyway (this
+        task can't run until the block clears either), but a sustained-yet-fluctuating
+        overload (still yielding briefly, but staying over threshold for many checks in a
+        row) would otherwise log once per check for as long as it lasts.
+        """
+        loop = asyncio.get_running_loop()
+        last = loop.time()
+        stalled_since: float | None = None
+        while True:
+            await asyncio.sleep(self._LOOP_LAG_CHECK_INTERVAL)
+            now = loop.time()
+            lag = now - last - self._LOOP_LAG_CHECK_INTERVAL
+            if lag > self._LOOP_LAG_WARN_THRESHOLD:
+                if stalled_since is None:
+                    stalled_since = last
+                    log.warning("Event loop stalled for %.2fs -- some call is blocking it.", lag)
+            elif stalled_since is not None:
+                log.warning("Event loop recovered after being stalled for %.2fs total.", now - stalled_since)
+                stalled_since = None
+            last = now
 
     # exception types that always need local attention, regardless of _disable_exception_logging:
     # ModuleError means the module itself is broken; UnclassifiedError means something escaped

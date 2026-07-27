@@ -90,10 +90,6 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._running = False
         await self.comm.set_state(IRunning, RunningState(running=self._running))
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return self._running
-
     async def _run_thread(self) -> None:
         # wait a little
         await asyncio.sleep(5)

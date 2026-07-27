@@ -109,10 +109,6 @@ class Kiosk(Module, IStartStop):
         self._running = False
         await self.comm.set_state(IRunning, RunningState(running=self._running))
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether kiosk mode is running."""
-        return self._running
-
     async def _camera_thread(self) -> None:
         """Thread for taking images."""
 

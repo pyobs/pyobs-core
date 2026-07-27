@@ -95,14 +95,6 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         await self._reset_guiding(enabled=False)
         await self.comm.set_state(IRunning, RunningState(running=False))
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether auto-guiding is running.
-
-        Returns:
-            Auto-guiding is running.
-        """
-        return self._enabled
-
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
     ) -> dict[str, FitsHeaderEntry]:

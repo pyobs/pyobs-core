@@ -63,10 +63,6 @@ class Trigger(Module, IAutonomous):
         self._running = False
         await self.comm.set_state(IRunning, RunningState(running=self._running))
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return self._running
-
     async def _handle_event(self, event: Event, sender: str) -> bool:
         """Handle an incoming event.
 

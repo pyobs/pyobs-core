@@ -45,7 +45,7 @@ async def test_start() -> None:
 
     await weather.start()
 
-    assert await weather.is_running() is True
+    assert weather._active is True
     assert isinstance(weather._comm.send_event.await_args[0][0], BadWeatherEvent)
 
 
@@ -56,16 +56,16 @@ async def test_stop() -> None:
 
     await weather.stop()
 
-    assert await weather.is_running() is False
+    assert weather._active is False
 
 
 @pytest.mark.asyncio
-async def test_is_running() -> None:
+async def test_active_flag_defaults_true_and_tracks_stop() -> None:
     weather = MockWeather()
-    assert await weather.is_running() is True
+    assert weather._active is True
 
     await weather.stop()
-    assert await weather.is_running() is False
+    assert weather._active is False
 
 
 @pytest.mark.asyncio

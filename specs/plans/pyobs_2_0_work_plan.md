@@ -3,34 +3,46 @@
 Status: nearly done. Phases 0-8 below are historical record (all ✅ complete) — see
 `specs/design/pyobs_2_0_wire_protocol.md` for the design those phases implemented. What's
 actually still open is the short list right below; that's the live part of this plan.
+Repos: pyobs-core (primary), pyobs-gui (the `IRunning.is_running()` removal item required a
+follow-on fix in `mainwindow.py` — see that item below)
 
 ## Remaining open items
 
-- [ ] **Delete `IRunning.is_running()` from `IRunning` and its ~10 implementers.**
-  `RunningState` was added and is pushed via `comm.set_state(IRunning, RunningState(...))`
-  everywhere, but `is_running()` itself was never removed from the interface
-  (`pyobs/interfaces/IRunning.py:25`) or from any implementer (`acquisition.py`,
-  `_baseguiding.py`, `dummyacquisition.py`, `dummyguiding.py`, `focusseries.py`,
-  `dummyautofocus.py`, etc.) — both the RPC method and the pushed state exist side by side
-  for the same boolean, the exact duplication this migration was meant to remove. Found
-  during the `get_*` → State survey; see `specs/design/pyobs_2_0_wire_protocol.md`'s
-  appendix.
-- [ ] **`pyobsd` should default to systemd (journal) logging instead of per-module file
-  logging.** Today `pyobsd` (`pyobs/cli/pyobsd.py`) spawns each module with
-  `--log-file <log_path>/<module>.log` and manages PID/log files itself, duplicating what
-  the systemd journal already does (stdout/stderr capture, rotation, `journalctl` querying)
-  when run under systemd. Direction: default to stdout/stderr (or
-  `systemd.journal.JournalHandler`) under systemd, file logging becomes opt-in. Not yet
-  designed in detail — no decision on deprecating `log_path`/`--log-file`, or on the
-  transition for non-systemd (sysvinit) installs.
-- [ ] **Warn when a module's configured `name` doesn't match its XMPP JID.**
-  `Module.__init__` (`pyobs/modules/module.py`) defaults `name` to the JID's user part but
-  doesn't enforce agreement if a config sets `name` explicitly — a silent footgun, since
-  logging/GUIs display `name` while `proxy()`/config references address by JID. Direction:
-  on startup, once the JID is known, compare and log a warning (not a hard error, since a
-  friendly display name may be intentional) on mismatch. Not yet designed in detail — no
-  decision on whether the check belongs in `Module.open()` or `Comm`, or whether `label`
-  should be checked too.
+- [x] **Delete `IRunning.is_running()` from `IRunning` and its ~10 implementers.** Done
+  2026-07-27: removed the abstract method from `IRunning` and the concrete override from all 12
+  implementers (`mastermind.py`, `scheduler.py` [robotic], `pointing.py` [robotic, plus its one
+  internal `await self.is_running()` self-call, inlined to `True`], `trigger.py`, `mockweather.py`,
+  `weather.py`, `focusseries.py`, `dummyautofocus.py`, `acquisition.py`, `dummyguiding.py`,
+  `dummyacquisition.py`, `kiosk.py`, `_baseguiding.py`) — only `RunningState` remains. Found and
+  fixed a cross-repo consumer along the way: `pyobs-gui/pyobs_gui/mainwindow.py` called
+  `proxy.is_running()` via RPC in two places (an `IAutonomous` proxy and a weather proxy); both
+  switched to reading `IRunning`'s state instead (see `pyobs-gui` commit). Test files that asserted
+  against `await x.is_running()` directly were updated to assert the underlying flag (`_running`/
+  `_active`/`_is_running`) or the pushed `RunningState` instead; a few had become pure
+  attribute-readback with no remaining code path to exercise once the RPC wrapper was gone, and
+  were deleted rather than rewritten.
+- [ ] **`pyobsd` should make per-module file logging opt-in, now that journal logging exists.**
+  Re-checked against current code (2026-07-27): journal support was *already added* since this
+  item was written — `pyobsd --syslog` (`pyobs/cli/pyobsd.py:52-56`) defaults to `True` and wires
+  through to a real `JournaldLogHandler` (`pyobs/application.py:110-124`, via
+  `logging_journald`). What's still open is narrower than originally scoped: `_start_service()`
+  (`pyobsd.py:318-333`) unconditionally builds and passes `--log-file <log_path>/<module>.log`
+  regardless of `--syslog`, so a normal deployment now writes to stdout + file + journal
+  simultaneously — still the same duplication this item flagged, just one layer removed. Direction
+  (updated): make `--log-file` opt-in (e.g. only passed when `--syslog` is off, or behind its own
+  explicit flag), not default-on alongside `--syslog`. Not yet designed in detail — no decision on
+  the transition for non-systemd (sysvinit) installs, where `--log-file` still needs to be the
+  default.
+- [ ] **Warn on a module identity mismatch — re-scope or drop, doesn't match current code.**
+  Re-checked against current code (2026-07-27): the premise no longer holds. Neither
+  `Module.__init__` nor `Object.__init__` (`pyobs/modules/module.py`, `pyobs/object.py`) has a
+  `name` constructor parameter at all — `_device_name` is unconditionally `self.comm.name` (i.e.
+  always JID-derived), so there's no config-settable `name` to diverge from the JID in the first
+  place; the described "silent footgun" can't occur as written. The closest remaining analog is
+  `label` (freely settable via config, defaults to `_device_name` if unset) — nothing warns if a
+  configured `label` diverges from the JID-derived name, which is a real but different gap than
+  originally described. Needs re-scoping (to `label` specifically, if still wanted) or dropping as
+  moot, not implementing as currently worded.
 
 ## Phase-by-phase record
 

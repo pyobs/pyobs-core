@@ -1,12 +1,13 @@
 # Plan: pyobs 2.0 rollout
 
-Status: nearly done. Phases 0-8 below are historical record (all ✅ complete) — see
-`specs/design/pyobs_2_0_wire_protocol.md` for the design those phases implemented. What's
-actually still open is the short list right below; that's the live part of this plan.
+Status: implemented, closed. Phases 0-8 below are historical record (all ✅ complete) — see
+`specs/design/pyobs_2_0_wire_protocol.md` for the design those phases implemented. The three
+items below (all resolved 2026-07-27 — two done, one dropped as moot) were the last live part of
+this plan.
 Repos: pyobs-core (primary), pyobs-gui (the `IRunning.is_running()` removal item required a
 follow-on fix in `mainwindow.py` — see that item below)
 
-## Remaining open items
+## Remaining open items (resolved)
 
 - [x] **Delete `IRunning.is_running()` from `IRunning` and its ~10 implementers.** Done
   2026-07-27: removed the abstract method from `IRunning` and the concrete override from all 12
@@ -34,16 +35,22 @@ follow-on fix in `mainwindow.py` — see that item below)
   (sysvinit) deployments that relied on the old unconditional file logging now need to pass
   `--file-log` explicitly to keep it. `tests/cli/test_pyobsd.py` (new) covers the flag/command
   construction; no existing test file covered `pyobsd.py` before this.
-- [ ] **Warn on a module identity mismatch — re-scope or drop, doesn't match current code.**
-  Re-checked against current code (2026-07-27): the premise no longer holds. Neither
-  `Module.__init__` nor `Object.__init__` (`pyobs/modules/module.py`, `pyobs/object.py`) has a
-  `name` constructor parameter at all — `_device_name` is unconditionally `self.comm.name` (i.e.
-  always JID-derived), so there's no config-settable `name` to diverge from the JID in the first
-  place; the described "silent footgun" can't occur as written. The closest remaining analog is
-  `label` (freely settable via config, defaults to `_device_name` if unset) — nothing warns if a
-  configured `label` diverges from the JID-derived name, which is a real but different gap than
-  originally described. Needs re-scoping (to `label` specifically, if still wanted) or dropping as
-  moot, not implementing as currently worded.
+
+## Dropped items
+
+- **Warn on a module identity mismatch.** Dropped 2026-07-27, moot: the premise doesn't match
+  current code. Neither `Module.__init__` nor `Object.__init__` (`pyobs/modules/module.py`,
+  `pyobs/object.py`) has a `name` constructor parameter at all — `_device_name` is unconditionally
+  `self.comm.name` (i.e. always JID-derived), so there's no config-settable `name` to diverge from
+  the JID in the first place; the described "silent footgun" can't occur as written. Considered
+  re-scoping to `label` (the closest remaining analog — freely settable, no warning if it diverges
+  from the JID-derived name) and rejected: unlike the original `name` scenario, `label` is
+  *designed* to diverge from the JID (it's the friendly display string precisely so operators can
+  show something nicer than a JID's user part). Warning whenever `label != device_name` would fire
+  on essentially every real deployment that bothers to set one — the common, intended case, not a
+  footgun — producing exactly the noisy, unactionable warning this plan and
+  `enforce-state-publishing.md`/`state-freshness-max-age.md` deliberately avoided elsewhere. No
+  residual gap identified worth building a check for.
 
 ## Phase-by-phase record
 

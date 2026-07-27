@@ -118,6 +118,26 @@ async def test_open_publishes_optimal_focus_state(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_open_publishes_placeholder_when_weather_unreachable(mocker, caplog) -> None:
+    """weather is a string name that no proxy exists for yet (e.g. the weather module hasn't
+    connected at this point in startup) -- open() must still publish some IFocusModel state
+    instead of leaving it unpublished, so the module doesn't trip Module.startup()'s
+    missing-published-state warning."""
+    fm = FocusModel(weather="weather", model="temp")
+    fm._comm.set_state = AsyncMock()
+    mocker.patch.object(Module, "open", AsyncMock())
+
+    await fm.open()
+
+    fm._comm.set_state.assert_awaited_once()
+    interface, state = fm._comm.set_state.await_args[0]
+    assert interface is IFocusModel
+    assert isinstance(state, OptimalFocusState)
+    assert state.focus == 0.0
+    assert "Could not compute initial focus model state" in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_update_publishes_state_every_iteration(mocker) -> None:
     weather = _weather_mock(5.0)
     fm = FocusModel(weather=weather, model="temp", interval=10)

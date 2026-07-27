@@ -31,6 +31,12 @@ class CommLoggingHandler(logging.Handler):
             rec: Log record to send.
         """
 
+        # a record about the forwarding pipeline itself failing (e.g. Comm._logging's own
+        # send failure) must not be forwarded again, or a sustained outage turns into an
+        # unbounded loop of "failed to send" records about failing to send that record
+        if getattr(rec, "pyobs_no_forward", False):
+            return
+
         # format message
         msg = self._formatter.format(rec)  # noqa: UP031
 

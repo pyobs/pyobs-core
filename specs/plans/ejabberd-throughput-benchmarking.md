@@ -1,6 +1,8 @@
 # Plan: Systematic ejabberd throughput/latency benchmarking
 
 Status: draft — headline number known, original methodology unrecoverable
+Repos: pyobs-brot (the reconnect-storm investigation below concerns BrotDome/BrotRaDecTelescope
+production behavior on pyobs-iag50)
 
 **The magnitude is known: simultaneous state pushes took ~15x longer than sequential ones.** That
 draft/test run was done on another machine and isn't retrievable — not in this repo, not in
@@ -253,6 +255,187 @@ assumption was worth resolving either way. The resolution is a real, previously-
 kind that changes this repo's code. If pyobs ever does need one module to fire many concurrent
 state pushes at once (not true of anything today), the mitigation would be a client-side
 concurrency cap (a semaphore around `set_state()`/`_safe_send()`), not a wire-protocol change.
+
+## New scenario: reconnect-storm (2026-07-27, production incident follow-up)
+
+**Motivation.** A production incident on `pyobs-iag50`: 3 modules (`telescope`, `imagewatcher`,
+`imagewriter` — not a whole-fleet restart, and no BROT/MQTT-backed module involved on the
+`imagewatcher`/`imagewriter` side) restarted within a few seconds of each other. Disco#info
+(XEP-0030) capability-fetch queries between them (`Comm._get_client` → `_fetch_and_update_capabilities`
+→ `XmppComm._get_capabilities`, triggered by the first proxy lookup between two modules) got no reply
+at all for a full 10s timeout, three attempts in a row, for multiple module pairs — despite every peer
+already being fully started (`Started successfully` logged) several seconds *before* the first fetch
+attempt, ruling out "peer still booting." A per-module event-loop-lag watchdog (added to `Module`
+specifically to catch a blocking call stalling one module's own comms) was confirmed present and
+silent throughout, on both sides of one failing pair — ruling out a client-side stall as the cause too.
+
+**Added `run_reconnect_storm`** (`scripts/xmpp/benchmark_state_throughput.py`): K independent clients
+connect/auth/bind/publish-presence all at once (`asyncio.gather`), then every client fetches `IModule`
+capabilities from every other client at once — modeling the connection-churn shape of the incident
+(a handful of modules restarting together, immediately followed by mutual capability discovery), not a
+whole-fleet burst and not a hardware/MQTT angle (ruled out already by the production log evidence
+above).
+
+**Local result (`--k 4`, fresh docker-compose ejabberd, single run):** 4 clients connected+ready in
+1.33s, then 12 mutual capability fetches completed in 0.02s total (mean 19.4ms, max 21.7ms, 0 failed).
+Does **not** reproduce the production silent-timeout behavior at this scale locally — this exact
+connection-churn shape is fast and reliable against a fresh local ejabberd. Useful negative result:
+whatever caused the incident isn't an inherent property of "a few clients reconnect and immediately
+query each other" in general, so it's more likely specific to the production environment (real network
+latency/config to `iag50srv`, its particular ejabberd version, load at that moment, or a stale-session/
+routing race from the restart — see the open question already flagged elsewhere in this doc about
+production peer-discovery/roster-subscription assumptions) than a universal client-library behavior.
+**Next step, if pursued:** run the same scenario against `iag50srv` itself during a no-ops window —
+production owner confirmed this is acceptable — to see whether it reproduces there where it didn't
+locally.
+
+### Full incident timeline and what's been ruled out (2026-07-27)
+
+Written up in full because the next step (below) runs on a different computer than this
+investigation happened on — nothing here should need to be re-derived from scratch.
+
+**What happened.** On `pyobs-iag50` production, a handful of modules restarted within a few
+seconds of each other. Two separate occurrences were observed:
+- `dome`/`BrotDome` + `scheduler` + `autofocus` + `acquisition`/`mastermind` (larger batch, exact
+  count unclear)
+- `telescope`/`BrotRaDecTelescope` + `imagewatcher` + `imagewriter` (confirmed exactly 3 modules,
+  **not** a whole-fleet restart, and no BROT/MQTT-backed module on the `imagewatcher`/`imagewriter`
+  side)
+
+In both cases, `xmppcomm.py:1020` logged `"Still failing to get capabilities for <IModule|IConfig>
+from <peer> after 3 attempts (TimeoutError()), will keep retrying"` — the underlying mechanism is
+`Comm._get_client` → `_fetch_and_update_capabilities` → `XmppComm._get_capabilities`, triggered by
+the first proxy lookup between two modules (fires once per newly-created `Proxy`, for every
+interface with `capabilities is not None` that the peer implements — `IModule`/`IConfig` always
+qualify since every `Module` publishes both). `_get_capabilities` retries forever by design
+(`asyncio.wait_for(get_info(...), timeout=10.0)` per attempt, capped exponential backoff between
+attempts, only warns at attempt 3 — see ADR 0008), so the warning means 3 real 10-second timeouts
+elapsed with **no server reply at all**, not that anything took 30 seconds to arrive late.
+
+**Ruled out, with direct evidence, in this order** (each bullet is a real check performed, not just
+a hypothesis floated):
+
+1. **Peer still booting.** Working backward from the warning timestamp through the retry/backoff
+   math (~10s × 3 attempts + ~1-4s backoff between each ≈ 33-35s total), the first fetch attempt for
+   the `telescope`/`imagewatcher` incident had to have started around `18:02:37-39`. Both `telescope`
+   (`Started successfully` at `18:02:29`) and `imagewatcher` (`18:02:32`) were already fully up several
+   seconds before that. Ruled out.
+2. **Client-side event-loop stall.** Added `Module._watch_event_loop_lag` (`pyobs/modules/module.py`)
+   specifically to catch a blocking call freezing one module's own comms -- it times its own wakeups
+   against how long it asked `asyncio.sleep()` for, so a synchronous block anywhere in that process
+   delays its own wakeup right along with everything else and shows up retroactively. Logs once when
+   a stall starts and once when it clears (not per check, to avoid spamming a sustained-but-
+   fluctuating overload). Confirmed present in `imagewatcher`'s log (listed among cancelled
+   background tasks at shutdown, alongside `_worker`/`_watch_inotify`) and **completely silent**
+   through the entire incident window on both sides of the `telescope`↔`imagewatcher` pair. Ruled out.
+3. **Inherent XMPP/slixmpp slowness.** Already measured in this doc (see "First real results" /
+   "Deeper dig" above): realistic fleet traffic sits at low-single-digit-to-low-double-digit ms
+   latency. A genuine 10s silent gap is ~1000x that baseline. Ruled out as "XMPP is just slow."
+4. **A whole-fleet reconnect storm** (the scenario `_get_capabilities`'s retry-forever design and
+   ADR 0008 explicitly target: "every module in the fleet reconnecting to ejabberd at once"). Only
+   3-4 modules restarted, not the whole fleet -- too small an event to plausibly overload ejabberd the
+   way "every module in the fleet at once" would. Weakened/ruled out as sufficient explanation on its
+   own.
+5. **Two BROT modules contending for the same MQTT broker on reconnect** (an earlier theory, once it
+   looked like `dome` and `telescope` -- both BROT-backed, each opening their own independent
+   `MQTTTransport`/`BROT()` connection at `open()` -- had restarted together). Directly contradicted:
+   the `telescope` incident's restart set was confirmed to be `telescope` + `imagewatcher` +
+   `imagewriter` -- `dome` was never restarted, and `imagewatcher`/`imagewriter` have no BROT/MQTT
+   involvement at all. Ruled out.
+6. **The `reconnect-storm` benchmark scenario itself, run locally** (see above): 4-5 clients
+   connecting simultaneously then immediately firing mutual capability fetches, against a fresh
+   docker-compose ejabberd, completed in ~20-45ms mean with zero failures. Does not reproduce the
+   silent-timeout behavior at this scale locally.
+
+**A real, separate bug *was* found and fixed along the way, but it is not the explanation for this
+pattern:** `pybrotlib`'s `MQTTTransport.run()` subscribed to the MQTT wildcard `"#"` (every topic on
+the broker, not just the dome's/telescope's own component) and processed each message with no
+`await` in between -- a queued backlog (e.g. after a reconnect) could run through many messages
+back-to-back without ever yielding to the event loop, which *could* have explained the earlier `dome`
+incident. Fixed by adding `await asyncio.sleep(0)` after each message (`pybrotlib` 1.1.5,
+`BROTLib/pyBROT@a104fe1`); `pyobs-brot`'s dependency floor bumped to match. Confirmed still running
+`pybrotlib` 1.1.5 when the `telescope`/`imagewatcher`/`imagewriter` incident recurred -- so whatever
+this second incident's cause is, it isn't this bug (which is also irrelevant to `imagewatcher`/
+`imagewriter` anyway, since neither uses `pybrotlib` at all).
+
+**Key remaining fact: the same kind of setup (BROT-backed telescope module + imaging modules, one
+ejabberd fleet) works fine on `pyobs-monet`'s south site, but fails on iag50.** Combined with
+everything ruled out above, this weighs heavily toward something specific to iag50's ejabberd
+server/config/network -- e.g. a stale-session/routing race on restart, since every module reconnects
+with the same fixed resource (`.../pyobs`, not randomized per connection) -- rather than a universal
+client-library or pyobs-core/pyobs-brot code bug. If it were the latter, monet-south should show the
+same symptom and doesn't.
+
+### Runbook for tomorrow: run `reconnect-storm` against both `iag50srv` and monet-south
+
+**Goal:** determine whether the `reconnect-storm` scenario (which came back clean locally) reproduces
+the silent-capability-timeout behavior against either real server, and specifically whether it
+reproduces on iag50 but not monet-south -- which would confirm "iag50-specific" as more than a
+plausibility argument.
+
+**Safety:** confirmed acceptable to run against both live production servers during a no-ops window
+(no active observations). Uses throwaway `bench<N>` account names throughout, never the real module
+JIDs (`telescope@...`, `imagewatcher@...`, etc.), so it can't collide with or interfere with anything
+the real fleet is doing even outside a no-ops window -- but stick to the no-ops window anyway since
+it's still real traffic against a server real operations depend on.
+
+**Connection details** (from each repo's own shared comm config -- both use TLS, unlike this repo's
+local test ejabberd):
+- iag50: `domain: iag50srv.astro.physik.uni-goettingen.de` (`pyobs-iag50/config/iag50srv/comm.shared.yaml`)
+- monet-south: `domain: monet.saao.ac.za` (`pyobs-monet/config/south/monet/comm.shared.yaml`,
+  commented-out server hint: `monet.monets:5222`)
+- Real account passwords aren't in either repo's checked-in config (only test/dummy passwords are
+  committed anywhere) -- get the real ones separately before running; `PYOBS_TEST_XMPP_PASSWORD` is
+  shared by every `bench<N>` account the script registers, so one password covers a whole run.
+
+**Registration gotcha, already fixed:** the original `--register-via <container>` only knew
+`docker exec <container> ejabberdctl register ...`, which assumes a dockerized ejabberd -- not a safe
+assumption for a real production server. `register_accounts`/`maybe_register` now also support
+`--register-via local`, which runs bare `ejabberdctl register ...` directly (needs `ejabberdctl` on
+PATH -- run the script on the ejabberd host itself, or wherever has that binary and reaches the
+server). Verified this refactor doesn't break the existing docker-based path (re-ran the local
+docker-compose smoke test after the change, k=5, 20 fetches, 44.1ms mean, 0 failed).
+
+**Commands** (run from a machine that can reach each server -- confirmed this will be a different
+computer than this session):
+
+```bash
+# against iag50
+PYOBS_TEST_XMPP_HOST=iag50srv.astro.physik.uni-goettingen.de \
+PYOBS_TEST_XMPP_DOMAIN=iag50srv.astro.physik.uni-goettingen.de \
+PYOBS_TEST_XMPP_PORT=5222 \
+PYOBS_TEST_XMPP_TLS=1 \
+PYOBS_TEST_XMPP_PASSWORD=<real password for bench accounts> \
+python scripts/xmpp/benchmark_state_throughput.py reconnect-storm --k 4 \
+    --register-via local --output iag50_reconnect_storm.jsonl
+
+# against monet-south (same shape, different host/domain)
+PYOBS_TEST_XMPP_HOST=monet.saao.ac.za \
+PYOBS_TEST_XMPP_DOMAIN=monet.saao.ac.za \
+PYOBS_TEST_XMPP_PORT=5222 \
+PYOBS_TEST_XMPP_TLS=1 \
+PYOBS_TEST_XMPP_PASSWORD=<real password for bench accounts> \
+python scripts/xmpp/benchmark_state_throughput.py reconnect-storm --k 4 \
+    --register-via local --output monet_south_reconnect_storm.jsonl
+```
+
+Match `--k` to the real incident shape (3-4) rather than pushing for scale -- this is a targeted
+reproduction attempt, not a throughput ceiling test. Re-run a few times if the first attempt doesn't
+show anything; the original incident may depend on timing/load conditions that don't hold on every
+single run.
+
+**What would actually settle this:**
+- **Reproduces on iag50, clean on monet-south:** confirms iag50-specific (server config/network/
+  stale-session-routing), not a `pyobs-core`/`pyobs-brot` code bug. Next step would be ejabberd's own
+  server-side logs/session table on iag50 around the reproduction, not more client-side code changes.
+- **Clean on both real servers too:** the local negative result generalizes -- whatever caused the
+  original incident either needs a condition this scenario still doesn't capture (different timing,
+  real fleet load at that moment, something about the *actual* restart sequence beyond "a few clients
+  connect and query each other"), or was a one-off. Worth getting the exact ejabberd version/config
+  from both sites to compare before concluding it's unreproducible.
+- **Reproduces on both:** points back toward something in `pyobs-core`'s XMPP layer after all,
+  and the "works fine on monet-south" premise from real operation would need re-examining --
+  maybe monet-south just hasn't had 3-4 modules restart together recently, rather than being immune.
 
 ## Problem
 

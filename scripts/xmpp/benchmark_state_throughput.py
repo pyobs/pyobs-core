@@ -15,16 +15,22 @@ Connection config via env vars (same names as tests/integration/conftest.py):
     PYOBS_TEST_XMPP_TLS         (default: 0 -- this repo's test ejabberd is plain TCP)
     PYOBS_TEST_XMPP_IGNORE_CERT (default: 1)
 
-"concurrent-many" and "rpc" need more than the two accounts (camera, observer) the
-test fixture pre-registers. Pass --register-via <container-name> to have the script
-register the extra bench<N> accounts itself, via `docker exec <container> ejabberdctl
-register ...`, before running.
+"concurrent-many", "reconnect-storm", and "rpc" need more than the two accounts (camera,
+observer) the test fixture pre-registers. Pass --register-via <container-name> to have the
+script register the extra bench<N> accounts itself, via `docker exec <container> ejabberdctl
+register ...`, before running -- or --register-via local to run bare `ejabberdctl register`
+directly (no docker), for a real server where ejabberdctl is on PATH (e.g. running the script
+on the ejabberd host itself, or over SSH with an interactive shell that has it).
 
 Usage:
     python scripts/xmpp/benchmark_state_throughput.py sequential --n 100
     python scripts/xmpp/benchmark_state_throughput.py concurrent-single --n 100
     python scripts/xmpp/benchmark_state_throughput.py concurrent-many --k 25 --n 20 \\
         --register-via test-ejabberd
+    python scripts/xmpp/benchmark_state_throughput.py reconnect-storm --k 4 \\
+        --register-via test-ejabberd
+    python scripts/xmpp/benchmark_state_throughput.py reconnect-storm --k 4 \\
+        --register-via local   # against a real server, no docker
     python scripts/xmpp/benchmark_state_throughput.py rpc --n 50 --register-via test-ejabberd
     python scripts/xmpp/benchmark_state_throughput.py payload --n 50
     python scripts/xmpp/benchmark_state_throughput.py all --n 100 --k 25 --register-via test-ejabberd
@@ -144,20 +150,36 @@ async def open_publisher(cfg: XmppConfig, name: str, interfaces: list[type[Inter
     return comm
 
 
-def register_accounts(container: str, domain: str, password: str, users: list[str]) -> None:
-    """Idempotently register accounts via `docker exec <container> ejabberdctl register`.
+def register_accounts(domain: str, password: str, users: list[str], container: str | None = None) -> None:
+    """Idempotently register accounts via `ejabberdctl register`.
+
+    container: docker container name, for the disposable docker-compose test setup (runs via
+        `docker exec <container> ejabberdctl ...`). None runs bare `ejabberdctl` directly --
+        for a real server where the script itself runs on (or has ejabberdctl on PATH for)
+        the ejabberd host, since production servers aren't necessarily containerized at all.
 
     Conflicts (already registered) are expected on reruns and ignored -- mirrors the "!"
     prefix convention used for CTL_ON_START in tests/xmpp/docker-compose.yml.
     """
+    base_cmd = ["docker", "exec", container, "ejabberdctl"] if container else ["ejabberdctl"]
     for user in users:
         result = subprocess.run(
-            ["docker", "exec", container, "ejabberdctl", "register", user, domain, password],
+            [*base_cmd, "register", user, domain, password],
             capture_output=True,
             text=True,
         )
         if result.returncode != 0 and "already registered" not in result.stderr + result.stdout:
             raise RuntimeError(f"Failed to register {user}@{domain}: {result.stdout} {result.stderr}")
+
+
+def maybe_register(register_via: str | None, cfg: XmppConfig, users: list[str]) -> None:
+    """Register users if --register-via was given. "local" means bare `ejabberdctl` (the
+    script runs on/with access to the ejabberd host itself, e.g. a real production server);
+    anything else is a docker container name for the disposable docker-compose test setup."""
+    if register_via is None:
+        return
+    container = None if register_via == "local" else register_via
+    register_accounts(cfg.domain, cfg.password, users, container=container)
 
 
 # ---------------------------------------------------------------------------
@@ -309,8 +331,7 @@ async def run_concurrent_many(
     """K independent clients, each its own XmppComm, each publishing n_per_client times
     sequentially, all K running at the same time -- the "fleet of modules" scenario."""
     names = [f"bench{i}" for i in range(k)]
-    if register_via:
-        register_accounts(register_via, cfg.domain, cfg.password, names)
+    maybe_register(register_via, cfg, names)
 
     async def _client(name: str) -> None:
         comm = await open_publisher(cfg, name, ALL_PUBLISHED_INTERFACES)
@@ -336,6 +357,54 @@ async def run_concurrent_many(
     recorder.summary("concurrent-many")
 
 
+async def run_reconnect_storm(cfg: XmppConfig, k: int, recorder: Recorder, register_via: str | None) -> None:
+    """K independent clients all connect/auth/bind/publish-presence within the same burst
+    (via asyncio.gather), then every client fetches IModule capabilities from every other
+    client at once -- modeling a handful of modules restarting together (not a whole-fleet
+    reconnect storm) immediately followed by the mutual capability discovery every pyobs
+    proxy triggers on first use (Comm._get_client -> _fetch_and_update_capabilities).
+
+    Motivated by a production incident: 3 modules restarted within a few seconds of each
+    other, and disco#info (XEP-0030) queries between them got no reply at all for a full
+    10s timeout, three attempts in a row, despite every peer already being fully started
+    (not mid-boot) by the time the queries were sent. Measures whether that reproduces
+    against a local ejabberd under the same connection-churn shape.
+    """
+    names = [f"bench{i}" for i in range(k)]
+    maybe_register(register_via, cfg, names)
+
+    comms: dict[str, XmppComm] = {}
+
+    async def _connect(name: str) -> None:
+        comms[name] = await open_publisher(cfg, name, [])
+
+    start = time.perf_counter()
+    await asyncio.gather(*(_connect(name) for name in names))
+    connect_wall = time.perf_counter() - start
+    print(f"[reconnect-storm] {k} clients connected+ready in {connect_wall:.2f}s")
+
+    async def _fetch(requester: str, target: str) -> None:
+        comm = comms[requester]
+        start = time.perf_counter()
+        try:
+            # get_capabilities (XmppComm) retries forever on failure -- bound our own
+            # patience so a genuine reproduction doesn't hang the benchmark script itself
+            await asyncio.wait_for(comm.get_capabilities(target, IModule), timeout=60.0)
+            recorder.record("reconnect-storm", k, "n/a", time.perf_counter() - start, True)
+        except Exception as e:
+            recorder.record("reconnect-storm", k, "n/a", time.perf_counter() - start, False, str(e))
+
+    try:
+        start = time.perf_counter()
+        await asyncio.gather(*(_fetch(a, b) for a in names for b in names if a != b))
+        wall = time.perf_counter() - start
+        total = k * (k - 1)
+        print(f"[reconnect-storm] {total} mutual capability fetches in {wall:.2f}s")
+        recorder.summary("reconnect-storm")
+    finally:
+        await asyncio.gather(*(c.close() for c in comms.values()))
+
+
 async def run_rpc(
     cfg: XmppConfig,
     n: int,
@@ -348,10 +417,7 @@ async def run_rpc(
     """RPC round-trip latency (XEP-0009 execute()), optionally with scenario-3-style
     background state-push load running concurrently, to isolate whether state traffic
     degrades RPC responsiveness."""
-    if register_via:
-        register_accounts(
-            register_via, cfg.domain, cfg.password, ["camera", "observer"] + [f"bench{i}" for i in range(k)]
-        )
+    maybe_register(register_via, cfg, ["camera", "observer"] + [f"bench{i}" for i in range(k)])
 
     camera_comm = make_comm(cfg, "camera")
     camera = DummyCamera(name="camera", comm=camera_comm)
@@ -406,7 +472,8 @@ async def run_payload(cfg: XmppConfig, n: int, recorder: Recorder) -> None:
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
-        "scenario", choices=["sequential", "concurrent-single", "concurrent-many", "rpc", "payload", "all"]
+        "scenario",
+        choices=["sequential", "concurrent-single", "concurrent-many", "reconnect-storm", "rpc", "payload", "all"],
     )
     parser.add_argument("--n", type=int, default=100, help="publishes per client (default: 100)")
     parser.add_argument("--k", type=int, default=10, help="number of clients for concurrent-many/rpc (default: 10)")
@@ -417,8 +484,9 @@ async def main() -> None:
     parser.add_argument(
         "--register-via",
         default=None,
-        help="docker container name to run `ejabberdctl register` in for extra bench<N> accounts "
-        "(needed by concurrent-many/rpc when --k exceeds the pre-registered camera/observer)",
+        help="docker container name to run `ejabberdctl register` in (or the literal value "
+        "'local' to run bare `ejabberdctl register`, no docker -- for a real server) for the "
+        "extra accounts concurrent-many/reconnect-storm/rpc need beyond camera/observer",
     )
     parser.add_argument(
         "--rpc-with-load", action="store_true", help="run the rpc scenario with concurrent-many background load"
@@ -434,6 +502,8 @@ async def main() -> None:
         await run_concurrent_single(cfg, args.n, recorder)
     if args.scenario in ("concurrent-many", "all"):
         await run_concurrent_many(cfg, args.k, args.n, recorder, args.register_via)
+    if args.scenario in ("reconnect-storm", "all"):
+        await run_reconnect_storm(cfg, args.k, recorder, args.register_via)
     if args.scenario in ("rpc", "all"):
         await run_rpc(cfg, args.n, recorder, args.register_via, args.rpc_with_load, args.k, args.n)
     if args.scenario in ("payload", "all"):

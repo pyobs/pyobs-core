@@ -31,6 +31,8 @@ Usage:
         --register-via test-ejabberd
     python scripts/xmpp/benchmark_state_throughput.py reconnect-storm --k 4 \\
         --register-via local   # against a real server, no docker
+    python scripts/xmpp/benchmark_state_throughput.py late-joiner --k 7 --settle-time 2 \\
+        --register-via test-ejabberd
     python scripts/xmpp/benchmark_state_throughput.py rpc --n 50 --register-via test-ejabberd
     python scripts/xmpp/benchmark_state_throughput.py payload --n 50
     python scripts/xmpp/benchmark_state_throughput.py all --n 100 --k 25 --register-via test-ejabberd
@@ -357,18 +359,30 @@ async def run_concurrent_many(
     recorder.summary("concurrent-many")
 
 
-async def run_reconnect_storm(cfg: XmppConfig, k: int, recorder: Recorder, register_via: str | None) -> None:
+async def run_reconnect_storm(
+    cfg: XmppConfig, k: int, recorder: Recorder, register_via: str | None, recheck_after: float = 0.0
+) -> None:
     """K independent clients all connect/auth/bind/publish-presence within the same burst
     (via asyncio.gather), then every client fetches IModule capabilities from every other
-    client at once -- modeling a handful of modules restarting together (not a whole-fleet
-    reconnect storm) immediately followed by the mutual capability discovery every pyobs
-    proxy triggers on first use (Comm._get_client -> _fetch_and_update_capabilities).
+    client at once -- modeling a handful of modules restarting together (not necessarily a
+    whole-fleet reconnect storm) immediately followed by the mutual capability discovery
+    every pyobs proxy triggers on first use (Comm._get_client -> _fetch_and_update_capabilities).
 
-    Motivated by a production incident: 3 modules restarted within a few seconds of each
-    other, and disco#info (XEP-0030) queries between them got no reply at all for a full
-    10s timeout, three attempts in a row, despite every peer already being fully started
-    (not mid-boot) by the time the queries were sent. Measures whether that reproduces
-    against a local ejabberd under the same connection-churn shape.
+    Motivated by production incidents on pyobs-iag50 (see specs/plans/ejabberd-throughput-
+    benchmarking.md's "Full incident timeline" for the complete writeup): disco#info (XEP-0030)
+    queries between freshly-restarted modules got no reply at all for a full 10s timeout,
+    three attempts in a row, despite every peer already being fully started (not mid-boot) by
+    the time the queries were sent -- and, in the largest incident (7 modules, no BROT/MQTT
+    module involved at all), one module's own outgoing send_event() (log forwarding, via the
+    *bounded* _safe_send retry budget) later hit a genuine unhandled IqTimeout, twice, 39s and
+    85s *after* the initial capability-fetch storm had already stopped -- i.e. failures
+    recurred well past any plausible "still settling in from reconnecting" window, on
+    connections that had been idle and ostensibly fine in between.
+
+    If recheck_after > 0, after the initial connect+fetch burst the same (already-connected,
+    not reconnected) clients sit idle for that many seconds and then repeat the mutual fetch
+    -- testing whether failures can recur on an already-established, previously-fine
+    connection, not just during initial connection churn.
     """
     names = [f"bench{i}" for i in range(k)]
     maybe_register(register_via, cfg, names)
@@ -383,24 +397,87 @@ async def run_reconnect_storm(cfg: XmppConfig, k: int, recorder: Recorder, regis
     connect_wall = time.perf_counter() - start
     print(f"[reconnect-storm] {k} clients connected+ready in {connect_wall:.2f}s")
 
-    async def _fetch(requester: str, target: str) -> None:
+    async def _fetch(requester: str, target: str, scenario: str) -> None:
         comm = comms[requester]
         start = time.perf_counter()
         try:
             # get_capabilities (XmppComm) retries forever on failure -- bound our own
             # patience so a genuine reproduction doesn't hang the benchmark script itself
             await asyncio.wait_for(comm.get_capabilities(target, IModule), timeout=60.0)
-            recorder.record("reconnect-storm", k, "n/a", time.perf_counter() - start, True)
+            recorder.record(scenario, k, "n/a", time.perf_counter() - start, True)
         except Exception as e:
-            recorder.record("reconnect-storm", k, "n/a", time.perf_counter() - start, False, str(e))
+            recorder.record(scenario, k, "n/a", time.perf_counter() - start, False, str(e))
 
-    try:
+    async def _round(scenario: str) -> None:
         start = time.perf_counter()
-        await asyncio.gather(*(_fetch(a, b) for a in names for b in names if a != b))
+        await asyncio.gather(*(_fetch(a, b, scenario) for a in names for b in names if a != b))
         wall = time.perf_counter() - start
         total = k * (k - 1)
-        print(f"[reconnect-storm] {total} mutual capability fetches in {wall:.2f}s")
-        recorder.summary("reconnect-storm")
+        print(f"[{scenario}] {total} mutual capability fetches in {wall:.2f}s")
+        recorder.summary(scenario)
+
+    try:
+        await _round("reconnect-storm")
+        if recheck_after > 0:
+            print(f"[reconnect-storm] {k} clients idle for {recheck_after:.0f}s, then re-checking...")
+            await asyncio.sleep(recheck_after)
+            await _round("reconnect-storm-recheck")
+    finally:
+        await asyncio.gather(*(c.close() for c in comms.values()))
+
+
+async def run_late_joiner(
+    cfg: XmppConfig, k: int, recorder: Recorder, register_via: str | None, settle_time: float = 2.0
+) -> None:
+    """K clients connect and settle (staying open, idle) for settle_time seconds -- modeling an
+    already-stable fleet. Then one *more* client connects and immediately exchanges IModule
+    capabilities with every existing peer, both directions -- modeling a single module joining an
+    already-running fleet, not a simultaneous multi-client reconnect.
+
+    Motivated by two production incidents on pyobs-iag50, staggered ~5 minutes apart per module
+    specifically to rule out simultaneity: a fleet of exactly 7 already-connected, already-stable
+    modules (no restarts, no reconnects) had an 8th module join -- once `flatfield`, once (in a
+    separate occurrence) `dome` -- and both times, 30-something seconds later, every single
+    capability-fetch pair involving the newcomer failed with a silent 10s timeout, while none of the
+    7 already-established peers ever failed to reach each other. Two independent occurrences, same
+    exact peer count (7 existing + 1 joining), same result, regardless of which module joined --
+    this scenario tests whether that specific peer-count threshold reproduces locally. Sweep --k to
+    find where (if anywhere) it breaks against a given server.
+    """
+    existing_names = [f"bench{i}" for i in range(k)]
+    joiner_name = "benchjoiner"
+    maybe_register(register_via, cfg, [*existing_names, joiner_name])
+
+    comms: dict[str, XmppComm] = {}
+
+    async def _connect(name: str) -> None:
+        comms[name] = await open_publisher(cfg, name, [])
+
+    await asyncio.gather(*(_connect(name) for name in existing_names))
+    print(f"[late-joiner] {k} peers connected+ready, settling for {settle_time:.0f}s...")
+    await asyncio.sleep(settle_time)
+
+    start = time.perf_counter()
+    await _connect(joiner_name)
+    connect_wall = time.perf_counter() - start
+    print(f"[late-joiner] joiner connected in {connect_wall:.2f}s (existing fleet size {k})")
+
+    async def _fetch(requester: str, target: str) -> None:
+        comm = comms[requester]
+        start = time.perf_counter()
+        try:
+            await asyncio.wait_for(comm.get_capabilities(target, IModule), timeout=60.0)
+            recorder.record("late-joiner", k, "n/a", time.perf_counter() - start, True)
+        except Exception as e:
+            recorder.record("late-joiner", k, "n/a", time.perf_counter() - start, False, str(e))
+
+    try:
+        pairs = [(joiner_name, name) for name in existing_names] + [(name, joiner_name) for name in existing_names]
+        start = time.perf_counter()
+        await asyncio.gather(*(_fetch(a, b) for a, b in pairs))
+        wall = time.perf_counter() - start
+        print(f"[late-joiner] {len(pairs)} capability fetches between joiner and {k} existing peers in {wall:.2f}s")
+        recorder.summary("late-joiner")
     finally:
         await asyncio.gather(*(c.close() for c in comms.values()))
 
@@ -473,7 +550,16 @@ async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "scenario",
-        choices=["sequential", "concurrent-single", "concurrent-many", "reconnect-storm", "rpc", "payload", "all"],
+        choices=[
+            "sequential",
+            "concurrent-single",
+            "concurrent-many",
+            "reconnect-storm",
+            "late-joiner",
+            "rpc",
+            "payload",
+            "all",
+        ],
     )
     parser.add_argument("--n", type=int, default=100, help="publishes per client (default: 100)")
     parser.add_argument("--k", type=int, default=10, help="number of clients for concurrent-many/rpc (default: 10)")
@@ -491,6 +577,21 @@ async def main() -> None:
     parser.add_argument(
         "--rpc-with-load", action="store_true", help="run the rpc scenario with concurrent-many background load"
     )
+    parser.add_argument(
+        "--recheck-after",
+        type=float,
+        default=0.0,
+        help="reconnect-storm only: after the initial burst, wait this many seconds (same "
+        "connections, no reconnect) then repeat the mutual capability fetch -- tests whether "
+        "failures can recur on an already-idle, previously-fine connection (default: 0, disabled)",
+    )
+    parser.add_argument(
+        "--settle-time",
+        type=float,
+        default=2.0,
+        help="late-joiner only: seconds the existing --k peers sit idle before the one extra "
+        "client joins (default: 2.0)",
+    )
     args = parser.parse_args()
 
     cfg = env_config()
@@ -503,7 +604,9 @@ async def main() -> None:
     if args.scenario in ("concurrent-many", "all"):
         await run_concurrent_many(cfg, args.k, args.n, recorder, args.register_via)
     if args.scenario in ("reconnect-storm", "all"):
-        await run_reconnect_storm(cfg, args.k, recorder, args.register_via)
+        await run_reconnect_storm(cfg, args.k, recorder, args.register_via, args.recheck_after)
+    if args.scenario in ("late-joiner", "all"):
+        await run_late_joiner(cfg, args.k, recorder, args.register_via, args.settle_time)
     if args.scenario in ("rpc", "all"):
         await run_rpc(cfg, args.n, recorder, args.register_via, args.rpc_with_load, args.k, args.n)
     if args.scenario in ("payload", "all"):

@@ -41,6 +41,7 @@ class Comm:
         self._event_handlers: dict[type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._registered_events: set[type[Event]] = set()
         self._closing = asyncio.Event()
+        self._published_state: set[type[Interface]] = set()
 
     @property
     def has_module(self) -> bool:
@@ -479,10 +480,16 @@ class Comm:
             interface: Interface type for the state.
             state: State object to publish.
         """
+        self._published_state.add(interface)
         await self._set_state(interface, state)
 
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
         pass
+
+    def missing_published_state(self, interfaces: list[type[Interface]]) -> list[type[Interface]]:
+        """Return interfaces (from the given list) that declare state via has_own_state() but
+        haven't had set_state() called for them yet."""
+        return [i for i in interfaces if i.has_own_state() and i not in self._published_state]
 
     async def set_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
         """Publish capabilities for this module.

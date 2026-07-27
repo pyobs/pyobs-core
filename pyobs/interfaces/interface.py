@@ -42,7 +42,7 @@ class Interface(metaclass=ABCMeta):
             )
         _REGISTRY[cls.__name__] = cls
 
-    def get_state(self, interface: "type[Interface]") -> Any | None:
+    def get_state(self, interface: "type[Interface]", *, max_age: float | None = None) -> Any | None:
         """Return the last received state for the given interface, or None."""
         return None
 
@@ -50,7 +50,9 @@ class Interface(metaclass=ABCMeta):
         """Return the capabilities for the given interface, or None."""
         return None
 
-    async def wait_for_state(self, interface: "type[Interface]", timeout: float = 10.0) -> Any | None:
+    async def wait_for_state(
+        self, interface: "type[Interface]", timeout: float = 10.0, *, max_age: float | None = None
+    ) -> Any | None:
         """Return state immediately if available, otherwise wait for the first update."""
         return None
 

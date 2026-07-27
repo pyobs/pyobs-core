@@ -153,6 +153,12 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
             ICooling,
             CoolingState(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled),
         )
+        await self.comm.set_state(
+            ITemperatures,
+            TemperaturesState(
+                readings=[SensorReading(name=name, value=value) for name, value in self._cooling.temperatures.items()]
+            ),
+        )
         await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
         await self.comm.set_state(IWindow, WindowState(*self._full_frame))
         await self.comm.set_state(IBinning, BinningState(*self._binning))

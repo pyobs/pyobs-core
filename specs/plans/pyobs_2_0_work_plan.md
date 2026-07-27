@@ -21,18 +21,19 @@ follow-on fix in `mainwindow.py` — see that item below)
   `_active`/`_is_running`) or the pushed `RunningState` instead; a few had become pure
   attribute-readback with no remaining code path to exercise once the RPC wrapper was gone, and
   were deleted rather than rewritten.
-- [ ] **`pyobsd` should make per-module file logging opt-in, now that journal logging exists.**
-  Re-checked against current code (2026-07-27): journal support was *already added* since this
-  item was written — `pyobsd --syslog` (`pyobs/cli/pyobsd.py:52-56`) defaults to `True` and wires
-  through to a real `JournaldLogHandler` (`pyobs/application.py:110-124`, via
-  `logging_journald`). What's still open is narrower than originally scoped: `_start_service()`
-  (`pyobsd.py:318-333`) unconditionally builds and passes `--log-file <log_path>/<module>.log`
-  regardless of `--syslog`, so a normal deployment now writes to stdout + file + journal
-  simultaneously — still the same duplication this item flagged, just one layer removed. Direction
-  (updated): make `--log-file` opt-in (e.g. only passed when `--syslog` is off, or behind its own
-  explicit flag), not default-on alongside `--syslog`. Not yet designed in detail — no decision on
-  the transition for non-systemd (sysvinit) installs, where `--log-file` still needs to be the
-  default.
+- [x] **`pyobsd` should make per-module file logging opt-in, now that journal logging exists.**
+  Done 2026-07-27. Journal support turned out to already exist (`--syslog`, default `True`, wired
+  to a real `JournaldLogHandler`) — what was actually still open was narrower than originally
+  scoped: `_start_service()` unconditionally built and passed `--log-file <log_path>/<module>.log`
+  regardless of `--syslog`, so a normal deployment wrote to stdout + file + journal simultaneously.
+  Added a new `--file-log`/`--no-file-log` flag (`pyobs/cli/pyobsd.py`), **default `False`
+  regardless of `--syslog`** — `--log-file` is now only passed to a module when `--file-log` is
+  explicitly given. This was a real design decision (not just a mechanical fix): the alternative
+  of defaulting `--file-log` to `not --syslog` was considered and rejected in favor of a single,
+  unconditional default for a simpler mental model — the tradeoff being that non-systemd
+  (sysvinit) deployments that relied on the old unconditional file logging now need to pass
+  `--file-log` explicitly to keep it. `tests/cli/test_pyobsd.py` (new) covers the flag/command
+  construction; no existing test file covered `pyobsd.py` before this.
 - [ ] **Warn on a module identity mismatch — re-scope or drop, doesn't match current code.**
   Re-checked against current code (2026-07-27): the premise no longer holds. Neither
   `Module.__init__` nor `Object.__init__` (`pyobs/modules/module.py`, `pyobs/object.py`) has a

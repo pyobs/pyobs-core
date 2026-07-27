@@ -33,6 +33,7 @@ class PyobsDaemonCLI(CLI):
         "log_path",
         "log_level",
         "syslog",
+        "file_log",
         "chuid",
     ]
 
@@ -53,6 +54,12 @@ class PyobsDaemonCLI(CLI):
             action=argparse.BooleanOptionalAction,
             help="send module logs to systemd journal (use --no-syslog to disable)",
             default=self._config.get("syslog", True),
+        )
+        self._parser.add_argument(
+            "--file-log",
+            action=argparse.BooleanOptionalAction,
+            help="also write each module's log to <log-path>/<module>.log (off by default; use --file-log to enable)",
+            default=self._config.get("file_log", False),
         )
         self._parser.add_argument("--chuid", type=str, default=self._config.get("chuid", "pyobs:pyobs"))
         self._parser.add_argument("-v", "--verbose", action="store_true")
@@ -76,6 +83,7 @@ class PyobsDaemonCLI(CLI):
             str(os.path.join(self._config["path"], self._config["log_path"])),
             log_level=self._config["log_level"],
             syslog=self._config["syslog"],
+            file_log=self._config["file_log"],
             chuid=self._config["chuid"],
             verbose=self._config["verbose"],
         )
@@ -104,6 +112,7 @@ class PyobsDaemon:
         log_path: str,
         log_level: str = "info",
         syslog: bool = False,
+        file_log: bool = False,
         chuid: str | None = None,
         verbose: bool = False,
         **kwargs: Any,
@@ -113,6 +122,7 @@ class PyobsDaemon:
         self._log_path = log_path
         self._log_level = log_level
         self._syslog = syslog
+        self._file_log = file_log
         self._verbose = verbose
 
         # parse optional user/group from chuid (format: "user:group" or "user")
@@ -317,18 +327,18 @@ class PyobsDaemon:
 
     def _start_service(self, module: str) -> None:
         os.makedirs(self._run_path, exist_ok=True)
-        os.makedirs(self._log_path, exist_ok=True)
 
         cmd = [
             self._pyobs_exec,
             "--pid-file",
             self._pid_file(module),
-            "--log-file",
-            self._log_file(module),
             "--log-level",
             self._log_level,
             self._config_file(module),
         ]
+        if self._file_log:
+            os.makedirs(self._log_path, exist_ok=True)
+            cmd += ["--log-file", self._log_file(module)]
         if self._syslog:
             cmd.append("--syslog")
 

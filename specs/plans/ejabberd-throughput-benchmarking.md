@@ -216,12 +216,43 @@ hundreds-to-thousands of concurrent state pushes from itself on one connection" 
 which is an unusual pattern for a single device to begin with and not something the current design
 does anywhere.
 
-Two possible follow-ups, neither done here: (1) file/check for an existing upstream slixmpp issue
-about O(N²) handler dispatch under many in-flight IQs — this is a generic library limitation, not
-pyobs-specific, so it may already be known; (2) if pyobs ever does need one module to fire many
-concurrent state pushes at once, cap in-flight concurrency client-side (a semaphore around
-`set_state()`/`_safe_send()`, not a design change to the wire protocol) rather than relying on
-`asyncio.gather` with no bound.
+## Conclusion on the O(N²) finding: real bug, not a pyobs design problem
+
+Filed upstream: [poezio/slixmpp#3786](https://codeberg.org/poezio/slixmpp/issues/3786), with a
+draft fix and before/after numbers. Maintainer response was constructive; asked how many handlers
+are actually registered under typical (non-benchmark) load, since the O(N²) cost only bites once
+that count gets large.
+
+Checked with a real client (not the synthetic burst script): a normal camera+observer session doing
+sequential, human-cadence operations sits at a flat **~33 handlers** throughout — fixed plugin
+registration overhead, not growing during normal use, since sequential/awaited IQs resolve before
+the next one is sent (0-1 in flight at a time).
+
+Also checked against a real production fleet: `pyobs-monet/config/south/` has ~30-35 distinct
+module configs (one connection each, all on one ejabberd domain) — a real "fleet size" comparable
+to the wire protocol doc's assumed 10-100 agents. Grepped `pyobs_monet`'s module code for
+`asyncio.gather`-based concurrent state pushes or IQ bursts: **none found**.
+
+Put together, this clarifies something worth stating plainly: **the bug is per-connection, not
+fleet-size.** `__handlers`/`__id_handlers` are `XMLStream` instance attributes with zero sharing
+across connections — the O(N²) cost depends only on how many IQs are in flight *on one connection
+at once*, never on how many other connections exist elsewhere. A fleet of many well-behaved modules
+(pyobs's actual design, and what the real MONET-south deployment runs) never touches this, because
+no module fires a concurrent burst on its own connection — confirmed both by the `concurrent-many`
+benchmark scenario (fast throughout every test this session) and by the real fleet's code having no
+such pattern anywhere.
+
+So: **this doesn't affect current pyobs usage, and isn't a reason to change the wire protocol
+design.** It was still worth chasing down, for three reasons that held before we knew the answer:
+it was explicitly on this benchmark plan's checklist (goal #4, confirm-or-refute the earlier "~15x
+slower" observation); the leading hypothesis at the time (ejabberd's shaper) would have been
+fleet-relevant had it been confirmed, so it had to be tested rather than assumed away; and an
+unexplained 15x regression sitting under the wire protocol doc's unmeasured "XMPP scales fine"
+assumption was worth resolving either way. The resolution is a real, previously-unknown library bug
+(reported upstream, with a fix), not a pyobs design risk — a genuinely useful outcome, just not the
+kind that changes this repo's code. If pyobs ever does need one module to fire many concurrent
+state pushes at once (not true of anything today), the mitigation would be a client-side
+concurrency cap (a semaphore around `set_state()`/`_safe_send()`), not a wire-protocol change.
 
 ## Problem
 

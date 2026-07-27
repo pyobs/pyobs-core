@@ -18,8 +18,9 @@ class WeatherAwareMixin:
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, weather: str | IWeather | None = None, **kwargs: Any):
+    def __init__(self, weather: str | IWeather | None = None, weather_max_age: float = 120.0, **kwargs: Any):
         self.__weather = weather
+        self.__weather_max_age = weather_max_age
         self.__is_weather_good: bool | None = None
         self.__last_park_attempt: float | None = None
         self.__weatheraware_is_error_state = False
@@ -121,7 +122,9 @@ class WeatherAwareMixin:
                     try:
                         # get good status
                         async with module.proxy(this.__weather, IWeather) as proxy:
-                            weather_state = await proxy.wait_for_state(IWeather, timeout=5.0)
+                            weather_state = await proxy.wait_for_state(
+                                IWeather, timeout=5.0, max_age=this.__weather_max_age
+                            )
                             this.__is_weather_good = weather_state.good if weather_state is not None else False
                         this.__weather_check_failures = 0
 

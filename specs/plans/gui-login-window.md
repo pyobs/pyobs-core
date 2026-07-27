@@ -1,6 +1,6 @@
 # Plan: `pyobs-gui` login window
 
-Status: draft
+Status: implemented, closed.
 Repos: pyobs-gui (primary — all implementation here), pyobs-core (depends on
 `gui-interactive-login.md` landing first, no other pyobs-core changes needed)
 
@@ -82,14 +82,11 @@ Secret Service/KWallet) — the direct Python analog of polaris's `QtKeychain`. 
 by the account's stable id (not JID/label), matching polaris's reasoning exactly: renaming an
 account must not orphan its password.
 
-**Open question, shared with `gui-widget-plugins-and-packaging.md`:** `keyring` auto-detects its
-backend at runtime via `importlib.metadata` entry-point discovery — another dynamic-loading
-mechanism that may not survive `pyside6-deploy`/Nuitka's static bundling unmodified (same family of
-problem as the widget-plugin one, different mechanism: entry points instead of `__import__` on a
-config string). Needs a spike against an actual compiled binary before this plan's implementation
-checklist can be trusted — if `keyring`'s backend discovery breaks under Nuitka, the fix is likely
-pinning/forcing a specific backend explicitly (e.g. `keyring.set_keyring(...)` at startup) rather
-than relying on auto-detection, but that needs verifying, not assuming.
+**Resolved by the Phase 0 spike** (`gui-widget-plugins-and-packaging.md`, 2026-07-27): `keyring`'s
+`importlib.metadata` entry-point backend discovery survives a real `pyside6-deploy` standalone
+build unmodified — the frozen binary picked the exact same backend
+(`keyring.backends.SecretService.Keyring`) as an unfrozen run, with a working roundtrip. No pinning
+workaround needed.
 
 ### Connect flow
 
@@ -118,14 +115,41 @@ answered by the time this window's "Cancel"/window-close behavior needs to actua
 
 ## Implementation checklist
 
-- [ ] Spike: does `keyring`'s backend auto-detection survive a `pyside6-deploy` build? (blocks
-      trusting the rest of this checklist as scoped)
-- [ ] `LoginWindow` widget (list-left/detail-right, per Design above)
-- [ ] Account metadata persistence via `QSettings`
-- [ ] Password persistence via `keyring`, keyed by account id
-- [ ] Wire into `gui-interactive-login.md`'s `module_factory` contract once that lands
-- [ ] Status/error display (connecting/error/connected, keychain failures) mirroring the QML
-      version's visible-not-swallowed handling
-- [ ] Tests: account CRUD (add/update/delete), id-stability-across-rename, Connect building the
-      right `XmppComm` kwargs from the visible fields (not from whatever was last saved)
-- [ ] Update this doc's `Status:` to `implemented` once landed
+Done 2026-07-27, on `feature/standalone-binary` (both repos). `keyring` added as a real
+`pyobs-gui` dependency (was spike-only before). First pytest infrastructure `pyobs-gui` has had
+(`pytest`/`pytest-asyncio`/`pytest-mock` added, `tests/` created, offscreen Qt platform default in
+`conftest.py`).
+
+- [x] Spike: does `keyring`'s backend auto-detection survive a `pyside6-deploy` build? — yes,
+      confirmed in Phase 0 (see Design above).
+- [x] `LoginWindow` widget (list-left/detail-right, per Design above) — `pyobs_gui/loginwindow.py`.
+      Built directly in `QtWidgets` code rather than a compiled `.ui` file (this repo's usual
+      `Ui_XxxWidget` convention) since there's no interactive Qt Designer available in this
+      environment — a deliberate deviation, not an oversight.
+- [x] Account metadata persistence via `QSettings` — `pyobs_gui/accounts.py`
+      (`SavedAccountsModel`), org/app `("pyobs", "pyobs-gui")`.
+- [x] Password persistence via `keyring`, keyed by account id — in `LoginWindow`, service name
+      `"pyobs-gui"`.
+- [x] Wire into `gui-interactive-login.md`'s `module_factory` contract — `pyobs_gui/login.py`
+      (`login_and_build_gui`) plus a new standalone entry point, `pyobs_gui/__main__.py`, which
+      bypasses the config-file-driven `pyobs` CLI entirely (this is what a compiled binary
+      targets). Verified end to end: constructed a real `Application(module_factory=
+      login_and_build_gui, loop_module_class=GUI)` against the actual (locally editable-installed)
+      updated `pyobs-core`, not just type-checked against it.
+- [x] Status/error display (connecting/error/connected, keychain failures) mirroring the QML
+      version's visible-not-swallowed handling — status label + a keychain-notice label shown on
+      store/delete failure, matching `keychainNotice` in the QML.
+- [x] Tests: 23 new tests (`tests/test_accounts.py`, `tests/test_loginwindow.py`) — account CRUD,
+      id-stability-across-rename, `build_connection_request()` (pulled out as a plain function so
+      the Connect-button logic is testable without simulating Qt clicks) including the
+      override-checked-but-host-blank edge case, and window-level behavior (list population,
+      selecting an account prefills fields, Connect resolves `wait_for_connect()`, closing without
+      connecting cancels it instead of hanging).
+- [x] Update this doc's `Status:` to `implemented` once landed — see below.
+
+**Note for whoever continues this branch:** `pyobs-gui`'s venv currently has `pyobs-core` locally
+editable-installed from `../pyobs-core` (`uv pip install -e`, not `uv add`) so it actually runs
+against this branch's `Application` changes instead of the PyPI-pinned `dev28` in `pyproject.toml`.
+This is intentionally *not* committed — a plain `uv sync` reverts it. Needed again after that, or
+once a real `pyobs-core` release includes the `module_factory` change and `pyproject.toml`'s pin
+can be bumped for real.

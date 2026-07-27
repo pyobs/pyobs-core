@@ -78,7 +78,7 @@ required before "ship one binary" is actually true end to end.
 | Piece | Doc | Status |
 |---|---|---|
 | Defer `Application`'s module construction | `gui-interactive-login.md` | implemented, closed |
-| Login window UI | `gui-login-window.md` | draft, not started |
+| Login window UI | `gui-login-window.md` | implemented, closed |
 | Widget loading mechanism | `gui-widget-plugins-and-packaging.md` | decided + spiked, real implementation not started |
 | Widget selection mechanism | `gui-widget-plugins-and-packaging.md` | open, deliberately postponed |
 | `pyside6-deploy` packaging pipeline | `gui-widget-plugins-and-packaging.md` | spiked (isolated app), real `pyobs-gui` build not started |

@@ -1,6 +1,6 @@
 # Plan: `max_age` parameter for `get_state()` / `wait_for_state()`
 
-Status: proposed
+Status: implemented, closed.
 
 ## Problem
 

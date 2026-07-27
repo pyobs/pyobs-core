@@ -11,6 +11,62 @@ are **not going to be recovered by more digging** — either they're recalled di
 unknown and the scenarios below need to be run fresh to get real, reproducible numbers rather than
 trying to match an unrecoverable prior run.
 
+## Blockers found while getting the environment working (2026-07-27)
+
+Getting *any* scenario runnable surfaced three real, previously-undiscovered problems, in order —
+each one hid the next, because CI has never actually run these tests (see below):
+
+1. **Fixed, pushed (`efca1f75`).** `ejabberdctl`'s `CTL_ON_CREATE` never fired: `ejabberd/ecs:latest`
+   ships with `/home/ejabberd/database` (its Mnesia `SPOOL_DIR`) already present in the image layer,
+   so the `FIRST_RUN` check ejabberdctl gates `CTL_ON_CREATE` on is always false, even in a brand-new
+   container. `tests/xmpp/docker-compose.yml` now uses `CTL_ON_START` instead (runs unconditionally
+   every start, not gated on `FIRST_RUN`), with each `register` command prefixed `!` so a
+   "already registered" conflict on restart is logged and ignored instead of halting the whole
+   ejabberd node.
+2. **Fixed, committed and pushed to `develop` (`efca1f75`).** `pyobs/comm/xmpp/xmppcomm.py` set
+   `unencrypted_scram` for non-TLS connections but never `unencrypted_plain`. Confirmed via isolated
+   raw-slixmpp reproduction: SCRAM mechanisms fail unencrypted against ejabberd 26.4.0 with "Invalid
+   channel binding", and without `unencrypted_plain` slixmpp refuses to even attempt PLAIN over a
+   plaintext connection — so every non-TLS connection exhausted all mechanisms and failed with "No
+   appropriate login method" / "Invalid credentials". This is why *no* xmpp-marked integration test
+   could ever have passed against a fresh local ejabberd before this fix.
+3. **Fixed, in `tests/xmpp/ejabberd.yml` / `docker-compose.yml`.** With (1) and (2) fixed, all 30
+   xmpp-marked integration tests still failed (42 non-xmpp tests passed), but with a *different*
+   symptom: no more auth errors, instead `"camera" in observer_comm.clients"` never became true
+   (e.g. `test_xmpp_acl.py::test_acl_deny_forbids_call`). Isolated with a raw two-client slixmpp
+   reproduction: `send_presence()` (no `to` attribute) is only echoed back to the sender's own
+   resource — the other party never received it at all. Root cause: peer discovery in `XmppComm`
+   depends entirely on receiving the other party's presence broadcast, which per XMPP spec requires
+   a roster subscription (or a server-side shared-roster-group policy) between the two JIDs — and
+   neither existed: `tests/xmpp/ejabberd.yml` loaded bare `mod_roster: {}` with no shared-roster-
+   group config, and `xmppcomm.py` never sends or auto-accepts subscription requests.
+   - Fixed server-side: `ejabberd.yml` now also loads `mod_admin_extra` (needed to expose the
+     `srg_*` ejabberdctl commands at all) and `mod_shared_roster`, and `docker-compose.yml`'s
+     `CTL_ON_START` runs `srg_create all localhost all all all` +
+     `srg_user_add @all@ localhost all localhost` — putting every registered user in one shared
+     roster group (`@all@` is ejabberd's wildcard for "all registered users on this host"), so they
+     see each other's presence with no explicit subscription needed. Both commands are idempotent
+     on rerun (unlike `register`), so no `!` prefix needed for those two.
+   - Verified with the raw two-client presence reproduction (both sides now receive each other's
+     presence) and with the full suite: **72 passed** (`pytest -m integration`, clean run, no manual
+     intervention).
+   - Still an open design question for *production* pyobs deployments, not just this test fixture:
+     this only works because the test ejabberd is fully owned by pyobs's own accounts. A real
+     observatory's ejabberd server would need the same shared-roster-group (or equivalent) set up by
+     whoever administers it — `xmppcomm.py` never sends/auto-accepts subscription requests itself,
+     so peer discovery has an undocumented server-config dependency beyond just "run ejabberd".
+     Worth a follow-up: either document this requirement prominently, or move the fix client-side
+     (`XmppComm` sending/auto-approving subscription requests) so it works against any standard
+     ejabberd deployment with zero special config.
+   - Aside: **CI's "Integration Tests" workflow has never actually exercised any of this.** Every run
+     back through the workflow's history shows `72 skipped, 1323 deselected` — all of `-m
+     integration` skipped in one shot, including tests with no xmpp dependency at all
+     (`test_astroplanscheduler.py` etc.), despite the workflow setting `PYOBS_TEST_XMPP_HOST:
+     localhost`. Not yet diagnosed why *non-xmpp* integration tests are skipped in CI when they
+     aren't locally — a separate mystery from the three blockers above, flagged but not investigated.
+
+All three environment blockers are now resolved — scenario 1 (and the rest) can actually be run.
+
 ## Prior finding
 
 - [x] What "slower" meant concretely: aggregate wall-clock time for a batch of concurrent pushes
@@ -76,13 +132,45 @@ reproduce under a controlled test.
 - Baseline: the existing `tests/xmpp/docker-compose.yml` / `tests/xmpp/ejabberd.yml` — single
   container, already used by the `-m xmpp` integration suite, so results are reproducible by anyone
   running this repo.
-- **`tests/xmpp/ejabberd.yml` declares no explicit shapers.** ejabberd applies its own built-in
-  default shaper limits even when a config doesn't mention them — worth checking what those
-  defaults actually are (`ejabberdctl` shaper introspection, or just reading the ejabberd docs for
-  the version pinned by `ejabberd/ecs:latest`) before running anything, since a default shaper
-  throttling bursts is a very plausible mechanism for "concurrent slower than sequential" and would
-  change the story from "XMPP/PubSub doesn't handle concurrency well" to "this specific config
-  throttles bursts, tune the shaper."
+- **Shaper defaults checked (2026-07-27) via `ejabberdctl dump_config` against the running
+  `ejabberd/ecs:latest` (26.4.0) test container.** Confirmed `tests/xmpp/ejabberd.yml` was relying
+  on ejabberd's built-in default: `shaper.normal = {rate: 3000, burst_size: 20000}`, and
+  `shaper_rules.c2s_shaper = {none: admin, normal: all}` — since neither `camera` nor `observer`
+  (the test accounts) is `admin@localhost`, every benchmark client is throttled to 3000 B/s
+  sustained with only a 20000-byte burst allowance. This is a strong, concrete mechanism for the
+  earlier 15x concurrent-vs-sequential finding: a burst of simultaneous `set_state()` IQs can
+  exhaust the 20000-byte bucket almost immediately, after which everything queued behind it pays
+  queuing delay at 3000 B/s — whereas the same messages spread out sequentially may never cross the
+  bucket.
+  - Made explicit in `tests/xmpp/ejabberd.yml` (was implicit) so the baseline is visible and
+    reproducible rather than a silent default. This one stays under `tests/xmpp/` since it's the
+    config the `-m xmpp` integration suite also loads.
+  - The shaper *variants* below are benchmark-only (never used by the pytest integration suite), so
+    they live under `scripts/xmpp/` next to the harness script itself, not `tests/xmpp/`:
+    - `scripts/xmpp/ejabberd-shaper-10x.yml` (rate 30000, burst_size 200000 — 10x default, matching
+      the multiplier the user runs in their own production ejabberd deployments) +
+      `scripts/xmpp/docker-compose.shaper-10x.yml`.
+    - `scripts/xmpp/ejabberd-fast-shaper.yml` — default rate values, but adds a `benchmark_clients`
+      ACL (`camera@localhost`, `observer@localhost`) and routes it to the `fast` shaper (100000 B/s,
+      no burst cap) instead of `normal`, via `shaper_rules.c2s_shaper: {none: admin, fast:
+      benchmark_clients, normal: all}` + `scripts/xmpp/docker-compose.fast-shaper.yml`. Tests
+      whether simply exempting benchmark clients from the throttled c2s track (as a production
+      deployment might via ACL) removes the concurrent-vs-sequential slowdown — independent of, and
+      complementary to, the 10x-rate question.
+    - All three configs verified live (2026-07-27) via `ejabberdctl dump_config` against a
+      throwaway container — each produces the expected effective `shaper`/`shaper_rules`/`acl`.
+  - **Invocation order matters**: relative bind-mount paths in an override resolve against the
+    *first* `-f` file's directory, so always pass `tests/xmpp/docker-compose.yml` first, the
+    override second, e.g. from repo root:
+    `docker compose -f tests/xmpp/docker-compose.yml -f scripts/xmpp/docker-compose.shaper-10x.yml up -d`
+  - **Host port conflict**: this dev machine already runs an unrelated local ejabberd bound to host
+    5222 — the benchmark must not touch it. `tests/xmpp/docker-compose.yml`'s port mapping is now
+    `${EJABBERD_HOST_PORT:-5222}:5222` (defaults unchanged for CI/other users); set
+    `EJABBERD_HOST_PORT=25222` (verified free) before `up` when 5222 is already taken locally, and
+    point `PYOBS_TEST_XMPP_PORT`/the benchmark script's connection config at the same port.
+  - **Benchmark plan now runs every scenario under all three shaper configs** (default 3k/20k
+    normal-track, 10x 30k/200k normal-track, default-rate fast-track) to separate "shaper-throttling
+    artifact" from "inherent XMPP/PubSub concurrency cost" — see Scenarios below.
 - `docker-compose.yml`'s `CTL_ON_CREATE` currently registers only `camera` and `observer`
   (`tests/xmpp/docker-compose.yml:8-10`). A multi-client scenario needs N accounts — either extend
   `CTL_ON_CREATE` with a generated list, or register accounts programmatically via `ejabberdctl
@@ -120,6 +208,21 @@ latency = time.perf_counter() - start
 ```
 
 ### Scenarios
+
+Run scenarios 1-3 (at minimum) under **all three** shaper configs, restarting the container with the
+appropriate compose override between runs:
+
+1. `tests/xmpp/ejabberd.yml` — default, normal-track (3000 B/s / 20000 B burst).
+2. `scripts/xmpp/ejabberd-shaper-10x.yml` — 10x, normal-track (30000 B/s / 200000 B burst, matching
+   production).
+3. `scripts/xmpp/ejabberd-fast-shaper.yml` — default rates, but benchmark clients routed to the
+   `fast` shaper (100000 B/s, no burst cap) instead of `normal`.
+
+Tag every recorded data point with which shaper config produced it. Configs 1 vs. 2 isolate whether
+raising the *rate* fixes it; 1 vs. 3 isolates whether simply moving clients off the throttled c2s
+track fixes it. Together they answer whether the 15x concurrent-vs-sequential effect is
+shaper-throttling at all (ratio should shrink or vanish under 2 and/or 3) or something else (ratio
+persists regardless of shaper config).
 
 1. **Sequential baseline.** One client, N publishes (to N distinct nodes, i.e. N different
    interfaces/modules — avoid conflating "same node repeatedly" with "realistic fleet traffic"),

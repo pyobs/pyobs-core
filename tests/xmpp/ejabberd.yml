@@ -25,7 +25,26 @@ access_rules:
   announce:
     allow: admins
 
+# Made explicit (was previously relying on ejabberd's built-in default of the same
+# values) so the throughput benchmark's baseline shaper config is visible and
+# reproducible rather than an implicit default. See
+# specs/plans/ejabberd-throughput-benchmarking.md — this "normal" shaper applies to
+# all non-admin c2s connections, i.e. every benchmark client, and is the prime
+# suspect for the earlier "concurrent pushes ~15x slower than sequential" finding.
+shaper:
+  normal:
+    rate: 3000
+    burst_size: 20000
+  fast: 100000
+
+shaper_rules:
+  c2s_shaper:
+    none: admin
+    normal: all
+  s2s_shaper: fast
+
 modules:
+  mod_admin_extra: {}
   mod_caps: {}
   mod_disco: {}
   mod_ping: {}
@@ -43,4 +62,5 @@ modules:
       send_last_published_item: on_sub_and_presence
       notify_retract: false
   mod_roster: {}
+  mod_shared_roster: {}
   mod_vcard: {}

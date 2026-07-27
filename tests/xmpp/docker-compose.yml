@@ -2,14 +2,37 @@ services:
   ejabberd:
     image: ejabberd/ecs:latest
     ports:
-      - "5222:5222"
+      # Override via EJABBERD_HOST_PORT if host 5222 is already in use locally
+      # (e.g. a separate, unrelated ejabberd instance) — defaults to 5222 to match
+      # existing CI/integration-test usage unchanged.
+      - "${EJABBERD_HOST_PORT:-5222}:5222"
     volumes:
       - ./ejabberd.yml:/home/ejabberd/conf/ejabberd.yml:ro
     environment:
-      # Register accounts used by the integration tests on first start
-      CTL_ON_CREATE: >-
-        register camera localhost pyobs ;
-        register observer localhost pyobs
+      # CTL_ON_CREATE (only runs when ejabberdctl's SPOOL_DIR doesn't exist yet)
+      # never fires here: ejabberd/ecs:latest ships with /home/ejabberd/database
+      # already present in the image layer, so ejabberdctl's FIRST_RUN check is
+      # always false, even in a brand-new container — confirmed 2026-07-27 via
+      # ejabberdctl's own source (tests/xmpp docker-compose has no volume for that
+      # path, so nothing ever makes it genuinely absent). Use CTL_ON_START instead,
+      # which runs on every start unconditionally. Each command is prefixed with
+      # "!" so a "already registered" conflict on restart is logged and ignored
+      # instead of halting the whole ejabberd node (ejabberdctl's post_waiter_loop
+      # halts on any non-"!"-prefixed command that exits non-zero).
+      #
+      # srg_create/srg_user_add put every registered user into one shared roster
+      # group (the special "@all@" member is ejabberd's wildcard for "all
+      # registered users on this host") so they see each other's presence without
+      # an explicit roster subscription -- XmppComm never sends or auto-approves
+      # subscription requests, and plain broadcast presence (no "to" attribute)
+      # only echoes back to the sender's own resources without one. Both
+      # commands are idempotent on an existing group/membership (unlike
+      # register), so no "!" prefix needed for those two.
+      CTL_ON_START: >-
+        ! register camera localhost pyobs ;
+        ! register observer localhost pyobs ;
+        srg_create all localhost all all all ;
+        srg_user_add @all@ localhost all localhost
     healthcheck:
       test: ["CMD", "ejabberdctl", "status"]
       interval: 3s

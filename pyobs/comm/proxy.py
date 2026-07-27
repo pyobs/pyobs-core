@@ -7,6 +7,7 @@ from collections.abc import Coroutine
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, get_type_hints
 
 from pyobs.interfaces import Interface
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.comm import Comm
@@ -172,9 +173,22 @@ class Proxy:
         """Clear all cached state. Called by Comm when the remote module disconnects."""
         self._state.clear()
 
-    def get_state(self, interface: type[Interface]) -> Any | None:
-        """Latest known state for the given interface, or None if nothing has arrived yet."""
-        return self._state.get(interface)
+    def get_state(self, interface: type[Interface], *, max_age: float | None = None) -> Any | None:
+        """Latest known state for the given interface, or None if nothing has arrived yet
+        (or, with max_age given, if the latest known state is older than max_age seconds)."""
+        state = self._state.get(interface)
+        if state is None or max_age is None:
+            return state
+        return state if self._state_age(state) <= max_age else None
+
+    def _state_age(self, state: Any) -> float:
+        """Seconds since `state` (a State dataclass instance) was constructed by its publisher."""
+        t = getattr(state, "time", None)
+        if t is None:
+            raise ValueError(
+                f"{type(state).__name__} has no 'time' field -- max_age is not supported for this interface."
+            )
+        return (Time.now() - t).sec
 
     def update_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
         """Called by Comm once capabilities for an interface arrive.
@@ -194,16 +208,22 @@ class Proxy:
         self,
         interface: type[Interface],
         timeout: float = 10.0,
+        *,
+        max_age: float | None = None,
     ) -> Any:
-        """Return state immediately if available, otherwise wait for the first update.
+        """Return state immediately if available (and fresh enough per max_age), otherwise wait
+        for the next update.
 
         Returns None on timeout rather than raising -- every caller across the codebase already
         does `if state is not None else ...` right after calling this, so that's the contract
         actually being relied on; letting asyncio.wait_for's TimeoutError propagate would just
-        turn "peer hasn't published yet" into an unhandled exception for all of them.
+        turn "peer hasn't published yet" into an unhandled exception for all of them. The same
+        None-on-"not usable yet" contract now also covers "published, but too stale" when max_age
+        is given.
         """
-        if self._state.get(interface) is not None:
-            return self._state[interface]
+        cached = self._state.get(interface)
+        if cached is not None and (max_age is None or self._state_age(cached) <= max_age):
+            return cached
 
         event = asyncio.Event()
 
@@ -220,7 +240,10 @@ class Proxy:
         finally:
             await self._comm.unsubscribe_state(self._client, interface, _notify)
 
-        return self._state.get(interface)
+        result = self._state.get(interface)
+        if max_age is not None and result is not None and self._state_age(result) > max_age:
+            return None
+        return result
 
     async def wait_for_capabilities(
         self,

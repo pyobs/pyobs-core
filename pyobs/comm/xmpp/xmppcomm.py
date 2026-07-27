@@ -315,6 +315,14 @@ class XmppComm(Comm):
         self._xmpp.enable_direct_tls = self._use_tls
         self._xmpp.enable_plaintext = not self._use_tls
         self._xmpp.plugin["feature_mechanisms"].unencrypted_scram = not self._use_tls  # type: ignore[typeddict-item]
+        # Without this, slixmpp still refuses PLAIN over a non-TLS connection even
+        # with enable_plaintext set above -- it only affects the stream feature
+        # advertisement, not SASL mechanism selection. Matters in practice: this
+        # server's SCRAM implementation fails unencrypted SCRAM auth with "Invalid
+        # channel binding" (confirmed against ejabberd 26.4.0), so without this
+        # flag every non-TLS connection falls through all mechanisms and fails
+        # with "No appropriate login method" rather than falling back to PLAIN.
+        self._xmpp.plugin["feature_mechanisms"].unencrypted_plain = not self._use_tls  # type: ignore[typeddict-item]
         if self._ignore_cert_errors:
             self._xmpp.ssl_context.check_hostname = False
             self._xmpp.ssl_context.verify_mode = ssl.CERT_NONE

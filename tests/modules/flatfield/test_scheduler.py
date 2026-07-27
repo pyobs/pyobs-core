@@ -35,22 +35,6 @@ def setup_flatfield_proxy(module: FlatFieldScheduler, flatfield: MagicMock) -> N
     module._comm.proxy = MagicMock(side_effect=proxy_se)
 
 
-# ── open ────────────────────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_open_checks_flatfield_proxy(mocker) -> None:
-    from pyobs.modules import Module
-
-    module = make_scheduler_module()
-    module._comm.has_proxy = AsyncMock(return_value=True)
-    mocker.patch.object(Module, "open", AsyncMock())
-
-    await module.open()
-
-    module._comm.has_proxy.assert_awaited_once_with("flatfield", IFlatField)
-
-
 # ── run ─────────────────────────────────────────────────────────────────────
 
 

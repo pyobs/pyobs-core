@@ -106,14 +106,6 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """Open module"""
         await Module.open(self)
 
-        # check telescope, camera, and filters
-        if (
-            not await self.has_proxy(self._telescope, ITelescope)
-            or not await self.has_proxy(self._camera, ICamera)
-            or not await self.has_proxy(self._filter_wheel, IFilters)
-        ):
-            log.warning("Either telescope, camera or filters do not exist or are not of correct type at the moment.")
-
         # subscribe to events
         if self._comm:
             await self.comm.register_event(BadWeatherEvent, self._abort_weather)
@@ -121,8 +113,10 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         # publish initial states
         await self.comm.set_state(IBinning, BinningState(x=self._binning[0], y=self._binning[1]))
-        if self._filter is not None:
-            await self.comm.set_state(IFilters, FilterState(filter=self._filter))
+        # publish even with no filter selected yet, so the pubsub node exists for anything that
+        # subscribes to it (see IMotion below) -- otherwise, since nothing sets self._filter until
+        # set_filter() is called, this node would never be created on a fresh start
+        await self.comm.set_state(IFilters, FilterState(filter=self._filter or ""))
         await self.comm.set_state(IReady, ReadyState(ready=True))
         # IFilters extends IMotion, but FlatField isn't itself a moving device -- publish a
         # static state so the pubsub node exists for anything that subscribes to it

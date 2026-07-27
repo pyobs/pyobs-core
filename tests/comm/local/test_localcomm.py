@@ -6,7 +6,7 @@ import pytest
 
 from pyobs.comm.local.localcomm import LocalComm
 from pyobs.comm.local.localnetwork import LocalNetwork
-from pyobs.events import BadWeatherEvent, GoodWeatherEvent
+from pyobs.events import BadWeatherEvent, GoodWeatherEvent, ModuleOpenedEvent
 from pyobs.interfaces import IExposureTime
 
 
@@ -143,5 +143,49 @@ async def test_send_event_dispatches_to_sender_too(reset_network) -> None:
 
     event = GoodWeatherEvent()
     await comm.send_event(event)
+
+
+# ── mark_ready ───────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_mark_ready_announces_to_already_connected_peers(reset_network) -> None:
+    """#677: a late-joining module must announce itself via ModuleOpenedEvent once ready, so
+    already-running peers (e.g. pyobs-gui) discover it instead of staying blind until restart."""
+    peer = make_comm("gui")
+    handler = AsyncMock(return_value=True)
+    await peer.register_event(ModuleOpenedEvent, handler)
+
+    late_joiner = make_comm("camera")
+    await late_joiner.mark_ready()
+
+    handler.assert_called_once()
+    event, sender = handler.call_args[0]
+    assert isinstance(event, ModuleOpenedEvent)
+    assert sender == "camera"
+
+
+@pytest.mark.asyncio
+async def test_mark_ready_does_not_announce_to_self(reset_network) -> None:
+    comm = make_comm("camera")
+    handler = AsyncMock(return_value=True)
+    await comm.register_event(ModuleOpenedEvent, handler)
+
+    await comm.mark_ready()
+
+    handler.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_mark_ready_only_announces_once(reset_network) -> None:
+    peer = make_comm("gui")
+    handler = AsyncMock(return_value=True)
+    await peer.register_event(ModuleOpenedEvent, handler)
+
+    late_joiner = make_comm("camera")
+    await late_joiner.mark_ready()
+    await late_joiner.mark_ready()
+
+    handler.assert_called_once()
 
     handler.assert_called_once()

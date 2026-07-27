@@ -1,0 +1,64 @@
+hosts:
+  - "localhost"
+
+loglevel: warning
+
+# Plain TCP only — no TLS needed for testing
+listen:
+  - port: 5222
+    ip: "::"
+    module: ejabberd_c2s
+    starttls: false
+
+auth_method:
+  - internal
+
+acl:
+  local:
+    user_regexp: ""
+
+access_rules:
+  local:
+    allow: local
+  pubsub_createnode:
+    allow: local
+  announce:
+    allow: admins
+
+# 10x the ejabberd built-in default shaper (see ejabberd.yml) — the config the user
+# runs in production. Used as the second leg of the throughput benchmark's shaper
+# comparison: same scenarios, only this file swapped in, to see how much of the
+# earlier "concurrent ~15x slower" effect is shaper-throttling vs. something else.
+shaper:
+  normal:
+    rate: 30000
+    burst_size: 200000
+  fast: 100000
+
+shaper_rules:
+  c2s_shaper:
+    none: admin
+    normal: all
+  s2s_shaper: fast
+
+modules:
+  mod_admin_extra: {}
+  mod_caps: {}
+  mod_disco: {}
+  mod_ping: {}
+  mod_pubsub:
+    access_createnode: pubsub_createnode
+    plugins:
+      - flat
+    default_node_config:
+      # Keep only the latest value — state has no history
+      max_items: 1
+      persist_items: true
+      deliver_payloads: true
+      deliver_notifications: true
+      # Hand the current value to a new subscriber immediately on subscribe
+      send_last_published_item: on_sub_and_presence
+      notify_retract: false
+  mod_roster: {}
+  mod_shared_roster: {}
+  mod_vcard: {}

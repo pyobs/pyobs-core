@@ -200,6 +200,54 @@ publish is too old, no other change is needed in `__weather_check()` — line 12
 treats "no usable state" as bad weather (fail-safe), which is exactly the right behavior for a
 stale feed too.
 
+### 4. Follow-up consumers: `FollowMixin` and `FocusModel`
+
+Found during a systematic pass over every `get_state()`/`wait_for_state()` call site in the
+codebase (prompted by re-examining the "none of them need it" claim in Consequences below), two
+more consumers fit the same "periodic reading, staleness has a real consequence" shape that
+justified fixing `WeatherAwareMixin`:
+
+- **`pyobs/mixins/follow.py`** (`FollowMixin.__update_follow`) — polls a *followed* device's
+  `IPointingAltAz`/`IPointingRaDec` with a bare `get_state()` (not even `wait_for_state`, no
+  timeout, no freshness check at all previously) and decides whether to slew to match it. If the
+  followed device's own position-publish loop dies while its connection stays up, `FollowMixin` had
+  no way to notice and would keep following a frozen position indefinitely — arguably a sharper
+  case than `Weather`'s, since it wasn't even calling `wait_for_state`. Fixed by threading `max_age`
+  through `get_coords()` (only for the `Proxy` branch — a `Module`'s own state, read via
+  `get_own_state()`, is always current from its own perspective and doesn't need the check) and
+  adding a `follow_max_age: float | None = None` constructor param, defaulting to `interval * 3`
+  when not given. When the followed device's state goes stale, `get_coords()` raises the same
+  `ValueError` it already raises for "never published," which `__update_follow`'s existing
+  `except (ValueError, exc.RemoteError):` handler already treats as a fail-safe "could not fetch
+  coordinates, back off" case — no new control-flow path needed.
+- **`pyobs/modules/focus/focusmodel.py`** (`_update()`'s temperature fetch, line ~326) — used
+  `wait_for_state(ITemperatures)` with no `max_age` to feed a temperature reading into the focus
+  correction model. Already had a timeout for "never published," but a dead sensor module's last
+  cached reading would otherwise be trusted forever, silently degrading focus accuracy. Lower
+  stakes than `Weather` (image quality, not equipment safety), but same shape. Fixed with a
+  `temp_max_age: float | None = None` constructor param, defaulting to `interval * 2`. When stale,
+  `wait_for_state` returns `None` the same as "never published," which the existing code already
+  turns into an empty `module_temps[cfg["module"]]` dict and, downstream, a `MissingSensorError` —
+  again, no new control-flow path needed.
+
+Both defaults are scaled off each mixin's/module's own existing cadence parameter (`interval`)
+rather than a hardcoded absolute constant, since the right absolute value depends on how often the
+*other* module (the one being watched) actually republishes — which varies by hardware/module and
+isn't knowable at the consumer site. Like `weather_max_age`'s `120.0`, these are judgment calls
+flagged for revisiting against real deployment behavior, not derived constants.
+
+Consumer sites reviewed and found *not* to need `max_age`, confirming rather than just asserting the
+original claim below:
+- `IOffsetsRaDec`/`IOffsetsAltAz` (`applyoffsets.py`, `applyradecoffsets.py`,
+  `applyaltazoffsets.py`) — cumulative setpoint state, valid until explicitly changed, same
+  category as `ICooling`/`IFocuser` setpoints already excluded by the Decision section above.
+- `IReady` (various robotic scripts, `flatfield.py`) — an event-driven level flag republished on
+  change by `motionstatus.py`, not a periodic heartbeat; `max_age` can't distinguish "still
+  correctly ready" from "hung" for a value that's only supposed to change on real transitions.
+- `IMotion` in `waitformotion.py` — already self-limiting: it polls in a loop bounded by its own
+  overall `wait_for_timeout` and raises `TimeoutError`, so a frozen value already fails safe
+  without `max_age`.
+
 ## Consequences
 
 - **Good:** Closes the concrete gap found — a dead `Weather` update loop now degrades to "bad
@@ -209,12 +257,11 @@ stale feed too.
   call site (all the ones enumerated in Problem) keeps its current behavior unchanged.
 - **Good:** No new interface/wire changes — `time` is already published today; this only adds a
   consumer-side check.
-- **Neutral:** Only `WeatherAwareMixin` is updated to use `max_age` as part of this plan. Other
-  consumer sites (`follow.py`, `acquisition.py`'s offset/pointing reads, `focusmodel.py`'s
-  temperature read, etc.) are left as-is — none of them were found to have the same "silently
-  trusts arbitrarily old data with a safety consequence" shape that `WeatherAwareMixin` has, and
-  adding `max_age` to them speculatively isn't part of this plan. Worth a follow-up look if a
-  similar concrete case turns up.
+- **Good:** A systematic pass over every remaining `get_state()`/`wait_for_state()` call site
+  (Implementation §4) found two more consumers with the same shape as `WeatherAwareMixin` —
+  `FollowMixin` and `FocusModel` — and fixed both. The other consumer sites (`acquisition.py`'s
+  offset/pointing reads, `applyoffsets.py`, `waitformotion.py`, `IReady` checks, etc.) were reviewed
+  and confirmed to not need it, rather than left unchecked on the original "probably fine" claim.
 - **Neutral:** `max_age` assumes the interface's `State` dataclass has a `.time` field. True for
   all 33 stateful interfaces today (verified against the registry, not by convention alone), and
   `_state_age()` raises `ValueError` immediately if a future interface breaks that — a clear

@@ -103,10 +103,6 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         await self.comm.set_state(IAcquisition, AcquisitionState())
         await self.comm.set_state(IRunning, RunningState(running=False))
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return self._is_running
-
     @raises(exc.AbortedError, exc.AcquisitionError)
     @timeout(120)
     async def acquire_target(self, **kwargs: Any) -> AcquisitionResult:

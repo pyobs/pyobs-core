@@ -112,10 +112,6 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         self._active = False
         await self.comm.set_state(IRunning, RunningState(running=self._active))
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return self._active
-
     async def _run(self) -> None:
         while True:
             await self._loop()

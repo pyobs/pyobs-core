@@ -107,7 +107,7 @@ async def test_close_cleans_up_runner(mocker) -> None:
     kiosk._runner.cleanup.assert_awaited_once()
 
 
-# ── start/stop/is_running ──────────────────────────────────────────────────────
+# ── start/stop ──────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -136,14 +136,6 @@ async def test_stop_clears_running_and_publishes_state() -> None:
     interface, state = kiosk._comm.set_state.await_args[0]
     assert interface is IRunning
     assert state.running is False
-
-
-@pytest.mark.asyncio
-async def test_is_running_reflects_state() -> None:
-    kiosk = make_kiosk()
-    assert await kiosk.is_running() is False
-    kiosk._running = True
-    assert await kiosk.is_running() is True
 
 
 # ── _camera_thread ─────────────────────────────────────────────────────────────

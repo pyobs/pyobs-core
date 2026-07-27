@@ -59,10 +59,6 @@ class DummyAcquisition(Module, IAcquisition):
         await self.comm.set_state(IAcquisition, AcquisitionState())
         await self.comm.set_state(IRunning, RunningState(running=False))
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return self._is_running
-
     @timeout(120)
     async def acquire_target(self, **kwargs: Any) -> AcquisitionResult:
         """Acquire target at given coordinates.

@@ -40,9 +40,6 @@ class _StartStopModule(Module, IStartStop):
     async def stop(self, **kwargs: Any) -> None:
         self.running = False
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        return self.running
-
 
 def test_module_starts_in_starting_state() -> None:
     """A freshly constructed module hasn't been started yet."""

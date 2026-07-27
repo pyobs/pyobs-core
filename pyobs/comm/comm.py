@@ -382,7 +382,10 @@ class Comm:
                 return
 
             except Exception:
-                log.exception("Something went wrong")
+                # don't forward this back through CommLoggingHandler -- it would re-queue
+                # itself onto _log_queue, and if the send failure is due to a sustained
+                # outage, every retry generates another one of these, forever
+                log.exception("Something went wrong", extra={"pyobs_no_forward": True})
                 pass
 
     def log_message(self, entry: LogEvent) -> None:

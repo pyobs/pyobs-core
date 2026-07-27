@@ -132,6 +132,27 @@ def test_emit_uses_record_created_as_iso_time(handler: CommLoggingHandler, comm:
         float(event.time)
 
 
+def test_emit_skips_records_marked_no_forward(handler: CommLoggingHandler, comm: MagicMock) -> None:
+    """A record marked pyobs_no_forward must not be queued -- see Comm._logging's own except
+
+    block, which relies on this to avoid re-queuing its own "send failed" log record onto the
+    same queue whose send just failed (an unbounded loop under a sustained outage otherwise).
+    """
+    record = logging.LogRecord(
+        name="test",
+        level=logging.ERROR,
+        pathname="f.py",
+        lineno=1,
+        msg="Something went wrong",
+        args=(),
+        exc_info=None,
+        func="f",
+    )
+    record.pyobs_no_forward = True
+    handler.emit(record)
+    comm.log_message.assert_not_called()
+
+
 def test_via_logging_integration(comm: MagicMock) -> None:
     """Handler works correctly when attached to a real logger."""
     handler = CommLoggingHandler(comm)

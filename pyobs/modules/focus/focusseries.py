@@ -291,10 +291,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         """Abort current actions."""
         self._abort.set()
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return self._running
-
     async def _on_bad_weather(self, event: Event, sender: str) -> bool:
         """Abort series if a bad weather event occurs.
 

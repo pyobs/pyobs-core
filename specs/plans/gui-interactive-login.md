@@ -2,6 +2,8 @@
 
 Status: draft
 Repos: pyobs-core (this plan's scope — see Non-goals), pyobs-gui (follow-on, depends on this)
+See `specs/design/gui-standalone-binary.md` for the bigger picture this is one piece of, and
+`specs/plans/gui-login-window.md` for the pyobs-gui-side follow-on this unblocks.
 
 ## Problem
 
@@ -58,8 +60,8 @@ doesn't support today.
 - Changing how `vfs`/`observer`/`location` are configured — v1 of the interactive flow only needs
   to solve `comm` (the XMPP connection details); those already default sanely with no config at all
   (`object.py:280-283`, `object.py:311-321`) and can stay YAML/default-driven if ever needed.
-- Packaging/compiling itself (`pyside6-deploy`, Nuitka, installers) — separate concern, already
-  discussed, not blocked by or part of this plan.
+- Packaging/compiling itself (`pyside6-deploy`, Nuitka, installers) — separate concern, not blocked
+  by or part of this plan; see `specs/plans/gui-widget-plugins-and-packaging.md`.
 - Any change to `MultiModule`, which has its own separate construction path
   (`pyobs/modules/module.py:862-894`) not touched here.
 

@@ -99,10 +99,6 @@ class DummyAutoFocus(Module, IAutoFocus):
         await self.comm.send_event(FocusFoundEvent(self._best_focus, error))
         return AutoFocusResult(focus=self._best_focus, focus_err=error)
 
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return self._running
-
     async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()

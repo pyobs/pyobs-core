@@ -50,7 +50,7 @@ class PointingSeries(Module, IAutonomous):
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
-        await self.comm.set_state(IRunning, RunningState(running=await self.is_running()))
+        await self.comm.set_state(IRunning, RunningState(running=True))
 
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
@@ -59,10 +59,6 @@ class PointingSeries(Module, IAutonomous):
     async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         pass
-
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return True
 
     async def _run_thread(self) -> None:
         """Run a pointing series."""

@@ -1009,6 +1009,83 @@ the exact same (still unidentified) triggering condition.
   killing/kicking sessions whose `Recv-Q` has been nonzero and non-decreasing for more than N seconds)
   could auto-recover affected connections without needing the underlying bug fixed first.
 
+### Sixth investigation session (2026-07-28, same day) — read upstream source, found the likely exact mechanism
+
+Note on this session: partway through, production `ejabberd` on `iag50srv` went down (see incident note
+below) — unrelated to the source-reading work itself, but worth flagging that this investigation session
+briefly overlapped with a real outage on the server being investigated.
+
+Read the actual `processone/xmpp` (v1.9.4, matching the installed `erlang-p1-xmpp` package) and
+`processone/ejabberd` (tag `24.12`, matching installed `ejabberd 24.12-3+deb13u2`) source from GitHub —
+public repos, fetched directly — to trace the exact re-arm code path starting from the stuck frame found
+in session five (`p1_server.erl:421`/`:438`, `collect_messages/3`/`process_message/9`).
+
+**`p1_server.erl` is confirmed generic, not buggy.** `collect_messages/3` (lines 425-447) is a completely
+generic message-loop primitive — the stuck process was simply in its normal, correct idle-wait state
+(`receive Input -> ... after Time -> {timeout, ...}` at line 440-445). The bug is not in this file; it's
+in whatever is supposed to deliver the next message to this process.
+
+**Found the real re-arm mechanism in `xmpp_socket.erl`** (`processone/xmpp` library):
+- `activate/1` (lines 466-470) is the actual re-arm: `SockMod:setopts(Socket, [{active, once}])`.
+- `parse/2` (lines 485-524) is the function responsible for calling it, with four clauses: the `Data ==
+  <<>>`/`Data == []` base case calls `activate/1` directly; two list-recursion clauses (`[El|Els]` for
+  decoded XML elements) recurse toward that base case; and the raw-binary clause (`is_binary(Data)`)
+  calls `fxml_stream:parse` then either `activate/1` directly or, **if the shaper says to throttle
+  (`Pause > 0`), calls `activate_after/3` instead.**
+- `activate_after/3` (lines 472-478) does **not** re-arm the socket at all in the throttled case. It
+  schedules a *synthetic* `{tcp, Socket, <<>>}` message via `erlang:send_after(Pause, Pid, ...)` — the
+  real re-arm only happens later, when that fake message works its way back through the full receive
+  pipeline (`handle_info` → `xmpp_socket:recv/2` → `fast_tls:recv_data` (decrypting nothing) →
+  `parse/2` → *now* the base case fires and calls `activate/1` for real).
+
+**This is architecturally far more fragile than the direct path** — a timer, a synthetic self-message,
+and a second full decrypt-and-reparse round-trip, instead of one direct `setopts` call. Traced one
+concrete way it can silently break, in `xmpp_stream_in.erl`'s `handle_info`:
+```erlang
+handle_info({tcp, _, Data}, #{socket := Socket} = State) -> ... % normal path
+% Skip new tcp messages after socket get removed from state
+handle_info({tcp, _, _}, State) ->
+    noreply(State);
+```
+If `socket` is removed from `State` (e.g. via the `release_socket` cast, `xmpp_stream_in.erl:324-329)
+while a delayed reactivation timer from `activate_after` is still pending, that timer's synthetic
+message lands in the second clause — **silently discarded, by explicit design/comment, with no further
+re-arm attempted.** Whether this exact clause or something structurally similar is the precise trigger
+for iag50's incident isn't proven (would need either a live-caught synthetic-message-loss event with
+tracing, or an upstream maintainer's confirmation), but the *shape* fits everything observed: no crash,
+no ejabberd log line at any level, no CPU/scheduler signal, no self-recovery — because nothing ever
+errors, a scheduled re-arm message simply never gets acted on.
+
+**This also reconciles the days-old "shaper hypothesis refuted" finding** from earlier in this same
+investigation (see "First real results" above): that test only checked whether the shaper's *rate limit*
+affects aggregate publish latency for a synthetic idle-client benchmark — it doesn't, confirmed across a
+33x rate spread. It never tested whether the shaper's pause-and-reactivate *mechanism itself* has a
+latent bug — a completely different question, and the one this session's source-reading points at. It
+also explains the "real modules only, never idle synthetic clients" pattern that's held across every run
+in this doc: idle `XmppComm` clients barely generate enough traffic to ever trip `Pause > 0` in the first
+place, while real modules' actual traffic (periodic state pushes, capability-fetch bursts, log
+forwarding) plausibly does, on iag50's specific (low, 3000 B/s default per the shaper config documented
+at the top of this doc) shaper rate.
+
+**Not yet done, and probably the right place to stop live-testing this specific incident**: actually
+proving the `release_socket`-vs-pending-timer race (or whatever the precise trigger is) would need
+either instrumenting a fresh ejabberd build with tracing/logging added to `activate_after`/the
+`handle_info({tcp,_,_}, State)` fallback clause, or raising this with upstream (`processone/xmpp` /
+`processone/ejabberd`) maintainers with this session's findings and asking whether they recognize the
+pattern — same approach that worked for the slixmpp O(N²) bug filed earlier in this investigation
+(`poezio/slixmpp#3786`). This is a plausible, well-evidenced hypothesis backed by reading the actual
+running version's source, not a proven root cause.
+
+**Incidental production incident during this session:** `ejabberd` on `iag50srv` was stopped (clean,
+orderly shutdown per its own log — not a crash) partway through this session, apparently by an
+accidental `q().` typed at an `ejabberdctl debug` prompt from session five — in a `-remsh` session, `q()`
+calls `init:stop()` *on the target node*, not just detaching the local shell (the correct safe detach is
+`Ctrl+G` then `q` at the JCL prompt, or simply closing the connection). Caught within ~2.5 minutes via a
+routine `ejabberdctl status` check, restarted cleanly with `systemctl start ejabberd`, confirmed fully
+healthy (all listeners back, Mnesia synced, no new errors beyond pre-existing config warnings). Worth
+recording as a real operational lesson independent of the bug-hunt: **never use `q()` to detach an
+`ejabberdctl debug` session** — it stops production ejabberd, not the local shell.
+
 ## Problem
 
 There is currently no empirical throughput or latency data for pyobs's XMPP/PubSub transport.

@@ -78,6 +78,13 @@ def value_to_xml(value: Any, type_hint: Any) -> ET.Element:
         elem = ET.Element("nil")
         return elem
 
+    # Coerce to the declared `str` type when the runtime value doesn't match it (e.g. a
+    # stray bool leaking through code that violates a `dict[str, str]`'s own contract) --
+    # otherwise the isinstance-based dispatch below wins regardless of what the field
+    # actually declares, and the value's Python type silently corrupts across the wire.
+    if type_hint is str and not isinstance(value, str):
+        value = str(value)
+
     # bool (before int — bool is subclass of int)
     if isinstance(value, bool):
         elem = ET.Element("boolean")
@@ -106,6 +113,14 @@ def value_to_xml(value: Any, type_hint: Any) -> ET.Element:
     if isinstance(value, StrEnum):
         elem = ET.Element("string")
         elem.text = value.value
+        return elem
+
+    # Time (pyobs's astropy.time.Time subclass) -- serialize as ISO text, reconstructed on
+    # decode via type_hint (mirrors the StrEnum pattern above). Without this, Time fell
+    # through to the generic stringify fallback below with no way back to a Time object.
+    if isinstance(value, _Time):
+        elem = ET.Element("string")
+        elem.text = value.isot
         return elem
 
     # dataclass — serialize as <{namespace}state> with plain field children
@@ -198,6 +213,9 @@ def xml_to_value(elem: ET.Element, type_hint: Any) -> Any:
         # cast to enum if type_hint is a StrEnum subclass
         if type_hint and isinstance(type_hint, type) and issubclass(type_hint, StrEnum):
             return type_hint(text)
+        # cast to Time if type_hint is a Time subclass (see the matching encode branch)
+        if type_hint and isinstance(type_hint, type) and issubclass(type_hint, _Time):
+            return type_hint(text, format="isot")
         return text
 
     if tag == "items":
@@ -340,6 +358,8 @@ def _parse_scalar(text: str, type_hint: Any) -> Any:
         return float(text)
     if isinstance(type_hint, type) and issubclass(type_hint, StrEnum):
         return type_hint(text)
+    if isinstance(type_hint, type) and issubclass(type_hint, _Time):
+        return type_hint(text, format="isot")
     return text
 
 

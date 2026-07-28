@@ -925,6 +925,90 @@ buried in a long-running NIF call or has a backlogged mailbox, that would point 
 if it looks idle despite the stuck socket, that points toward something even lower-level (the TLS NIF,
 or ejabberd's socket-acceptor pooling) instead.
 
+### Fifth investigation session (2026-07-28, same day) — found the specific mechanism: an un-re-armed passive socket
+
+Did the Erlang-level introspection proposed above. `ejabberdctl debug` (an interactive `-remsh` shell
+into the live production node) is a materially more powerful/risky action than anything else in this
+doc — full read/write access to the live node's state — and was correctly blocked by this environment's
+own permission classifier when attempted directly. Split the work instead: the 7-module reproduction
+(`acquisition`, `autofocus`, `focusmodel`, `imagewatcher`, `imagewriter`, `scheduler`, `flatfield` — no
+`dome` needed this time, stuck connections showed up during ordinary startup again) and stuck-socket
+identification (via `ss -tinp`, matching local port to owning PID via `ps`) were done as before; the
+`ejabberdctl debug` session itself was run by the user directly, with exact Erlang expressions provided
+turn-by-turn.
+
+**Two connections were stuck within ~40s of the 7 modules starting** (no newcomer needed at all this
+time either): `flatfield` (ejabberd-side local port `57876`, `Recv-Q` 85134) and `scheduler` (port
+`54526`, `Recv-Q` 36091) — consistent with every run since the third: this is not a "newcomer" bug.
+
+**Found the Erlang port object for the stuck connection and its owning process:**
+```erlang
+Ports = [P || P <- erlang:ports(), (catch inet:peername(P)) =:= {ok, {{0,0,0,0,0,0,0,1}, 57876}}].
+[Port] = Ports, {connected, Pid} = erlang:port_info(Port, connected).
+```
+
+**`erlang:process_info(Pid, [message_queue_len, current_function, current_stacktrace, status,
+reductions, memory])` returned:**
+```erlang
+[{message_queue_len,0},
+ {current_function,{p1_server,collect_messages,3}},
+ {current_stacktrace,[{p1_server,collect_messages,3,[{file,"p1_server.erl"},{line,438}]},
+                       {p1_server,process_message,9,[{file,"p1_server.erl"},{line,421}]},
+                       {proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,329}]}]},
+ {status,waiting},
+ {reductions,511688},
+ {memory,142880}]
+```
+
+**The owning process is genuinely idle** — empty mailbox, `status: waiting`, blocked inside
+`p1_server:collect_messages/3` waiting for a *new* message, not a busy loop and not blocked on a slow
+call. Reductions (511688) show no runaway computation either. This process is not the problem.
+
+**`inet:getopts(Port, [active])` returned `{ok,[{active,false}]}`.** The socket is in **passive** mode
+— no automatic `{tcp, Socket, Data}` (or `{ssl, ...}`) messages are generated for it at all; something
+has to explicitly read from it. Combined with the process being idle waiting for a message that active
+mode would normally deliver, this is the mechanism: **the socket was put into passive mode (a normal,
+presumably-intentional step somewhere in ejabberd's TLS/c2s receive handling) and never switched back
+to `{active, once}`/`{active, N}` afterward.** The kernel keeps happily accepting bytes into `Recv-Q`
+(hence the growth seen in run 4's `ss` capture), but nothing above the kernel is ever told they arrived
+— the connection goes permanently deaf, with no crash, no log line, no CPU spike, and no self-recovery
+(matches run 4's 4+ minute observation with zero drainage).
+
+**Ruled out a separate reader/helper process as the visible culprit.** `erlang:port_info(Port, links)`
+→ only the c2s process itself (`Pid`). `erlang:process_info(Pid, links)` → the same port, plus one
+process (`<0.564.0>`) that turned out to be `ejabberd_c2s_sup` — the ordinary c2s worker supervisor,
+sitting idle in `gen_server:loop/7`. Nothing exotic there. So the failure to re-arm isn't a separate
+component silently dying; it has to be inside the c2s process's own code path (or a NIF/port call it
+makes synchronously — TLS decrypt via `fast_tls`/`p1_tls` is the obvious candidate given both stuck
+connections in every run used TLS) under some as-yet-unidentified condition.
+
+**This is the strongest, most concrete finding of the whole investigation.** Every earlier layer checked
+out clean (shaper, slixmpp O(N²) — real but different bug, client event-loop stalls, cgroup throttling,
+host resources, `mod_client_state`) precisely because none of them touch this: a socket-level flow-control
+re-arm bug is invisible to CPU metrics, invisible to ejabberd's own application-level logs (nothing errors
+— the code path just silently stops calling the re-arm), and invisible to anything running on a different
+machine or in a fresh, short-lived environment unless it happens to hit the exact same code path under
+the exact same (still unidentified) triggering condition.
+
+**Next steps:**
+- Read `ejabberd_c2s.erl` / `p1_server.erl` / `fast_tls.erl` (or `p1_tls`, whichever TLS module iag50 is
+  actually using — check `ejabberdctl dump_config` or the running node for which is loaded) source —
+  ProcessOne's repos are public on GitHub — specifically for every code path that calls
+  `inet:setopts(Socket, [{active, false}])` and verify each one has a matching re-arm on every exit path,
+  including error/exception branches. A `{active, false}` set inside a `try`/`catch` with the re-arm only
+  on the success path (not in an `after`/matching catch clause) would produce exactly this symptom under
+  whatever specific condition trips the exception.
+- Check `p1_server.erl:421` (`process_message/9`) and `:438` (`collect_messages/3`) specifically against
+  the installed ejabberd version, since that's the exact frame the stuck process was parked in.
+- If a plausible code path is found, this would be a genuine upstream ejabberd/p1_server bug report,
+  same precedent as the slixmpp O(N²) issue filed earlier in this investigation — but that's contingent
+  on actually finding the missing re-arm in source, not yet done.
+- A pragmatic mitigation short of a real fix, if this recurs in production before root-caused: since the
+  affected c2s session is cleanly identifiable (stuck `Recv-Q`, `{active,false}`), a periodic health-check
+  script using the same `ss` + `ejabberdctl debug`-style introspection (or, more operationally, just
+  killing/kicking sessions whose `Recv-Q` has been nonzero and non-decreasing for more than N seconds)
+  could auto-recover affected connections without needing the underlying bug fixed first.
+
 ## Problem
 
 There is currently no empirical throughput or latency data for pyobs's XMPP/PubSub transport.

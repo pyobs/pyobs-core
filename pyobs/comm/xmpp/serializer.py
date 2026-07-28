@@ -213,9 +213,13 @@ def xml_to_value(elem: ET.Element, type_hint: Any) -> Any:
         # cast to enum if type_hint is a StrEnum subclass
         if type_hint and isinstance(type_hint, type) and issubclass(type_hint, StrEnum):
             return type_hint(text)
-        # cast to Time if type_hint is a Time subclass (see the matching encode branch)
+        # cast to Time if type_hint is a Time subclass (see the matching encode branch).
+        # No explicit format=: astropy auto-detects "isot" (this fix's own encoding) as well
+        # as "iso" (the plain str(Time) space-separated format a not-yet-upgraded sender on
+        # the old serializer would still be emitting via the stringify fallback) -- pinning
+        # to "isot" would hard-fail on exactly that mixed-version case.
         if type_hint and isinstance(type_hint, type) and issubclass(type_hint, _Time):
-            return type_hint(text, format="isot")
+            return type_hint(text)
         return text
 
     if tag == "items":
@@ -359,7 +363,7 @@ def _parse_scalar(text: str, type_hint: Any) -> Any:
     if isinstance(type_hint, type) and issubclass(type_hint, StrEnum):
         return type_hint(text)
     if isinstance(type_hint, type) and issubclass(type_hint, _Time):
-        return type_hint(text, format="isot")
+        return type_hint(text)
     return text
 
 

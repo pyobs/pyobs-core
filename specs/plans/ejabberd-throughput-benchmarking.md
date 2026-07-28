@@ -861,6 +861,279 @@ confirming `dome`'s launch, not before); (3) compare mnesia table sizes/fragment
 uptime per `uptime` output above) against a freshly-restarted ejabberd, in case long-runtime state
 bloat is a factor no short-lived docker-compose or CI environment would ever exhibit.
 
+### Fourth live run (2026-07-28, same day) — found the actual mechanism: stuck per-connection Recv-Q on ejabberd's side
+
+Per explicit direction not to start `mastermind` in future tests (autonomous scheduler, can issue real
+RPC to hardware on its own initiative), it was dropped from the module set and replaced with `flatfield`
+(verified safe first: `FlatField.open()` in `pyobs-core`'s own source only registers passive
+`BadWeatherEvent`/`RoofClosingEvent` listeners and publishes initial state, no autonomous action).
+Stable set: `acquisition`, `autofocus`, `focusmodel`, `imagewatcher`, `imagewriter`, `scheduler`,
+`flatfield`, then `dome` as the 8th, same procedure as before.
+
+**Got the `ss` capture timing right this time** (previous two attempts were mistimed — capture window
+closed before the trigger even fired) by starting the capture and the `dome` launch back-to-back in the
+same turn with no verification round-trip in between, then confirming after the fact that the capture's
+first sample (`16:04:01`) predated `dome`'s launch (`16:04:27`) and its last sample outlasted the
+cascade. Reproduced again: cascade began 36s after `dome`'s `Started successfully`, and — new this run —
+`flatfield` hit a genuine `IqTimeout` at just **34s** after `dome`'s launch, much faster than the ~85s
+seen in every prior run.
+
+**The `ss` data explains why.** Live `ss -tinp` during the failure window showed one specific client
+socket — `dome`'s own connection (PID confirmed via `ps`) — with `Send-Q: 227170` bytes stuck unsent and
+`rwnd_limited: 73796ms (99.7%)`: blocked from sending for nearly 74 seconds because the *peer's*
+(ejabberd's) receive window wouldn't open. Cross-referencing ejabberd's own side of the exact same
+connection (matched by port number) showed `Recv-Q: 48044` — 48KB sitting in ejabberd's own kernel
+receive buffer, unread by the `beam.smp` process, for the connection's entire "busy" duration.
+
+**Tracing the full capture confirmed this isn't a brief blip — it's sustained, for the entire observation
+window, on two separate connections:**
+- `flatfield`'s connection to ejabberd was **already stuck** (`Recv-Q` ~85-90KB) at the very first
+  capture sample (`16:04:01`, before `dome` even connected) and **remained stuck through the last
+  sample checked (`16:08:04`) — over 4 minutes continuously**, never draining.
+- `dome`'s connection became stuck within 4 seconds of connecting (`16:04:31`, `Recv-Q` 92692) and
+  **also remained stuck through `16:08:54` — over 4 minutes**, never draining.
+- No other connection (of the 7 total: `acquisition`, `autofocus`, `focusmodel`, `imagewatcher`,
+  `imagewriter`, `scheduler` were all clean; only `flatfield` and `dome` got stuck) showed this pattern
+  anywhere in the capture.
+
+**This reframes the entire investigation.** It was never really about "newcomer joins a stable fleet" —
+that framing fit runs 1 and 2 (where `dome`, the newcomer, happened to be the stuck connection) but not
+run 3 (where `scheduler`/`acquisition` — none of them newcomers — got stuck during ordinary startup) or
+this run (`flatfield` was stuck *before* `dome` even joined). The actual mechanism: **ejabberd
+intermittently and durably stops draining the kernel receive buffer for some subset of its client
+connections** — not a systemic overload (other connections on the same server, same moment, are
+completely fine) and not something that self-heals on a several-minute timescale. Whichever module
+happens to have a capability-fetch or `_safe_send` call in flight against a stuck peer at the wrong
+moment is the one that logs the timeout warning or eventually raises `IqTimeout` — the "newcomer"
+pattern in the first two runs was circumstantial, not causal.
+
+**Not yet identified: why these two specific connections, why they never recover, and what's actually
+stopping `beam.smp` from calling `recv()` on them.** Both are TLS connections (`use_tls: True`), which
+narrows the search somewhat — worth checking whether a stuck connection correlates with something in
+ejabberd's TLS session handling (record reassembly, renegotiation, a stuck `p1_tls`/`fast_tls` NIF call)
+rather than the c2s/stanza-processing layer above it, since the OS-level socket is accepting bytes into
+its buffer fine (`Recv-Q` grows) but nothing above the kernel is draining it. Full `ss` capture (all
+connections, 4+ minutes, one-second resolution) and all 8 modules' logs from this run saved outside the
+repo alongside the earlier runs' data, not committed.
+
+**Next step:** with a concrete symptom to search for (`Recv-Q` climbing and staying elevated on a
+specific c2s session, TLS in use), the most direct path is Erlang-level introspection of that specific
+process — `ejabberdctl debug` (attaches an Erlang shell to the live node) to inspect the process behind
+the stuck socket (`erlang:process_info/1` for its message queue length, current function, reductions)
+the next time a connection gets stuck, rather than more black-box `ss` captures. If that process is
+buried in a long-running NIF call or has a backlogged mailbox, that would point straight at the fix;
+if it looks idle despite the stuck socket, that points toward something even lower-level (the TLS NIF,
+or ejabberd's socket-acceptor pooling) instead.
+
+### Fifth investigation session (2026-07-28, same day) — found the specific mechanism: an un-re-armed passive socket
+
+Did the Erlang-level introspection proposed above. `ejabberdctl debug` (an interactive `-remsh` shell
+into the live production node) is a materially more powerful/risky action than anything else in this
+doc — full read/write access to the live node's state — and was correctly blocked by this environment's
+own permission classifier when attempted directly. Split the work instead: the 7-module reproduction
+(`acquisition`, `autofocus`, `focusmodel`, `imagewatcher`, `imagewriter`, `scheduler`, `flatfield` — no
+`dome` needed this time, stuck connections showed up during ordinary startup again) and stuck-socket
+identification (via `ss -tinp`, matching local port to owning PID via `ps`) were done as before; the
+`ejabberdctl debug` session itself was run by the user directly, with exact Erlang expressions provided
+turn-by-turn.
+
+**Two connections were stuck within ~40s of the 7 modules starting** (no newcomer needed at all this
+time either): `flatfield` (ejabberd-side local port `57876`, `Recv-Q` 85134) and `scheduler` (port
+`54526`, `Recv-Q` 36091) — consistent with every run since the third: this is not a "newcomer" bug.
+
+**Found the Erlang port object for the stuck connection and its owning process:**
+```erlang
+Ports = [P || P <- erlang:ports(), (catch inet:peername(P)) =:= {ok, {{0,0,0,0,0,0,0,1}, 57876}}].
+[Port] = Ports, {connected, Pid} = erlang:port_info(Port, connected).
+```
+
+**`erlang:process_info(Pid, [message_queue_len, current_function, current_stacktrace, status,
+reductions, memory])` returned:**
+```erlang
+[{message_queue_len,0},
+ {current_function,{p1_server,collect_messages,3}},
+ {current_stacktrace,[{p1_server,collect_messages,3,[{file,"p1_server.erl"},{line,438}]},
+                       {p1_server,process_message,9,[{file,"p1_server.erl"},{line,421}]},
+                       {proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,329}]}]},
+ {status,waiting},
+ {reductions,511688},
+ {memory,142880}]
+```
+
+**The owning process is genuinely idle** — empty mailbox, `status: waiting`, blocked inside
+`p1_server:collect_messages/3` waiting for a *new* message, not a busy loop and not blocked on a slow
+call. Reductions (511688) show no runaway computation either. This process is not the problem.
+
+**`inet:getopts(Port, [active])` returned `{ok,[{active,false}]}`.** The socket is in **passive** mode
+— no automatic `{tcp, Socket, Data}` (or `{ssl, ...}`) messages are generated for it at all; something
+has to explicitly read from it. Combined with the process being idle waiting for a message that active
+mode would normally deliver, this is the mechanism: **the socket was put into passive mode (a normal,
+presumably-intentional step somewhere in ejabberd's TLS/c2s receive handling) and never switched back
+to `{active, once}`/`{active, N}` afterward.** The kernel keeps happily accepting bytes into `Recv-Q`
+(hence the growth seen in run 4's `ss` capture), but nothing above the kernel is ever told they arrived
+— the connection goes permanently deaf, with no crash, no log line, no CPU spike, and no self-recovery
+(matches run 4's 4+ minute observation with zero drainage).
+
+**Ruled out a separate reader/helper process as the visible culprit.** `erlang:port_info(Port, links)`
+→ only the c2s process itself (`Pid`). `erlang:process_info(Pid, links)` → the same port, plus one
+process (`<0.564.0>`) that turned out to be `ejabberd_c2s_sup` — the ordinary c2s worker supervisor,
+sitting idle in `gen_server:loop/7`. Nothing exotic there. So the failure to re-arm isn't a separate
+component silently dying; it has to be inside the c2s process's own code path (or a NIF/port call it
+makes synchronously — TLS decrypt via `fast_tls`/`p1_tls` is the obvious candidate given both stuck
+connections in every run used TLS) under some as-yet-unidentified condition.
+
+**This is the strongest, most concrete finding of the whole investigation.** Every earlier layer checked
+out clean (shaper, slixmpp O(N²) — real but different bug, client event-loop stalls, cgroup throttling,
+host resources, `mod_client_state`) precisely because none of them touch this: a socket-level flow-control
+re-arm bug is invisible to CPU metrics, invisible to ejabberd's own application-level logs (nothing errors
+— the code path just silently stops calling the re-arm), and invisible to anything running on a different
+machine or in a fresh, short-lived environment unless it happens to hit the exact same code path under
+the exact same (still unidentified) triggering condition.
+
+**Next steps:**
+- Read `ejabberd_c2s.erl` / `p1_server.erl` / `fast_tls.erl` (or `p1_tls`, whichever TLS module iag50 is
+  actually using — check `ejabberdctl dump_config` or the running node for which is loaded) source —
+  ProcessOne's repos are public on GitHub — specifically for every code path that calls
+  `inet:setopts(Socket, [{active, false}])` and verify each one has a matching re-arm on every exit path,
+  including error/exception branches. A `{active, false}` set inside a `try`/`catch` with the re-arm only
+  on the success path (not in an `after`/matching catch clause) would produce exactly this symptom under
+  whatever specific condition trips the exception.
+- Check `p1_server.erl:421` (`process_message/9`) and `:438` (`collect_messages/3`) specifically against
+  the installed ejabberd version, since that's the exact frame the stuck process was parked in.
+- If a plausible code path is found, this would be a genuine upstream ejabberd/p1_server bug report,
+  same precedent as the slixmpp O(N²) issue filed earlier in this investigation — but that's contingent
+  on actually finding the missing re-arm in source, not yet done.
+- A pragmatic mitigation short of a real fix, if this recurs in production before root-caused: since the
+  affected c2s session is cleanly identifiable (stuck `Recv-Q`, `{active,false}`), a periodic health-check
+  script using the same `ss` + `ejabberdctl debug`-style introspection (or, more operationally, just
+  killing/kicking sessions whose `Recv-Q` has been nonzero and non-decreasing for more than N seconds)
+  could auto-recover affected connections without needing the underlying bug fixed first.
+
+### Sixth investigation session (2026-07-28, same day) — read upstream source, found the likely exact mechanism
+
+Note on this session: partway through, production `ejabberd` on `iag50srv` went down (see incident note
+below) — unrelated to the source-reading work itself, but worth flagging that this investigation session
+briefly overlapped with a real outage on the server being investigated.
+
+Read the actual `processone/xmpp` (v1.9.4, matching the installed `erlang-p1-xmpp` package) and
+`processone/ejabberd` (tag `24.12`, matching installed `ejabberd 24.12-3+deb13u2`) source from GitHub —
+public repos, fetched directly — to trace the exact re-arm code path starting from the stuck frame found
+in session five (`p1_server.erl:421`/`:438`, `collect_messages/3`/`process_message/9`).
+
+**`p1_server.erl` is confirmed generic, not buggy.** `collect_messages/3` (lines 425-447) is a completely
+generic message-loop primitive — the stuck process was simply in its normal, correct idle-wait state
+(`receive Input -> ... after Time -> {timeout, ...}` at line 440-445). The bug is not in this file; it's
+in whatever is supposed to deliver the next message to this process.
+
+**Found the real re-arm mechanism in `xmpp_socket.erl`** (`processone/xmpp` library):
+- `activate/1` (lines 466-470) is the actual re-arm: `SockMod:setopts(Socket, [{active, once}])`.
+- `parse/2` (lines 485-524) is the function responsible for calling it, with four clauses: the `Data ==
+  <<>>`/`Data == []` base case calls `activate/1` directly; two list-recursion clauses (`[El|Els]` for
+  decoded XML elements) recurse toward that base case; and the raw-binary clause (`is_binary(Data)`)
+  calls `fxml_stream:parse` then either `activate/1` directly or, **if the shaper says to throttle
+  (`Pause > 0`), calls `activate_after/3` instead.**
+- `activate_after/3` (lines 472-478) does **not** re-arm the socket at all in the throttled case. It
+  schedules a *synthetic* `{tcp, Socket, <<>>}` message via `erlang:send_after(Pause, Pid, ...)` — the
+  real re-arm only happens later, when that fake message works its way back through the full receive
+  pipeline (`handle_info` → `xmpp_socket:recv/2` → `fast_tls:recv_data` (decrypting nothing) →
+  `parse/2` → *now* the base case fires and calls `activate/1` for real).
+
+**This is architecturally far more fragile than the direct path** — a timer, a synthetic self-message,
+and a second full decrypt-and-reparse round-trip, instead of one direct `setopts` call. Traced one
+concrete way it can silently break, in `xmpp_stream_in.erl`'s `handle_info`:
+```erlang
+handle_info({tcp, _, Data}, #{socket := Socket} = State) -> ... % normal path
+% Skip new tcp messages after socket get removed from state
+handle_info({tcp, _, _}, State) ->
+    noreply(State);
+```
+If `socket` is removed from `State` (e.g. via the `release_socket` cast, `xmpp_stream_in.erl:324-329)
+while a delayed reactivation timer from `activate_after` is still pending, that timer's synthetic
+message lands in the second clause — **silently discarded, by explicit design/comment, with no further
+re-arm attempted.** Whether this exact clause or something structurally similar is the precise trigger
+for iag50's incident isn't proven (would need either a live-caught synthetic-message-loss event with
+tracing, or an upstream maintainer's confirmation), but the *shape* fits everything observed: no crash,
+no ejabberd log line at any level, no CPU/scheduler signal, no self-recovery — because nothing ever
+errors, a scheduled re-arm message simply never gets acted on.
+
+**This also reconciles the days-old "shaper hypothesis refuted" finding** from earlier in this same
+investigation (see "First real results" above): that test only checked whether the shaper's *rate limit*
+affects aggregate publish latency for a synthetic idle-client benchmark — it doesn't, confirmed across a
+33x rate spread. It never tested whether the shaper's pause-and-reactivate *mechanism itself* has a
+latent bug — a completely different question, and the one this session's source-reading points at. It
+also explains the "real modules only, never idle synthetic clients" pattern that's held across every run
+in this doc: idle `XmppComm` clients barely generate enough traffic to ever trip `Pause > 0` in the first
+place, while real modules' actual traffic (periodic state pushes, capability-fetch bursts, log
+forwarding) plausibly does, on iag50's specific (low, 3000 B/s default per the shaper config documented
+at the top of this doc) shaper rate.
+
+**Not yet done, and probably the right place to stop live-testing this specific incident**: actually
+proving the `release_socket`-vs-pending-timer race (or whatever the precise trigger is) would need
+either instrumenting a fresh ejabberd build with tracing/logging added to `activate_after`/the
+`handle_info({tcp,_,_}, State)` fallback clause, or raising this with upstream (`processone/xmpp` /
+`processone/ejabberd`) maintainers with this session's findings and asking whether they recognize the
+pattern — same approach that worked for the slixmpp O(N²) bug filed earlier in this investigation
+(`poezio/slixmpp#3786`). This is a plausible, well-evidenced hypothesis backed by reading the actual
+running version's source, not a proven root cause.
+
+**Incidental production incident during this session:** `ejabberd` on `iag50srv` was stopped (clean,
+orderly shutdown per its own log — not a crash) partway through this session, apparently by an
+accidental `q().` typed at an `ejabberdctl debug` prompt from session five — in a `-remsh` session, `q()`
+calls `init:stop()` *on the target node*, not just detaching the local shell (the correct safe detach is
+`Ctrl+G` then `q` at the JCL prompt, or simply closing the connection). Caught within ~2.5 minutes via a
+routine `ejabberdctl status` check, restarted cleanly with `systemctl start ejabberd`, confirmed fully
+healthy (all listeners back, Mnesia synced, no new errors beyond pre-existing config warnings). Worth
+recording as a real operational lesson independent of the bug-hunt: **never use `q()` to detach an
+`ejabberdctl debug` session** — it stops production ejabberd, not the local shell.
+
+### Seventh session (2026-07-28, same day) — comparison against monet-south, mitigation applied and confirmed working
+
+**Compared iag50's live shaper config directly against `monet-south`'s** (SSH access granted read-only —
+"don't change anything" — for this comparison; monet's config was only read, never modified). Both use
+the identical `ejabberd 24.12-3+deb13u2`, identical `c2s_shaper: {none: admin, normal: all}` routing, and
+both load `mod_client_state`. The one substantive difference: **monet's `shaper.normal` is `{rate:
+30000, burst_size: 200000}` — exactly 10x iag50's `{rate: 3000, burst_size: 20000}`.** This matches an
+earlier passing reference in this doc to "the multiplier the user runs in their own production ejabberd
+deployments" — monet is that deployment; iag50 had been left on ejabberd's stock default.
+
+**Important distinction from the earlier "shaper hypothesis refuted" result** (see "First real results"
+above, from days before the real-module runs): that test only checked whether the shaper's *rate*
+affects aggregate publish latency for a synthetic idle-client benchmark — it found no effect, across a
+33x rate spread. It never tested whether raising the shaper prevents *this* bug (the `activate_after`
+reactivation failure found in session six) under *real* module traffic. Different question; this session
+tested it directly for the first time.
+
+**Applied the fix to iag50 and re-tested.** Backed up `/etc/ejabberd/ejabberd.yml`
+(`ejabberd.yml.bak-before-shaper-fix`), changed `shaper.normal` from `{rate: 3000, burst_size: 20000}` to
+`{rate: 30000, burst_size: 200000}` (matching monet exactly), applied via `ejabberdctl reload_config`
+(live, no restart), confirmed via `dump_config`. Re-ran the identical reproduction: the same 7 modules
+(`acquisition`, `autofocus`, `focusmodel`, `imagewatcher`, `imagewriter`, `scheduler`, `flatfield`), then
+`dome` as the 8th.
+
+**Result: clean.** All 7 modules started with zero failures and — notably — `ss` showed **zero stuck
+connections even before `dome` joined**, unlike sessions three and four where a connection was already
+stuck during ordinary startup. After `dome` joined, monitored for a full 3 minutes (well past the ~30-90s
+window every single prior run needed to fail) with zero `Still failing`/`IqTimeout`/error events across
+all 8 logs, and `ss` confirmed no stuck `Recv-Q` anywhere nearly 5 minutes after `dome`'s launch. This is
+a complete contrast to sessions one, two, three, and four, which reliably reproduced the cascade every
+time under the old shaper.
+
+**Current status: the shaper fix is applied and left in place on iag50's live production ejabberd
+config** (both the running config, via `reload_config`, and the on-disk `/etc/ejabberd/ejabberd.yml`).
+This is a mitigation, not a fix for the underlying `xmpp_socket.erl`/`activate_after` bug identified in
+session six — that bug is still present in ejabberd's code and could in principle still be triggered by
+traffic bursty enough to exceed even the new, higher shaper limit. But it directly addresses the
+mechanism this investigation identified (the fragile reactivation path is only reachable when the shaper
+throttles a connection at all), matches what's already running successfully in production at
+monet-south, and is trivially reversible (the pre-fix config is backed up) if it ever turns out
+insufficient.
+
+**Next steps:** monitor iag50 for recurrence over the coming days/weeks under real fleet load (not just
+this synthetic-but-real-module reproduction) before considering this fully closed. If it recurs even
+with the higher shaper, that would suggest either a higher multiplier is needed or that shaper-avoidance
+isn't sufficient on its own — in which case the upstream bug report (still not filed) becomes the
+priority rather than an optional follow-up.
+
 ## Problem
 
 There is currently no empirical throughput or latency data for pyobs's XMPP/PubSub transport.

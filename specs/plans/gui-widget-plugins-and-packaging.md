@@ -185,19 +185,55 @@ verified-against-the-actual-tool details:
   `standalone` produces a real directory. Flagged as a recommendation to revisit once an actual
   binary has been built and measured, not a settled decision.
 
-### Spikes needed before the implementation checklist can be trusted
+### Spikes — done (2026-07-27), on `feature/standalone-binary`
 
-- **`qtawesome` icon fonts.** `mainwindow.py`'s `DEFAULT_ICONS` (`:66-80`) and every widget's icons
-  load font resources via `qtawesome` at runtime — need to confirm this survives a standalone Nuitka
-  build unmodified, or find the `--include-data-dir`/`--include-package-data` incantation needed.
-- **`keyring` backend auto-discovery** (shared with `gui-login-window.md`) — `keyring` finds its
-  backend via `importlib.metadata` entry points at runtime, a different dynamic-loading mechanism
-  than the widget-plugin one but the same family of risk under static bundling.
-- **The plugin mechanism itself, end to end** — build a real binary, drop a trivial third-party
-  widget module in an external plugin directory, confirm it loads and renders without that module
-  ever being bundled into the binary (using whichever selection mechanism is chosen — even the
-  existing local `widgets:` YAML is enough to prove the *loading* half works, independent of
-  whether that's how selection ends up working long-term).
+Built a minimal, isolated PySide6 + `qasync`-shaped app (`spike_standalone/main.py`, `pysidedeploy.spec`
+in that branch) through the real `pyside6-deploy` install in this repo's venv, in `--mode=standalone`,
+and ran the resulting frozen binary directly (not via any Python from the venv). All four questions
+this was meant to answer came back clean:
+
+- **`qtawesome` icon fonts: OK, no changes needed.** `qta.icon("fa5s.camera")` returns a real
+  (non-null) icon from inside the frozen binary. (First attempt reported a false `FAIL` — a bug in
+  the spike script itself, which checked `qtawesome` before constructing the `QApplication`;
+  qtawesome needs a live one. Not a Nuitka/freezing issue.)
+- **`keyring` backend auto-discovery: OK, no changes needed.** Frozen binary discovers the exact
+  same three backends as an unfrozen run (`keyring.backends.fail.Keyring` prio 0,
+  `keyring.backends.SecretService.Keyring` prio 5, `keyring.backends.chainer.ChainerBackend` prio
+  -1) and picks the same one (`SecretService`), with a working store/retrieve/delete roundtrip.
+  `importlib.metadata` entry-point discovery survives freezing unmodified in this configuration.
+- **The plugin mechanism itself: confirmed working, both directions.** A trivial widget module
+  living *only* in an unrelated scratch directory (never copied near the build, never referenced by
+  `main.py`'s own imports) loads correctly when its directory is prepended to `sys.path` at runtime
+  from an environment variable read inside the frozen binary — proving Nuitka's static analysis
+  never needed to see it. Confirmed both ways: `find` over the `.dist` output for the plugin
+  module's filename returns nothing (never bundled), and running the exact same binary with that
+  env var unset fails with a plain `ModuleNotFoundError` (proving the success case was real, not a
+  stale cached import).
+- **PySide6 itself survives freezing:** also confirmed as a baseline sanity check (`QApplication`
+  constructs fine from inside the frozen binary).
+
+**One real, unplanned finding: the default C compiler in this environment can't build this app.**
+The very first standalone build attempt got most of the way through Nuitka's C compilation and then
+hit `internal compiler error: Segmentation fault` in GCC 15.2.0, specifically while compiling
+`cryptography.hazmat.primitives.asymmetric.ec` (a transitive dependency, reached via `keyring`'s
+`SecretService`/`jeepney`/`cryptography` chain) — a GCC bug, not an app or Nuitka bug, most likely
+GCC 15 being too new to have been widely exercised against Nuitka's generated code yet. Fixed by
+adding `--clang` to the spec's `[nuitka] extra_args` and setting `CC=clang-21`/`CXX=clang++-21`
+before invoking `pyside6-deploy` — clang-21 was already installed and compiled the exact same app
+cleanly. **Action item, not yet done:** pin the compiler choice (`--clang` in `extra_args`, and
+document the `CC`/`CXX` env vars) in whatever CI/build environment actually produces release
+binaries, rather than relying on whatever the default system compiler happens to be — this failure
+mode is compiler-version-specific and could reappear or disappear on a different machine/GCC version
+without warning.
+
+**Also found, unrelated to the four questions above but blocking any build at all in a fresh `uv`
+venv:** `pyside6-deploy` shells out to `<venv>/python -m pip install Nuitka`/`patchelf` internally,
+but a `uv`-created venv has no `pip` bootstrapped into it by default (`uv` normally manages packages
+itself, without needing `pip` inside the venv). Fixed for this spike with `python -m ensurepip`
+first. Also needed the venv's `bin/` directory on `PATH` (not just invoking tools by full path) —
+`patchelf` gets `pip`-installed into `<venv>/bin/patchelf`, but Nuitka's own standalone-mode check
+looks it up via `PATH`, not the venv it's running under, so it doesn't find a `PATH`-invisible venv
+install. Both are one-time environment setup steps for whoever runs this build, not app changes.
 
 ## Non-goals
 
@@ -218,9 +254,22 @@ verified-against-the-actual-tool details:
 - [ ] Document the plugin-author contract (what's guaranteed importable, what isn't; how selection
       works once decided) alongside the existing custom-widget example in
       `pyobs_gui/docs/source/index.rst`
-- [ ] Spike: `qtawesome` under a standalone Nuitka build
-- [ ] Spike: `keyring` backend discovery under a standalone Nuitka build
-- [ ] Produce and commit a `pysidedeploy.spec` for a real `pyobs-gui` build
-- [ ] End-to-end smoke test: compiled binary + external plugin directory + chosen selection
-      mechanism, verified working without rebuilding
+- [x] Spike: `qtawesome` under a standalone Nuitka build — OK, no changes needed (2026-07-27,
+      `feature/standalone-binary`, `spike_standalone/`)
+- [x] Spike: `keyring` backend discovery under a standalone Nuitka build — OK, no changes needed,
+      same result as unfrozen (2026-07-27, `feature/standalone-binary`, `spike_standalone/`)
+- [x] Spike: plugin mechanism itself, end to end — confirmed working both directions (loads with
+      the env var set, `ModuleNotFoundError`s without it) (2026-07-27, `feature/standalone-binary`)
+- [ ] Pin the compiler for real builds: add `--clang` to `[nuitka] extra_args` and document
+      `CC=clang-<N>`/`CXX=clang++-<N>` — the spike's default-GCC build hit a GCC 15 internal
+      compiler error partway through (compiler bug, not an app/Nuitka bug), clang built the same
+      app cleanly
+- [ ] Produce and commit a real `pysidedeploy.spec` for `pyobs-gui` itself (the spike's spec is for
+      the isolated `spike_standalone/main.py`, not the real app — same recipe, different entry point)
+- [ ] Document the environment prerequisites found during the spike: `python -m ensurepip` if the
+      venv has no `pip` (as with a plain `uv venv`), and the venv's `bin/` on `PATH` (not just
+      invoking tools by full path) so Nuitka's own `patchelf` lookup succeeds
+- [ ] End-to-end smoke test against the *real* `pyobs-gui` app (not just the isolated spike):
+      compiled binary + external plugin directory + chosen selection mechanism, verified working
+      without rebuilding
 - [ ] Update this doc's `Status:` to `implemented` once landed

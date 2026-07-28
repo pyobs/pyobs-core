@@ -199,14 +199,21 @@ def xml_to_value(elem: ET.Element, type_hint: Any) -> Any:
     if tag == "nil":
         return None
 
+    # boolean/int/double coerced to str when the field is declared `str` but a
+    # not-yet-upgraded sender is still emitting the wrong wire tag for it (the mirror image
+    # of value_to_xml's own str coercion on encode -- see the comment there) -- otherwise a
+    # bool/int/float leaks straight into a str-typed field/dict value.
     if tag == "boolean":
-        return elem.text == "true"
+        value = elem.text == "true"
+        return str(value) if type_hint is str else value
 
     if tag == "int":
-        return int(elem.text) if elem.text is not None else 0
+        value = int(elem.text) if elem.text is not None else 0
+        return str(value) if type_hint is str else value
 
     if tag == "double":
-        return float(elem.text) if elem.text is not None else 0.0
+        value = float(elem.text) if elem.text is not None else 0.0
+        return str(value) if type_hint is str else value
 
     if tag == "string":
         text = elem.text or ""

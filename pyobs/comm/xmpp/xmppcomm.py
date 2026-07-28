@@ -48,6 +48,26 @@ def _retry_delay(attempt: int, cap: float = 30.0, base: float = 1.0) -> float:
     return random.uniform(0, min(cap, base * (2**attempt)))
 
 
+# anchored at both ends -- re.match alone doesn't anchor the end, so e.g. "user@domain/res/extra"
+# would otherwise still "match" as a valid prefix
+_JID_RE = re.compile(r"([\w_\-\.]+)@([\w_\-\.]+)/([\w_\-\.]+)$")
+
+
+def is_valid_jid(jid: str, resource: str = "pyobs") -> bool:
+    """Whether jid is a valid user@domain or user@domain/resource JID -- exactly what
+    XmppComm.__init__ requires, so callers taking raw user input (e.g. a login window) can
+    validate it up front instead of finding out via a raised, less specific exception.
+
+    Args:
+        jid: JID to check, with or without a resource part.
+        resource: Resource to assume if jid doesn't already include one -- must match whatever
+            XmppComm itself would be constructed with, since a resource-less jid is only valid
+            if *some* resource ends up attached to it.
+    """
+    candidate = jid if "/" in jid else f"{jid}/{resource}"
+    return bool(_JID_RE.match(candidate))
+
+
 class EventStanza(ElementBase):
     name = "event"
     namespace = "pyobs:event"
@@ -180,10 +200,10 @@ class XmppComm(Comm):
                 jid += "/" + resource
 
             # get user/domain/resource and write it back to config
-            m = re.match(r"([\w_\-\.]+)@([\w_\-\.]+)\/([\w_\-\.]+)", jid)
+            m = _JID_RE.match(jid)
             if not m:
-                log.error("Invalid JID format.")
-                raise ValueError()
+                log.error("Invalid JID format: %r (expected user@domain or user@domain/resource).", jid)
+                raise ValueError(f"Invalid JID format: {jid!r} (expected user@domain or user@domain/resource).")
             self._user = m.group(1)
             self._domain = m.group(2)
             self._resource = m.group(3)
@@ -1161,4 +1181,4 @@ class XmppComm(Comm):
                     pass  # already gone server-side
 
 
-__all__ = ["XmppComm"]
+__all__ = ["XmppComm", "is_valid_jid"]

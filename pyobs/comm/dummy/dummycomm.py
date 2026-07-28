@@ -14,9 +14,17 @@ log = logging.getLogger(__name__)
 class DummyComm(Comm):
     """A dummy implementation of the Comm interface."""
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        """Creates a new dummy comm."""
+    def __init__(self, name: str = "module", *args: Any, **kwargs: Any):
+        """Creates a new dummy comm.
+
+        Args:
+            name: Name to report for this comm. Defaults to the generic placeholder "module"
+                for callers (e.g. tests) that construct a DummyComm directly without a real
+                identity; Application fills in the config file's stem when a module has no
+                comm of its own configured.
+        """
         Comm.__init__(self, *args, **kwargs)
+        self._name = name
 
     @property
     def clients(self) -> list[str]:
@@ -47,8 +55,8 @@ class DummyComm(Comm):
 
     @property
     def name(self) -> str:
-        """Name of this client, which is unknown."""
-        return "module"
+        """Name of this client."""
+        return self._name
 
     async def send_event(self, event: Event) -> None:
         """Send an event to other clients.
@@ -56,7 +64,7 @@ class DummyComm(Comm):
         Args:
             event (Event): Event to send
         """
-        self._send_event_to_module(event, "module")
+        self._send_event_to_module(event, self._name)
 
 
 __all__ = ["DummyComm"]

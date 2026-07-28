@@ -11,6 +11,7 @@ from typing import Any, TypedDict
 
 import yaml
 
+from pyobs.comm.dummy import DummyComm
 from pyobs.modules import Module, MultiModule
 from pyobs.object import get_class_from_string, get_object
 from pyobs.utils.config import pre_process_yaml
@@ -208,6 +209,14 @@ class Application:
             asyncio.set_event_loop(self._loop)
 
             # create module and open it
+            config_stem = Path(config).stem.lstrip("_")
+            if "comm" not in cfg and not issubclass(klass, MultiModule):
+                # no comm configured -- module would otherwise fall back to a DummyComm named
+                # with the fixed placeholder "module", indistinguishable from every other
+                # comm-less module in PYOBS_MODULE log tagging (see
+                # specs/steering/finding-module-logs-under-pyobsd.md) and guaranteed to trip the
+                # stem-mismatch check below. Give it the config file's own stem instead.
+                cfg = {**cfg, "comm": {"class": f"{DummyComm.__module__}.{DummyComm.__name__}", "name": config_stem}}
             log.info("Creating module from class %s...", klass.__name__)
             self._module = get_object(cfg, Module)
 
@@ -220,7 +229,6 @@ class Application:
             # (module.py), never meant to match a filename -- each child module is already
             # correctly distinguished via execute()/BackgroundTask.
             if not isinstance(self._module, MultiModule):
-                config_stem = Path(config).stem.lstrip("_")
                 if self._module.name != config_stem:
                     log.warning(
                         "Config file stem (%s) does not match module's own name "

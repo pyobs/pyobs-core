@@ -180,11 +180,16 @@ class FocusModel(Module, IFocusModel):
         if self._update_model:
             await self._calc_focus_model()
 
-        # publish initial states
+        # publish initial state -- dependencies (e.g. the weather module) may not be reachable
+        # yet at this point in startup, so fall back to a placeholder rather than leaving
+        # IFocusModel's state unpublished entirely; _update() overwrites it with a real
+        # measurement once dependencies are reachable
         try:
-            await self.comm.set_state(IFocusModel, OptimalFocusState(focus=await self._get_optimal_focus()))
-        except ValueError as e:
-            log.warning("Could not publish initial focus model state: %s", e)
+            focus = await self._get_optimal_focus()
+        except (ValueError, exc.FocusError) as e:
+            log.warning("Could not compute initial focus model state, publishing placeholder instead: %s", e)
+            focus = 0.0
+        await self.comm.set_state(IFocusModel, OptimalFocusState(focus=focus))
 
     async def _update(self) -> None:
         # wait a little

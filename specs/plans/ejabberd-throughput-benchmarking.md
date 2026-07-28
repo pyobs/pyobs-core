@@ -808,59 +808,6 @@ correlating it. Also worth checking pyobs-monet's ejabberd config for whether it
 too — if monet-south's config omits it (or has it configured differently), that would also explain "works
 on monet-south, fails on iag50" independent of anything about `pyobs-core`'s own code.
 
-### Third live run (2026-07-28, same day) — `mod_client_state` ruled out as the cause
-
-Ran the confirmation test proposed above. Backed up `/etc/ejabberd/ejabberd.yml`
-(`ejabberd.yml.bak-before-csi-test`), commented out `mod_client_state: {}` (line 244), and applied with
-`ejabberdctl reload_config` (live reload, no restart, no session disruption) — confirmed via
-`ejabberdctl dump_config` that the module was genuinely gone from the effective config (0 occurrences,
-down from being present among 39 other `mod_*` entries).
-
-**Re-ran the exact same reproduction. It still happened — twice over, in two different shapes:**
-
-1. **During the initial 7-module startup itself**, before `dome` was even launched: `scheduler` became
-   unreachable from `autofocus`/`focusmodel`/`imagewriter`, and `scheduler`↔`acquisition` failed
-   mutually, all with the same `Still failing to get capabilities... after 3 attempts` signature,
-   starting ~33-48s after each module's own `Started successfully` — never seen in either of the first
-   two runs, where the initial 7-module phase was always clean. Not the "newcomer" pattern at all this
-   time.
-2. **Then `dome` joined as the 8th, and the full original cascade reproduced again anyway** — same
-   dome-centric pattern as runs 1 and 2, warnings starting 34s after `dome`'s `Started successfully`, and
-   a genuine `IqTimeout` at 88s (`13:36:34`, matching the ~85-88s pattern from both earlier runs almost
-   exactly).
-
-No event-loop-lag watchdog output in any of the 7 peer logs this run either (checked via
-`grep -il 'lag\|stall\|event.loop'` across all of them — no matches).
-
-**Conclusion: `mod_client_state` is not the cause.** It genuinely wasn't loaded, and the incident
-reproduced anyway, in a form at least as bad as before (arguably worse — two distinct failure episodes
-in one run instead of one). The correlation found in the second run (126 CSI log lines for `dome`
-specifically) was real but was a *symptom* riding on top of whatever the actual mechanism is — likely
-`dome`'s busier-than-idle background traffic (its `_update_status` task publishes once/second) made it a
-more visible target for CSI queuing once a connection was already struggling for some other reason, not
-evidence that CSI queuing was the initial cause of the struggle.
-
-**Reverted cleanly**: `ejabberd.yml` restored from the backup, `reload_config` re-applied, confirmed
-`mod_client_state` present again in `dump_config` output (back to 1 occurrence). All 8 module processes
-from this run stopped and verified gone. Production ejabberd is back to its exact pre-test state.
-
-**Where this leaves it:** back to an open root cause, but with one new, real lead from this run worth
-following up — the same failure signature now reproduced *without* any "newcomer joining a stable
-fleet" framing at all, just from `scheduler`/`acquisition`/`mastermind` starting within their normal
-~10-40s of each other. That's a broader, more general trigger condition than "N+1 late joiner," and
-points more toward *any* moment where `_on_module_opened`'s capability-fetch fires while ejabberd (or
-something adjacent to it, still unidentified) is in whatever transient state causes this — same-host
-colocation with ejabberd remains the strongest architectural difference from every test that never
-reproduced it, but the specific mechanism inside that colocation is still unknown. Next candidates,
-in rough order of ease: (1) strace the ejabberd beam.smp process's own scheduler activity (or use
-Erlang's own `observer`/`etop`/`msacc` tooling, no install needed since it ships with the OTP
-distribution) during a fresh reproduction, since `cpu.stat`/`load average` are too coarse and
-`mod_client_state` is now ruled out as the lens to look through; (2) get an `ss` capture actually timed
-correctly this time (start it, confirm with a timestamp check that it's still sampling *after*
-confirming `dome`'s launch, not before); (3) compare mnesia table sizes/fragmentation on iag50 (34 days
-uptime per `uptime` output above) against a freshly-restarted ejabberd, in case long-runtime state
-bloat is a factor no short-lived docker-compose or CI environment would ever exhibit.
-
 ## Problem
 
 There is currently no empirical throughput or latency data for pyobs's XMPP/PubSub transport.

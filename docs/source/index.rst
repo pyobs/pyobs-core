@@ -139,6 +139,7 @@ Recipes
 
    recipes/simulation
    recipes/jupyter
+   recipes/xmpp-diagnostics
 
 Config Examples
 ---------------

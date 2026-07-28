@@ -1086,6 +1086,54 @@ healthy (all listeners back, Mnesia synced, no new errors beyond pre-existing co
 recording as a real operational lesson independent of the bug-hunt: **never use `q()` to detach an
 `ejabberdctl debug` session** — it stops production ejabberd, not the local shell.
 
+### Seventh session (2026-07-28, same day) — comparison against monet-south, mitigation applied and confirmed working
+
+**Compared iag50's live shaper config directly against `monet-south`'s** (SSH access granted read-only —
+"don't change anything" — for this comparison; monet's config was only read, never modified). Both use
+the identical `ejabberd 24.12-3+deb13u2`, identical `c2s_shaper: {none: admin, normal: all}` routing, and
+both load `mod_client_state`. The one substantive difference: **monet's `shaper.normal` is `{rate:
+30000, burst_size: 200000}` — exactly 10x iag50's `{rate: 3000, burst_size: 20000}`.** This matches an
+earlier passing reference in this doc to "the multiplier the user runs in their own production ejabberd
+deployments" — monet is that deployment; iag50 had been left on ejabberd's stock default.
+
+**Important distinction from the earlier "shaper hypothesis refuted" result** (see "First real results"
+above, from days before the real-module runs): that test only checked whether the shaper's *rate*
+affects aggregate publish latency for a synthetic idle-client benchmark — it found no effect, across a
+33x rate spread. It never tested whether raising the shaper prevents *this* bug (the `activate_after`
+reactivation failure found in session six) under *real* module traffic. Different question; this session
+tested it directly for the first time.
+
+**Applied the fix to iag50 and re-tested.** Backed up `/etc/ejabberd/ejabberd.yml`
+(`ejabberd.yml.bak-before-shaper-fix`), changed `shaper.normal` from `{rate: 3000, burst_size: 20000}` to
+`{rate: 30000, burst_size: 200000}` (matching monet exactly), applied via `ejabberdctl reload_config`
+(live, no restart), confirmed via `dump_config`. Re-ran the identical reproduction: the same 7 modules
+(`acquisition`, `autofocus`, `focusmodel`, `imagewatcher`, `imagewriter`, `scheduler`, `flatfield`), then
+`dome` as the 8th.
+
+**Result: clean.** All 7 modules started with zero failures and — notably — `ss` showed **zero stuck
+connections even before `dome` joined**, unlike sessions three and four where a connection was already
+stuck during ordinary startup. After `dome` joined, monitored for a full 3 minutes (well past the ~30-90s
+window every single prior run needed to fail) with zero `Still failing`/`IqTimeout`/error events across
+all 8 logs, and `ss` confirmed no stuck `Recv-Q` anywhere nearly 5 minutes after `dome`'s launch. This is
+a complete contrast to sessions one, two, three, and four, which reliably reproduced the cascade every
+time under the old shaper.
+
+**Current status: the shaper fix is applied and left in place on iag50's live production ejabberd
+config** (both the running config, via `reload_config`, and the on-disk `/etc/ejabberd/ejabberd.yml`).
+This is a mitigation, not a fix for the underlying `xmpp_socket.erl`/`activate_after` bug identified in
+session six — that bug is still present in ejabberd's code and could in principle still be triggered by
+traffic bursty enough to exceed even the new, higher shaper limit. But it directly addresses the
+mechanism this investigation identified (the fragile reactivation path is only reachable when the shaper
+throttles a connection at all), matches what's already running successfully in production at
+monet-south, and is trivially reversible (the pre-fix config is backed up) if it ever turns out
+insufficient.
+
+**Next steps:** monitor iag50 for recurrence over the coming days/weeks under real fleet load (not just
+this synthetic-but-real-module reproduction) before considering this fully closed. If it recurs even
+with the higher shaper, that would suggest either a higher multiplier is needed or that shaper-avoidance
+isn't sufficient on its own — in which case the upstream bug report (still not filed) becomes the
+priority rather than an optional follow-up.
+
 ## Problem
 
 There is currently no empirical throughput or latency data for pyobs's XMPP/PubSub transport.

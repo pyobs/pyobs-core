@@ -99,10 +99,19 @@ class XmppConfig:
     password: str
     use_tls: bool
     ignore_cert_errors: bool
+    # per-account password overrides -- for a real server with pre-existing named
+    # accounts (each with its own password), as opposed to uniform throwaway bench<N>
+    # accounts that all share PYOBS_TEST_XMPP_PASSWORD.
+    passwords: dict[str, str] = field(default_factory=dict)
 
 
 def env_config() -> XmppConfig:
     host = os.environ.get("PYOBS_TEST_XMPP_HOST", "localhost")
+    passwords: dict[str, str] = {}
+    creds_file = os.environ.get("PYOBS_TEST_XMPP_CREDENTIALS_FILE")
+    if creds_file:
+        with open(creds_file) as f:
+            passwords = json.load(f)
     return XmppConfig(
         host=host,
         domain=os.environ.get("PYOBS_TEST_XMPP_DOMAIN", host),
@@ -110,6 +119,7 @@ def env_config() -> XmppConfig:
         password=os.environ.get("PYOBS_TEST_XMPP_PASSWORD", "pyobs"),
         use_tls=os.environ.get("PYOBS_TEST_XMPP_TLS", "0") == "1",
         ignore_cert_errors=os.environ.get("PYOBS_TEST_XMPP_IGNORE_CERT", "1") == "1",
+        passwords=passwords,
     )
 
 
@@ -118,7 +128,7 @@ def make_comm(cfg: XmppConfig, user: str) -> XmppComm:
     return XmppComm(
         user=user,
         domain=cfg.domain,
-        password=cfg.password,
+        password=cfg.passwords.get(user, cfg.password),
         server=f"{cfg.host}:{cfg.port}",
         use_tls=cfg.use_tls,
         ignore_cert_errors=cfg.ignore_cert_errors,
@@ -360,7 +370,12 @@ async def run_concurrent_many(
 
 
 async def run_reconnect_storm(
-    cfg: XmppConfig, k: int, recorder: Recorder, register_via: str | None, recheck_after: float = 0.0
+    cfg: XmppConfig,
+    k: int,
+    recorder: Recorder,
+    register_via: str | None,
+    recheck_after: float = 0.0,
+    names: list[str] | None = None,
 ) -> None:
     """K independent clients all connect/auth/bind/publish-presence within the same burst
     (via asyncio.gather), then every client fetches IModule capabilities from every other
@@ -384,7 +399,7 @@ async def run_reconnect_storm(
     -- testing whether failures can recur on an already-established, previously-fine
     connection, not just during initial connection churn.
     """
-    names = [f"bench{i}" for i in range(k)]
+    names = names if names is not None else [f"bench{i}" for i in range(k)]
     maybe_register(register_via, cfg, names)
 
     comms: dict[str, XmppComm] = {}
@@ -427,7 +442,13 @@ async def run_reconnect_storm(
 
 
 async def run_late_joiner(
-    cfg: XmppConfig, k: int, recorder: Recorder, register_via: str | None, settle_time: float = 2.0
+    cfg: XmppConfig,
+    k: int,
+    recorder: Recorder,
+    register_via: str | None,
+    settle_time: float = 2.0,
+    existing_names: list[str] | None = None,
+    joiner_name: str = "benchjoiner",
 ) -> None:
     """K clients connect and settle (staying open, idle) for settle_time seconds -- modeling an
     already-stable fleet. Then one *more* client connects and immediately exchanges IModule
@@ -444,8 +465,7 @@ async def run_late_joiner(
     this scenario tests whether that specific peer-count threshold reproduces locally. Sweep --k to
     find where (if anywhere) it breaks against a given server.
     """
-    existing_names = [f"bench{i}" for i in range(k)]
-    joiner_name = "benchjoiner"
+    existing_names = existing_names if existing_names is not None else [f"bench{i}" for i in range(k)]
     maybe_register(register_via, cfg, [*existing_names, joiner_name])
 
     comms: dict[str, XmppComm] = {}
@@ -592,10 +612,26 @@ async def main() -> None:
         help="late-joiner only: seconds the existing --k peers sit idle before the one extra "
         "client joins (default: 2.0)",
     )
+    parser.add_argument(
+        "--users",
+        default=None,
+        help="reconnect-storm/late-joiner only: comma-separated real account names to use "
+        "instead of the generated bench<N> accounts (e.g. a real fleet's pre-registered "
+        "module JIDs). Overrides --k to len(--users). Pair with "
+        "PYOBS_TEST_XMPP_CREDENTIALS_FILE for per-account passwords.",
+    )
+    parser.add_argument(
+        "--joiner",
+        default="benchjoiner",
+        help="late-joiner only: account name for the one extra client that joins after "
+        "--settle-time (default: benchjoiner)",
+    )
     args = parser.parse_args()
 
     cfg = env_config()
     recorder = Recorder(output=args.output, shaper_label=args.shaper_label)
+    users = args.users.split(",") if args.users else None
+    k = len(users) if users is not None else args.k
 
     if args.scenario in ("sequential", "all"):
         await run_sequential(cfg, args.n, recorder)
@@ -604,9 +640,11 @@ async def main() -> None:
     if args.scenario in ("concurrent-many", "all"):
         await run_concurrent_many(cfg, args.k, args.n, recorder, args.register_via)
     if args.scenario in ("reconnect-storm", "all"):
-        await run_reconnect_storm(cfg, args.k, recorder, args.register_via, args.recheck_after)
+        await run_reconnect_storm(cfg, k, recorder, args.register_via, args.recheck_after, names=users)
     if args.scenario in ("late-joiner", "all"):
-        await run_late_joiner(cfg, args.k, recorder, args.register_via, args.settle_time)
+        await run_late_joiner(
+            cfg, k, recorder, args.register_via, args.settle_time, existing_names=users, joiner_name=args.joiner
+        )
     if args.scenario in ("rpc", "all"):
         await run_rpc(cfg, args.n, recorder, args.register_via, args.rpc_with_load, args.k, args.n)
     if args.scenario in ("payload", "all"):

@@ -861,6 +861,70 @@ confirming `dome`'s launch, not before); (3) compare mnesia table sizes/fragment
 uptime per `uptime` output above) against a freshly-restarted ejabberd, in case long-runtime state
 bloat is a factor no short-lived docker-compose or CI environment would ever exhibit.
 
+### Fourth live run (2026-07-28, same day) — found the actual mechanism: stuck per-connection Recv-Q on ejabberd's side
+
+Per explicit direction not to start `mastermind` in future tests (autonomous scheduler, can issue real
+RPC to hardware on its own initiative), it was dropped from the module set and replaced with `flatfield`
+(verified safe first: `FlatField.open()` in `pyobs-core`'s own source only registers passive
+`BadWeatherEvent`/`RoofClosingEvent` listeners and publishes initial state, no autonomous action).
+Stable set: `acquisition`, `autofocus`, `focusmodel`, `imagewatcher`, `imagewriter`, `scheduler`,
+`flatfield`, then `dome` as the 8th, same procedure as before.
+
+**Got the `ss` capture timing right this time** (previous two attempts were mistimed — capture window
+closed before the trigger even fired) by starting the capture and the `dome` launch back-to-back in the
+same turn with no verification round-trip in between, then confirming after the fact that the capture's
+first sample (`16:04:01`) predated `dome`'s launch (`16:04:27`) and its last sample outlasted the
+cascade. Reproduced again: cascade began 36s after `dome`'s `Started successfully`, and — new this run —
+`flatfield` hit a genuine `IqTimeout` at just **34s** after `dome`'s launch, much faster than the ~85s
+seen in every prior run.
+
+**The `ss` data explains why.** Live `ss -tinp` during the failure window showed one specific client
+socket — `dome`'s own connection (PID confirmed via `ps`) — with `Send-Q: 227170` bytes stuck unsent and
+`rwnd_limited: 73796ms (99.7%)`: blocked from sending for nearly 74 seconds because the *peer's*
+(ejabberd's) receive window wouldn't open. Cross-referencing ejabberd's own side of the exact same
+connection (matched by port number) showed `Recv-Q: 48044` — 48KB sitting in ejabberd's own kernel
+receive buffer, unread by the `beam.smp` process, for the connection's entire "busy" duration.
+
+**Tracing the full capture confirmed this isn't a brief blip — it's sustained, for the entire observation
+window, on two separate connections:**
+- `flatfield`'s connection to ejabberd was **already stuck** (`Recv-Q` ~85-90KB) at the very first
+  capture sample (`16:04:01`, before `dome` even connected) and **remained stuck through the last
+  sample checked (`16:08:04`) — over 4 minutes continuously**, never draining.
+- `dome`'s connection became stuck within 4 seconds of connecting (`16:04:31`, `Recv-Q` 92692) and
+  **also remained stuck through `16:08:54` — over 4 minutes**, never draining.
+- No other connection (of the 7 total: `acquisition`, `autofocus`, `focusmodel`, `imagewatcher`,
+  `imagewriter`, `scheduler` were all clean; only `flatfield` and `dome` got stuck) showed this pattern
+  anywhere in the capture.
+
+**This reframes the entire investigation.** It was never really about "newcomer joins a stable fleet" —
+that framing fit runs 1 and 2 (where `dome`, the newcomer, happened to be the stuck connection) but not
+run 3 (where `scheduler`/`acquisition` — none of them newcomers — got stuck during ordinary startup) or
+this run (`flatfield` was stuck *before* `dome` even joined). The actual mechanism: **ejabberd
+intermittently and durably stops draining the kernel receive buffer for some subset of its client
+connections** — not a systemic overload (other connections on the same server, same moment, are
+completely fine) and not something that self-heals on a several-minute timescale. Whichever module
+happens to have a capability-fetch or `_safe_send` call in flight against a stuck peer at the wrong
+moment is the one that logs the timeout warning or eventually raises `IqTimeout` — the "newcomer"
+pattern in the first two runs was circumstantial, not causal.
+
+**Not yet identified: why these two specific connections, why they never recover, and what's actually
+stopping `beam.smp` from calling `recv()` on them.** Both are TLS connections (`use_tls: True`), which
+narrows the search somewhat — worth checking whether a stuck connection correlates with something in
+ejabberd's TLS session handling (record reassembly, renegotiation, a stuck `p1_tls`/`fast_tls` NIF call)
+rather than the c2s/stanza-processing layer above it, since the OS-level socket is accepting bytes into
+its buffer fine (`Recv-Q` grows) but nothing above the kernel is draining it. Full `ss` capture (all
+connections, 4+ minutes, one-second resolution) and all 8 modules' logs from this run saved outside the
+repo alongside the earlier runs' data, not committed.
+
+**Next step:** with a concrete symptom to search for (`Recv-Q` climbing and staying elevated on a
+specific c2s session, TLS in use), the most direct path is Erlang-level introspection of that specific
+process — `ejabberdctl debug` (attaches an Erlang shell to the live node) to inspect the process behind
+the stuck socket (`erlang:process_info/1` for its message queue length, current function, reductions)
+the next time a connection gets stuck, rather than more black-box `ss` captures. If that process is
+buried in a long-running NIF call or has a backlogged mailbox, that would point straight at the fix;
+if it looks idle despite the stuck socket, that points toward something even lower-level (the TLS NIF,
+or ejabberd's socket-acceptor pooling) instead.
+
 ## Problem
 
 There is currently no empirical throughput or latency data for pyobs's XMPP/PubSub transport.

@@ -738,6 +738,76 @@ synthetic-client scale) is worth reconsidering now that iag50 *does* reproduce s
 ejabberd is also co-located with its modules on one host and a matching real-module test stays clean there,
 that would be a strong signal the same-host topology itself is implicated.
 
+### Second live run (2026-07-28, same day) — likely root cause found: `mod_client_state` (CSI, XEP-0352)
+
+Re-ran the identical reproduction (same 7-module stable set, `dome` as 8th) with two extra instruments
+armed beforehand: `ejabberdctl set_loglevel debug` on the real ejabberd (reverted to `info` immediately
+after), and a background `ss -tin` sampler on loopback port 5222 (`tcpdump` isn't installed on the box and
+wasn't added — `ss`, already present, plus ejabberd's own debug log turned out to be enough).
+
+**Cascade reproduced a second time, same signature, same timing:** warnings began 36s after `dome`'s
+start (vs. 31s the first run), and the first `IqTimeout` hit at 88s, with a second at 173s — again
+exactly 85s after the first, matching `_safe_send`'s retry-budget math and the first run's 85s-later
+recurrence.
+
+**Methodology mistake, noted for honesty:** the `ss` sampler was started before `dome` launched but its
+60 one-second samples finished (~13:03:20) *before* `dome` actually started (13:03:43) — a real-time gap
+between issuing the two commands ran longer than expected. The retransmission/DSACK counts that capture
+showed were from the earlier simultaneous 7-module startup, not the `dome`-join cascade — that lead does
+**not** hold up as originally read and shouldn't be cited as evidence of loopback packet loss during the
+actual failure window. Flagging this rather than quietly dropping it, since the raw capture is saved and
+looked compelling before the timestamp check.
+
+**The ejabberd debug log, correctly captured for the full failure window, found something concrete:**
+`mod_client_state` (ejabberd's Client State Indication / XEP-0352 module) was actively queuing and
+flushing stanzas for `dome` specifically:
+- `dome` accounts for **126 `mod_client_state` log lines** — 5-10x more than any other peer (12-23
+  each: `acquisition`, `scheduler`, `mastermind`, `autofocus`, `imagewatcher`, `imagewriter`,
+  `focusmodel`).
+- Log lines like `mod_client_state:filter_other/1:314 Won't add stanza for dome@.../pyobs to CSI queue`
+  and `mod_client_state:dequeue_sender/2:365 Flushing packets of imagewatcher@... from CSI queue of
+  dome@.../pyobs` show stanzas addressed to `dome` being held server-side and released later, rather
+  than delivered immediately — exactly the mechanism that would produce a silent multi-second gap on
+  the sender's side (a `get_capabilities` request whose reply is queued, not lost, looks identical to a
+  timeout until whatever flushes the queue).
+- Confirmed via `ejabberdctl dump_config` and the raw `/etc/ejabberd/ejabberd.yml`: `mod_client_state` is
+  loaded on `iag50srv`'s production ejabberd with default settings (`mod_client_state: {}`), as part of
+  what looks like an unpruned, fairly complete default module list (`mod_bosh`, `mod_carboncopy`,
+  `mod_delegation` commented out, etc. — the shape of ejabberd's stock example config, not a hand-curated
+  one).
+- **This module is entirely absent from `tests/xmpp/ejabberd.yml`** (the local docker-compose test
+  config used for every earlier scenario in this doc): its `modules:` list is `mod_admin_extra`,
+  `mod_caps`, `mod_disco`, `mod_ping`, `mod_pubsub`, `mod_roster`, `mod_shared_roster`, `mod_vcard` —
+  deliberately minimal, curated for the test suite's needs, and never had `mod_client_state` in it.
+
+**This is a strong, concrete candidate explanation for the entire "reproduces on iag50, never reproduces
+locally" pattern that's been the central mystery of this whole investigation.** Every earlier local
+docker-compose run (all shaper configs, all the O(N²) slixmpp digging, the k=7/8/15/21 synthetic
+benchmark against the real server) ran against ejabberd configs that never had this module loaded at
+all — so no test in this doc before today could possibly have hit CSI queueing, regardless of how well
+it otherwise matched the incident's shape.
+
+**Not yet fully closed:** the exact trigger for *why* ejabberd classifies `dome`'s session as
+CSI-inactive (XEP-0352 is normally client-driven — a client sends `<active/>`/`<inactive/>` to opt in;
+slixmpp/`XmppComm` don't appear to send either) isn't identified yet — `mod_client_state` activity for
+`dome` starts at `13:05:02`, about 43s *after* the first `Still failing` warnings at `13:04:19`, so CSI
+queuing is well-evidenced as part of the mechanism but might not be the very first cause of the earliest
+retries failing. Worth checking next: ejabberd's `mod_client_state` source for any non-explicit
+(server-heuristic) path into the inactive/queued state, and whether it's specifically about `dome`'s
+traffic pattern (its `_update_status` background task publishes `IPointingAltAz` once/second — busier
+than the other 7's mostly-idle steady state) rather than something arbitrary about being "the newcomer."
+
+**Cleanup:** both live-module runs' processes fully stopped and verified gone; `ejabberd` log level
+reverted to `info`. Full logs (all 8 modules × 2 runs, `ss` capture, ejabberd debug log slice, config
+dump) saved outside the repo for reference, not committed (large, and include real account activity).
+
+**Next step:** try disabling `mod_client_state` on a throwaway/staging ejabberd matching iag50's full
+config (or, more surgically, on iag50 itself during a no-ops window) and re-run the identical
+reproduction — if the cascade stops, that confirms the mechanism decisively rather than just
+correlating it. Also worth checking pyobs-monet's ejabberd config for whether it loads `mod_client_state`
+too — if monet-south's config omits it (or has it configured differently), that would also explain "works
+on monet-south, fails on iag50" independent of anything about `pyobs-core`'s own code.
+
 ## Problem
 
 There is currently no empirical throughput or latency data for pyobs's XMPP/PubSub transport.

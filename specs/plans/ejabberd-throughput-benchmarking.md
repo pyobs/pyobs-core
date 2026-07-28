@@ -559,6 +559,185 @@ turn out to share a cause once more data exists.
   and the "works fine on monet-south" premise from real operation would need re-examining --
   maybe monet-south just hasn't had 3-4 modules restart together recently, rather than being immune.
 
+### Runbook executed against iag50srv itself (2026-07-28)
+
+**Deviation from the runbook as written, done deliberately with explicit confirmation:** rather
+than throwaway `bench<N>` accounts, this run authenticated as the **real production module JIDs**
+(`acquisition`, `autofocus`, `focusmodel`, `imagewatcher`, `imagewriter`, `mastermind`,
+`scheduler`, plus `dome`/`telescope`/`flatfield` as joiners) — the exact account set involved in
+the real 7/8-module incidents described above. Confirmed with the user first that these modules
+were not currently running (no live session to collide with) before connecting as them. Real
+per-account passwords (sourced from `pyobs-iag50/config/iag50srv/*.yaml`, each module has its own,
+unlike the shared `PYOBS_TEST_XMPP_PASSWORD` throwaway accounts use) were staged in a
+`PYOBS_TEST_XMPP_CREDENTIALS_FILE` JSON outside this repo (scratchpad, never committed) — not
+inline in commands or in any tracked file.
+
+To support this, `scripts/xmpp/benchmark_state_throughput.py` gained:
+- `XmppConfig.passwords: dict[str, str]` (populated from `PYOBS_TEST_XMPP_CREDENTIALS_FILE` if
+  set) — `make_comm` looks up a per-user password there before falling back to the shared
+  `PYOBS_TEST_XMPP_PASSWORD`.
+- `--users a,b,c` (reconnect-storm/late-joiner): explicit account list overriding the generated
+  `bench<N>` names, and overriding `--k` to `len(--users)`.
+- `--joiner NAME` (late-joiner): account name for the one extra client, overriding the default
+  `benchjoiner`.
+
+Since these are pre-existing registered production accounts, `--register-via` was omitted
+entirely (no registration step needed or wanted against production).
+
+**Results — every scenario came back clean, zero failures, latencies in line with the earlier
+local numbers:**
+
+| scenario | existing peers | joiner/shape | fetches | failed | mean | p95/max |
+|---|---|---|---|---|---|---|
+| `late-joiner` | 7 (acquisition, autofocus, focusmodel, imagewatcher, imagewriter, mastermind, scheduler) | `dome` (exact real k=7 config) | 14 | 0 | 44.5ms | 60.0ms |
+| `late-joiner` | 8 (above + `dome`) | `telescope` (one past threshold) | 16 | 0 | 41.8ms | 58.9ms |
+| `reconnect-storm --recheck-after 90` | 7 (same set, simultaneous connect) | initial burst | 42 | 0 | 261.5ms | 346.5ms |
+| `reconnect-storm` recheck (90s idle, same connections) | 7 | recheck | 42 | 0 | 69.7ms | 84.7ms |
+| `late-joiner` | 15 (+ focuser, asi071mc, sbig6303e, tc237h, fibercamera, autoguider, startup, telegram) | `focusmodel` | 30 | 0 | 60.6ms | 89.6ms |
+| `late-joiner` | 21 (every unique real account on the domain except one) | `warning` | 42 | 0 | 75.6ms | 97.6ms |
+
+The k=21 run used **every distinct real account registered on `iag50srv`'s domain** (confirmed by
+reading each config dir's `_comm.yaml`/`comm.shared.yaml` — `iag50srv`, `iag50cam`, `iag50tel`,
+`iag50obs`, `allsky` subdirs all share the one `iag50srv.astro.physik.uni-goettingen.de` domain;
+`gui`/`config` at the repo's top level are excluded, they're hardcoded to a *different* domain,
+`iag50obs.astro...`, a separate server) minus the one held back as the joiner — the largest
+real-account fleet this server has, short of registering new throwaway accounts. This run was
+blocked by the local harness's own auto-mode permission classifier (a broad "connect ~21 real
+production accounts at once" command tripped it, even after explicit user approval in-chat) and
+was run by the user directly in their own shell instead of by the agent.
+
+**Neither scenario reproduces the incident on the real server, at any tested scale** — not at the
+exact peer counts (7, 8) that broke twice in production, nor pushed all the way to k=15 or k=21
+(basically the whole real fleet, all real accounts, connecting to the real server at once). Given
+this, a monet-south comparison run doesn't add information right now: the comparison only matters
+if iag50 itself reproduces and monet-south doesn't (or vice versa) — with iag50 clean at every
+scale tried, there's nothing to contrast monet-south against yet, so that step is **deprioritized,
+not scheduled**, until iag50 reproduces something at all. Whatever caused the original silent
+10s-timeout cascades needs a condition this reproduction still doesn't capture — real fleet load
+at the moment of the incident (the actual fleet doing actual work, not idle synthetic capability
+fetches against an otherwise-quiet server), the precise timing/ordering of the actual restart
+sequence, or a genuinely intermittent server-side condition (GC pause, Mnesia compaction, network
+blip) that a clean, no-ops-window test doesn't hit regardless of client count.
+
+**Next steps, not yet done:** consider running `late-joiner`/`reconnect-storm` again
+during/immediately after an actual live fleet restart on iag50 (not a quiet no-ops window) if one
+is ever needed anyway, since "quiet server, otherwise idle" may be exactly the condition that's
+missing, not client count; or pull ejabberd's own server-side logs from the actual incident
+timestamps (`18:02:37-39`, `18:30:07-33`, etc. — see timeline above) if they're still retained,
+rather than trying to re-trigger the condition blind. Monet-south comparison stays on the shelf
+unless iag50 reproduces something first.
+
+### Reproduced live with real modules on iag50srv (2026-07-28) — root cause still open, but the incident is real and reproducible
+
+**Everything above (synthetic `benchmark_state_throughput.py` client, up to k=21, every real account on the
+domain) was clean.** That result held up to its own scope: bare `XmppComm` connections doing nothing but
+connect and fetch capabilities. The next step was running the **actual production `Module` classes** — real
+`Module.open()`, real `_on_module_opened` cascade, real background tasks — via SSH as root on `iag50srv`
+itself, under `sudo -u pyobs`, using the live `pyobs` CLI (`/opt/pyobs/venv/bin/pyobs /opt/pyobs/config/<name>.yaml
+-l <logfile>`) against the real configs symlinked into `/opt/pyobs/config/`.
+
+**Safety scoping done before running anything for real** (each one a genuine finding from reading the actual
+module code, not assumed):
+- `pyobs_brot.brottelescope.BrotDome`/`BrotRaDecTelescope.open()` read code confirmed: connects MQTT, publishes
+  read-only telemetry/status, never issues a motion command — `init`/`park`/slew are separate RPC methods never
+  called during `open()`. Safe to start without touching any hardware, *as long as nothing else running commands
+  them*.
+- `mastermind` (`robotic.yaml`, class `pyobs.modules.robotic.Mastermind`) is not passive — it pulls real tasks
+  from `observe.monet.uni-goettingen.de` and can execute them via RPC to `telescope`/`dome`/`sbig6303e`/etc. on
+  its own initiative, no RPC call from the operator needed. Included only after explicit confirmation there was
+  nothing actionable queued — which turned out to be not quite right (see below), but harmless in practice.
+- `startup` (`Trigger` module) auto-calls `dome.init()` on `GoodWeatherEvent` and `telescope.init()` on
+  `RoofOpenedEvent` — a real, unrelated-to-this-test path to the roof opening for real. **Excluded entirely**,
+  contributes nothing to the XMPP question being tested.
+- `telegram` **excluded** — real bot token, would send real messages to real people. Also unrelated to the test.
+- `_pointing.yaml`'s leading underscore in the deployed `/opt/pyobs/config/` symlink indicates it's deliberately
+  excluded from the current production launch set — left out here too, matching production as-is.
+- No camera modules (`sbig6303e`, `asi071mc`, `fibercamera`) are deployed on `iag50srv` at all — they run on
+  the separate `iag50cam` host, out of scope for what's runnable from this host.
+- SSH itself required care: the FQDN (`iag50srv.astro.physik.uni-goettingen.de`) hit a host-key mismatch in
+  this environment specifically (not reproducible from the user's own terminal) — resolved by using the short
+  hostname `iag50srv` instead, which the user confirmed is what they'd always used, and which connects with a
+  verified-correct host key.
+- Real per-account passwords, sourced from `/opt/pyobs/config/*.yaml` on the box (same values as the local repo
+  checkout), staged only in a scratchpad JSON, never committed.
+- Launch gotcha: `ssh host "sudo -u pyobs bash -c 'nohup cmd & disown'"` hangs the SSH channel indefinitely
+  (stdin not detached, so job control inside a non-interactive shell doesn't behave as expected) even though the
+  remote process itself starts and detaches fine. Fixed by using `sudo -u pyobs -b cmd < /dev/null > log 2>&1`
+  instead — `sudo -b` backgrounds and returns immediately, no hang.
+
+**Once mastermind was actually running, it immediately downloaded a real schedule and reported a queued `BIAS`
+task** — contradicting the "confirmed no queued tasks" assumption. Assessed as safe anyway and the run
+continued: the `BIAS` script (per `robotic.yaml`'s `runner.scripts.BIAS`) only touches `camera: sbig6303e`, and
+that module isn't running in this test set at all, so `mastermind` had nothing it could actually act on even if
+it tried, and the task's scheduled time was hours out. Worth remembering for next time: "no queued tasks" needs
+to be verified by actually querying the schedule, not assumed — it can be wrong, harmlessly here, but might not
+always be.
+
+**Procedure:** started the exact 7-module set from the two cleanest documented incidents — `acquisition`,
+`autofocus`, `focusmodel`, `imagewatcher`, `imagewriter`, `mastermind`, `scheduler` — let them settle
+(already several minutes stable by the time of the next step, well within the range the real incidents
+covered), then started `dome` as the 8th, exactly matching the second real incident's shape.
+
+**Reproduced cleanly, with timing matching the original incident almost exactly:**
+- `dome` logged `Started successfully` at `12:50:33`.
+- Cascade of `xmppcomm.py:1020 Still failing to get capabilities for <Interface> from <peer> after 3 attempts
+  (TimeoutError()), will keep retrying` began at `12:51:04` — **31 seconds later**, matching the original
+  incident's "31 seconds after flatfield logged Started successfully" / "33 seconds" for dome almost exactly.
+- **Every single failing pair involved `dome`** (dome fetching from each of the 7 stable peers, and each of
+  the 7 fetching from dome) — none of the 7 already-established peers ever failed to reach each other. Exact
+  match to the original "every failing pair involves the newcomer" pattern.
+- A genuine unhandled `slixmpp.exceptions.IqTimeout` (not a retried warning — `_safe_send` exhausting its
+  bounded 5-attempt retry budget on `dome`'s own outgoing `send_event`/log-forwarding) hit at `12:51:58` — 85
+  seconds after start, matching the original incident's `flatfield` hitting the same exception 39s/85s after
+  its own storm. **A second occurrence hit again at `12:53:23`** — exactly 85 seconds after the first, i.e.
+  each new log message that happens to hit the same stuck condition independently pays the same ~85s
+  `_safe_send` retry-budget cost (5 attempts × ~15-17s), not a random recurrence — internally consistent with
+  the retry math in `xmppcomm.py`, and a real match to the original's "recurs well after the initial burst"
+  finding.
+- Quiet for over a minute after the second `IqTimeout`, consistent with the original incident's window not
+  showing indefinite escalation either.
+
+**New evidence the original investigation never had — root cause still not identified, but ruled out further:**
+- **`ejabberd` runs on the same host as the pyobs modules** (`iag50srv` itself) — confirmed via `systemctl
+  list-units '*ejabberd*'`. This is architecturally different from every prior test in this doc (local
+  docker-compose: separate container; synthetic benchmark: remote client machine talking to the real server).
+  All client↔server traffic here is over IPv6 loopback (`[::1]:5222`), confirmed in ejabberd's own connection
+  log — not a network-path issue.
+- **`ejabberd`'s own log (`/var/log/ejabberd/ejabberd.log`) and `journalctl -u ejabberd` are completely silent**
+  through the entire failure window (`12:51:04`–`12:51:58`) — no warnings, errors, or any trace of the stuck
+  IQs. Whatever is happening either never reaches ejabberd's own logging, or ejabberd never sees the
+  request/never sends the reply in a way its own instrumentation notices.
+- **Not cgroup/systemd CPU throttling**: `ejabberd.service` has no `CPUQuota` set (`CPUQuotaPerSecUSec=infinity`),
+  and `cpu.stat` for its cgroup showed `nr_throttled 0` — zero throttling events, ever.
+- **Not a resource-starved host**: 14 cores, `load average: 0.05, 0.06, 0.01` (checked ~75s after the burst
+  started — a very brief spike wouldn't necessarily show, but there's no sustained contention), 13GB free
+  memory.
+- **Not a client-side event-loop stall this time either**: grepped all 7 peer logs for the event-loop-lag
+  watchdog output — nothing. Same conclusion the original incident's watchdog reached, now confirmed on a
+  second, independently-reproduced occurrence.
+
+**Where this leaves the investigation:** the incident is real, reproducible, and now caught with much better
+instrumentation than the original production occurrence had — but the actual mechanism is still not
+identified. It's specifically tied to **real `Module` instances with real background behavior** (schedule
+fetching, focus-model computation, image-directory watching, etc.) co-located with ejabberd on one host — the
+synthetic benchmark's idle `XmppComm`-only clients, even at k=21 real accounts, never reproduced it, and the
+per-module CPU/event-loop-lag checks here found nothing on the client side either. That combination (real
+module workload + same-host ejabberd, both clean of any obvious resource signal) is the strongest lead so far.
+Candidates not yet ruled out: something in ejabberd's internal message routing/mnesia layer that doesn't
+surface in its own logs at the configured level; brief, sub-second contention too short for `load average` or
+`cpu.stat`'s periodic sampling to catch; or an interaction specific to real modules' background asyncio tasks
+(HTTP calls to `observe.monet.uni-goettingen.de`, focus computation, etc.) with slixmpp's own scheduling that
+the idle synthetic client never exercises. Full raw logs from this run (all 8 modules, `12:42`–`12:54`) saved
+outside the repo for reference.
+
+**Next steps:** re-run with `ejabberd`'s debug log level raised, or with `strace`/`tcpdump` on the loopback
+interface armed *before* starting the 8th module, to catch whatever's actually happening between "client sends
+IQ" and "client gives up after 10s" — the current evidence rules out several candidate layers but doesn't yet
+show what's actually stalling. The monet-south comparison (shelved earlier because iag50 was clean at every
+synthetic-client scale) is worth reconsidering now that iag50 *does* reproduce something — if monet-south's
+ejabberd is also co-located with its modules on one host and a matching real-module test stays clean there,
+that would be a strong signal the same-host topology itself is implicated.
+
 ## Problem
 
 There is currently no empirical throughput or latency data for pyobs's XMPP/PubSub transport.

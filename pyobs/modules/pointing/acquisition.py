@@ -134,8 +134,9 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # do camera settings
         async with self.proxy(self._camera, ICamera) as camera:
             await self._do_camera_settings(camera)
-        async with self.proxy(self._camera, IImageType) as camera:
-            await camera.set_image_type(ImageType.ACQUISITION)
+        async with self.safe_proxy(self._camera, IImageType) as camera:
+            if camera:
+                await camera.set_image_type(ImageType.ACQUISITION)
 
         # try given number of attempts
         for a in range(self._attempts):

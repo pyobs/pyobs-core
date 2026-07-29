@@ -1,4 +1,4 @@
-.. _installing:
+.. _development:
 
 Developing pyobs
 ================
@@ -93,4 +93,25 @@ We also use black to automatically format Python files and flake8 as a syntax ch
 on each commit after installing pre-commit::
 
     poetry run pre-commit install
+
+
+Release tooling
+----------------
+A couple of standalone scripts under :file:`scripts/` (top level, not :file:`scripts/xmpp/` — see
+:ref:`xmpp-diagnostics` for those) support the release process itself, rather than pyobs at runtime.
+
+``check_changelog.sh`` is run by CI against a release tag, and fails if a minor/major release is being
+tagged without a matching entry in :file:`CHANGELOG.rst` (dev pre-releases and patch releases are exempt
+— see the script's own header comment for the exact rules)::
+
+    ./scripts/check_changelog.sh v1.54.0
+
+``check_pyobs_releases.sh`` is a maintainer convenience: it lists the latest GitHub release — including
+pre-releases, which the GitHub web UI hides by default — for every public repo in the ``pyobs`` org, or
+for a specific list of them. Useful for spot-checking that a round of releases (e.g. after
+``do-python-release``) actually landed everywhere it should have. Requires the GitHub CLI (``gh``),
+authenticated::
+
+    ./scripts/check_pyobs_releases.sh                        # every public repo in the org
+    ./scripts/check_pyobs_releases.sh pyobs-core pyobs-gui    # just these
 

@@ -12,6 +12,21 @@ Setting up ejabberd
 -------------------
 In case you already have a working XMPP server, skip this step.
 
+Automated setup
+~~~~~~~~~~~~~~~~
+:file:`scripts/xmpp/install-ejabberd.sh` in the *pyobs-core* repository automates steps 1-5 below (and a
+couple of extras: an HTTP API listener for *pyobs-web-admin*, and a raised shaper so a real fleet's
+capability-fetch/state-push bursts don't run into `a known ejabberd bug
+<https://github.com/processone/xmpp>`__ where a throttled connection's socket can fail to be reactivated —
+see :file:`specs/plans/ejabberd-throughput-benchmarking.md` in the repo for the full writeup). It's
+idempotent — safe to re-run, e.g. to add a second vhost::
+
+    sudo ./scripts/xmpp/install-ejabberd.sh <hostname>
+
+Run it on the machine that will host ejabberd itself, as root (or via ``sudo``); it edits
+:file:`/etc/ejabberd/ejabberd.yml` in place (backing it up first) and restarts the service. The manual
+steps below are equivalent if you'd rather do it by hand, or need to understand what the script changes.
+
 1. Download ejabberd from https://www.process-one.net/en/ejabberd/downloads/ and install it.
 
 2. Since the allowed packet sizes are by default a little too small, find the ejabberd config file **ejabberd.yml**
@@ -41,6 +56,10 @@ never reaches ``Started successfully.``, and your ejabberd server is *not* confi
 this is usually a STARTTLS mismatch between pyobs' XMPP client and ejabberd. Find
 ``starttls_required: true`` under the ``listen:`` section of **ejabberd.yml** and set it to
 ``false`` (or configure TLS on both ends instead, if you'd rather keep it required).
+
+For other XMPP/ejabberd connectivity issues — a module failing to discover its peers, capability
+fetches timing out, or wanting to inspect what's actually on the pubsub bus — see
+:ref:`xmpp-diagnostics`, which covers the diagnostic scripts shipped in :file:`scripts/xmpp/`.
 
 Install pyobs
 ------------------

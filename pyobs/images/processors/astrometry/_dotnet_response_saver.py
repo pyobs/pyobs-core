@@ -51,7 +51,8 @@ class _ResponseImageWriter:
         astrometry.net gives a CD matrix, so we have to delete the PC matrix and the CDELT* parameters
         """
         for keyword in ["PC1_1", "PC1_2", "PC2_1", "PC2_2", "CDELT1", "CDELT2"]:
-            del self._image.header[keyword]
+            if keyword in self._image.header:
+                del self._image.header[keyword]
 
     def _generate_image_wcs(self) -> None:
         # astrometry.net's CD matrix is sometimes under-constrained, which astropy silently repairs

@@ -235,6 +235,70 @@ first. Also needed the venv's `bin/` directory on `PATH` (not just invoking tool
 looks it up via `PATH`, not the venv it's running under, so it doesn't find a `PATH`-invisible venv
 install. Both are one-time environment setup steps for whoever runs this build, not app changes.
 
+### Real app build — done (2026-07-29), on `develop`
+
+Built and ran the actual `pyobs_gui` app (not the isolated spike) through `pyside6-deploy`,
+`--mode=standalone`, targeting `pyobs_gui/__main__.py`. Committed spec:
+`pyobs-gui/pysidedeploy.spec`. The binary now launches, shows the login window, and shuts down
+cleanly on signal — confirmed by running the frozen `.bin` directly, not via any venv Python. This
+is a plain-generic-widgets run only; the plugin mechanism itself (`plugin_paths`, widget selection)
+is still unimplemented, see checklist.
+
+Three real problems surfaced that the isolated spike didn't hit, in order:
+
+1. **`astropy.units` doesn't survive freezing at all** — a genuine, unresolved upstream Nuitka/PLY
+   incompatibility ([astropy#15069](https://github.com/astropy/astropy/issues/15069),
+   [Nuitka#2313](https://github.com/Nuitka/Nuitka/issues/2313), both open as of 2026-07), not
+   something specific to this app. `astropy.units.format.generic` builds its grammar via
+   `sys._getframe()` stack-walking to discover its own `tokens`/`p_*` locals; Nuitka-compiled
+   frames don't populate `f_locals` the way CPython's do, so the walk finds nothing and the very
+   first `import astropy.units` (unconditional, via pyobs-core's `pyobs.utils.enums`) crashes with
+   `YaccError: Unable to build parser`. Two dead ends before landing the fix:
+   - `--include-package=astropy.units.format(...)` (a workaround reported to work for a different,
+     shallower app in the Nuitka issue thread) does not help here — `generic.py` is statically
+     reachable through `astropy.units`'s own import graph regardless of the flag, so Nuitka compiles
+     it either way; the flag only affects modules that were otherwise invisible to static analysis.
+   - Monkeypatching `Generic._parser`/`_lexer` after a normal `import astropy.units.format.generic`
+     deadlocks: that import is what triggers the crash in the first place (via
+     `astropy.units.astrophys`'s eager unit-string parsing at import time), before a class-level
+     patch could ever be installed.
+   - **Working fix:** `pyobs-gui/pyobs_gui/_nuitka_astropy_patch.py` patches
+     `astropy.extern.ply.yacc.get_caller_module_dict`/`...lex.get_caller_module_dict` (zero
+     dependency on `astropy.units`, safe to patch before anything touches it) to fall back to a
+     namespace rebuilt from the same grammar, copied verbatim from astropy's source, whenever the
+     real frame walk comes back missing `tokens`. Installed at the very top of
+     `pyobs_gui/__init__.py` (which Python always runs before `__main__.py`, even under
+     `python -m pyobs_gui`). Scoped to the generic unit format only — the one format hit
+     unconditionally at startup; cds/ogip/vounit and `astropy.coordinates.angles` use the same PLY
+     pattern and aren't yet covered.
+2. **Several packages need explicit `--include-package`/`--include-package-data`** because Nuitka's
+   static analysis can't see dynamic string-based imports or `open()`-style data-file loads:
+   `pyobs.vfs` (lazy backend loading via `__getattr__`, the same pattern as this doc's own
+   widget-plugin problem), and package data for `asdf` (JSON schema files, needed transitively via
+   `astropy.table`), `astropy`, `sunpy`, `matplotlib`, `qfitswidget`, `astropy_iers_data`, and
+   `astroquery` (reads a `CITATION` file at import time). All added to the committed spec's
+   `extra_args`.
+3. The `--include-package=astropy.units.format.generic_parsetab`/`.generic_lextab`-style flags from
+   the first dead end above turned out unnecessary once the `get_caller_module_dict` fix landed,
+   but were left in the committed spec since they're harmless and already verified not to break
+   anything.
+
+**ccache location:** Nuitka's C-compile caching goes through `~/.cache/Nuitka/ccache` — a
+*different* directory from the system default `~/.cache/ccache`, so plain `ccache -s` under-reports;
+check with `CCACHE_DIR=~/.cache/Nuitka/ccache ccache -s`. Once `ccache` is installed and on `PATH`,
+Nuitka picks it up automatically (no extra flag needed), and hit rates are high (~65%+ observed)
+across rebuilds that only touch a couple of app-level files, since ccache keys on the generated C
+content per translation unit, not "did anything anywhere change." Nuitka's separate Python→C
+translation cache (`~/.cache/Nuitka/module-cache`) is far less effective for this app specifically,
+since Nuitka does whole-program analysis and a change to a widely-imported file (e.g.
+`pyobs_gui/__init__.py`) can invalidate more cached translation than a naive per-file cache would.
+
+**venv gotcha, additional to the `ensurepip`/`PATH` ones found in the spike:** `uv sync` prunes
+anything installed via `pip` that isn't a declared dependency — including `Nuitka`/`patchelf`/`pip`
+itself. Running `uv sync` for an unrelated reason (e.g. picking up a new `[project.scripts]` entry)
+mid-build silently corrupted an in-flight Nuitka compile the first time this was hit. Re-run
+`python -m ensurepip` after any `uv sync` if a `pyside6-deploy` build is expected to work again.
+
 ## Non-goals
 
 - Hot-reloading plugins while the GUI is running — load-once-at-startup is enough.
@@ -260,16 +324,21 @@ install. Both are one-time environment setup steps for whoever runs this build, 
       same result as unfrozen (2026-07-27, `feature/standalone-binary`, `spike_standalone/`)
 - [x] Spike: plugin mechanism itself, end to end — confirmed working both directions (loads with
       the env var set, `ModuleNotFoundError`s without it) (2026-07-27, `feature/standalone-binary`)
-- [ ] Pin the compiler for real builds: add `--clang` to `[nuitka] extra_args` and document
+- [x] Pin the compiler for real builds: add `--clang` to `[nuitka] extra_args` and document
       `CC=clang-<N>`/`CXX=clang++-<N>` — the spike's default-GCC build hit a GCC 15 internal
       compiler error partway through (compiler bug, not an app/Nuitka bug), clang built the same
-      app cleanly
-- [ ] Produce and commit a real `pysidedeploy.spec` for `pyobs-gui` itself (the spike's spec is for
-      the isolated `spike_standalone/main.py`, not the real app — same recipe, different entry point)
-- [ ] Document the environment prerequisites found during the spike: `python -m ensurepip` if the
+      app cleanly (2026-07-29, committed in `pyobs-gui/pysidedeploy.spec`)
+- [x] Produce and commit a real `pysidedeploy.spec` for `pyobs-gui` itself (2026-07-29,
+      `pyobs-gui/pysidedeploy.spec`, targets `pyobs_gui/__main__.py`)
+- [x] Document the environment prerequisites found during the spike: `python -m ensurepip` if the
       venv has no `pip` (as with a plain `uv venv`), and the venv's `bin/` on `PATH` (not just
-      invoking tools by full path) so Nuitka's own `patchelf` lookup succeeds
-- [ ] End-to-end smoke test against the *real* `pyobs-gui` app (not just the isolated spike):
-      compiled binary + external plugin directory + chosen selection mechanism, verified working
-      without rebuilding
-- [ ] Update this doc's `Status:` to `implemented` once landed
+      invoking tools by full path) so Nuitka's own `patchelf` lookup succeeds — see "Real app
+      build" below for an additional `uv sync` gotcha found while building the real app
+- [x] End-to-end smoke test: the real, compiled `pyobs-gui` binary boots and shows the login
+      window, confirmed by running the frozen `.bin` directly (2026-07-29) — see "Real app build"
+      below for the three real (non-plugin-related) problems this surfaced and how they were fixed
+- [ ] End-to-end smoke test: real app + external plugin directory + chosen selection mechanism —
+      blocked on the `plugin_paths`/selection items above, not yet attempted
+- [ ] Update this doc's `Status:` to `implemented` once landed — not yet; the widget
+      loading/selection mechanism (this doc's actual subject) is still unimplemented, only the
+      packaging pipeline itself has been proven against the real app

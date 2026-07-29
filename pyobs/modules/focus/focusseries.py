@@ -135,8 +135,9 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # do camera settings
         async with self.proxy(self._camera, ICamera) as camera:
             await self._do_camera_settings(camera)
-        async with self.proxy(self._camera, IImageType) as proxy:
-            await proxy.set_image_type(ImageType.FOCUS)
+        async with self.safe_proxy(self._camera, IImageType) as proxy:
+            if proxy:
+                await proxy.set_image_type(ImageType.FOCUS)
 
         # get filter wheel and current filter
         filter_name = "unknown"

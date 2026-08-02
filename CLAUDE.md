@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Entry points for working in this repo. Be concise with all of your responses.
+Entry points for working in this repo.
 
 ## Design history and planning
 

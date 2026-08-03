@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import astroplan
-import astropy.coordinates
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -32,12 +31,12 @@ class MoonSeparationConstraint(Constraint):
         if task.target is None:
             return True
         coord = task.target.coordinates(time)
-        moon_separation = astropy.coordinates.get_body("moon", time).separation(coord, origin_mismatch="ignore")
+        moon_separation = data.moon(time).separation(coord, origin_mismatch="ignore")  # type: ignore[unexpected-keyword]
         return float(moon_separation.degree) >= self.min_distance
 
     async def filter_skycoord(self, time: Time, coords: SkyCoord, data: DataProvider) -> np.ndarray:
-        moon = astropy.coordinates.get_body("moon", time)
-        separations = moon.separation(coords, origin_mismatch="ignore").deg
+        moon = data.moon(time)
+        separations = moon.separation(coords, origin_mismatch="ignore").deg  # type: ignore[unexpected-keyword]
         return np.asarray(separations >= self.min_distance, dtype=np.bool_)
 
 

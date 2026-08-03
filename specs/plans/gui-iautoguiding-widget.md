@@ -1,7 +1,7 @@
 # Plan: `pyobs-gui` IAutoGuiding widget
 
-Status: in progress — first pass implemented and shipped; this doc now describes a follow-up
-refinement.
+Status: implemented, closed. The follow-up refinement below (`OffsetResult`/`OffsetFrame`,
+arcsec-based `GuidingState`) has also shipped in both pyobs-core and pyobs-gui.
 Repos: pyobs-gui (widget), pyobs-core (`IAutoGuiding`/`ApplyOffsets` changes, partly proposed)
 
 *Note: pyobs-core's actual interface name is `IAutoGuiding`, not `IGuiding` — used the real name

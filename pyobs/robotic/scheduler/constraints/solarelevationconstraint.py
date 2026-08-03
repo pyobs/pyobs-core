@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Literal
 
 import astroplan
 import astropy.units as u
-from astropy.coordinates import get_sun
 from pydantic import Field
 
 from pyobs.utils.time import Time
@@ -34,12 +33,12 @@ class SolarElevationConstraint(Constraint):
         return astroplan.AtNightConstraint(max_solar_altitude=self.max_elevation * u.deg)
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
-        sun = data.observer.sun_altaz(time)
+        sun = data.sun_altaz(time)
         in_range = self.min_elevation <= float(sun.alt.degree) <= self.max_elevation
         if self.direction == "both":
             return in_range
         else:
-            sun_coord = get_sun(time)
+            sun_coord = data.sun(time)
             transit = data.observer.target_meridian_transit_time(time, sun_coord, which="nearest")
             midnight = data.observer.midnight(time, which="nearest")
 

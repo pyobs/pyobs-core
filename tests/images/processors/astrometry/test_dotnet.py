@@ -18,6 +18,7 @@ def test_init_default():
     assert astrometry._request_builder._source_count == 50
     assert astrometry._request_builder._radius == 3.0
     assert astrometry.timeout == 10
+    assert astrometry.on_error == "raise"
     assert astrometry.exceptions is True
 
 
@@ -33,46 +34,23 @@ def test_init_w_values():
     assert astrometry._request_builder._source_count == source_count
     assert astrometry._request_builder._radius == radius
     assert astrometry.timeout == timeout
+    assert astrometry.on_error == "error"
     assert astrometry.exceptions == exceptions
 
 
-def check_astrometry_header_exist(image, inverse=False) -> bool:
-    keywords = [
-        "CTYPE1",
-        "CTYPE2",
-        "CRPIX1",
-        "CRPIX2",
-        "CRVAL1",
-        "CRVAL2",
-        "CD1_1",
-        "CD1_2",
-        "CD2_1",
-        "CD2_2",
-    ]
+def test_init_on_error_takes_precedence_over_exceptions():
+    url = "https://nova.astrometry.net"
 
-    keyword_in_hdr = [x in image.header for x in keywords]
+    astrometry = AstrometryDotNet(url, exceptions=False, on_error="info")
 
-    if inverse:
-        return not any(keyword_in_hdr)
-    else:
-        return all(keyword_in_hdr)
+    assert astrometry.on_error == "info"
 
 
 @pytest.mark.asyncio
-async def test_call_n_catalog_n_exception():
+async def test_call_n_catalog_always_raises():
     image = Image()
     url = "https://nova.astrometry.net"
     astrometry = AstrometryDotNet(url, exceptions=False)
-
-    result_img = await astrometry(image)
-    assert check_astrometry_header_exist(result_img, True)
-
-
-@pytest.mark.asyncio
-async def test_call_n_catalog_w_exception():
-    image = Image()
-    url = "https://nova.astrometry.net"
-    astrometry = AstrometryDotNet(url, exceptions=True)
 
     with pytest.raises(exc.ImageError):
         await astrometry(image)
@@ -90,46 +68,22 @@ def mock_catalog(size: int):
 
 
 @pytest.mark.asyncio
-async def test_call_small_catalog_n_exception():
+async def test_call_small_catalog_always_raises():
     image = Image()
     image.catalog = mock_catalog(2)
     url = "https://nova.astrometry.net"
     astrometry = AstrometryDotNet(url, exceptions=False)
-
-    result_img = await astrometry(image)
-    assert check_astrometry_header_exist(result_img, True)
-    assert result_img.header["WCSERR"] == 1
-
-
-@pytest.mark.asyncio
-async def test_call_small_catalog_w_exception():
-    image = Image()
-    image.catalog = mock_catalog(2)
-    url = "https://nova.astrometry.net"
-    astrometry = AstrometryDotNet(url, exceptions=True)
 
     with pytest.raises(exc.ImageError):
         await astrometry(image)
 
 
 @pytest.mark.asyncio
-async def test_call_cdelt_n_exception():
+async def test_call_cdelt_always_raises():
     image = Image()
     image.catalog = mock_catalog(5)
     url = "https://nova.astrometry.net"
     astrometry = AstrometryDotNet(url, exceptions=False)
-
-    result_img = await astrometry(image)
-    assert check_astrometry_header_exist(result_img, True)
-    assert result_img.header["WCSERR"] == 1
-
-
-@pytest.mark.asyncio
-async def test_call_cdelt_w_exception():
-    image = Image()
-    image.catalog = mock_catalog(5)
-    url = "https://nova.astrometry.net"
-    astrometry = AstrometryDotNet(url, exceptions=True)
 
     with pytest.raises(exc.ImageError):
         await astrometry(image)
@@ -156,7 +110,7 @@ class MockResponse:
 
 
 @pytest.mark.asyncio
-async def test_call_post_error_n_exception(mocker, mock_header):
+async def test_call_post_error_always_raises(mocker, mock_header):
     image = Image()
     image.header = mock_header
     image.catalog = mock_catalog(5)
@@ -164,44 +118,22 @@ async def test_call_post_error_n_exception(mocker, mock_header):
     astrometry = AstrometryDotNet(url, exceptions=False)
 
     resp = MockResponse(json.dumps({}), 404)
-    mock = mocker.patch("aiohttp.ClientSession.post", return_value=resp)
-
-    result_image = await astrometry(image)
-    assert result_image.header["WCSERR"] == 1
-
-    assert mock.call_args_list[0].args[0] == url
-
-    data = mock.call_args_list[0].kwargs["json"]
-
-    assert data == {
-        "crpix-x": image.header["CRPIX1"],
-        "crpix-y": image.header["CRPIX2"],
-        "ra": image.header["TEL-RA"],
-        "dec": image.header["TEL-DEC"],
-        "scale_low": 3600 * 0.9,
-        "scale_high": 3600 * 1.1,
-        "radius": 3.0,
-        "nx": image.header["NAXIS1"],
-        "ny": image.header["NAXIS2"],
-        "x": [0.0, 0.0, 0.0, 0.0, 0.0],
-        "y": [0.0, 0.0, 0.0, 0.0, 0.0],
-        "flux": [1.0, 1.0, 1.0, 1.0, 1.0],
-    }
-
-
-@pytest.mark.asyncio
-async def test_call_post_error_w_exception(mocker, mock_header):
-    image = Image()
-    image.header = mock_header
-    image.catalog = mock_catalog(5)
-    url = "https://nova.astrometry.net"
-    astrometry = AstrometryDotNet(url, exceptions=True)
-
-    resp = MockResponse(json.dumps({}), 404)
     mocker.patch("aiohttp.ClientSession.post", return_value=resp)
 
     with pytest.raises(exc.ImageError):
         await astrometry(image)
+
+
+def test_handle_error_marks_wcserr(mock_header):
+    image = Image()
+    image.header = mock_header
+    url = "https://nova.astrometry.net"
+    astrometry = AstrometryDotNet(url)
+
+    error = exc.ImageError("No WCS found.")
+    result_image = astrometry.handle_error(image, error)
+
+    assert result_image.header["WCSERR"] == 1
 
 
 @pytest.fixture()

@@ -31,11 +31,15 @@ class AstrometryDotNet(Astrometry):
                          (commonly degrees for astrometry.net). Default: ``3.0``.
     :param int timeout: Timeout in seconds for the network call to the astrometry
                         web service. Default: ``10``.
-    :param bool exceptions: Whether to raise exceptions on failure. If ``True``,
-                            processing errors are raised (typically as
-                            :class:`pyobs.images.exceptions.ImageError`). If ``False``,
-                            errors are handled by marking the image header and returning
-                            the original image. Default: ``True``.
+    :param bool exceptions: Deprecated, use ``on_error`` instead. ``exceptions=False`` is
+                            equivalent to ``on_error="error"``; ``exceptions=True`` (the
+                            default) is equivalent to ``on_error="raise"``.
+    :param str on_error: How the pipeline should handle a failed solve: ``"raise"`` (default,
+                         abort the pipeline), ``"error"`` (mark ``WCSERR=1`` in the header, log
+                         a warning, and pass the image through -- see ``handle_error``),
+                         ``"info"``, or ``"ignore"``. Only takes effect when this processor
+                         runs as a step in a ``PipelineMixin`` pipeline; a direct call always
+                         raises on failure.
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.astrometry.Astrometry`.
 
@@ -48,11 +52,9 @@ class AstrometryDotNet(Astrometry):
     - On success, receives solver output and writes the resulting WCS into a copy of
       the input image using :class:`pyobs.images.processors.astrometry._ResponseImageWriter`.
     - Logs the outcome, including WCS information, and returns the result image.
-    - On failure:
-
-        - If ``exceptions=True``, raises the underlying :class:`pyobs.images.exceptions.ImageError`.
-        - If ``exceptions=False``, sets ``WCSERR=1`` in the FITS header, logs a warning, and returns the original
-          image unchanged.
+    - On failure, raises the underlying :class:`pyobs.images.exceptions.ImageError`. When run as
+      a pipeline step with ``on_error="error"``, the pipeline calls ``handle_error``, which sets
+      ``WCSERR=1`` in the FITS header, logs a warning, and returns the original image unchanged.
 
     Input/Output
     ------------
@@ -69,20 +71,20 @@ class AstrometryDotNet(Astrometry):
        class: pyobs.images.processors.astrometry.AstrometryDotNet
        url: "http://localhost:8080/api"
 
-    Handle failures without raising exceptions:
+    Handle failures without aborting the pipeline:
 
     .. code-block:: yaml
 
        class: pyobs.images.processors.astrometry.AstrometryDotNet
        url: "http://localhost:8080/api"
-       exceptions: false
+       on_error: error
 
     Notes
     -----
     - The ``_DotNetRequestBuilder`` determines how sources are extracted and how the
       request is formed (including any unit conventions for ``radius``). Consult its
       documentation for details.
-    - ``WCSERR`` is used as a failure marker in the FITS header when ``exceptions=False``.
+    - ``WCSERR`` is used as a failure marker in the FITS header when ``handle_error`` runs.
     """
 
     __module__ = "pyobs.images.processors.astrometry"
@@ -93,7 +95,8 @@ class AstrometryDotNet(Astrometry):
         source_count: int = 50,
         radius: float = 3.0,
         timeout: int = 10,
-        exceptions: bool = True,
+        exceptions: bool | None = None,
+        on_error: str = "raise",
         **kwargs: Any,
     ):
         """Init new astronomy.net processor.
@@ -103,16 +106,27 @@ class AstrometryDotNet(Astrometry):
             source_count: Number of sources to send.
             radius: Radius to search in.
             timeout: Timeout in seconds for call to astrometry web service.
-            exceptions: Whether to raise Exceptions.
+            exceptions: Deprecated, use on_error instead. Whether to raise Exceptions.
+            on_error: How to handle a failed solve. One of "raise", "error", "info", "ignore".
+                On "error", handle_error() marks the image with WCSERR=1 and logs a warning.
         """
-        Astrometry.__init__(self, **kwargs)
+        Astrometry.__init__(self, on_error=on_error, **kwargs)
 
         self.url = url
 
         self.timeout = timeout
-        self.exceptions = exceptions
+
+        # backwards compat: if 'exceptions' is set but 'on_error' is left at its default,
+        # derive on_error from it.
+        if exceptions is not None and on_error == "raise":
+            self._on_error = "raise" if exceptions else "error"
 
         self._request_builder = _DotNetRequestBuilder(source_count, radius)
+
+    @property
+    def exceptions(self) -> bool:
+        """Deprecated, use on_error instead."""
+        return self.on_error != "error"
 
     async def _process(self, image: Image) -> Image:
         # build the request
@@ -132,10 +146,7 @@ class AstrometryDotNet(Astrometry):
 
         return result_image
 
-    def _handle_error(self, image: Image, error: exc.ImageError) -> Image:
-        if self.exceptions:
-            raise error
-
+    def handle_error(self, image: Image, error: exc.ImageError) -> Image:
         image.header["WCSERR"] = 1
 
         log.warning(error.message)
@@ -145,16 +156,13 @@ class AstrometryDotNet(Astrometry):
     async def __call__(self, image: Image) -> Image:
         """Find astrometric solution on given image.
 
-        Writes WCSERR=1 into FITS header on failure.
+        Writes WCSERR=1 into FITS header on failure (see handle_error).
 
         Args:
             image: Image to analyse.
         """
 
-        try:
-            return await self._process(image)
-        except exc.ImageError as e:
-            return self._handle_error(image, e)
+        return await self._process(image)
 
 
 __all__ = ["AstrometryDotNet"]

@@ -298,6 +298,55 @@ subclasses ``ICamera``/``ISpectrograph`` directly (not via ``BaseCamera``/``Base
 and actually wants exposure-progress semantics, add ``IExposure`` to its own bases explicitly and
 publish ``ExposureState`` via ``self.comm.set_state(...)``.
 
+Exception handling
+---------------------
+
+Domain exceptions (``pyobs.utils.exceptions``, e.g. ``FocusError``, ``MoveError``) now
+cross the RPC boundary as their real type instead of a generic wrapper —
+``except exc.FocusError:`` around a proxy call actually fires now:
+
+.. code-block:: python
+
+   async with self.proxy("focuser", IFocuser) as focuser:
+       try:
+           await focuser.set_focus(12.3)
+       except exc.FocusError as e:
+           ...  # used to require catching InvocationError and unwrapping .exception
+
+``InvocationError`` (the old universal wrapper) is retired entirely, along with
+``SevereError`` (its severity-escalation metaclass intercepted *construction*, not raising
+or catching, so it could silently misclassify an exception). ``PyObsError`` is renamed to
+``PyobsError`` (naming consistency with ``PyobsArchive``/``PyobsCLI``), and its constructor
+is now ``PyobsError(message=None, **context)`` — ``RemoteError``/``RemoteTimeoutError``/
+``ForbiddenError`` no longer have their own constructors and take keyword arguments only.
+
+Exception classes resolve via a registry (populated automatically via
+``__init_subclass__``), keyed by fully-qualified name rather than bare class name, so a
+domain exception can live anywhere — a driver package, a ``pyobs-core`` submodule — and
+still survive the wire. One that can't be resolved (a raw builtin, a vendor SDK exception,
+or a domain type whose defining module was never imported in this process) arrives as the
+new ``UnclassifiedError`` instead of silently degrading to a bare ``RemoteError``, with the
+original type's qualified name preserved as ``UnclassifiedError.original_type``.
+
+``register_exception``/``handle_exception`` move from module-level free functions with
+process-global state to ``Module._register_exception()`` — fixing a real cross-instance bug
+where two ``Module`` instances in the same process (``MultiModule``, or two instances
+watching the same remote module) shared one counter. The ``throw`` parameter is gone with
+the pattern it existed for.
+
+Every RPC-exposed method raising a domain exception also carries a correlation id now: the
+module-side log line includes ``(call_id=...)``, and the caller's exception carries the same
+id as ``exception.call_id`` (reusing XEP-0009's existing per-call ``iq["id"]``) — lets an
+operator debugging a caller-side error jump straight to the matching detailed log on the
+module that actually raised it.
+
+**Breaking for external code that**: constructs ``RemoteError``/``RemoteTimeoutError``/
+``ForbiddenError`` directly (now keyword-only, no positional args); catches
+``exc.PyObsError``/``exc.InvocationError`` by name (``pyobs-gui``'s ``base.py``/
+``mainwindow.py`` reference ``PyObsError`` and need the rename applied); calls
+``exc.register_exception(...)`` directly (now ``self._register_exception(...)`` on
+``Module``); or relies on every remote failure arriving as some ``RemoteError`` subclass.
+
 Deployment / infrastructure
 ------------------------------
 
@@ -320,6 +369,25 @@ Without this, ejabberd's own defaults don't reliably enable notification deliver
 state PubSub nodes pyobs auto-creates on first publish, and new subscribers won't
 immediately receive the last known value.
 
+Under real fleet traffic (multiple modules' capability fetches/state pushes bursting at
+once), ejabberd's stock default ``shaper.normal`` (``rate: 3000``, ``burst_size: 20000``) is
+low enough to trip — which exposes a genuine ejabberd bug in ``xmpp_socket.erl``: a
+throttled connection's read isn't re-armed afterwards, stalling that connection's IQ
+throughput (capability fetches, state publication) indefinitely rather than just delaying
+it (not yet reported upstream; see ``specs/plans/ejabberd-throughput-benchmarking.md``).
+Raise the shaper limits in ``ejabberd.yml``:
+
+.. code-block:: yaml
+
+   shaper:
+     normal:
+       rate: 30000
+       burst_size: 200000
+     fast: 2000000
+
+``scripts/xmpp/install-ejabberd.sh`` applies this (plus routing a host onto the ``fast``
+shaper via its own vhost ACL) for new hosts automatically.
+
 New features
 ============
 
@@ -341,13 +409,21 @@ On a ``Proxy``, read it with:
 
    async with self.proxy("camera", ICooling) as camera:
        state = camera.get_state(ICooling)          # last known value, or None if never subscribed/published
-       state = await camera.wait_for_state(ICooling)  # wait for the next update
+       state = await camera.wait_for_state(ICooling)  # wait for the next update, or None on timeout
 
 State is cached per-connection and delivered immediately on subscribe (ejabberd's
 "last published item" semantics), so a client always has a value right after resolving a
 proxy without a separate fetch. State has no history: it is "what is true right now," kept
 strictly distinct from events, which remain immutable, timestamped facts about things that
-happened.
+happened. ``wait_for_state()`` returns ``None`` on timeout rather than letting
+``asyncio.TimeoutError`` propagate, matching how every in-tree caller already handled it.
+
+Both methods take an optional ``max_age`` (a duration): a cached value older than that is
+treated the same as not-yet-published (``None``/timeout), so a publisher whose update loop
+has died — or whose last update was delayed by a slow server — doesn't leave a stale value
+trusted forever. ``WeatherAwareMixin`` uses this for its own weather checks (default 120s),
+so a dead ``Weather`` update loop degrades to bad-weather within a couple of check cycles
+instead of trusting a frozen "good" reading indefinitely.
 
 Some interfaces need a variable, hardware-dependent set of fields rather than a fixed
 schema — a telescope's temperature sensors vary in name and count by installation. These
@@ -553,6 +629,11 @@ Other notable changes
 * ``pyobs`` and ``pyobsd`` support a ``--syslog`` flag.
 * Fixed an XMPP reconnect storm after an ejabberd outage, and a module reconnect that could
   be silently dropped by a stale presence callback.
+* Every ``Module`` now runs a background watchdog that detects the event loop itself
+  stalling — it times its own wakeups against how long it asked to sleep for, so a
+  synchronous blocking call anywhere in the module (or a background task) shows up as a
+  logged stall (once when it starts, once when it clears, with total duration) instead of
+  only being visible indirectly as peers timing out trying to reach that module.
 
 Upgrading
 =========
@@ -573,4 +654,8 @@ GUI/client), check for, in roughly descending order of how likely they are to af
    ``MultiModule`` (a test, a standalone script) — switch to ``module.startup()``, or the
    module never leaves ``STARTING`` (see `Modules reject RPC calls until fully started`_
    above).
-#. If you run your own ejabberd server, apply the ``mod_pubsub`` config change above.
+#. Any reference to ``exc.PyObsError``/``exc.InvocationError`` by name, direct construction
+   of ``RemoteError``/``RemoteTimeoutError``/``ForbiddenError``, or a direct call to
+   ``exc.register_exception(...)`` — see `Exception handling`_ above.
+#. If you run your own ejabberd server, apply the ``mod_pubsub`` config change above, and
+   raise the ``shaper`` limits if you expect real fleet traffic.

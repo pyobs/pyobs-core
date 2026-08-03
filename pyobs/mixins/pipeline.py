@@ -5,6 +5,7 @@ from typing import Any
 
 from pyobs.images import Image, ImageProcessor
 from pyobs.object import Object
+from pyobs.utils.exceptions import ImageError
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +38,10 @@ class PipelineMixin:
     async def run_pipeline(self, image: Image) -> Image:
         """Run the pipeline on the given image.
 
+        Each step is run, and an ImageError it raises is handled according to the step's
+        on_error setting (default "raise"): re-raised, dispatched to the step's handle_error(),
+        logged, or ignored. Non-ImageError exceptions always propagate.
+
         Args:
             image: Image to run pipeline on.
 
@@ -44,9 +49,18 @@ class PipelineMixin:
             Image after pipeline run.
         """
 
-        # loop steps, just let any exception pass
         for step in self.__pipeline_steps:
-            image = await step(image)
+            try:
+                image = await step(image)
+            except ImageError as e:
+                if step.on_error == "raise":
+                    raise
+                elif step.on_error == "error":
+                    image = step.handle_error(image, e)
+                elif step.on_error == "info":
+                    log.info("Step %s: %s", type(step).__name__, e)
+                elif step.on_error == "ignore":
+                    pass
 
         # finished
         return image

@@ -1,4 +1,253 @@
-v2.0.0.dev18 (unreleased)
+v2.0.0.dev53 (unreleased)
+*************************
+* Offloaded ``OnDemandScheduler``'s per-timestep constraint/merit evaluation
+  (``find_next_best_task``/``check_for_better_task``/``can_postpone_task``) onto a dedicated
+  single-worker ``ThreadPoolExecutor`` (new ``pyobs/robotic/scheduler/_executor.py``'s
+  ``run_cpu_bound``), and cache target-independent sun/moon computations in ``DataProvider`` per
+  timestep. These constraint/merit ``__call__`` methods are declared ``async`` but never actually
+  ``await`` -- they run synchronous astropy/astroplan work directly on the event loop, blocking it
+  for multiple seconds at real fleet scale; root cause of a 2026-07-30 "Event loop stalled" warning
+  on the scheduler module. Same class of fix as ``Vfs.write_image()``/``write_fits()`` below. See
+  ``specs/plans/scheduler-event-loop-blocking.md``. (#712)
+* ``ImageProcessor`` gained an ``on_error`` kwarg (``"raise"`` (default) / ``"error"`` / ``"info"``
+  / ``"ignore"``) and a ``handle_error(image, error)`` override point, and
+  ``PipelineMixin.run_pipeline()`` (``pyobs/mixins/pipeline.py``) now catches each step's
+  ``ImageError`` and dispatches per that step's setting, instead of the whole chain aborting on
+  the first exception from any step (previous behavior, equivalent to ``on_error="raise"``
+  everywhere). Non-``ImageError`` exceptions still always propagate. Lets one step's failure be
+  non-fatal while another stays fatal within the same pipeline run -- e.g. a calibration path that
+  must have a valid WCS vs. a quick-look pipeline where a missing WCS is fine. Originally proposed
+  in #328 as a nested ``ExceptionHandler`` wrapper processor; rejected there for adding config
+  nesting for what should be a per-step toggle. ``AstrometryDotNet``'s ``exceptions: bool`` kwarg
+  is now deprecated in favor of ``on_error`` (``exceptions=False`` == ``on_error="error"``;
+  ``on_error`` takes precedence if both are set) and its former internal try/except was removed --
+  its ``on_error``/``handle_error`` dispatch now only happens when it runs as a pipeline step via
+  ``run_pipeline()``. Calling it (or any other migrated processor) directly, outside a pipeline,
+  always raises on failure regardless of ``on_error``/``exceptions``. See
+  ``specs/plans/pipeline-step-error-control.md``.
+* ``Vfs.write_image()``/``write_fits()`` (``pyobs/vfs/vfs.py``) now serialize the FITS data
+  (``image.writeto()``/``hdulist.writeto()``, including gzip compression for ``.fits.gz``
+  targets) via ``asyncio.to_thread()`` instead of directly on the event loop. That serialization
+  is CPU-bound and can take multiple seconds for larger frames, and running it inline blocked
+  every other coroutine in the module for the duration -- including state-publishing background
+  tasks and comm handling -- observed as multi-second event-loop stalls in ``pyobs-iagvt``'s
+  ``SunCamera``/``FTS`` right at the ``vfs.write_image()`` call. Callers that were working around
+  this themselves (serializing via ``asyncio.to_thread`` and uploading raw bytes with
+  ``write_bytes()`` instead) no longer need to.
+v2.0.0.dev52 (2026-07-29)
+*************************
+* Guarded optional WCS/image-type handling against missing capabilities: ``_ResponseImageWriter``
+  (astrometry.net response saving) unconditionally deleted ``PC``/``CDELT`` header keywords after a
+  solve, raising ``KeyError`` when a header lacked one of them -- now a no-op if the keyword is
+  already absent. ``Acquisition``/``AutoFocusSeries`` required ``IImageType`` from the configured
+  camera via a hard proxy, unlike ``AutoGuiding``'s identical use case, which already tolerates a
+  camera without it via ``safe_proxy`` -- now consistent.
+
+v2.0.0.dev51 (2026-07-28)
+*************************
+* No pyobs-core code changes -- entirely root-causing and mitigating the ejabberd shaper/
+  ``xmpp_socket.erl`` reactivation bug behind the iag50srv capability-fetch timeouts (see
+  ``specs/plans/ejabberd-throughput-benchmarking.md``); the shaper fix itself (raising
+  ``shaper.normal``/``shaper.fast``) is an ejabberd-side configuration change, applied to iag50
+  production and baked into the new ``scripts/xmpp/install-ejabberd.sh`` for future hosts.
+
+v2.0.0.dev50 (2026-07-28)
+*************************
+* Fixed the XMPP wire serializer silently corrupting two more shapes of value: ``Time``-typed
+  fields (e.g. ``WeatherState.time``) had no encode/decode support at all and arrived client-side
+  as a plain string; and a field declared ``dict[str, str]``/``str`` could arrive as a stray
+  ``bool`` if the isinstance-based encode dispatch won over the field's own declared type (seen as
+  ``ModeState.modes`` containing bools instead of strings). Follow-up fixes for a not-yet-restarted
+  sender still running the old serializer: ``Time`` decode no longer pins to ``isot`` format (a
+  legacy sender's plain ``str(Time)`` fallback used the space-separated ``iso`` format, which the
+  strict parse rejected), and boolean/int/double values are now coerced to ``str`` on decode as
+  well as encode.
+
+v2.0.0.dev49 (2026-07-28)
+*************************
+* Fixed ``XmppComm.__init__`` raising a bare, message-less ``ValueError`` on a malformed JID (found
+  via a real login-window crash on a saved account with a trailing-slash, no-resource JID). The JID
+  regex is now a module-level, properly end-anchored pattern (the previous ``re.match`` wasn't
+  end-anchored, so ``user@domain/res/extra`` matched as valid), and the new ``is_valid_jid()`` lets
+  a caller taking raw user input (e.g. a login window) validate upfront instead of finding out via
+  an exception.
+* Fixed ``Application.run()`` crashing on a benign qasync shutdown race, where a Qt-backed event
+  loop (``pyobs-gui``) can report itself stopped before the main task/cancellation gather has
+  actually finished -- now handled the same way as the existing ``CancelledError`` case.
+* ``Application`` can now defer constructing its ``Module`` until the event loop is already
+  running, via a new ``module_factory``/``loop_module_class`` alternative to ``config`` -- letting
+  the factory ``await`` something like a login dialog's submit signal before the module and its
+  comm connection exist at all. Existing config-file callers are unaffected.
+
+v2.0.0.dev48 (2026-07-27)
+*************************
+* A module declaring a stateful interface but never publishing it (see the state-publishing
+  enforcement below) now logs as an ``error``, not a ``warning`` -- it's a standing per-module
+  defect that recurs on every startup, not a transient condition.
+
+v2.0.0.dev47 (2026-07-27)
+*************************
+* Every ``Module`` now runs a background watchdog that detects the event loop itself stalling: it
+  times its own wakeups against how long it asked to sleep for, so a synchronous blocking call
+  anywhere in the module (or a background task) shows up as a logged stall -- once when it starts,
+  once when it clears, with total duration -- instead of only being visible indirectly as peers
+  timing out trying to reach that module.
+
+v2.0.0.dev46 (2026-07-27)
+*************************
+* The capability-fetch retry warning now includes the actual exception that caused the retry,
+  instead of just noting that one occurred.
+
+v2.0.0.dev45 (2026-07-27)
+*************************
+* Fixed ``FocusModel.open()`` skipping its state publish entirely when the weather module wasn't
+  reachable yet at startup (a common ordering race), which then always tripped the "declares
+  state, but none published" warning; it now falls back to a placeholder ``focus=0.0`` until the
+  background update loop replaces it with a real value.
+
+v2.0.0.dev44 (2026-07-27)
+*************************
+* ``DummyComm`` now takes a real name instead of a hardcoded ``"module"`` placeholder
+  (``Application`` fills it in from the config file's stem for comm-less modules), fixing
+  indistinguishable ``PYOBS_MODULE`` log tags and a guaranteed false positive against the
+  config-stem-mismatch warning.
+* Fixed ``Comm``'s log-forwarding failure handler re-queuing its own failure log through the same
+  queue it was draining, turning a sustained send outage into an unbounded stream of
+  self-generated failure reports.
+* ``pyobsd``'s per-module file logging (``--log-file``) is now opt-in (``--file-log``/
+  ``--no-file-log``, default off) instead of always passed to every started module regardless of
+  the already-default-on journal logging; non-systemd deployments relying on the old always-on
+  file logging need to pass ``--file-log`` explicitly.
+* Removed ``IRunning.is_running()`` (and its ~12 implementers) now that ``RunningState`` (pushed
+  via ``comm.set_state(IRunning, ...)``) already covers the same information -- both existed side
+  by side for the same boolean.
+* Extended the ``max_age`` freshness check (see below) to ``FollowMixin`` (default 3x its poll
+  interval) and ``FocusModel``'s temperature reads (default 2x), so a dead publisher's frozen last
+  value is treated as unavailable instead of trusted indefinitely.
+
+v2.0.0.dev43 (2026-07-27)
+*************************
+* Added an opt-in ``max_age`` freshness check to ``Proxy.get_state()``/``wait_for_state()``: a
+  cached state value past its ``max_age`` is now treated the same as not-yet-published
+  (``None``/timeout) instead of trusted forever, even if the publisher's update loop has died or a
+  stanza was shaper-delayed by minutes. ``WeatherAwareMixin`` passes ``weather_max_age`` (default
+  120s) so a dead ``Weather`` update loop degrades to bad-weather within a couple of check cycles.
+* ``Comm`` now tracks which interfaces have actually had ``set_state()`` called, and
+  ``Module.startup()`` warns when a module implements a stateful interface but never published it
+  -- caught ``Weather``/``DummyCamera`` both only ever publishing ``IWeather``/``ITemperatures``
+  from a background loop, never synchronously from ``open()``; both now also publish a placeholder
+  value from ``open()``.
+* Fixed non-TLS XMPP connections failing entirely ("No appropriate login method") against ejabberd
+  26.4.0: ``unencrypted_scram`` was already set for ``use_tls=False``, but slixmpp also needs
+  ``unencrypted_plain`` set explicitly before it will attempt PLAIN over a plaintext connection.
+
+v2.0.0.dev42 (2026-07-26)
+*************************
+* Removed racy, non-gating ``has_proxy()`` startup checks in ``open()`` (``FlatField``,
+  ``BasePointing``/``Acquisition``, ``AutoFocusSeries``, ``FlatFieldScheduler``) -- one-shot,
+  no-retry, 5s presence checks that routinely false-positived under any slow/delayed presence
+  propagation without actually gating anything (every real use of the peer already re-resolves a
+  fresh proxy and raises its own well-attributed error if genuinely missing).
+* ``LocalComm`` now broadcasts ``ModuleOpenedEvent`` on ``mark_ready()``, matching ``XmppComm``'s
+  presence-driven behavior -- previously a module joining the local network after a peer had
+  already started stayed invisible to that peer's ``ModuleOpenedEvent`` handlers until the peer
+  restarted.
+* ``BaseCamera`` no longer aborts closed-shutter (``DARK``/``BIAS``) exposures or sequences on bad
+  weather, since the shutter being closed already means weather can't affect them.
+* Fixed the config-filename/module-name mismatch check (see below) firing a spurious warning
+  against a legitimately-deactivated ``_test.yaml``-style config, by stripping the leading
+  underscore from the config stem before comparing.
+
+v2.0.0.dev41 (2026-07-26)
+*************************
+* ``FlatField.open()`` now publishes ``IFilters`` state unconditionally, instead of only once
+  ``set_filter()`` had been called via RPC -- previously the pubsub state node never got created
+  on a fresh start, leaving subscribers (e.g. GUI widgets) retrying forever.
+* The config-filename/module-name mismatch check added below now logs a warning instead of
+  raising, so a genuine mismatch no longer prevents a module from starting at all.
+
+v2.0.0.dev40 (2026-07-25)
+*************************
+* A config file starting with an underscore (e.g. a deactivated ``_test.yaml``) is now logged with
+  its leading underscores stripped from the module-name tag, instead of tagging log lines with the
+  raw filename stem.
+
+v2.0.0.dev39 (2026-07-24)
+*************************
+* ``Application`` now refuses to start a non-``MultiModule`` whose config filename doesn't match
+  its own comm-derived name, catching a class of drift where background tasks/RPC log lines use
+  the real name but everything else falls back to the config file's stem -- silently splitting a
+  module's ``PYOBS_MODULE`` log tag in two whenever a config file is renamed independently of its
+  ``comm`` configuration.
+
+v2.0.0.dev38 (2026-07-21)
+*************************
+* Suppressed astropy's ``VerifyWarning`` on FITS header comment truncation in ``Image.writeto()``,
+  the single choke point every FITS write funnels through -- expected whenever a header value
+  (aggregated from many modules) is long enough to leave no room for its comment within the
+  80-char card limit; the value itself is untouched, so the warning had nothing actionable to
+  report.
+
+v2.0.0.dev37 (2026-07-21)
+*************************
+* ``Comm.get_interfaces()`` now waits briefly for a not-yet-discovered client instead of raising
+  ``KeyError`` instantly, tolerating a caller's own startup racing slightly ahead of this module's
+  peer discovery (which only populates once ``_got_online`` has processed the peer's presence).
+  Also fixed a docstring/behavior mismatch: it promised ``IndexError`` on not-found, matching
+  ``_get_client``'s existing handling, but actually raised ``KeyError``.
+
+v2.0.0.dev36 (2026-07-21)
+*************************
+* ``Proxy.wait_for_state()`` now returns ``None`` on timeout instead of letting
+  ``asyncio.wait_for``'s ``TimeoutError`` propagate -- every caller (``waitformotion.py``,
+  ``weatheraware.py``, ``pyobs-iagvt``'s ``SunCamera``, others) already checked for ``None``
+  immediately afterward, so a peer simply not having published yet was turning into an unhandled
+  exception for all of them.
+
+v2.0.0.dev35 (2026-07-21)
+*************************
+* Event handler exceptions are now logged properly (with handler and event context) via
+  ``log.error()`` instead of surfacing only as asyncio's generic "Task exception was never
+  retrieved" warning at garbage-collection time, since ``_send_event_to_module`` dispatches every
+  handler as a fire-and-forget background task with nothing checking the result.
+
+v2.0.0.dev34 (2026-07-21)
+*************************
+* Added jitter to ``_safe_send``'s retry wait (``send_event``/``_set_state``'s underlying path),
+  matching the indefinite-retry jitter added for capability/state-subscribe fetches below --
+  without it, many modules' ``_safe_send`` calls retrying around the same moment (e.g. a
+  fleet-wide restart) stayed in lockstep instead of spreading out.
+
+v2.0.0.dev33 (2026-07-21)
+*************************
+* Capability-fetch and state-subscribe retries (``_get_capabilities``/``_subscribe_with_retry``)
+  no longer give up permanently after a fixed attempt budget -- they now retry indefinitely with
+  capped exponential backoff and full jitter, stopping only when the peer actually goes offline or
+  the last subscriber unsubscribes. A fixed budget could be exhausted across many module pairs at
+  once by a simultaneous fleet-wide restart, leaving capabilities/state permanently missing until a
+  manual restart.
+
+v2.0.0.dev32 (2026-07-21)
+*************************
+* ``XmppComm``'s XEP-0199 keepalive ping interval/timeout is now configurable, instead of a fixed
+  30s default that can be shorter than an ejabberd shaper's IQ reply delay under load -- letting a
+  deployment tolerate a known-slow server instead of only a genuinely dead connection.
+
+v2.0.0.dev31 (2026-07-21)
+*************************
+* Fixed pubsub subscribe retries only catching ``IqError``, not the ``IqTimeout`` that
+  ``_safe_send`` also raises once its own internal retries are exhausted -- an uncaught
+  ``IqTimeout`` killed the whole 30-attempt subscription retry loop after a single slow response,
+  surfacing only as an unretrieved background-task exception instead of the intended "could not
+  subscribe" warning, with the subscription then permanently abandoned.
+
+v2.0.0.dev30 (2026-07-21)
+*************************
+* ``WeatherAwareMixin`` no longer parks on the first weather-check connection hiccup -- a common
+  right-after-restart race where XMPP roster/presence for the weather module hasn't settled yet. A
+  connection failure now only counts as bad weather after 3 consecutive failed checks.
+
+v2.0.0.dev29 (2026-07-18)
 *************************
 * Modules no longer accept RPC calls until they've actually finished starting up. Some drivers
   (e.g. camera modules connecting to hardware) take a while inside ``open()``, but were previously
@@ -16,6 +265,9 @@ v2.0.0.dev18 (unreleased)
   directly now; any other code that opens a module standalone (a custom script, a test) needs to do
   the same, or call ``set_state(ModuleState.READY)`` itself after ``open()`` -- see
   :ref:`module-startup-gating`.
+
+v2.0.0.dev28 (2026-07-18)
+*************************
 * New ``InvalidArgumentError`` for bad-argument validation on RPC-exposed methods (unknown filter
   name, invalid focus value, invalid config parameter, out-of-range ``grab_sequence`` count/delay,
   ...) -- previously these stayed as plain ``ValueError``, which works fine locally (``LocalComm``,
@@ -175,6 +427,21 @@ v2.0.0.dev18 (unreleased)
   always log loudly, since both mean "this needs a human's attention at the source," not "an
   anticipated domain failure." Part of the first step of the exception-handling rollout in
   ``DESIGN_exception_handling.md`` (tracks #446).
+
+v2.0.0.dev27 (2026-07-16)
+*************************
+* Fixed ``PhotometryFocusSeries`` systematically underreporting its focus error by a factor of its
+  own square root: ``fit_hyperbola`` returns ``(focus, variance)``, not ``(focus, error)``.
+* ``curve_fit`` (``pyobs.utils.curvefit.fit_hyperbola``) now passes ``absolute_sigma=True``, so the
+  reported variance reflects the actual per-point measurement uncertainty passed in via ``y_err``
+  instead of being silently rescaled to force a reduced chi-square of 1; the weighted-mean focus
+  calculation now uses inverse variances accordingly.
+* Guiding-statistics FITS keys (``GUIDING UPTIME``/``RMS``/``RMS1``/``RMS2``) now get an explicit
+  ``HIERARCH`` prefix, avoiding astropy's ``VerifyWarning`` from auto-promoting them (they exceed
+  the 8-char keyword limit).
+
+v2.0.0.dev26 (2026-07-16)
+*************************
 * ``ICamera``/``ISpectrograph`` no longer inherit ``IExposure`` -- they're now pure ``IData``
   identity interfaces ("this module produces images/spectra"), not "...and has an exposure
   clock." ``BaseCamera`` and ``BaseSpectrograph`` (which push real ``ExposureState``) now declare
@@ -187,43 +454,6 @@ v2.0.0.dev18 (unreleased)
   tracked separately, not fixed here). ``pyobs-gui``'s ``CameraWidget`` needs no change: its
   exposure-progress panel was already conditional on ``has_proxy(..., IExposure)``. See
   ``DESIGN_ICamera_IExposure.md``.
-* Added ``IDataSequence`` (``grab_sequence()``/``abort_sequence()``, pushed ``DataSequenceState``)
-  for taking a counted sequence of grabs in one call instead of driving a client-side loop of
-  ``grab_data()`` calls. Implemented by ``BaseCamera``. ``grab_sequence()`` returns immediately and
-  runs the sequence in the background; ``abort_sequence()`` stops after the current grab finishes,
-  while the existing ``abort()`` now also cancels the rest of a running sequence. ``grab_sequence()``
-  also takes an optional ``delay`` (seconds between grabs, default ``0``), skipped after the last
-  grab and cut short by either abort path.
-* Removed ``pyobs.modules.utils.AutonomousWarning`` (played warning sounds while an ``IAutonomous``
-  module was running). Found while writing tests for it: ``started_sound``/``stopped_sound`` were
-  stored but never read anywhere, and ``_check_autonomous()``'s sound selection looked inverted (it
-  logged "Robotic systems started" but played ``stop_sound``, apparently copy-pasted from
-  ``_check_trigger()``'s toggle logic without adjusting the polarity) -- breaking change for anyone
-  using it, no replacement provided.
-* ``Object.location`` is now derived from ``Object.observer`` instead of being stored and propagated to
-  child objects independently, removing a source of location/observer divergence. The ``location``
-  constructor argument is unchanged, but only affects the default ``observer`` built from it.
-* Fixed ``DummyTelescope.set_focus_offset`` (now ``DummyRaDecTelescope``/``DummyAltAzTelescope``/
-  ``DummySolarTelescope``, see below) silently logging an error instead of raising, which made
-  remote callers see a false success; its M1/M2 temperatures now drift like ``DummyCamera``'s sensors
-  instead of staying static after startup.
-* Split ``DummyTelescope`` into ``DummyRaDecTelescope`` (+``IOffsetsRaDec``), ``DummyAltAzTelescope``
-  (+``IOffsetsAltAz``), and ``DummySolarTelescope`` (+``IPointingHeliocentricPolar``,
-  ``IPointingHeliographicStonyhurst``, ``IPointingHelioprojective`` -- always tracks the Sun via a
-  dedicated background task, no compatibility alias for the old class name). See
-  ``dummy-telescope-split-design.md``.
-* Renamed ``IPointingHGS`` to ``IPointingHeliocentricPolar`` and its fields from ``lon``/``lat`` to
-  ``mu``/``psi``, matching the existing ``HeliocentricPolarTarget`` -- the old fields actually
-  represented Heliographic Stonyhurst coordinates, a different frame; breaking change for any
-  external driver implementing it (e.g. ``pyobs_iagvt``, tracked separately).
-* Reintroduced the old ``IPointingHGS`` lon/lat contract as ``IPointingHeliographicStonyhurst``, now
-  a separate interface from ``IPointingHeliocentricPolar`` instead of a repurposing of it -- drivers
-  needing Heliographic Stonyhurst tracking (e.g. ``pyobs_iagvt``'s ``SolarTelescope``) should
-  implement this one instead.
-* ``pyobsd`` now defaults to sending module logs to the systemd journal (``--syslog`` is on by
-  default; pass ``--no-syslog`` to disable it).
-* Added ``pyobsd logs [module] [journalctl arguments...]``, a thin passthrough to ``journalctl``
-  filtered to the module's journal fields.
 * Added ``Image.trim()``, unifying three previously-independent implementations of TRIMSEC parsing
   (inline in ``ProjectedOffsets``, ``fitssec()``, and ``Pipeline.trim_ccddata()``) into one method
   that also keeps ``mask``/``uncertainty`` aligned with ``data``. Shifts ``CRPIX1``/``CRPIX2`` to
@@ -236,6 +466,174 @@ v2.0.0.dev18 (unreleased)
   ``fitssec()``'s parser is now shared (``pyobs.utils.fits.parse_section_bounds``) and raises a
   well-defined ``ValueError`` for a malformed section keyword instead of an arbitrary
   ``IndexError``/``ValueError``. See ``DESIGN_Image_trim.md``.
+* Added an optional ``delay`` parameter (seconds between grabs, default ``0``) to
+  ``IDataSequence.grab_sequence()``, for cadence control between grabs without resorting to
+  dithering/offsets (a pointing-layer concern out of scope for this interface). Both
+  ``abort_sequence()`` and ``abort()`` cut a pending delay short instead of idling out the full
+  wait once the sequence has already been told to stop.
+* Fixed ``Time.night_obs()`` crashing during polar day/night: it assumed
+  ``observer.sun_set_time()`` always returns a valid ``Time``, but astroplan returns a masked
+  value when the sun never crosses the horizon in the search window; now falls back to the
+  observer's local calendar date.
+* Fixed ``Scheduler`` reading the private ``_observer`` attribute instead of the public
+  ``observer`` property in its altitude/airmass logging, which broke silently (``AttributeError``
+  swallowed by the worker loop) on mocked scheduler instances in tests, aborting scheduling before
+  ``add_observations`` was even called.
+* Enriched existing scheduler/telescope log lines (per-block schedule summary, altitude-limit
+  error) with the computed altitude/azimuth/airmass on each side, so a mismatch between what the
+  scheduler validated and what the telescope sees at move time can be diagnosed without new
+  per-candidate logging on hot paths.
+* Fixed a missing ``OBJECT`` FITS header: ``Task``/``LcoTask``/``LcoScript.get_fits_headers()``
+  re-validated a brand-new ``Script`` instance from the stored config instead of reusing the
+  instance ``run()`` actually executed, losing any state (like the target name) accumulated during
+  the run; the actively-running script instance is now cached and reused for header lookups.
+* Fixed ``CameraSettingsMixin`` still calling the synchronous, cache-only ``get_capabilities()``
+  after capability fetches became asynchronous background tasks (previous release), which made
+  "Could not get full frame size." fail deterministically for every ``IWindow`` camera; now awaits
+  ``Proxy.wait_for_capabilities()`` for a ``Proxy`` camera.
+* Fixed ``CircularMask`` destroying pixel data by zeroing it directly instead of flagging via
+  ``image.mask`` -- it now sets (OR's) ``image.mask`` and leaves the underlying data untouched.
+
+v2.0.0.dev24 (2026-07-15)
+*************************
+* ``Comm``'s proxy capability fetch (previously a single blocking disco#info query with no retry)
+  now runs as a background task retried up to 3 times, mirroring the existing state-pubsub race
+  fix, plus a new ``Proxy.wait_for_capabilities()`` for callers that need a guaranteed value; a
+  peer that hadn't finished starting up no longer produces a permanent missing-capability warning.
+
+v2.0.0.dev23 (2026-07-15)
+*************************
+* Added ``IDataSequence`` (``grab_sequence()``/``abort_sequence()``, pushed ``DataSequenceState``)
+  for taking a counted sequence of grabs in one call instead of driving a client-side loop of
+  ``grab_data()`` calls. Implemented by ``BaseCamera``. ``grab_sequence()`` returns immediately and
+  runs the sequence in the background; ``abort_sequence()`` stops after the current grab finishes,
+  while the existing ``abort()`` now also cancels the rest of a running sequence. See
+  ``DESIGN_IDataSequence.md``.
+* Fixed a ``FocusModel`` startup race fetching module temperatures: it used ``get_state()``, which
+  only reflects whatever pub/sub state has arrived so far, crashing with a confusing "sensor not
+  in data" error if the target module hadn't published ``ITemperatures`` yet; now uses
+  ``wait_for_state()``, matching ``waitformotion.py``/``weatheraware.py``.
+* ``BaseCamera`` now aborts the current exposure/sequence on ``BadWeatherEvent`` (hard-stopping via
+  ``abort()``, clearing any running ``grab_sequence()`` count), matching the existing
+  ``FlatField._abort_weather`` pattern -- previously this only worked client-side, via
+  ``pyobs-gui``'s own sequence loop. (#547)
+* Published previously-missing states for the dummy telescope/spectrograph modules:
+  ``_DummyTelescopeBase`` (and its ``DummyAltAzTelescope``/``DummyRaDecTelescope`` subclasses)
+  never published ``IPointingAltAz``; ``DummySolarTelescope`` never published its
+  Heliocentric/Heliographic/Helioprojective pointing states until a corresponding ``move_*`` call
+  had already been made; ``BaseSpectrograph``/``DummySpectrograph`` never published ``IExposure``.
+  All three now publish at ``open()`` (and update live), mirroring ``BaseCamera``.
+* Published previously-missing initial/``IReady`` states for several modules that formally require
+  them via interface inheritance but never published them, leaving subscribers to retry
+  indefinitely: ``AutoGuiding``/``ScienceFrameAutoGuiding``'s ``IExposureTime``, ``PipelineCamera``'s
+  state entirely (including the ``IExposure`` required by ``ICamera``), ``FlatField``'s
+  ``IMotion``, and ``MotionStatusMixin``'s separately-enumerated ``IReady`` (which ``IMotion``
+  implies) -- folding ``BaseRoof``'s duplicate ready-derivation and ``DummyMode``'s hardcoded
+  publish into the mixin's shared default.
+* Added ``Comm.unregister_event()``, the missing inverse of ``register_event()`` -- previously a
+  caller torn down while the app keeps running (e.g. a GUI widget discarded on client disconnect)
+  could never stop receiving events, keeping it alive and firing on every future matching event.
+  (#438)
+* Fixed a ``ZeroDivisionError`` in ``FlatFielder._calc_new_exptime`` when a test flat-field's
+  median counts equal or fall below the bias level (e.g. sky still very dark); now clamps to the
+  max exposure-time increase factor instead. (#481)
+
+v2.0.0.dev21 (2026-07-15)
+*************************
+* Bounded ``XmppComm._safe_send`` with its own 15s ``asyncio.wait_for()`` timeout, instead of
+  relying entirely on slixmpp's internal IQ timeout (default 120s, which could fail to fire even on
+  a healthy connection) -- an unbounded hang here could freeze the calling module, including inside
+  ``open()``, which blocks the whole event loop. (#664)
+
+v2.0.0.dev20 (2026-07-15)
+*************************
+* Internal only: fixed the remaining deprecated ``self._xmpp[...]``-style slixmpp plugin-subscript
+  access in ``XmppComm``, following up on the earlier migration to ``client.plugin[...]``.
+
+v2.0.0.dev19 (2026-07-15)
+*************************
+* Reintroduced the old ``IPointingHGS`` lon/lat contract as ``IPointingHeliographicStonyhurst``, now
+  a separate interface from ``IPointingHeliocentricPolar`` instead of a repurposing of it -- drivers
+  needing Heliographic Stonyhurst tracking (e.g. ``pyobs_iagvt``'s ``SolarTelescope``) should
+  implement this one instead.
+* Removed ``pyobs.modules.utils.AutonomousWarning`` (played warning sounds while an ``IAutonomous``
+  module was running). Found while writing tests for it: ``started_sound``/``stopped_sound`` were
+  stored but never read anywhere, and ``_check_autonomous()``'s sound selection looked inverted (it
+  logged "Robotic systems started" but played ``stop_sound``, apparently copy-pasted from
+  ``_check_trigger()``'s toggle logic without adjusting the polarity) -- breaking change for anyone
+  using it, no replacement provided.
+* Fixed three ``BaseVideo`` bugs found while reviewing it: a request-list race where
+  ``grab_data()`` removed its request from ``_image_requests`` without holding
+  ``_image_request_lock``, while ``_set_image()`` iterates/mutates the same list under that lock
+  across an ``await`` (could skip another pending request); a fallback-filename bug where
+  ``_finish_image()``'s ``"image.fits"`` fallback (used when no filename pattern is configured)
+  never reached ``image.header["FNAME"]``, the actual cache key, raising ``KeyError`` instead of
+  degrading gracefully; and removed the dead ``_new_image_event`` (set every frame, never waited on
+  anywhere -- the real new-image notification is the separate ``NewImageEvent`` comm event).
+* Split ``DummyTelescope`` into ``DummyRaDecTelescope`` (+``IOffsetsRaDec``), ``DummyAltAzTelescope``
+  (+``IOffsetsAltAz``), and ``DummySolarTelescope`` (+``IPointingHeliocentricPolar``,
+  ``IPointingHeliographicStonyhurst``, ``IPointingHelioprojective`` -- always tracks the Sun via a
+  dedicated background task, no compatibility alias for the old class name). See
+  ``dummy-telescope-split-design.md``.
+* Renamed ``IPointingHGS`` to ``IPointingHeliocentricPolar`` and its fields from ``lon``/``lat`` to
+  ``mu``/``psi``, matching the existing ``HeliocentricPolarTarget`` -- the old fields actually
+  represented Heliographic Stonyhurst coordinates, a different frame; breaking change for any
+  external driver implementing it (e.g. ``pyobs_iagvt``, tracked separately).
+* ``Object.location`` is now derived from ``Object.observer`` instead of being stored and propagated to
+  child objects independently, removing a source of location/observer divergence. The ``location``
+  constructor argument is unchanged, but only affects the default ``observer`` built from it.
+* Fixed ``Scheduler._on_task_finished`` silently ignoring ``TaskFailedEvent`` (registered as its
+  handler alongside ``TaskFinishedEvent``, but its own guard only accepted the latter -- a sibling
+  class, not a subclass), so a failed task never cleared ``_current_task_id`` or triggered a
+  re-schedule even with ``trigger_on_task_finished`` enabled.
+* Implemented non-sidereal tracking: new ``ITrackingMode``/``ITrackingRate`` interfaces (discrete
+  vs. continuous tracking modes) and ``IPointingBody``/``IPointingOrbitalElements`` (track a named
+  body or a set of orbital elements), plus ``ARCSEC_PER_SEC``/``AU`` units. ``BaseTelescope``
+  implements the continuous-tracking background task, propagating a tracked body or orbital
+  elements (two-body Kepler solve, hand-rolled rather than via ``poliastro`` -- ~6us/call for the
+  propagation itself, dominated by astropy's own frame-transform cost) into a live RA/Dec
+  correction, with the refresh interval clamped against the mount's own published
+  ``min_update_interval`` (via the new ``Comm.get_own_capabilities()``, mirroring
+  ``get_own_state``). ``DummyTelescope`` (see split above) is the reference implementation;
+  ``BaseTelescope`` also now publishes ``AltAzState`` for ``IPointingAltAz`` telescopes.
+  ``track_body()`` resolves via ``astropy.coordinates.get_body``/JPL Horizons only -- deliberately
+  no automatic MPC/NEOCP-by-designation lookup, since MPC has no formal REST API and scraping would
+  be riskiest for exactly the fresh-NEOCP-object case the feature exists for; a caller with elements
+  in hand uses ``track_orbital_elements()`` directly. See ``tracking-mode-design.md``.
+* Fixed two crash paths in ``FitsHeaderMixin``'s header-building: ``_fitsheadermixin_add_framenum()``
+  read ``hdr["DAY-OBS"]`` unconditionally, but that key is only set when ``DATE-OBS`` was present,
+  crashing with ``KeyError`` instead of the warn-and-skip its own log message implied; and
+  ``_fitsheadermixin_add_fits_headers()`` called ``date_obs.night_obs()`` (which needs a real
+  ``Observer``) whenever ``night_obs=True`` (the default) even with no observer configured,
+  crashing with ``AttributeError`` instead of falling back to the plain calendar day like the
+  location handling right above it already does.
+* Fixed ``FlatFielder``'s deviation check comparing a fraction against ``target_count`` (a raw
+  count-rate) instead of the already-stored ``_allowed_offset_frac``, so the "retry if the flat is
+  way off target" check could essentially never trigger.
+* Added an import-time registry for ``Interface`` subclasses
+  (``pyobs.interfaces.interface.get_registered_interface``/``registered_interfaces``), and switched
+  ``Module._get_interfaces_and_methods``, ``XmppComm._get_interfaces``, and
+  ``Comm._interface_names_to_classes`` to resolve through it instead of hardcoded lookups against
+  the ``pyobs.interfaces`` module namespace -- previously a module implementing an
+  externally-defined interface (e.g. a driver package's own) was never discovered, advertised, or
+  resolved by name at all.
+* Fixed XMPP wire serialization corrupting/mishandling numpy scalar types: ``numpy>=2.0`` changed
+  ``np.float64``'s ``repr()`` to ``"np.float64(x)"``, corrupting the ``<double>`` element text and
+  aborting reconstruction of the whole enclosing dataclass (e.g. dropping ``IModule``
+  ``capabilities.version`` alongside a malformed ``location.longitude``); ``np.integer`` types
+  aren't subclasses of ``int`` at all and silently fell through to the ``<string>`` fallback
+  instead of ``<int>``. Any ``np.generic`` scalar is now converted to its native Python type before
+  serialization.
+
+v2.0.0.dev18 (2026-07-12)
+*************************
+* Fixed ``DummyTelescope.set_focus_offset`` silently logging an error instead of raising, which made
+  remote callers see a false success; its M1/M2 temperatures now drift like ``DummyCamera``'s sensors
+  instead of staying static after startup.
+* ``pyobsd`` now defaults to sending module logs to the systemd journal (``--syslog`` is on by
+  default; pass ``--no-syslog`` to disable it).
+* Added ``pyobsd logs [module] [journalctl arguments...]``, a thin passthrough to ``journalctl``
+  filtered to the module's journal fields.
 
 v2.0.0.dev17 (2026-07-11)
 *************************

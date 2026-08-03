@@ -1,6 +1,6 @@
 # Plan: Per-step error control in image processing pipelines
 
-Status: draft
+Status: implemented
 Issues: #693, #328 (previous attempt — nested `ExceptionHandler` wrapper, not merged)
 
 ## Problem
@@ -124,22 +124,15 @@ class ImageProcessor(Object, metaclass=ABCMeta):
         """Resets state of image processor."""
 ```
 
-Note: `__call__` becomes a *concrete* method (not abstract) that calls an *abstract*
-`_process()` template, but the existing behavior is that every subclass overrides `__call__`
-directly. To minimize disruption, keep `__call__` abstract and add the `handle_error` method
-as a new concrete hook. Subclasses that currently handle errors in their `__call__` method
-(like `AstrometryDotNet`) will be migrated in a follow-up step.
-
-Actually — looking at the current code, every processor that handles its own errors does so
-inside `__call__` (via try/except in `AstrometryDotNet`, via early-return in
-`SepSourceDetection.__call__`). The cleanest migration path:
+`__call__` stays abstract, as today — the base class only adds the error-*handling* hook
+(`handle_error`), not an error-*catching* wrapper; the catching happens in the pipeline
+(next section). Migration path for processors that currently catch their own errors inside
+`__call__` (e.g. `AstrometryDotNet`'s try/except, `SepSourceDetection`'s early-return):
 
 1. Add `handle_error` and `on_error` to the base class (as above).
-2. Have `AstrometryDotNet.__call__` call `handle_error` instead of its internal `_handle_error`.
-3. The pipeline-level try/except (next step) handles the remaining paths where exceptions escape.
-
-So `__call__` stays abstract — the base class only adds the error-*handling* hook, not an
-error-*catching* wrapper (that lives in the pipeline).
+2. Move each processor's internal error-handling logic into its own `handle_error` override.
+3. Remove the internal try/except — let the pipeline's per-step try/except (below) catch and
+   dispatch instead.
 
 ### 2. `PipelineMixin.run_pipeline()` — wrap each step
 

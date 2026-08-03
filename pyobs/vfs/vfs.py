@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 from collections.abc import Awaitable, Callable
@@ -114,11 +115,15 @@ class VirtualFileSystem:
             hdulist: hdu list to write.
         """
 
-        # open file
-        async with self.open_file(filename, "wb") as f:
+        def _serialize() -> bytes:
             with io.BytesIO() as bio:
                 hdulist.writeto(bio, *args, **kwargs)
-                await f.write(bio.getvalue())
+                return bio.getvalue()
+
+        # open file
+        async with self.open_file(filename, "wb") as f:
+            data = await asyncio.to_thread(_serialize)
+            await f.write(data)
 
     async def read_image(self, filename: str) -> Image:
         """Convenience function that wraps around open_file() to read an Image.
@@ -145,11 +150,15 @@ class VirtualFileSystem:
             image: Image to write.
         """
 
-        # open file
-        async with self.open_file(filename, "wb") as f:
+        def _serialize() -> bytes:
             with io.BytesIO() as bio:
                 image.writeto(bio, *args, **kwargs)
-                await f.write(bio.getvalue())
+                return bio.getvalue()
+
+        # open file
+        async with self.open_file(filename, "wb") as f:
+            data = await asyncio.to_thread(_serialize)
+            await f.write(data)
 
     async def write_bytes(self, filename: str, data: bytes, *args: Any, **kwargs: Any) -> None:
         """Convenience function for writing bytes to a file.

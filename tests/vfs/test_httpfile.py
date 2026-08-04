@@ -39,3 +39,40 @@ async def test_upload_download() -> None:
 
         async with HttpFile("test.txt", "r", upload=upload, download=download) as f:
             assert test == (await f.read()).decode()
+
+
+@pytest.mark.asyncio
+async def test_upload_download_with_token_sends_bearer_header() -> None:
+    upload = "http://localhost:37075/test.txt"
+    download = "http://localhost:37075/test.txt"
+    test = "Hello world"
+
+    post_resp = _make_response(200)
+    get_resp = _make_response(200, body=test.encode())
+    session = _make_session(post_resp, get_resp)
+
+    with patch("aiohttp.ClientSession", return_value=session):
+        async with HttpFile("test.txt", "w", upload=upload, download=download, token="secret") as f:
+            await f.write(test)
+        async with HttpFile("test.txt", "r", upload=upload, download=download, token="secret") as f:
+            assert test == (await f.read()).decode()
+
+    _, post_kwargs = session.post.call_args
+    assert post_kwargs["headers"] == {"Authorization": "Bearer secret"}
+    _, get_kwargs = session.get.call_args
+    assert get_kwargs["headers"] == {"Authorization": "Bearer secret"}
+
+
+@pytest.mark.asyncio
+async def test_download_without_token_sends_no_auth_header() -> None:
+    download = "http://localhost:37075/test.txt"
+
+    get_resp = _make_response(200, body=b"data")
+    session = _make_session(_make_response(200), get_resp)
+
+    with patch("aiohttp.ClientSession", return_value=session):
+        async with HttpFile("test.txt", "r", download=download) as f:
+            await f.read()
+
+    _, get_kwargs = session.get.call_args
+    assert get_kwargs["headers"] == {}

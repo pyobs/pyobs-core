@@ -23,8 +23,7 @@ class HttpFile(BufferedFile):
         mode: str = "r",
         download: str | None = None,
         upload: str | None = None,
-        username: str | None = None,
-        password: str | None = None,
+        token: str | None = None,
         verify_tls: bool = False,
         timeout: int = 30,
         **kwargs: Any,
@@ -36,8 +35,7 @@ class HttpFile(BufferedFile):
             mode: Open mode (r/w).
             download: Base URL for downloading files. If None, no read access possible.
             upload: Base URL for uploading files. If None, no write access possible.
-            username: Username for accessing the HTTP server.
-            password: Password for accessing the HTTP server.
+            token: Shared secret sent as "Authorization: Bearer <token>" to the HTTP server.
             verify_tls: Whether to verify TLS certificates.
             timeout: Timeout in seconds for uploading/downloading files.
         """
@@ -49,9 +47,7 @@ class HttpFile(BufferedFile):
         self._timeout = aiohttp.ClientTimeout(total=timeout)
 
         # auth
-        self._auth = None
-        if username is not None and password is not None:
-            self._auth = aiohttp.BasicAuth(username, password)
+        self._headers = {"Authorization": f"Bearer {token}"} if token is not None else {}
 
         # filename is not allowed to start with a / or contain ..
         if name.startswith("/") or ".." in name:
@@ -91,7 +87,7 @@ class HttpFile(BufferedFile):
 
         # do request
         async with aiohttp.ClientSession() as session:
-            async with session.get(self.url, auth=self._auth, timeout=self._timeout) as response:
+            async with session.get(self.url, headers=self._headers, timeout=self._timeout) as response:
                 # check response
                 if response.status == 200:
                     # get data and return it
@@ -165,7 +161,9 @@ class HttpFile(BufferedFile):
         async with aiohttp.ClientSession() as session:
             data = aiohttp.FormData()
             data.add_field("file", self._buffer(filename), filename=filename)
-            async with session.post(self._upload_path, auth=self._auth, data=data, timeout=self._timeout) as response:
+            async with session.post(
+                self._upload_path, headers=self._headers, data=data, timeout=self._timeout
+            ) as response:
                 if response.status == 401:
                     log.error("Wrong credentials for uploading file.")
                     raise FileNotFoundError

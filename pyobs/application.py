@@ -45,6 +45,17 @@ if os.environ.get("PYOBS_IERS_OFFLINE", "").lower() in ("1", "true", "yes"):
 warnings.filterwarnings("error", category=RuntimeWarning)
 
 
+def _warm_iers_cache() -> None:
+    """Force astropy's IERS-A table to be loaded/downloaded now, synchronously.
+
+    Meant to run inside an executor thread (see Application._main) -- calling this directly
+    on the event loop would defeat the point.
+    """
+    from astropy.utils.iers import IERS_Auto
+
+    IERS_Auto.open()
+
+
 class InfluxLogConfig(TypedDict):
     url: str
     token: str
@@ -311,6 +322,18 @@ class Application:
 
         # everything in a try/except/finally, so that we can shut down gracefully
         try:
+            # prime astropy's IERS earth-orientation cache now, before any module/comm/network
+            # setup below -- left implicit, the first UT1-UTC lookup (e.g. basetelescope.py's
+            # periodic celestial-header task, ~10-15s after startup) triggers astropy's
+            # auto_download synchronously and blocks the event loop for however long that
+            # download takes, at an unpredictable point during normal operation. Doing it here
+            # in an executor keeps the download latency off the loop and confined to startup.
+            # No-op (near-instant) when PYOBS_IERS_OFFLINE disabled auto_download above.
+            try:
+                await asyncio.get_running_loop().run_in_executor(None, _warm_iers_cache)
+            except Exception:
+                log.warning("Could not prime IERS earth-orientation data, continuing anyway.", exc_info=True)
+
             # resolve the module from the factory, if we're in that mode and haven't yet --
             # runs inside the running loop, so the factory can await anything it needs to
             # (e.g. a login dialog's submit signal) before the module/comm connection exists

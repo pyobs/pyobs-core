@@ -37,6 +37,18 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
+def _event_role(ev_cls: type[Event], events_sent: set[type[Event]], events_subscribed: set[type[Event]]) -> str:
+    """Space-separated role(s) ("send", "subscribe", or both) for an event class, for the
+    disco#info `role` attribute -- lets consumers with no access to the pyobs.events catalog
+    (e.g. pyobs-web-client) tell producers from consumers instead of guessing from the union."""
+    roles = []
+    if ev_cls in events_sent:
+        roles.append("send")
+    if ev_cls in events_subscribed:
+        roles.append("subscribe")
+    return " ".join(roles)
+
+
 def _retry_delay(attempt: int, cap: float = 30.0, base: float = 1.0) -> float:
     """Capped exponential backoff with full jitter.
 
@@ -984,10 +996,16 @@ class XmppComm(Comm):
             for interface in self._module.interfaces:
                 info.xml.append(_interface_schema_to_xml(interface))
 
-        # Append event schemas
-        for ev_cls in sorted(self._registered_events, key=lambda e: e.__name__):
-            if not ev_cls.local:
-                info.xml.append(_event_schema_to_xml(ev_cls))
+        # Append event schemas, tagged with a role attribute so consumers that have no access
+        # to the pyobs.events catalog themselves (e.g. pyobs-web-client) can tell which events
+        # a module actually sends vs. which it only subscribes to receive.
+        registered_events = self._events_sent | self._events_subscribed
+        for ev_cls in sorted(registered_events, key=lambda e: e.__name__):
+            if ev_cls.local:
+                continue
+            event_xml = _event_schema_to_xml(ev_cls)
+            event_xml.attrib["role"] = _event_role(ev_cls, self._events_sent, self._events_subscribed)
+            info.xml.append(event_xml)
 
         return info
 

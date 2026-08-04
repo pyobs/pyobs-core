@@ -39,7 +39,8 @@ class Comm:
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._logging_task: asyncio.Task[Any] | None = None
         self._event_handlers: dict[type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
-        self._registered_events: set[type[Event]] = set()
+        self._events_sent: set[type[Event]] = set()
+        self._events_subscribed: set[type[Event]] = set()
         self._closing = asyncio.Event()
         self._published_state: set[type[Interface]] = set()
 
@@ -434,10 +435,10 @@ class Comm:
 
         # we also want to register all events derived from the given one
         event_classes = self._get_derived_events(event_class)
-        self._registered_events.update(event_classes)
 
-        # do we have a handler?
+        # do we have a handler? then we subscribe, otherwise we just declare that we send it
         if handler:
+            self._events_subscribed.update(event_classes)
             # loop classes
             for ev in event_classes:
                 # initialize list
@@ -447,6 +448,8 @@ class Comm:
                 if handler not in self._event_handlers[ev]:
                     # add handler
                     self._event_handlers[ev].append(handler)
+        else:
+            self._events_sent.update(event_classes)
 
         # if event is not a local one, we also need to do some XMPP stuff
         if not event_class.local:
@@ -457,8 +460,9 @@ class Comm:
     ) -> None:
         """Remove a handler previously added via register_event().
 
-        Leaves the event type itself registered (other handlers may still be interested in it,
-        and the module may still want to advertise/receive it), only stops calling this handler.
+        Leaves the event type itself registered as *sent* if the module also declared it via a
+        handler-less register_event() call, only stops calling this handler and, once no handler
+        is left for the event, drops it from what's advertised as *subscribed*.
 
         Args:
             event_class: Class of event that was registered.
@@ -470,6 +474,8 @@ class Comm:
             handlers = self._event_handlers.get(ev)
             if handlers is not None and handler in handlers:
                 handlers.remove(handler)
+                if not handlers:
+                    self._events_subscribed.discard(ev)
 
     async def _register_events(
         self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None

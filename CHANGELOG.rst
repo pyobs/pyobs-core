@@ -1,5 +1,14 @@
 v2.0.0.dev53 (unreleased)
 *************************
+* ``XmppComm``'s disco#info now tags each advertised ``<event>`` element with a ``role``
+  attribute (``"send"``, ``"subscribe"``, or ``"send subscribe"``), derived from splitting
+  ``Comm._registered_events`` into ``_events_sent``/``_events_subscribed``. Previously the two
+  were merged into one undifferentiated set, so a client with no access to the ``pyobs.events``
+  catalog (e.g. ``pyobs-web-client``) couldn't tell which events a module actually publishes vs.
+  which it only listens for. ``Comm.unregister_event()`` now also drops an event from
+  ``_events_subscribed`` once its last handler is removed, so a torn-down subscription stops
+  being advertised (previously it stayed advertised forever). See
+  ``specs/plans/event-role-advertising.md``.
 * Offloaded ``OnDemandScheduler``'s per-timestep constraint/merit evaluation
   (``find_next_best_task``/``check_for_better_task``/``can_postpone_task``) onto a dedicated
   single-worker ``ThreadPoolExecutor`` (new ``pyobs/robotic/scheduler/_executor.py``'s

@@ -1,6 +1,7 @@
 # Plan: Advertise event send/subscribe role in disco#info
 
-Status: pyobs-core landed, pyobs-web-client pending
+Status: implemented, closed (pyobs-core released as v2.0.0.dev54; pyobs-web-client landed in
+`da7b6b5`)
 Repos: pyobs-core, pyobs-web-client
 
 ## Problem
@@ -117,15 +118,21 @@ pyobs-core:
 - [x] Test coverage: `tests/comm/test_events.py` (set-membership semantics) and
       `tests/comm/test_event_role.py` (role string computation)
 - [x] `CHANGELOG.rst` entry
-- [ ] Grep any other sibling repo (hardware-driver plugins, `pyobs-polaris`) for
-      `urn:pyobs:event` before landing, now that `pyobs-web-client` has confirmed at least one
-      external consumer depends on the raw XML shape
+- [x] Grepped every other local sibling repo (all hardware-driver plugins, `pyobs-polaris`,
+      `pyobs-brot`, `pyobs-tui`, `pyobs-robotic-backend`, `pyobs-web-admin`, etc.) for
+      `urn:pyobs:event`, `_registered_events`, and `_event_schema_to_xml` — no hits. Only
+      `pyobs-gui` (unaffected, uses the `register_event()` API not raw XML) and
+      `pyobs-web-client` (updated) touch this at all
 
-pyobs-web-client (blocked on the pyobs-core `role` attribute landing):
+pyobs-web-client:
 
-- [ ] Parse `role` into `EventSchema` in `pyobs-codec.ts`
-- [ ] `fetchModuleInfo`: only subscribe to PubSub nodes for schemas with `role` including `send`
-- [ ] `EventsView.vue`: use role to fix the module-picker gap described in the `L18-28` comment —
-      show which module(s) actually handle a selected event, not just whichever happens to
-      advertise it
-- [ ] Test coverage in `pyobs-codec.spec.ts`
+- [x] Parse `role` into `EventSchema` in `pyobs-codec.ts` (defaults to `'send subscribe'` when
+      the attribute is absent, for graceful degradation against a pre-role-advertising server)
+- [x] `fetchModuleInfo`: only subscribe to PubSub nodes for schemas with `role` including `send`
+- [x] `EventsView.vue`: `eventOptions` now split into `senders`/`subscribers` per event, with a
+      `roleHint()` label, fixing the module-picker gap described in the old `L18-28` comment
+- [x] Test coverage in `pyobs-codec.spec.ts`: `role='send'`, `role='subscribe'`,
+      `role='send subscribe'`, and the missing-attribute fallback
+
+Landed in `pyobs-web-client` commit `da7b6b5` ("Add generic Events page, and live-backend
+testing setup for future work").

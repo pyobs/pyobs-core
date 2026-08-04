@@ -22,11 +22,14 @@ log = logging.getLogger(__name__)
 
 
 # --- IERS offline fallback ---------------------------------------------
-# When PYOBS_IERS_OFFLINE=1, skip live IERS/USNO downloads and rely on the
-# astropy-iers-data snapshot bundled with the installed astropy package.
-# Useful when the upstream IERS servers are down/unreachable, or when
-# running on a telescope control machine without outbound internet access.
-if os.environ.get("PYOBS_IERS_OFFLINE", "").lower() in ("1", "true", "yes"):
+# Skip live IERS/USNO downloads and rely on the astropy-iers-data snapshot bundled with the
+# installed astropy package. Useful when the upstream IERS servers are down/unreachable/slow,
+# or when running on a telescope control machine without reliable outbound internet access --
+# astropy's own auto-refresh (IERS_Auto, triggered from inside coordinate transforms like
+# Observer.altaz) does a synchronous network fetch inline wherever it's called from, which can
+# stall an asyncio event loop for as long as that fetch takes if invoked from a module's main
+# thread (see pyobs.modules.telescope.basetelescope._update_celestial_headers).
+def _disable_iers_auto_download() -> None:
     from astropy.utils.iers import conf as iers_conf
 
     iers_conf.auto_download = False
@@ -34,11 +37,18 @@ if os.environ.get("PYOBS_IERS_OFFLINE", "").lower() in ("1", "true", "yes"):
     iers_conf.iers_degraded_accuracy = "warn"
 
     log.warning(
-        "PYOBS_IERS_OFFLINE is set — disabling IERS auto-download and "
-        "relying on the bundled astropy-iers-data snapshot. Earth "
-        "orientation/UT1-UTC accuracy may degrade for predictions far "
-        "from the snapshot date."
+        "IERS auto-download disabled — relying on the bundled astropy-iers-data snapshot. "
+        "Earth orientation/UT1-UTC accuracy may degrade for predictions far from the "
+        "snapshot date."
     )
+
+
+# PYOBS_IERS_OFFLINE=1 kept as a standalone env-var trigger for anyone not going through the
+# `pyobs` CLI's config/env machinery (e.g. importing Application directly). The CLI-driven path
+# (Application.__init__'s iers_offline kwarg, wired from pyobs.cli.pyobs's GLOBAL_CONFIG_KEYS)
+# calls the same _disable_iers_auto_download() below instead.
+if os.environ.get("PYOBS_IERS_OFFLINE", "").lower() in ("1", "true", "yes"):
+    _disable_iers_auto_download()
 # -------------------------------------------------------------------------
 
 # turn RuntimeWarnings into errors
@@ -83,6 +93,7 @@ class Application:
         log_level: str = "info",
         syslog: bool = False,
         influx_log: InfluxLogConfig | None = None,
+        iers_offline: bool = False,
         **kwargs: Any,
     ):
         """Initializes a pyobs application.
@@ -103,12 +114,20 @@ class Application:
             log_level: Logging level.
             syslog: Send log to systemd journal, tagged with SYSLOG_IDENTIFIER=pyobs
                     and PYOBS_MODULE=<module name>. Requires logging-journald.
+            iers_offline: Disable astropy's IERS/leap-second auto-download (see
+                _disable_iers_auto_download's docstring above). Same effect as setting
+                PYOBS_IERS_OFFLINE=1, but sourced from pyobs's own config/CLI machinery
+                (pyobs.cli.pyobs's GLOBAL_CONFIG_KEYS) instead of a bare env var, so it applies
+                the same way regardless of how the module process was spawned.
             influx_log: Log to influx DB.
         """
         if (config is None) == (module_factory is None):
             raise ValueError("Exactly one of 'config' or 'module_factory' must be given.")
         if module_factory is not None and loop_module_class is None:
             raise ValueError("loop_module_class is required when module_factory is given.")
+
+        if iers_offline:
+            _disable_iers_auto_download()
 
         # get config name without path and extension
         self._config = config

@@ -69,7 +69,16 @@ class PyobsDaemonCLI(CLI):
         sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
         sp.add_parser("stop", help="stop modules").add_argument("modules", type=str, nargs="*")
         sp.add_parser("restart", help="restart modules").add_argument("modules", type=str, nargs="*")
-        sp.add_parser("status", help="status of modules").add_argument("--json", action="store_true")
+        status_parser = sp.add_parser("status", help="status of modules")
+        status_parser.add_argument("--json", action="store_true")
+        status_parser.add_argument(
+            "--cpu-interval",
+            type=float,
+            default=None,
+            metavar="SECONDS",
+            help="measure CPU%% over this many seconds (shared across all modules, one sleep "
+            "total, not one per module); omitted by default since it makes status blocking",
+        )
         sp.add_parser("list", help="list of modules")
         sp.add_parser("logs", help="show/follow module logs via journalctl").add_argument(
             "args", nargs=argparse.REMAINDER, help="[module] [journalctl arguments...]"
@@ -97,7 +106,7 @@ class PyobsDaemonCLI(CLI):
             case "restart":
                 daemon.restart(modules=self._config["modules"])
             case "status":
-                daemon.status(print_json=self._config["json"])
+                daemon.status(print_json=self._config["json"], cpu_interval=self._config["cpu_interval"])
             case "list":
                 daemon.list_modules()
             case "logs":
@@ -214,15 +223,41 @@ class PyobsDaemon:
         return None
 
     def _process_info(self, pid: int) -> dict[str, Any]:
-        """Return uptime (seconds), cpu_percent, and rss_mb for a running PID."""
+        """Return uptime (seconds) and rss_mb for a running PID. No CPU -- that needs a
+        shared sampling window across all processes, see _sample_cpu_percent."""
         try:
             proc = psutil.Process(pid)
             uptime = time.time() - proc.create_time()
-            cpu = proc.cpu_percent(interval=0.1)
             rss_mb = proc.memory_info().rss / 1024 / 1024
-            return {"uptime": uptime, "cpu": cpu, "rss_mb": rss_mb}
+            return {"uptime": uptime, "rss_mb": rss_mb}
         except psutil.NoSuchProcess:
-            return {"uptime": 0.0, "cpu": 0.0, "rss_mb": 0.0}
+            return {"uptime": 0.0, "rss_mb": 0.0}
+
+    @staticmethod
+    def _sample_cpu_percent(pids: list[int], interval: float) -> dict[int, float]:
+        """Sample CPU% for multiple PIDs over one shared interval, instead of the
+        interval-per-process cost of calling Process.cpu_percent(interval=...) serially --
+        that would take len(pids) * interval seconds and grows with the number of modules.
+        psutil.cpu_percent(interval=None) after construction always returns 0.0 (it has no
+        prior sample to diff against); it's the second, unblocked call after the shared
+        sleep that reports the percentage actually elapsed, so pids share a single sleep.
+        """
+        procs = {}
+        for pid in pids:
+            try:
+                proc = psutil.Process(pid)
+                proc.cpu_percent(interval=None)  # prime -- discard the meaningless 0.0
+                procs[pid] = proc
+            except psutil.NoSuchProcess:
+                continue
+        time.sleep(interval)
+        result = {}
+        for pid, proc in procs.items():
+            try:
+                result[pid] = proc.cpu_percent(interval=None)
+            except psutil.NoSuchProcess:
+                result[pid] = 0.0
+        return result
 
     @staticmethod
     def _fmt_uptime(seconds: float) -> str:
@@ -267,7 +302,7 @@ class PyobsDaemon:
         time.sleep(1)
         self.start(modules=modules)
 
-    def status(self, print_json: bool = False) -> None:
+    def status(self, print_json: bool = False, cpu_interval: float | None = None) -> None:
         configs = self._list_configs()
         # map "active" (no leading underscore) name -> config name, so that
         # PID files (always named without underscore) can be matched back to
@@ -278,13 +313,19 @@ class PyobsDaemon:
         pid_stems = [self._module(p) for p in glob.glob(os.path.join(self._run_path, "*.pid"))]
         modules = sorted(set(configs) | {active_to_config.get(s, s) for s in pid_stems})
 
+        pids = {module: pid for module in modules if (pid := self._running_pid(module)) is not None}
+        # CPU% is off by default -- a meaningful reading needs a real sampling window (see
+        # _sample_cpu_percent), and forcing that cost on every plain "status" call would make
+        # it slow for no benefit when nobody's looking at CPU. Only pay for it if asked.
+        cpu_by_pid = self._sample_cpu_percent(list(pids.values()), cpu_interval) if cpu_interval else {}
+
         if print_json:
             result: dict[str, Any] = {}
             for module in modules:
-                pid = self._running_pid(module)
+                pid = pids.get(module)
                 if pid is not None:
                     info = self._process_info(pid)
-                    result[module] = {"running": True, "pid": pid, **info}
+                    result[module] = {"running": True, "pid": pid, "cpu": cpu_by_pid.get(pid), **info}
                 else:
                     result[module] = {"running": False}
             print(json.dumps(result))
@@ -293,13 +334,15 @@ class PyobsDaemon:
             print(f"{'module':<30}  {'status':<8}  {'uptime':>12}  {'cpu':>6}  {'rss':>8}")
             print("-" * 72)
             for module in modules:
-                pid = self._running_pid(module)
+                pid = pids.get(module)
                 if pid is not None:
                     info = self._process_info(pid)
+                    cpu = cpu_by_pid.get(pid)
+                    cpu_str = f"{cpu:>5.1f}%" if cpu is not None else f"{'-':>6}"
                     print(
                         f"{module:<30}  {'running':<8}  "
                         f"{self._fmt_uptime(info['uptime']):>12}  "
-                        f"{info['cpu']:>5.1f}%  "
+                        f"{cpu_str}  "
                         f"{info['rss_mb']:>6.1f} MB"
                     )
                 else:

@@ -126,9 +126,6 @@ class Application:
         if module_factory is not None and loop_module_class is None:
             raise ValueError("loop_module_class is required when module_factory is given.")
 
-        if iers_offline:
-            _disable_iers_auto_download()
-
         # get config name without path and extension
         self._config = config
         config_base = (
@@ -219,6 +216,12 @@ class Application:
         # config path, or a placeholder derived from loop_module_class for the factory path
         # (there's no real name yet until the factory resolves the actual module/comm identity)
         module_name.set(Path(self._config).stem.lstrip("_") if self._config is not None else config_base)
+
+        # handlers/module-name context are set up above -- only now can a log.warning() here
+        # actually reach journald tagged with PYOBS_MODULE, instead of falling through to
+        # logging's untagged handler-of-last-resort
+        if iers_offline:
+            _disable_iers_auto_download()
 
         self._module: Module | None = None
         self._module_factory = module_factory

@@ -46,14 +46,22 @@ warnings.filterwarnings("error", category=RuntimeWarning)
 
 
 def _warm_iers_cache() -> None:
-    """Force astropy's IERS-A table to be loaded/downloaded now, synchronously.
+    """Force astropy's IERS-A table and leap-second table to be loaded/downloaded now,
+    synchronously.
+
+    These are two independent auto-downloads: IERS_Auto.open() only covers UT1-UTC/polar
+    motion. The leap-second table is fetched separately, on first use, by whatever Time
+    conversion needs it -- update_leap_seconds() (not the lower-level LeapSeconds.auto_open())
+    is the call that also installs the result into erfa so real usage later doesn't re-fetch.
 
     Meant to run inside an executor thread (see Application._main) -- calling this directly
     on the event loop would defeat the point.
     """
+    from astropy.time.core import update_leap_seconds
     from astropy.utils.iers import IERS_Auto
 
     IERS_Auto.open()
+    update_leap_seconds()
 
 
 class InfluxLogConfig(TypedDict):

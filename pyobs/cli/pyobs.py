@@ -20,8 +20,10 @@ class PyobsCLI(CLI):
     # list of parameters that can be defined in the config file
     GLOBAL_CONFIG_KEYS = [
         "log_level",
+        "syslog",
         "influx_log",
         "debug_time",
+        "iers_offline",
     ]
 
     def init_cli(self) -> None:
@@ -53,6 +55,12 @@ class PyobsCLI(CLI):
             nargs=4,
             help="send to influx log: <host> <token> <org> <bucket>",
             default=self._config.get("influx_log", None),
+        )
+        self._parser.add_argument(
+            "--iers-offline",
+            action="store_true",
+            help="disable astropy IERS/leap-second auto-download, use the bundled snapshot",
+            default=self._config.get("iers_offline", False),
         )
 
         # debug stuff

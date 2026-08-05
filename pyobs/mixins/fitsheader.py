@@ -277,6 +277,11 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
         self._fitsheadermixin_centre = centre
         self._fitsheadermixin_rotation = rotation
 
+        # only warn once per missing-header case, since these repeat on every single frame
+        self._fitsheadermixin_warned_cdelt = False
+        self._fitsheadermixin_warned_crpix = False
+        self._fitsheadermixin_warned_cd_matrix = False
+
     @property
     def rotation(self) -> float | None:
         return self._fitsheadermixin_rotation
@@ -322,8 +327,9 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
             hdr["CUNIT1"] = ("deg", "Units of CRVAL1, CDELT1")
             hdr["CUNIT2"] = ("deg", "Units of CRVAL2, CDELT2")
             hdr["WCSAXES"] = (2, "Number of WCS axes")
-        else:
+        elif not self._fitsheadermixin_warned_cdelt:
             log.warning("Could not calculate CDELT1/CDELT2 (DET-PIXL/TEL-FOCL/DET-BIN1/DET-BIN2 missing).")
+            self._fitsheadermixin_warned_cdelt = True
 
         # centre pixel
         if self._fitsheadermixin_centre is not None:
@@ -341,10 +347,11 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
                 off_y = v("YORGSUBF") if "YORGSUBF" in hdr else 0.0
             hdr["CRPIX1"] = ((v("DET-CPX1") - off_x) / v("DET-BIN1"), "Reference x-pixel position in binned image")
             hdr["CRPIX2"] = ((v("DET-CPX2") - off_y) / v("DET-BIN2"), "Reference y-pixel position in binned image")
-        else:
+        elif not self._fitsheadermixin_warned_crpix:
             log.warning(
                 "Could not calculate CRPIX1/CRPIX2 " "(XORGSUBF/YORGSUBF/DET-CPX1/TEL-CPX2/DET-BIN1/DET-BIN2) missing."
             )
+            self._fitsheadermixin_warned_crpix = True
         # only add all this stuff for OBJECT images
         if "IMAGETYP" not in hdr or hdr["IMAGETYP"] not in ["dark", "bias"]:
             # projection, only override if not already set
@@ -368,8 +375,9 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
                 hdr["PC1_2"] = (-sin_theta, "Partial of first axis coordinate w.r.t. y")
                 hdr["PC2_1"] = (+sin_theta, "Partial of second axis coordinate w.r.t. x")
                 hdr["PC2_2"] = (+cos_theta, "Partial of second axis coordinate w.r.t. y")
-            else:
+            elif not self._fitsheadermixin_warned_cd_matrix:
                 log.warning("Could not calculate CD matrix (rotation or CDELT1/CDELT2 missing.")
+                self._fitsheadermixin_warned_cd_matrix = True
 
 
 class SpectrumFitsHeaderMixin(FitsHeaderMixin):

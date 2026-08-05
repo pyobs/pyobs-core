@@ -59,12 +59,43 @@ worker path even if the executor stays a thread pool).
    results (empty observation lists) computed from a `_obs_archive` that doesn't exist in the child
    process. Rejected — this is exactly the kind of bug that's invisible until it ships.
 2. **Add a `freeze()` step**: after prefetch, mark `ObservationArchiveEvolution` frozen; any
-   subsequent call to `observations_for_task`/`observations_for_night` for a key not already in the
-   dict raises `RuntimeError` instead of falling back to `self._obs_archive`. Turns "quietly wrong
-   under a process pool" into "loudly wrong under a thread pool, today, before the executor is ever
-   touched." **Chosen** — validate this with the *existing* `ThreadPoolExecutor` first; only move to
-   `ProcessPoolExecutor` once a real run (tests + a live schedule computation) produces zero
-   `RuntimeError`s.
+   subsequent call to `observations_for_task` for a key not already in the dict raises
+   `RuntimeError` instead of falling back to `self._obs_archive`. Turns "quietly wrong under a
+   process pool" into "loudly wrong under a thread pool, today, before the executor is ever
+   touched." **Chosen** for `observations_for_task`. `observations_for_night` gets a different,
+   more precise rule — see below — since unlike tasks (unbounded historical lookup, no way to
+   prove a miss is safe), nights have a provable case where a miss is *not* a bug.
+
+**Handling `observations_for_night` misses specifically:**
+
+`observations_for_night` only ever returns `state=COMPLETED` observations, and `Scheduler`
+(`scheduler.py:220-222`) always pins `start` to at least `_safety_time` past the real wall-clock
+"now" the schedule computation is running at. Combining those two facts: `night(start)` — the
+"current" night, anchored to the most recent sunset before `start` — is the *only* night that can
+possibly have completed observations already on record (something could have run earlier this
+same evening, before this `schedule()` call started). Any other night value that evaluation asks
+for can only be a *later* one (time only ever advances through `schedule_in_interval`'s loop), and
+a night that hasn't started yet by definition has zero completed observations — not "probably
+zero," provably zero, given the `COMPLETED` filter.
+
+So the fetch/freeze split for nights doesn't need to enumerate every night the loop might touch at
+all:
+
+1. Prefetch fetches exactly one night from the archive: `night(start)`.
+2. `observations_for_night` on a miss (any date other than the one just fetched) doesn't raise —
+   it seeds and returns a fresh empty `ObservationList` for that date, no I/O, safe to do even
+   inside the frozen/offloaded evaluation path itself. `evolve()`'s later appends (when a task
+   actually gets scheduled into that new night) accumulate against that empty bucket exactly like
+   they already do for the first night today.
+
+This removes the need for a night-range helper, and with it, the whole "how finely should we
+sample `[start, end]` to enumerate nights" question — there was never a set of nights to
+enumerate; there's one real fetch, and everything else self-resolves to empty by construction.
+This relies on an explicit invariant that's worth a comment where it's implemented: **`start` is
+never in the past relative to the schedule computation's own wall-clock time.** If some future
+caller ever passes an already-past `start` (e.g. a backfill/what-if replay), this assumption breaks
+silently (an empty result instead of the real historical one) rather than raising — flagged in
+Consequences below as the one correctness risk this design accepts.
 
 ## Decision
 
@@ -77,46 +108,45 @@ class ObservationArchiveEvolution:
         self._obs_for_task: dict[Any, ObservationList] = {}
         self._obs_for_night: dict[datetime.date, ObservationList] = {}
         self._observer = observer
+        self._current_night: datetime.date | None = None
         self._frozen = False
 
-    async def prefetch(self, tasks: Iterable[Task], nights: Iterable[datetime.date]) -> None:
-        """Populates the task/night caches up front. Call once per schedule() run, before any
-        evaluation happens, then freeze(). Runs on the caller's event loop (real I/O)."""
+    async def prefetch(self, tasks: Iterable[Task], start: Time) -> None:
+        """Populates the task cache and the one real night (anchored to `start`) up front. Call
+        once per schedule() run, before any evaluation happens, then freeze(). Runs on the
+        caller's event loop (real I/O)."""
         for task in tasks:
             await self.observations_for_task(task)
-        for night in nights:
-            await self.observations_for_night(night)
+        self._current_night = self.night(start)
+        await self.observations_for_night(self._current_night)
 
     def freeze(self) -> None:
-        """After this, a cache miss is a bug (missing from the prefetch set), not something to
-        paper over with a live fetch — raises instead of silently reaching for `_obs_archive`,
-        which may not exist once evaluation runs off-thread/off-process."""
+        """After this: a task-id miss is a bug (missing from the prefetch set) and raises. A
+        night miss is not a bug -- since `start` is guaranteed never in the past (Scheduler pins
+        it at least `_safety_time` ahead of "now"), any night other than the one prefetched in
+        `prefetch()` is strictly later and therefore provably has zero COMPLETED observations --
+        seeded as an empty list instead of fetched or raised."""
         self._frozen = True
 ```
 
-Modify `observations_for_task`/`observations_for_night`'s existing `if task.id not in
-self._obs_for_task:` / `if date not in self._obs_for_night:` branches: if `self._frozen` and the
-key is missing, `raise RuntimeError(f"... not prefetched before freeze() ...")` instead of falling
-through to `self._obs_archive.get_observations(...)`.
+Modify `observations_for_task`'s existing `if task.id not in self._obs_for_task:` branch: if
+`self._frozen` and the key is missing, `raise RuntimeError(f"... not prefetched before freeze()
+...")` instead of falling through to `self._obs_archive.get_observations(...)`.
 
-### 2. Compute the night set — `ondemandscheduler.py`
+Modify `observations_for_night`'s equivalent branch: if `self._frozen` and `date` is missing,
+seed `self._obs_for_night[date] = ObservationList()` and return it directly — no archive call, no
+raise. (Add an assertion/log that `date > self._current_night` here, purely as a canary: if that
+ever turns out false, the "`start` is never in the past" invariant above has been violated
+somewhere and silently returning empty would be masking a real correctness bug rather than a safe
+one — worth catching loudly even though the *steady-state* behavior for this branch is "return
+empty, no error.")
 
-`schedule()` knows `start`/`end` before calling `schedule_in_interval`. Add a small helper (new
-function in `ondemandscheduler.py` or a `DataProvider` method) that walks `[start, end]` in
-`_nightly step` (reuse whatever cadence `schedule_in_interval` already steps by, or just sample at
-each calendar day boundary in range plus one day of margin on each side, since a "night" can span
-across a UTC-day boundary) and collects the distinct `data.night(t)` values seen. For an ordinary
-~24h `schedule_range`, this resolves to one, maybe two, `date` values — cheap regardless of
-resolution chosen, so bias towards a safe, slightly-too-fine sampling rather than trying to compute
-sunset/sunrise boundaries exactly.
-
-### 3. Call prefetch + freeze — `ondemandscheduler.py`, `schedule()`
+### 2. Call prefetch + freeze — `ondemandscheduler.py`, `schedule()`
 
 ```python
 async def schedule(self, tasks, projects, start, end, data):
     projects_dict = {project.code: project for project in projects}
-    nights = self._nights_in_range(start, end)  # new helper from step 2
-    await data.archive.prefetch(tasks, nights)
+    await data.archive.prefetch(tasks, start)
     data.archive.freeze()
 
     async for task in self.schedule_in_interval(tasks, projects_dict, start, end, data):
@@ -124,22 +154,24 @@ async def schedule(self, tasks, projects, start, end, data):
         await data.archive.evolve(task)
 ```
 
+No night-range helper needed — `prefetch()` only ever touches `night(start)` itself (see step 1).
+
 `evolve()` (called after `yield`, still main-thread-side, same as today) appends the newly-scheduled
 task's synthetic observation directly into `_obs_for_task`/`_obs_for_night` — it already does this
-without touching `_obs_archive` as long as the key exists (which it now always will, post-prefetch),
-so `evolve()` needs no change beyond continuing to work under `freeze()` (verify it never hits the
-now-raising branch — it calls `observations_for_task` first specifically to ensure the key exists,
-which after prefetch it always does).
+without touching `_obs_archive` as long as the key exists (which it now always will, either from
+prefetch or from the empty-seed-on-miss path above), so `evolve()` needs no change beyond
+continuing to work under `freeze()`.
 
-### 4. Confirm zero cache misses before touching the executor
+### 3. Confirm zero cache misses before touching the executor
 
 Run the full scheduler test suite plus a real `schedule()` call against production-shaped data
 (existing `iagvt` config, or a synthetic task list matching its scale) with `freeze()` active and
-the *current* `ThreadPoolExecutor` unchanged. Any `RuntimeError` here means step 2's night-range
-computation or step 1's task-list assumption missed a real case — fix those before proceeding, not
-by loosening `freeze()`.
+the *current* `ThreadPoolExecutor` unchanged. Any `RuntimeError` here means step 1's task-list
+assumption missed a real case (some task got evaluated that wasn't in the original `tasks` list) —
+fix that before proceeding, not by loosening `freeze()`. The night side has no error path left to
+watch for by design — the canary assertion above is the only thing to check there.
 
-### 5. Only after step 4 is clean: swap the executor (`_executor.py`)
+### 4. Only after step 3 is clean: swap the executor (`_executor.py`)
 
 ```python
 _executor = ProcessPoolExecutor(max_workers=1)
@@ -155,12 +187,24 @@ Requires, additionally:
   could capture something live (a callback, a comm handle) without it being obvious from the base
   class.
 - `DataProvider.archive` must not carry `_obs_archive` (the live comm proxy) across the process
-  boundary — since `freeze()` guarantees it's never read again after prefetch, either null it out
-  before dispatch (`data.archive._obs_archive = None`, ugly but minimal) or split it into a
-  separate lightweight, picklable snapshot type that `DataProvider` swaps to after `freeze()`
-  (cleaner, slightly more code — worth it if this plan's step 1 grows any more responsibilities
-  later). Pick the snapshot-type approach if step 1 is implemented fresh; the null-out is only
-  acceptable as a minimal patch on top of the existing class.
+  boundary. **Decision: introduce a separate, always-picklable snapshot type** rather than nulling
+  out `_obs_archive` on the existing class:
+
+  ```python
+  @dataclass
+  class FrozenObservations:
+      obs_for_task: dict[Any, ObservationList]
+      obs_for_night: dict[datetime.date, ObservationList]
+      current_night: datetime.date
+  ```
+
+  `DataProvider.archive` swaps from the live `ObservationArchiveEvolution` to a `FrozenObservations`
+  at the same point `freeze()` happens today — `FrozenObservations` simply has no `_obs_archive`
+  field to leak, rather than relying on remembering to null one out. `observations_for_task`/
+  `observations_for_night`'s frozen-branch logic (task raises on miss, night seeds empty on miss)
+  moves onto this type; `ObservationArchiveEvolution` itself only needs `prefetch()` and the
+  swap-on-freeze, not the frozen-read logic. `evolve()` also needs to keep working against whichever
+  of the two objects is current at call time.
 - `astroplan.Observer` (held by `DataProvider`) needs a pickle round-trip check too — expected to
   be fine (it's built from an `EarthLocation` plus scalar pressure/temperature/humidity, all plain
   data), but not yet verified in this codebase.
@@ -176,16 +220,21 @@ Requires, additionally:
 ### New tests required
 
 - `tests/robotic/scheduler/test_observationarchiveevolution.py` (new, or extend existing coverage
-  if a file already exercises this class — check first): `prefetch()` populates both dicts for a
-  given task/night set without calling `_obs_archive.get_observations` more than once per key;
-  `freeze()` then `observations_for_task` on an unprefetched task id raises `RuntimeError`;
-  `evolve()` after `freeze()` succeeds for an already-prefetched task and does not reach for
+  if a file already exercises this class — check first): `prefetch()` fetches every task id once
+  and exactly one night (`night(start)`) without calling `_obs_archive.get_observations` more than
+  once per key; `freeze()` then `observations_for_task` on an unprefetched task id raises
+  `RuntimeError`; `freeze()` then `observations_for_night` on a *different* (later) date returns an
+  empty `ObservationList` without touching `_obs_archive` at all (assert the mock archive's
+  `get_observations` was never called again); `evolve()` after `freeze()` succeeds for both an
+  already-prefetched task and a newly-seeded-empty night, for both without reaching for
   `_obs_archive`.
 - `tests/robotic/scheduler/test_ondemandscheduler.py`: extend the existing `schedule()`-level
   tests to assert prefetch happens before the first `evaluate_constraints_and_merits` call (e.g.
   via call-order assertions on a mock `ObservationArchive`), and that a schedule spanning a
-  day-boundary correctly resolves to the right multi-night set from step 2's helper.
-- Once step 5 lands: a pickle round-trip test — `pickle.loads(pickle.dumps(x))` for a real
+  day-boundary (some scheduled task pushing `time` in `schedule_in_interval`'s loop past the next
+  sunset) correctly reads back an empty `FollowMerit`/`PerNightMerit` result for the new night
+  rather than raising or reusing the first night's data.
+- Once step 4 lands: a pickle round-trip test — `pickle.loads(pickle.dumps(x))` for a real
   `OnDemandScheduler`, `DataProvider` (post-freeze), `Task`, `Project`, and every concrete
   `Constraint`/`Merit` subclass in `pyobs/robotic/scheduler/{constraints,merits}/*.py` — run this
   as its own test independent of actually exercising `ProcessPoolExecutor`, so a future new
@@ -197,7 +246,7 @@ Requires, additionally:
 
 `tests/robotic/scheduler/test_ondemandscheduler.py`'s existing `find_next_best_task`/
 `check_for_better_task`/`can_postpone_task` tests exercise real constraint/merit evaluation
-end-to-end already — re-run these after step 1-3 land as the first correctness check (this is a
+end-to-end already — re-run these after steps 1-2 land as the first correctness check (this is a
 refactor of *how* data reaches evaluation, not of the evaluation logic itself, so these should pass
 unchanged; any failure here means the prefetch/freeze split broke something functional, not just
 process-isolation groundwork).
@@ -205,24 +254,32 @@ process-isolation groundwork).
 ## Consequences
 
 - **Good:** the archive-access bug class this plan closes (silent empty-result fallback under a
-  process pool) becomes impossible to ship unnoticed — `freeze()` converts it to a loud, immediate
-  test failure.
-- **Good:** step 1-4 are independently valuable even if step 5 (the `ProcessPoolExecutor` swap)
+  process pool) becomes impossible to ship unnoticed — `freeze()` converts a task-id miss into a
+  loud, immediate test failure, and a night miss is no longer even a fallible code path (it's
+  provably safe to resolve to empty by construction, not just "not yet observed to fail").
+- **Good:** steps 1-3 are independently valuable even if step 4 (the `ProcessPoolExecutor` swap)
   never happens or is deferred — they remove a hidden I/O dependency from code that already
   pretends to be pure-CPU (`run_cpu_bound`'s own docstring says as much: "coro_fn... does not
   itself need to run on the caller's event loop"), which was already slightly false before this
   plan and becomes actually true after it.
-- **Risk:** the night-range helper (step 2) must be conservative — an under-computed range causes
-  a `RuntimeError` under `freeze()` (loud, step 4 catches it) rather than silent wrong data, so the
-  failure mode here is safe, just potentially requires iterating on the sampling approach once
-  tested against real multi-day schedules.
-- **Risk, deferred to step 5's own review:** process-per-schedule-call overhead (interpreter
+- **Good:** dropping the night-range helper entirely (rather than tuning its sampling resolution)
+  removes a whole category of "did we enumerate enough nights" risk that an earlier version of
+  this plan carried — there's no set to enumerate, so there's nothing to under-compute.
+- **Risk, explicit invariant to document in code:** the empty-seed-on-miss behavior for nights
+  depends on `start` never being in the past relative to the schedule computation's own wall-clock
+  time (true today via `Scheduler`'s `_safety_time` margin). If a future caller ever passes an
+  already-past `start`, this degrades to silently wrong (empty) results for a night that could have
+  real history, rather than raising — the canary assertion in step 1 (`date > self._current_night`)
+  is the guard against this, but it's an assertion on a code path whose normal behavior is "return
+  empty, no error," so it's worth a deliberate second look in review rather than assuming the test
+  suite alone will catch a violation.
+- **Risk, deferred to step 4's own review:** process-per-schedule-call overhead (interpreter
   startup, full re-import of astropy/astroplan/pyobs in the child) is unmeasured. If it's large
   relative to the CPU work being isolated, `max_workers=1` with a **persistent** process (reused
   across calls, not spawned fresh each time) would be the fix — `ProcessPoolExecutor` already
   reuses its worker process across submissions by default, so this should be fine, but worth
   confirming with a timing comparison against the current `ThreadPoolExecutor` before treating step
-  5 as done.
+  4 as done.
 - **Out of scope:** this plan doesn't change `AstroplanScheduler` (already subprocess-isolated via
   a different mechanism, per `specs/plans/scheduler-event-loop-blocking.md` §4) or any
   constraint/merit's internal logic.

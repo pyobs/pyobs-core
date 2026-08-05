@@ -53,9 +53,7 @@ class ArchiveFile(HttpFile):
 
             # send data and return image ID
             timeout = aiohttp.ClientTimeout(total=30)
-            async with session.post(
-                url, auth=self._auth, data=data, timeout=timeout, headers=self._headers
-            ) as response:
+            async with session.post(url, data=data, timeout=timeout, headers=self._headers) as response:
                 # success, if status code is 200
                 if response.status != 200:
                     raise ValueError(f"Cannot write file, received status_code {response.status}.")

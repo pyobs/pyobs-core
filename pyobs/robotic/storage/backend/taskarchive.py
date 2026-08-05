@@ -7,7 +7,7 @@ import aiohttp
 
 from pyobs.robotic.storage.taskarchive import TaskArchive
 from pyobs.robotic.task import Project, Task
-from pyobs.utils.http import http_request_with_retries
+from pyobs.utils.http import http_request_paginated, http_request_with_retries
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -75,13 +75,13 @@ class BackendTaskArchive(TaskArchive):
 
     async def _get_projects(self) -> list[Project]:
         """Fetch projects from backend."""
-        projects = await http_request_with_retries(self._session, urljoin(self._url, "/api/projects/"))
-        return [self.pyobs_model_validate(Project, project) for project in projects["results"]]
+        projects = await http_request_paginated(self._session, urljoin(self._url, "/api/projects/"))
+        return [self.pyobs_model_validate(Project, project) for project in projects]
 
     async def _get_tasks(self) -> list[Task]:
         """Fetch tasks from backend."""
-        tasks = await http_request_with_retries(self._session, urljoin(self._url, "/api/tasks/"))
-        return [self.pyobs_model_validate(Task, task) for task in tasks["results"]]
+        tasks = await http_request_paginated(self._session, urljoin(self._url, "/api/tasks/"))
+        return [self.pyobs_model_validate(Task, task) for task in tasks]
 
     async def last_changed(self) -> Time | None:
         """Returns time when last time any tasks changed."""

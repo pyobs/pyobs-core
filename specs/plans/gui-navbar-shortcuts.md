@@ -1,6 +1,7 @@
 # Plan: `pyobs-gui` navbar keyboard shortcuts
 
 Status: implemented, closed.
+
 Repos: pyobs-gui (all implementation here, `pyobs_gui/mainwindow.py`)
 
 ## Motivation

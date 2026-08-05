@@ -21,7 +21,7 @@ class ObservationArchiveEvolution:
         self._obs_for_night: dict[datetime.date, ObservationList] = {}
         self._observer = observer
 
-    async def evolve(self, scheduled_task: Observation) -> None:
+    async def evolve(self, scheduled_task: Observation, night: datetime.date) -> None:
         from pyobs.robotic.observation import Observation, ObservationState
 
         obs = Observation(
@@ -35,7 +35,14 @@ class ObservationArchiveEvolution:
         await self.observations_for_task(scheduled_task.task)
         self._obs_for_task[scheduled_task.task.id].append(obs)
 
-        night = Time.now().night_obs(self._observer)
+        # `night` is the caller's responsibility (DataProvider.night(scheduled_task.start), see
+        # OnDemandScheduler.schedule()) rather than computed here from Time.now(): a schedule() run
+        # covers up to `schedule_range` (~24h) ahead, so "the night this task happens" can differ
+        # from "the night it is right now" when evolve() runs -- using Time.now() filed every task
+        # under whichever night was current at evolve()-time, not the night it was actually
+        # scheduled into, which a later FollowMerit/PerNightMerit lookup (keyed by the task's own
+        # time) would then miss. Also avoids redoing an uncached astropy sunset computation here
+        # when DataProvider.night() already has a cached one for this exact time.
         await self.observations_for_night(night)
         self._obs_for_night[night].append(obs)
 

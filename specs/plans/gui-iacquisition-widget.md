@@ -1,6 +1,7 @@
 # Plan: `pyobs-gui` IAcquisition widget
 
 Status: implemented, closed.
+
 Repos: pyobs-gui (widget), pyobs-core (`IAcquisition` interface it consumes, already shipped)
 
 ## Shipped (pyobs-core, `develop`)

@@ -2,6 +2,7 @@
 
 Status: implemented, closed. Option B implemented and verified end-to-end against pyobs-core
 2.0.0.dev11 (the first release with ACL support).
+
 Repos: pyobs-gui (all implementation here), pyobs-core (ACL feature it depends on, already shipped)
 
 ## Implemented

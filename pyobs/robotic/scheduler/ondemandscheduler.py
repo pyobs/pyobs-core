@@ -70,8 +70,10 @@ class OnDemandScheduler(TaskScheduler):
 
         # schedule from start to end
         async for task in self.schedule_in_interval(tasks, projects_dict, start, end, data):
-            # evolve archive
-            await data.archive.evolve(task)
+            # evolve archive -- night is keyed by the task's own scheduled time, not "now", since
+            # a run can schedule up to schedule_range ahead into a different night (see
+            # ObservationArchiveEvolution.evolve()'s docstring/comment for why)
+            await data.archive.evolve(task, data.night(task.start))
 
             # yield to caller
             yield task

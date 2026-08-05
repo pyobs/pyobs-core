@@ -106,8 +106,8 @@ async def test_task_last_update_time(mocker) -> None:
 async def test_task_get_projects_from_backend(mocker) -> None:
     archive = make_task_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_with_retries",
-        AsyncMock(return_value={"results": [{"code": "test", "name": "Test", "priority": 1.0}]}),
+        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        AsyncMock(return_value=[{"code": "test", "name": "Test", "priority": 1.0}]),
     )
     result = await archive._get_projects()
     assert len(result) == 1
@@ -118,8 +118,8 @@ async def test_task_get_projects_from_backend(mocker) -> None:
 async def test_task_get_tasks_from_backend(mocker) -> None:
     archive = make_task_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_with_retries",
-        AsyncMock(return_value={"results": [{"id": 1, "name": "t1", "duration": 300}]}),
+        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        AsyncMock(return_value=[{"id": 1, "name": "t1", "duration": 300}]),
     )
     result = await archive._get_tasks()
     assert len(result) == 1
@@ -265,8 +265,8 @@ async def test_obs_update_observation(mocker) -> None:
 async def test_obs_get_observations_builds_params(mocker) -> None:
     archive = make_obs_archive()
     mock_request = mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_with_retries",
-        AsyncMock(return_value={"results": []}),
+        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        AsyncMock(return_value=[]),
     )
     task = make_task(5)
     await archive.get_observations(

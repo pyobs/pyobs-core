@@ -1,6 +1,7 @@
 # Plan: Per-step error control in image processing pipelines
 
 Status: implemented
+
 Issues: #693, #328 (previous attempt — nested `ExceptionHandler` wrapper, not merged)
 
 ## Problem

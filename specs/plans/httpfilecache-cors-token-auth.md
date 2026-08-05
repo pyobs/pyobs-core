@@ -1,6 +1,9 @@
 # Plan: CORS + token auth for `HttpFileCache`
 
-Status: draft
+Status: implemented, closed. Verified against code 2026-08-05: `HttpFileCache` token check,
+CORS headers, and `options_handler` all present in `pyobs/modules/utils/httpfilecache.py`;
+`HttpFile` sends `Authorization: Bearer` in `pyobs/vfs/httpfile.py`; covered by
+`tests/modules/utils/test_httpfilecache.py` and `tests/vfs/test_httpfile.py`.
 
 Repos: pyobs-core (all implementation here), pyobs-web-client (config-only follow-up: must supply
 a `token` and send it as `Authorization: Bearer <token>` — no code change expected there beyond

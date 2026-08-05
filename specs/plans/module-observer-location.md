@@ -1,5 +1,7 @@
 # Plan: Module observer-location capabilities (reconstructed)
 
+Status: implemented, closed.
+
 *Reconstructed after the fact from `specs/design/module_observer_location.md` and commit
 `2c4404b0` — written after the change landed, not before it.*
 

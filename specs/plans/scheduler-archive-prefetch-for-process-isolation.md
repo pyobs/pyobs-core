@@ -1,6 +1,9 @@
 # Plan: Split archive prefetch from CPU-bound merit evaluation, to unblock a `ProcessPoolExecutor`
 
-Status: proposed, not yet implemented
+Status: on hold — the incident that motivated this plan turned out to have a different,
+already-fixed cause (see "Update 2026-08-05" below). No confirmed evidence that the GIL-contention
+mechanism this plan addresses has ever actually occurred. Revisit if a stress test or real fleet
+growth produces that confirmation — don't build this speculatively before then.
 
 Issues: follow-up to `specs/plans/scheduler-event-loop-blocking.md` (implemented 2026-07-30, fixed
 a 2.86s/4.86s stall by moving `evaluate_constraints_and_merits` onto a dedicated
@@ -8,6 +11,45 @@ a 2.86s/4.86s stall by moving `evaluate_constraints_and_merits` onto a dedicated
 module on 2026-08-05 with that fix already active — see
 `specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md` for the diagnosis this
 plan acts on.
+
+## Update 2026-08-05: motivating incident had a different cause; this plan's premise is unconfirmed
+
+Live `py-spy dump` capture of the actual 2026-08-05 incident (see the steering doc) found the
+stall's real cause was `ObservationArchiveEvolution.evolve()` doing an uncached astropy sunset
+lookup directly on the **main** thread, unrelated to `run_cpu_bound`'s worker thread entirely —
+fixed in `pyobs-core` `2.0.0.dev65` by keying the lookup off the task's own scheduled time
+(`data.night(task.start)`, reusing `DataProvider`'s existing cache) instead of recomputing from
+`Time.now()` on every call.
+
+That means the GIL-contention-in-the-worker-thread mechanism this plan exists to fix (see
+"Problem" below) has **zero confirmed occurrences** on this system — we looked for it directly and
+found something else instead. The reasoning for why it's plausible in general still holds (a
+`ThreadPoolExecutor` genuinely doesn't give process-level GIL isolation), but "plausible in
+general" isn't enough justification for the size of this plan (new `freeze()` machinery, a
+picklable snapshot type, pickle round-trip tests for every constraint/merit,
+`ProcessPoolExecutor`-initializer handling for `iers_conf`, etc.) without a real, observed instance
+driving it.
+
+**Why not just close it outright**: the mechanism scales with task count.
+`evaluate_constraints_and_merits` does `tasks × constraints/merits × timesteps` of work per
+schedule run — more tasks means more total CPU-bound time in that worker thread per call, and more
+opportunity for any GIL-starvation effect to bite, even though it didn't show up at `iagvt`'s
+current scale (~50 blocks/run). "No evidence at 50 blocks" doesn't mean "no risk at 500."
+
+**Recommended next step, cheaper than implementing this plan**: a synthetic stress test —
+generate a task list well beyond `iagvt`'s current scale (a few hundred blocks), run `schedule()`
+against it, and watch with `py-spy` (or the existing event-loop-lag watchdog) for whether the
+`pyobs-scheduler_0` worker thread — not the main thread this time — actually shows up active during
+a stall. That directly answers "does this get worse with scale" with real evidence, at a fraction
+of the cost of building the full split:
+
+- If the stress test confirms GIL contention in the worker thread at some task-count threshold,
+  this plan becomes justified by actual evidence and worth implementing (possibly gated on that
+  threshold rather than done unconditionally).
+- If even a large synthetic load shows nothing, that's a much stronger basis for closing this plan
+  outright than the absence of evidence at today's real-world scale alone.
+
+Not yet run. This plan stays on hold until one or the other happens.
 
 ## Problem
 

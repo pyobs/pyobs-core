@@ -1,5 +1,7 @@
 # Plan: Decouple `ICamera`/`IExposure` (reconstructed)
 
+Status: implemented, closed.
+
 *Reconstructed after the fact from `specs/design/icamera_iexposure.md` and commit `cc34ab14` —
 written after the change landed, not before it, unlike a normal plan. Recorded here because the
 change was non-trivial (interface hierarchy change affecting every camera/spectrograph module),

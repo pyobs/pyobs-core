@@ -1,5 +1,7 @@
 # Plan: `IDataSequence` — server-side counted data sequences (reconstructed)
 
+Status: implemented, closed.
+
 *Reconstructed after the fact from `specs/design/idatasequence.md` and commits `3ea9512c`/
 `11a9a735` — written after the change landed, not before it.*
 

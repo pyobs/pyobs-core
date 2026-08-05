@@ -146,6 +146,9 @@ class BackendObservationArchive(ObservationArchive):
             if obs.state == "pending" and obs.start < time < obs.end:
                 if task_archive is not None:
                     await obs.fetch_task(task_archive)
+                    if obs.task is None:
+                        log.error("Could not resolve task for observation %s, skipping.", obs.id)
+                        continue
                 return obs
         else:
             return None
@@ -165,6 +168,9 @@ class BackendObservationArchive(ObservationArchive):
             if obs.state == "in_progress":
                 if task_archive is not None:
                     await obs.fetch_task(task_archive)
+                    if obs.task is None:
+                        log.error("Could not resolve task for observation %s, skipping.", obs.id)
+                        continue
                 return obs
         else:
             return None

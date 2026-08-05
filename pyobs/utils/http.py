@@ -28,3 +28,19 @@ async def http_request_with_retries(
         if response.status != expected_status:
             raise RuntimeError(f"Invalid response from server: HTTP {response.status}")
         return cast(dict[str, Any], await response.json())
+
+
+async def http_request_paginated(
+    session: aiohttp.ClientSession, url: str, method: str = "get", expected_status: int = 200, **kwargs: Any
+) -> list[dict[str, Any]]:
+    """Fetches all pages of a DRF-style paginated list endpoint and returns the combined results."""
+    results: list[dict[str, Any]] = []
+    next_url: str | None = url
+    while next_url is not None:
+        data = await http_request_with_retries(
+            session, next_url, method=method, expected_status=expected_status, **kwargs
+        )
+        results.extend(data["results"])
+        next_url = data.get("next")
+        kwargs = {}
+    return results

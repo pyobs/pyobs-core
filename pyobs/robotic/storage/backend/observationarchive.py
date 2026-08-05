@@ -9,7 +9,7 @@ import aiohttp
 
 from pyobs.robotic import ObservationArchive, Task, TaskArchive
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
-from pyobs.utils.http import http_request_with_retries
+from pyobs.utils.http import http_request_paginated, http_request_with_retries
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -146,6 +146,9 @@ class BackendObservationArchive(ObservationArchive):
             if obs.state == "pending" and obs.start < time < obs.end:
                 if task_archive is not None:
                     await obs.fetch_task(task_archive)
+                    if obs.task is None:
+                        log.error("Could not resolve task for observation %s, skipping.", obs.id)
+                        continue
                 return obs
         else:
             return None
@@ -165,6 +168,9 @@ class BackendObservationArchive(ObservationArchive):
             if obs.state == "in_progress":
                 if task_archive is not None:
                     await obs.fetch_task(task_archive)
+                    if obs.task is None:
+                        log.error("Could not resolve task for observation %s, skipping.", obs.id)
+                        continue
                 return obs
         else:
             return None
@@ -223,8 +229,8 @@ class BackendObservationArchive(ObservationArchive):
             params["end_before"] = end_before.isot
         if end_after is not None:
             params["end_after"] = end_after.isot
-        observations = await http_request_with_retries(self._session, url, params=params)
-        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations["results"]])
+        observations = await http_request_paginated(self._session, url, params=params)
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
 
 __all__ = ["BackendObservationArchive"]

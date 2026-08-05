@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import aiohttp
 import pytest
 
-from pyobs.utils.http import http_request_with_retries
+from pyobs.utils.http import http_request_paginated, http_request_with_retries
 
 
 def make_response(status: int = 200, json_data: dict | None = None, text: str = "error") -> MagicMock:
@@ -117,3 +117,47 @@ async def test_unwrapped_raises_on_wrong_status() -> None:
 
     with pytest.raises(RuntimeError, match="HTTP 403"):
         await http_request_with_retries.__wrapped__(session, "http://example.com/api")
+
+
+# ── http_request_paginated ──────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_paginated_single_page() -> None:
+    response = make_response(200, {"results": [{"id": 1}, {"id": 2}], "next": None})
+    session = make_session(response)
+
+    result = await http_request_paginated(session, "http://example.com/api")
+
+    assert result == [{"id": 1}, {"id": 2}]
+    session.request.assert_called_once_with("get", "http://example.com/api")
+
+
+@pytest.mark.asyncio
+async def test_paginated_follows_next_until_exhausted() -> None:
+    page1 = make_response(200, {"results": [{"id": 1}], "next": "http://example.com/api?page=2"})
+    page2 = make_response(200, {"results": [{"id": 2}], "next": None})
+    session = MagicMock()
+    session.request = MagicMock(side_effect=[page1, page2])
+
+    result = await http_request_paginated(session, "http://example.com/api")
+
+    assert result == [{"id": 1}, {"id": 2}]
+    assert session.request.call_count == 2
+    session.request.assert_any_call("get", "http://example.com/api")
+    session.request.assert_any_call("get", "http://example.com/api?page=2")
+
+
+@pytest.mark.asyncio
+async def test_paginated_only_passes_kwargs_to_first_request() -> None:
+    """params etc. are baked into the "next" URL by the server -- passing them again on
+    follow-up requests would duplicate query params."""
+    page1 = make_response(200, {"results": [{"id": 1}], "next": "http://example.com/api?page=2"})
+    page2 = make_response(200, {"results": [{"id": 2}], "next": None})
+    session = MagicMock()
+    session.request = MagicMock(side_effect=[page1, page2])
+
+    await http_request_paginated(session, "http://example.com/api", params={"state": "pending"})
+
+    session.request.assert_any_call("get", "http://example.com/api", params={"state": "pending"})
+    session.request.assert_any_call("get", "http://example.com/api?page=2")

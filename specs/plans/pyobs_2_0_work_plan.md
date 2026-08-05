@@ -4,6 +4,7 @@ Status: implemented, closed. Phases 0-8 below are historical record (all ✅ com
 `specs/design/pyobs_2_0_wire_protocol.md` for the design those phases implemented. The three
 items below (all resolved 2026-07-27 — two done, one dropped as moot) were the last live part of
 this plan.
+
 Repos: pyobs-core (primary), pyobs-gui (the `IRunning.is_running()` removal item required a
 follow-on fix in `mainwindow.py` — see that item below)
 

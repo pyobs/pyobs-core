@@ -1,6 +1,7 @@
 # Plan: CORS + token auth for `HttpFileCache`
 
 Status: draft
+
 Repos: pyobs-core (all implementation here), pyobs-web-client (config-only follow-up: must supply
 a `token` and send it as `Authorization: Bearer <token>` — no code change expected there beyond
 that, tracked as a note in Consequences, not a task of this plan)

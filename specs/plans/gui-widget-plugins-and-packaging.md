@@ -1,6 +1,7 @@
 # Plan: Widget plugin mechanism + `pyside6-deploy` packaging for `pyobs-gui`
 
 Status: draft
+
 Repos: pyobs-gui (all implementation here)
 
 See `specs/design/gui-standalone-binary.md` for how this fits into the bigger "ship one

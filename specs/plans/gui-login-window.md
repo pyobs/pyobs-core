@@ -1,6 +1,7 @@
 # Plan: `pyobs-gui` login window
 
 Status: implemented, closed.
+
 Repos: pyobs-gui (primary — all implementation here), pyobs-core (depends on
 `gui-interactive-login.md` landing first, no other pyobs-core changes needed)
 

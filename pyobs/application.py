@@ -36,7 +36,7 @@ def _disable_iers_auto_download() -> None:
     iers_conf.auto_max_age = None
     iers_conf.iers_degraded_accuracy = "warn"
 
-    log.warning(
+    log.info(
         "IERS auto-download disabled — relying on the bundled astropy-iers-data snapshot. "
         "Earth orientation/UT1-UTC accuracy may degrade for predictions far from the "
         "snapshot date."

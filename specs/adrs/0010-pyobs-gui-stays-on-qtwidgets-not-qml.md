@@ -2,6 +2,7 @@
 
 status: accepted
 date: 2026-07-06
+
 Repos: pyobs-gui
 
 ## Context and Problem Statement

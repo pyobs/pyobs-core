@@ -174,7 +174,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
             # calculate distance from offset
             if not image.has_meta(OnSkyDistance):
-                log.warning("No on-sky distance found in meta.")
+                log.info("No on-sky distance found in meta.")
                 continue
                 # raise exc.ImageError("No on sky distance found in meta.")
             osd = image.get_meta(OnSkyDistance)

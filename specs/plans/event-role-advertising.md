@@ -2,6 +2,7 @@
 
 Status: implemented, closed (pyobs-core released as v2.0.0.dev54; pyobs-web-client landed in
 `da7b6b5`)
+
 Repos: pyobs-core, pyobs-web-client
 
 ## Problem

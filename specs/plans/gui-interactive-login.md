@@ -2,6 +2,7 @@
 
 Status: implemented, closed. The pyobs-core side (this doc's scope) landed 2026-07-27; the
 pyobs-gui-side login window itself is `gui-login-window.md`, not yet started.
+
 Repos: pyobs-core (this plan's scope — see Non-goals), pyobs-gui (follow-on, depends on this)
 See `specs/design/gui-standalone-binary.md` for the bigger picture this is one piece of, and
 `specs/plans/gui-login-window.md` for the pyobs-gui-side follow-on this unblocks.

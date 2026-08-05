@@ -1,6 +1,7 @@
 # Plan: Enforce state publishing for stateful interfaces
 
 Status: implemented, closed.
+
 Repos: pyobs-brot (BrotRaDecTelescope hit the same bug this convention exists to catch — see
 2026-07-27 addendum below)
 

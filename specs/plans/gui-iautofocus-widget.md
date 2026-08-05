@@ -1,6 +1,7 @@
 # Plan: `pyobs-gui` IAutoFocus widget
 
 Status: implemented, closed. `AutoFocusWidget` shipped in pyobs-gui (`4d6a48c`, 2026-07-05).
+
 Repos: pyobs-gui (widget), pyobs-core (`IAutoFocus`/`AutoFocusSeries` changes proposed here)
 
 ## Current state (pyobs-core, `develop`)

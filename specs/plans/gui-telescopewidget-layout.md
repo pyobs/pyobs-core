@@ -1,6 +1,7 @@
 # Plan: `pyobs-gui` TelescopeWidget layout — width floor investigation & design notes
 
 Status: proposed — exploratory, not yet implemented.
+
 Repos: pyobs-gui (all implementation here, `pyobs_gui/telescopewidget.py`,
 `pyobs_gui/qt/telescopewidget.ui`, and the composed widgets it embeds (`CompassMoveWidget`,
 `FilterWidget`, `FocusWidget`, `TemperaturesWidget`))

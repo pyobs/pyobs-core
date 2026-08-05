@@ -1,6 +1,7 @@
 # Plan: Stop scheduler constraint/merit evaluation from blocking the event loop
 
 Status: implemented
+
 Issues: none — found via live incident diagnosis (`(scheduler) module.py:205/207 "Event loop
 stalled for 2.86s"` / `"...recovered after being stalled for 4.86s total."`, 2026-07-30, on a
 `pyobs.modules.robotic.Scheduler` module named `scheduler`, using `OnDemandScheduler`)

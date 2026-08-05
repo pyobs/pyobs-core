@@ -1,6 +1,7 @@
 # Design: `pyobs-gui` as a standalone binary
 
 Status: proposed
+
 Repos: pyobs-core (login-deferral piece), pyobs-gui (login window, plugin loading, packaging)
 
 ## Goal

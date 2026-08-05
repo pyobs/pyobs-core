@@ -3,6 +3,7 @@
 Status: closed, out of scope (2026-08-03) — all systems running fine in production; the iag50
 shaper mitigation held, and systematic throughput/latency benchmarking is no longer a priority.
 Kept as a record of the investigation, not an active plan.
+
 Repos: pyobs-brot (the reconnect-storm investigation below concerns BrotDome/BrotRaDecTelescope
 production behavior on pyobs-iag50)
 

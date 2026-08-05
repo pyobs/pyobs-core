@@ -1,5 +1,7 @@
 # Plan: Unify TRIMSEC handling into `Image.trim()` (reconstructed)
 
+Status: implemented, closed.
+
 *Reconstructed after the fact from `specs/design/image_trim.md` and commit `7e6fc511` — written
 after the change landed, not before it.*
 

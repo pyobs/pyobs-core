@@ -1,5 +1,7 @@
 # Plan: Exception handling across the RPC boundary (reconstructed)
 
+Status: implemented, closed.
+
 *Reconstructed after the fact from `specs/design/exception_handling.md` (which has its own,
 much more detailed "Rollout plan" section — this file is a condensed index into that, not a
 replacement for it) and commits `a9deaf29` through `810db63f`. Written after the change landed,

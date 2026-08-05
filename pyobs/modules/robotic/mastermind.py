@@ -17,6 +17,7 @@ from pyobs.robotic import (
     TaskRunner,
 )
 from pyobs.robotic.scheduler.targets import Target
+from pyobs.utils import exceptions as exc
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -168,9 +169,15 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             log.info("Running task %s...", self._task.name)
             try:
                 await self._task_runner.run_task(self._task, self._task_target)
-            except Exception:
-                # something went wrong
-                log.exception("Task %s failed.", self._task.name)
+            except Exception as e:
+                # a PyobsError is an expected/domain failure (e.g. acquisition out of tolerance) --
+                # quiet INFO line, no traceback. Anything else is unexpected and needs a full
+                # traceback to debug. e.log() also skips re-logging if some deeper layer (e.g. the
+                # module's own execute()) already logged this same exception.
+                if isinstance(e, exc.PyobsError):
+                    e.log(log, "INFO", f"Task {self._task.name} failed: {e}")
+                else:
+                    log.exception("Task %s failed.", self._task.name)
                 observation.end = Time.now()
                 observation.state = ObservationState.FAILED
                 await self._observation_archive.update_observation(observation)

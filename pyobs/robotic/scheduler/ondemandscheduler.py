@@ -14,7 +14,6 @@ from pyobs.robotic.storage.observationarchive import ObservationArchive
 from pyobs.utils.time import Time
 
 from . import DataProvider
-from ._executor import run_cpu_bound
 from .constraints import Constraint
 from .observationarchiveevolution import ObservationArchiveEvolution
 from .taskscheduler import TaskScheduler
@@ -253,7 +252,7 @@ class OnDemandScheduler(TaskScheduler):
     ) -> tuple[Task | None, float]:
 
         # evaluate all merit functions at given time
-        merits = await run_cpu_bound(self.evaluate_constraints_and_merits, tasks, projects, start, end, data)
+        merits = await self.evaluate_constraints_and_merits(tasks, projects, start, end, data)
 
         # find max one
         idx = np.argmax(merits)
@@ -277,7 +276,7 @@ class OnDemandScheduler(TaskScheduler):
         other_tasks = [t for t in tasks if t is not task]
         t = start + TimeDelta(step * u.second)
         while t < start + TimeDelta(task.estimate_duration(time=start) * u.second):
-            merits = await run_cpu_bound(self.evaluate_constraints_and_merits, other_tasks, projects, t, end, data)
+            merits = await self.evaluate_constraints_and_merits(other_tasks, projects, t, end, data)
             for i, m in enumerate(merits):
                 if m > merit:
                     return other_tasks[i], t, m
@@ -298,9 +297,7 @@ class OnDemandScheduler(TaskScheduler):
         better_start: Time = start + TimeDelta(task.estimate_duration(time=start) * u.second)
 
         # evaluate merit of better_task at new start time
-        merit = (
-            await run_cpu_bound(self.evaluate_constraints_and_merits, [better_task], projects, better_start, end, data)
-        )[0]
+        merit = (await self.evaluate_constraints_and_merits([better_task], projects, better_start, end, data))[0]
 
         # if it got better, return it, otherwise return Nones
         if merit >= better_merit:

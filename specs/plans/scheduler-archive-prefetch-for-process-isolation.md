@@ -1,9 +1,8 @@
 # Plan: Split archive prefetch from CPU-bound merit evaluation, to unblock a `ProcessPoolExecutor`
 
-Status: on hold — the incident that motivated this plan turned out to have a different,
-already-fixed cause (see "Update 2026-08-05" below). No confirmed evidence that the GIL-contention
-mechanism this plan addresses has ever actually occurred. Revisit if a stress test or real fleet
-growth produces that confirmation — don't build this speculatively before then.
+Status: partially implemented — steps 1-3 (prefetch + freeze) implemented 2026-08-06 to fix the
+`run_cpu_bound` + aiohttp session event-loop conflict. Step 4 (`ProcessPoolExecutor` swap) deferred
+until real GIL contention is confirmed by a stress test or real fleet growth.
 
 Issues: follow-up to `specs/plans/scheduler-event-loop-blocking.md` (implemented 2026-07-30, fixed
 a 2.86s/4.86s stall by moving `evaluate_constraints_and_merits` onto a dedicated

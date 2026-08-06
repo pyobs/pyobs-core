@@ -9,6 +9,8 @@ from astroplan import Observer
 from ...utils.time import Time
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from pyobs.robotic import Observation, Task
     from pyobs.robotic.observation import ObservationList
     from pyobs.robotic.storage.observationarchive import ObservationArchive
@@ -20,6 +22,23 @@ class ObservationArchiveEvolution:
         self._obs_for_task: dict[Any, ObservationList] = {}
         self._obs_for_night: dict[datetime.date, ObservationList] = {}
         self._observer = observer
+        self._current_night: datetime.date | None = None
+        self._frozen = False
+
+    async def prefetch(self, tasks: Iterable[Task], start: Time, night: datetime.date) -> None:
+        """Populates the task cache and the one real night (anchored to `start`) up front. Call
+        once per schedule() run before any evaluation, then freeze(). Runs on the caller's
+        event loop (real I/O)."""
+        self._current_night = night
+        for task in tasks:
+            await self.observations_for_task(task)
+        await self.observations_for_night(night)
+
+    def freeze(self) -> None:
+        """Freezes observation cache. After this: a task-id miss raises RuntimeError; a night
+        miss seeds an empty list (future nights are provably empty of COMPLETED observations,
+        since `start` is pinned at least `_safety_time` ahead of real wall-clock time)."""
+        self._frozen = True
 
     async def evolve(self, scheduled_task: Observation, night: datetime.date) -> None:
         from pyobs.robotic.observation import Observation, ObservationState
@@ -50,6 +69,11 @@ class ObservationArchiveEvolution:
         from pyobs.robotic.observation import ObservationList, ObservationState
 
         if task.id not in self._obs_for_task:
+            if self._frozen:
+                raise RuntimeError(
+                    f"Task {task.id} not in observation cache after freeze(). "
+                    f"This is a bug -- all task IDs must be prefetched before freeze().",
+                )
             if self._obs_archive is not None:
                 self._obs_for_task[task.id] = await self._obs_archive.get_observations(
                     task=task, state=ObservationState.COMPLETED
@@ -70,7 +94,14 @@ class ObservationArchiveEvolution:
         from pyobs.robotic.observation import ObservationList, ObservationState
 
         if date not in self._obs_for_night:
-            if self._obs_archive is not None:
+            if self._frozen:
+                # `start` is pinned at least `_safety_time` ahead of real wall-clock time, so any
+                # night after the prefetched one cannot possibly have COMPLETED observations yet.
+                assert (
+                    self._current_night is not None and date > self._current_night
+                ), f"Night {date} not prefetched and not strictly after current night {self._current_night}."
+                self._obs_for_night[date] = ObservationList()
+            elif self._obs_archive is not None:
                 start = Time(datetime.datetime.combine(date, datetime.time(0, 0, 0)))
                 end = Time(datetime.datetime.combine(date, datetime.time(23, 59, 59)))
                 self._obs_for_night[date] = await self._obs_archive.get_observations(

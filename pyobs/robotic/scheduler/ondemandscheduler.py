@@ -68,6 +68,12 @@ class OnDemandScheduler(TaskScheduler):
         data = DataProvider(self._observer, archive)
         projects_dict = {project.code: project for project in projects}
 
+        # prefetch historical observations on the main loop (the only place aiohttp session works),
+        # then freeze to prevent any lazy archive fetches from the worker thread
+        night = data.night(start)
+        await data.archive.prefetch(tasks, start, night)
+        data.archive.freeze()
+
         # schedule from start to end
         async for task in self.schedule_in_interval(tasks, projects_dict, start, end, data):
             # evolve archive -- night is keyed by the task's own scheduled time, not "now", since

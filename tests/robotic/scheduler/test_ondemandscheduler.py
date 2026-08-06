@@ -1,3 +1,6 @@
+import asyncio
+import time as time_module
+
 import astropy.units as u
 import pytest
 from astroplan import Observer
@@ -6,6 +9,7 @@ from astropy.time import TimeDelta
 
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler import DataProvider
+from pyobs.robotic.scheduler.constraints import Constraint
 from pyobs.robotic.scheduler.merits import ConstantMerit, TimeWindowMerit
 from pyobs.robotic.scheduler.merits.timewindow import TimeWindow
 from pyobs.robotic.scheduler.ondemandscheduler import OnDemandScheduler
@@ -187,3 +191,122 @@ async def test_postpone_task() -> None:
     )
     assert schedule2[0].task.id == 2
     assert schedule2[1].task.id == 1
+
+
+# ── event-loop responsiveness during constraint/merit evaluation ────────────
+
+
+class SleepyConstraint(Constraint):
+    """Test-only constraint that simulates CPU-bound work with a blocking sleep."""
+
+    seconds: float = 0.05
+
+    def to_astroplan(self):  # type: ignore[override]
+        raise NotImplementedError
+
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
+        time_module.sleep(self.seconds)
+        return True
+
+
+async def _run_with_heartbeat(coro):
+    """Runs coro concurrently with a fast heartbeat, returns (coro's result, heartbeat count)."""
+    stop = asyncio.Event()
+    heartbeats = 0
+
+    async def heartbeat() -> None:
+        nonlocal heartbeats
+        while not stop.is_set():
+            await asyncio.sleep(0.02)
+            heartbeats += 1
+
+    async def run_and_stop():
+        result = await coro
+        stop.set()
+        return result
+
+    result, _ = await asyncio.gather(run_and_stop(), heartbeat())
+    return result, heartbeats
+
+
+@pytest.mark.asyncio
+async def test_find_next_best_task_does_not_block_event_loop() -> None:
+    scheduler = OnDemandScheduler()
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
+    data = DataProvider(observer)
+    start = Time.now()
+    end = start + TimeDelta(5000 * u.day)
+
+    tasks: list[Task] = [
+        Task(
+            id=1, name="1", duration=100, constraints=[SleepyConstraint(seconds=0.05)], merits=[ConstantMerit(merit=10)]
+        ),
+        Task(
+            id=2, name="2", duration=100, constraints=[SleepyConstraint(seconds=0.05)], merits=[ConstantMerit(merit=5)]
+        ),
+    ]
+
+    (best, merit), heartbeats = await _run_with_heartbeat(scheduler.find_next_best_task(tasks, {}, start, end, data))
+
+    assert best == tasks[0]
+    assert merit == 10.0
+    # ~0.1s of blocking constraint evaluation at a 0.02s heartbeat cadence: the loop should have
+    # kept ticking throughout if (and only if) the evaluation was actually offloaded.
+    assert heartbeats >= 2
+
+
+@pytest.mark.asyncio
+async def test_can_postpone_task_does_not_block_event_loop() -> None:
+    scheduler = OnDemandScheduler()
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
+    data = DataProvider(observer)
+    start = Time("2025-11-01T00:00:00", scale="utc")
+    end = start + TimeDelta(3600 * u.second)
+
+    task = Task(id=1, name="1", duration=100, merits=[ConstantMerit(merit=10)])
+    better_task = Task(
+        id=2, name="2", duration=100, constraints=[SleepyConstraint(seconds=0.05)], merits=[ConstantMerit(merit=20)]
+    )
+
+    coro = scheduler.can_postpone_task(task, {}, better_task, 20.0, start, end, data)
+    postpone_time, heartbeats = await _run_with_heartbeat(coro)
+
+    assert postpone_time is not None
+    assert heartbeats >= 2
+
+
+@pytest.mark.asyncio
+async def test_check_for_better_task_does_not_block_event_loop() -> None:
+    scheduler = OnDemandScheduler()
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
+    data = DataProvider(observer)
+    start = Time.now()
+    end = start + TimeDelta(5000 * u.day)
+
+    # small step count (duration 150, step 50 -> 3 iterations) to keep the test fast while still
+    # exercising check_for_better_task's internal loop, each iteration offloading one evaluation
+    tasks: list[Task] = [
+        Task(
+            id=1,
+            name="1",
+            duration=150,
+            constraints=[SleepyConstraint(seconds=0.05)],
+            merits=[
+                ConstantMerit(merit=10),
+                TimeWindowMerit(windows=[TimeWindow(start=start + TimeDelta(100 * u.second), end=end)]),
+            ],
+        ),
+        Task(id=2, name="2", duration=150, merits=[ConstantMerit(merit=5)]),
+    ]
+
+    coro = scheduler.check_for_better_task(tasks[1], {}, 5.0, tasks, start, end, data, step=50)
+    (better, better_time, better_merit), heartbeats = await _run_with_heartbeat(coro)
+
+    assert better == tasks[0]
+    assert heartbeats >= 4

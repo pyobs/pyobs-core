@@ -7,6 +7,6 @@ Image pipeline (pyobs.utils.pipeline)
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.utils.pipeline.Night
+.. autoclass:: pyobs.utils.pipeline.Reduction
    :members:
    :show-inheritance:

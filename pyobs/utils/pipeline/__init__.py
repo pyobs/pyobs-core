@@ -1,4 +1,4 @@
-from .night import Night
 from .pipeline import Pipeline
+from .reduction import Reduction
 
-__all__ = ["Night", "Pipeline"]
+__all__ = ["Reduction", "Pipeline"]

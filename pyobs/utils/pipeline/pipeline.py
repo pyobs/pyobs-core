@@ -22,14 +22,22 @@ log = logging.getLogger(__name__)
 class Pipeline(Object, PipelineMixin):
     """Pipeline based on the astropy package ccdproc."""
 
-    def __init__(self, steps: list[dict[str, Any] | ImageProcessor], **kwargs: Any):
+    def __init__(
+        self,
+        steps: list[dict[str, Any] | ImageProcessor],
+        archive: dict[str, Any] | Archive | None = None,
+        **kwargs: Any,
+    ):
         """Pipeline for science images.
 
         Args:
             steps: List of pipeline steps to perform.
+            archive: Default archive config/object for steps that accept one (e.g.
+                Calibration) and don't already specify their own. See
+                PipelineMixin.__init__.
         """
         Object.__init__(self, **kwargs)
-        PipelineMixin.__init__(self, steps)
+        PipelineMixin.__init__(self, steps, archive=archive)
 
     @staticmethod
     def _combine_calib_images(

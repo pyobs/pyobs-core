@@ -1,6 +1,6 @@
 # Plan: pyobs-pipeline
 
-Status: draft
+Status: implemented
 
 Issue: #741
 
@@ -412,14 +412,14 @@ All prior open questions are resolved:
 
 ## Implementation checklist
 
-- [ ] Scaffold Django project with layout matching pyobs-web-admin
-- [ ] Implement Django models (Site, Pipeline, PipelineStep, ReductionPeriod)
-- [ ] Site management views (CRUD, enable/disable, scheduling control)
-- [ ] Pipeline builder views (template registry, step forms, reorder, add/remove, save pipeline)
-- [ ] Celery + Redis integration (reduce_period task, Beat trigger schedule)
-- [ ] ReductionPeriod management views (list, detail, start/stop/reset/restart)
-- [ ] Log viewer (read logs from DB, auto-refresh while running)
-- [ ] Dashboard (site status cards, last period, next scheduled run, recent periods table)
-- [ ] Dockerfile + docker-compose.yml (web, worker, beat, redis) + deploy documentation
-- [ ] Tests (models, views, Celery tasks, scheduler)
-- [ ] Update this doc's `Status:` to `implemented` once landed
+- [x] Scaffold Django project with layout matching pyobs-web-admin
+- [x] Implement Django models (Site, Pipeline, PipelineStep, ReductionPeriod)
+- [x] Site management views (CRUD, enable/disable, scheduling control)
+- [x] Pipeline builder views (template registry, step forms, reorder, add/remove, save pipeline)
+- [x] Celery + Redis integration (reduce_period task, Beat trigger schedule)
+- [x] ReductionPeriod management views (list, detail, start/stop/reset/restart)
+- [x] Log viewer (read logs from DB, auto-refresh while running)
+- [x] Dashboard (site status cards, last period, next scheduled run, recent periods table)
+- [x] Dockerfile + docker-compose.yml (web, worker, beat, redis) + deploy documentation
+- [x] Tests (models, views, Celery tasks, scheduler)
+- [x] Update this doc's `Status:` to `implemented` once landed

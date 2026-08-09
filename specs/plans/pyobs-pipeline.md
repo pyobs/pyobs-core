@@ -198,6 +198,8 @@ class ReductionPeriod(models.Model):
 
 Form generation references pyobs-core's processor classes directly. A helper function (`get_step_fields(step_class)`) uses `inspect.signature()` to extract parameters, types, defaults, and annotations at runtime.
 
+**`step_class` is validated at save time, not just at run time.** When the pipeline builder form is saved, each step's dotted `step_class` path is imported via `get_class_from_string` before the `PipelineStep` row is written — a typo or a renamed/removed processor class fails the save immediately with a clear error, rather than silently waiting until the next scheduled (or manual) run surfaces it as a `FAILED` `ReductionPeriod` hours or a day later.
+
 ```python
 # step_fields.py
 import inspect
@@ -247,20 +249,30 @@ def reduce_period(site_id, period_id):
 
 `visibility_timeout` (seconds before an un-acked task is redelivered) matches the current pipeline's setting — kept generous since a reduction run can take hours.
 
-**Beat schedule — dynamic per site, not a static dict.** A static `beat_schedule` dict is fixed at process start and can't hold one entry per DB row that changes at runtime. Instead, use a custom `celery.beat.Scheduler` subclass that overrides `get_schedule()`/`tick()` to read **all** `Site` rows from the DB on each tick (not just enabled ones — `enabled` gates dispatch, not row creation) and compute each site's next trigger time via `get_next_turnover` (per `Site.trigger_type` — see below), comparing against `now()` to decide whether the trigger event has occurred. Sketch:
+**Beat schedule — dynamic per site, not a static dict.** A static `beat_schedule` dict is fixed at process start and can't hold one entry per DB row that changes at runtime. Instead, use a custom `celery.beat.Scheduler` subclass that overrides `get_schedule()`/`tick()` to read **all** `Site` rows from the DB on each tick (not just enabled ones — `enabled` gates dispatch, not row creation) and compute each site's next trigger time via `get_next_turnover` (per `Site.trigger_type` — see below), comparing against `now()` to decide whether the trigger event has occurred.
+
+**Backfills missed ticks.** If beat was down across a turnover (or several), the next tick creates rows for every missed period-boundary date since the site's last known `ReductionPeriod`, not just today's — otherwise those dates would never get a row at all, and (per "no user-created periods" above) there'd be no supported way to create one after the fact. Capped at a fixed lookback (`MAX_BACKFILL_DAYS`, default 7) so a site that's been `enabled=False` for months doesn't dispatch a huge backlog the moment it's re-enabled. Sketch:
 
 ```python
+MAX_BACKFILL_DAYS = 7
+
 class DbScheduler(Scheduler):
     def tick(self):
         for site in Site.objects.all():
-            next_turnover = get_next_turnover(site)
-            if due(next_turnover):
-                period = ReductionPeriod.objects.create(site=site, date=..., status="PENDING")
-                if site.enabled:
-                    period.status = "QUEUED"
-                    period.save()
-                    reduce_period.delay(site.id, period.id)
+            self._create_pending_periods(site)
         return super().tick()
+
+    def _create_pending_periods(self, site):
+        if not due(get_next_turnover(site)):
+            return
+        last_period = ReductionPeriod.objects.filter(site=site).order_by("-date").first()
+        since = last_period.date if last_period else None
+        for date in get_missing_period_dates(site, since=since, max_days=MAX_BACKFILL_DAYS):
+            period = ReductionPeriod.objects.create(site=site, date=date, status="PENDING")
+            if site.enabled:
+                period.status = "QUEUED"
+                period.save()
+                reduce_period.delay(site.id, period.id)
 ```
 
 Run with `celery -A pyobs_pipeline_web beat --scheduler pyobs_pipeline_web.scheduler.DbScheduler`. This also means enabling/disabling a site in the web UI takes effect on the next tick, with no Beat restart needed — flipping `enabled` off stops auto-dispatch immediately, but `PENDING` rows keep appearing on schedule for manual start.
@@ -372,7 +384,7 @@ Deploy docs covering:
 - Model tests: Site, Pipeline, PipelineStep, ReductionPeriod creation and retrieval
 - View tests: site list, pipeline builder, period list, start/stop/reset/restart flows (including start on a manual-only/disabled site)
 - Celery task tests: reduce_period mock test, status updates, log writing
-- Scheduler tests: Beat schedule generation from DB sites
+- Scheduler tests: Beat schedule generation from DB sites, missed-tick backfill (including the `MAX_BACKFILL_DAYS` cap)
 
 ## Consequences
 
@@ -384,15 +396,19 @@ Deploy docs covering:
 - **Neutral:** Docker Compose for deployment — four services (web, worker, beat, redis) in one `docker-compose.yml`, with `depends_on` for startup ordering and `docker compose logs` for unified logs. Matches the Dockerfile-based pattern the current pipeline already uses; simpler to operate here than hand-written systemd units once Celery worker + beat are in the picture.
 - **Neutral:** Logs in DB (TextField on `ReductionPeriod` row) — clean, no shared filesystem needed. But could grow the DB if logs are large. Could cap at reasonable size and keep last N lines if needed.
 - **Neutral:** `input_config`/`output_config` on `SitePipeline` store PyobsArchive tokens as plaintext JSON in the DB. Acceptable for a single-user internal tool behind the existing cookie auth, but means DB access = credential access; no separate secrets store.
-- **Neutral:** `PipelineStep.step_class` stores a dotted class path as a plain string with no validation against the installed pyobs-core version. Renaming or removing a processor class silently breaks any saved pipeline referencing it (fails at task-run time, not save time). No migration path for this is designed; acceptable to defer, but flag it as a known gap.
+- **Neutral:** `PipelineStep.step_class` stores a dotted class path as a plain string, validated at pipeline-save time (imported via `get_class_from_string`, see Step 4) but not re-checked against the installed pyobs-core version afterward. A pyobs-core upgrade that renames/removes a processor class after a pipeline was saved still breaks it silently until the next run — save-time validation catches typos and bad initial input, not later drift. No migration path for that later-drift case is designed; acceptable to defer.
+- **Neutral:** Reduced-data browsing is out of scope. The `ReductionPeriod` detail page shows status/timing/logs, not the reduced frames themselves — finding/browsing output is left to the configured archive's own tooling (or direct filesystem access for local output), not built into pipeline-web.
+- **Neutral:** Single shared Redis broker and Celery worker pool across all sites — no per-site queue isolation. Acceptable given the run frequency (once per site per day); revisit only if a stuck task on one site is actually observed delaying another's run in practice.
 
 ## Open questions
 
-- Where does reduced data live once written? Should the web interface know about it for linking/browsing from the ReductionPeriod detail page, or is that outside scope?
-- Beat's custom `DbScheduler` (Step 5) reads `Site` rows every tick — what tick interval, and does a missed tick (beat down at turnover) need catch-up logic? This now matters more than a missed dispatch alone: since `ReductionPeriod` rows are only ever created by the trigger event (never by an operator picking a date), a missed tick with no catch-up means that date's row never exists at all, and there's no supported UI path to create it after the fact. Worth deciding whether `tick()` should backfill any date between a site's last known row and today when it next runs.
-- Is `step_class` validated at pipeline-save time (import the class, check it's a known processor base) to catch typos/renames early, or only discovered at run time?
-- Single Redis broker, single Celery worker pool assumed — is there a need to isolate pipeline runs per site (e.g. one site's stuck task shouldn't block another site's queue), or is a shared pool acceptable given the low run frequency (once per site per day)?
-- ~~Should `pyobs.utils.pipeline.Night` be renamed in pyobs-core?~~ Decided — see `specs/plans/night-archive-io-hardening.md`. Remaining question: this project's `PipelineStep.step_class`/`Pipeline.period_config` fields reference the dotted path directly, so nothing here should be built against `Night` once that plan lands — worth sequencing pipeline-web's Step 5 after it rather than building against the old name and migrating saved pipelines later.
+All prior open questions are resolved:
+
+- Reduced-data browsing: out of scope (see Consequences).
+- Missed-tick backfill: `DbScheduler.tick()` backfills up to `MAX_BACKFILL_DAYS` (see "Scheduling").
+- `step_class` validation: at save time (see Step 4).
+- Worker pool isolation: shared pool, not per-site (see Consequences).
+- `pyobs.utils.pipeline.Night` → `Reduction` rename: implemented on branch `night-reduction-hardening` (PR #743, not yet merged as of this writing) — this project's Step 5 should still be sequenced after that PR lands on `develop`, since `PipelineStep.step_class`/`Pipeline.period_config` reference the dotted path directly.
 
 ## Implementation checklist
 

@@ -235,7 +235,55 @@ async def test_download_headers_returns_header_dicts(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_upload_frames_is_noop(tmp_path: Path) -> None:
+async def test_upload_frames_writes_file_to_root(tmp_path: Path) -> None:
     archive = LocalArchive(root=str(tmp_path))
-    # should not raise
-    await archive.upload_frames([])
+    image = Image(data=np.zeros((2, 2)))
+    for key, value in make_frame_headers().items():
+        image.header[key] = value
+    image.header["FNAME"] = "uploaded.fits"
+
+    await archive.upload_frames([image])
+
+    assert (tmp_path / "uploaded.fits").exists()
+
+
+@pytest.mark.asyncio
+async def test_upload_frames_creates_missing_root(tmp_path: Path) -> None:
+    root = tmp_path / "does" / "not" / "exist"
+    archive = LocalArchive(root=str(root))
+    image = Image(data=np.zeros((2, 2)))
+    for key, value in make_frame_headers().items():
+        image.header[key] = value
+    image.header["FNAME"] = "uploaded.fits"
+
+    await archive.upload_frames([image])
+
+    assert (root / "uploaded.fits").exists()
+
+
+@pytest.mark.asyncio
+async def test_upload_frames_raises_without_fname_header(tmp_path: Path) -> None:
+    archive = LocalArchive(root=str(tmp_path))
+    image = Image(data=np.zeros((2, 2)))
+    for key, value in make_frame_headers().items():
+        image.header[key] = value
+
+    with pytest.raises(ValueError):
+        await archive.upload_frames([image])
+
+
+@pytest.mark.asyncio
+async def test_upload_frames_refreshes_index_for_list_frames(tmp_path: Path) -> None:
+    archive = LocalArchive(root=str(tmp_path))
+    assert await archive.list_frames() == []
+
+    image = Image(data=np.zeros((2, 2)))
+    for key, value in make_frame_headers(filter_name="red").items():
+        image.header[key] = value
+    image.header["FNAME"] = "uploaded.fits"
+    await archive.upload_frames([image])
+
+    frames = await archive.list_frames()
+    assert len(frames) == 1
+    assert frames[0].filename == str(tmp_path / "uploaded.fits")
+    assert frames[0].filter_name == "red"

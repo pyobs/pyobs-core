@@ -166,7 +166,13 @@ class LocalArchive(Archive):
         return headers
 
     async def upload_frames(self, images: list[Image]) -> None:
-        pass
+        self._root_path.mkdir(parents=True, exist_ok=True)
+        for image in images:
+            filename = image.header.get("FNAME")
+            if not filename:
+                raise ValueError("Image has no FNAME header set, cannot determine output filename.")
+            image.writeto(str(self._root_path / filename), overwrite=True)
+        self._update_root()  # refresh the in-memory index so newly-written frames are queryable
 
 
 __all__ = ["LocalArchive"]

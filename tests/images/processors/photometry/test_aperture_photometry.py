@@ -25,10 +25,18 @@ class MockPhotometryCalculator(_PhotometryCalculator):
         self._catalog[f"call{diameter}"] = 1
 
 
+class _TestAperturePhotometry(AperturePhotometry):
+    """AperturePhotometry.__init__ is abstract -- concrete calculators
+    (PhotUtilsPhotometry, SepPhotometry) each define their own; this is that for tests."""
+
+    def __init__(self, calculator: _PhotometryCalculator):
+        super().__init__(calculator)
+
+
 @pytest.mark.asyncio
 async def test_call_invalid_data(caplog):
     image = Image()
-    photometry = AperturePhotometry(MockPhotometryCalculator())
+    photometry = _TestAperturePhotometry(MockPhotometryCalculator())
 
     with caplog.at_level(logging.WARNING):
         result = await photometry(image)
@@ -40,7 +48,7 @@ async def test_call_invalid_data(caplog):
 @pytest.mark.asyncio
 async def test_call_invalid_pixelscale(caplog):
     image = Image(data=np.zeros((1, 1)))
-    photometry = AperturePhotometry(MockPhotometryCalculator())
+    photometry = _TestAperturePhotometry(MockPhotometryCalculator())
 
     with caplog.at_level(logging.WARNING):
         result = await photometry(image)
@@ -52,7 +60,7 @@ async def test_call_invalid_pixelscale(caplog):
 @pytest.mark.asyncio
 async def test_call_invalid_catalog(caplog):
     image = Image(data=np.zeros((1, 1)), header=Header({"CD1_1": 1.0}))
-    photometry = AperturePhotometry(MockPhotometryCalculator())
+    photometry = _TestAperturePhotometry(MockPhotometryCalculator())
 
     with caplog.at_level(logging.WARNING):
         result = await photometry(image)
@@ -64,7 +72,7 @@ async def test_call_invalid_catalog(caplog):
 @pytest.mark.asyncio
 async def test_call_valid(const_test_image):
     calculator = MockPhotometryCalculator()
-    photometry = AperturePhotometry(calculator)
+    photometry = _TestAperturePhotometry(calculator)
     result = await photometry(const_test_image)
 
     assert all([f"call{x}" in result.catalog.keys() for x in AperturePhotometry.APERTURE_RADII])

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import os.path
 from typing import Any
 
@@ -19,28 +20,27 @@ log = logging.getLogger(__name__)
 FILENAME = "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits"
 
 
-class Night:
+class Reduction:
     def __init__(
         self,
         archive: dict[str, Any] | Archive,
         pipeline: dict[str, Any] | Pipeline,
-        worker_procs: int = 4,
         filenames_calib: str = FILENAME,
         min_flats: int = 10,
-        store_local: str | None = None,
+        output: str | dict[str, Any] | Archive | None = None,
         create_calibs: bool = True,
         calib_science: bool = True,
-        **kwargs: Any,
     ):
-        """Creates a Night object for reducing a given night.
+        """Creates a Reduction object for reducing a given observation period.
 
         Args:
-            archive: Archive to fetch images from and write results to.
+            archive: Archive to fetch raw and calibration frames from. Also the output
+                destination, unless output is set.
             pipeline: Science pipeline.
-            worker_procs: Number of worker processes.
             filenames_calib: Filename pattern for master calibration files.
             min_flats: Minimum number of raw frames to create flat field.
-            store_local: If True, files are stored in given local directory instead of uploaded to archive.
+            output: Where to write results. A string is a local directory path; a dict or
+                Archive is an output archive. If not set, results are written back to archive.
             create_calibs: If False, no calibration files are created for night.
             calib_science: If False, no science frames are calibrated.
         """
@@ -50,11 +50,17 @@ class Night:
         self._pipeline = get_object(pipeline, Pipeline, archive=archive)
 
         # stuff
-        self._worker_processes = worker_procs
         self._min_flats = min_flats
-        self._store_local = store_local
+        self._store_local: str | None = output if isinstance(output, str) else None
+        self._output_archive = (
+            self._archive if output is None or isinstance(output, str) else get_object(output, Archive)
+        )
         self._create_calibs = create_calibs
         self._calib_science = calib_science
+
+        # make sure the local output directory exists
+        if self._store_local:
+            os.makedirs(self._store_local, exist_ok=True)
 
         # cache for master calibration frames
         self._master_frames: dict[tuple[ImageType, str, str, str | None], Image] = {}
@@ -128,6 +134,7 @@ class Night:
         images = await self._archive.download_frames(infos)
         if len(images) < 3:
             log.warning("Too few (%d) frames found, skipping...", len(infos))
+            return None
 
         # create master
         calib: Image | None = None
@@ -191,7 +198,7 @@ class Night:
             calib.writeto(path, overwrite=True)
         else:
             log.info("Uploading master calibration frame as %s...", calib.header["FNAME"])
-            await self._archive.upload_frames([calib])
+            await self._output_archive.upload_frames([calib])
 
         # finished
         return calib
@@ -230,7 +237,7 @@ class Night:
                     calibrated.writeto(path, overwrite=True)
                 else:
                     log.info("(%d/%d) Uploading calibrated images as %s...", i, total, calibrated.header["FNAME"])
-                    await self._archive.upload_frames([calibrated])
+                    await self._output_archive.upload_frames([calibrated])
 
             except Exception:
                 log.exception("(%d/%d) Error processing image %s.", i, total, info.filename)
@@ -256,18 +263,32 @@ class Night:
             for binning in options["binnings"]:
                 # create bias and dark
                 if self._create_calibs:
-                    await self._create_master_calib(night, instrument, ImageType.BIAS, binning)
-                    await self._create_master_calib(night, instrument, ImageType.DARK, binning)
+                    try:
+                        await self._create_master_calib(night, instrument, ImageType.BIAS, binning)
+                    except Exception:
+                        log.exception("Error creating master bias for instrument %s, binning %s.", instrument, binning)
+                    try:
+                        await self._create_master_calib(night, instrument, ImageType.DARK, binning)
+                    except Exception:
+                        log.exception("Error creating master dark for instrument %s, binning %s.", instrument, binning)
 
                 # loop filters
                 for filter_name in options["filters"]:
                     # create flat
                     if self._create_calibs:
-                        await self._create_master_calib(night, instrument, ImageType.SKYFLAT, binning, filter_name)
+                        try:
+                            await self._create_master_calib(night, instrument, ImageType.SKYFLAT, binning, filter_name)
+                        except Exception:
+                            log.exception(
+                                "Error creating master flat for instrument %s, binning %s, filter %s.",
+                                instrument,
+                                binning,
+                                filter_name,
+                            )
 
                     # calibrate science data
                     if self._calib_science:
                         await self._calib_data(night, instrument, binning, filter_name)
 
 
-__all__ = ["Night"]
+__all__ = ["Reduction"]

@@ -1,10 +1,10 @@
-# Plan: pyobs-pipeline-web
+# Plan: pyobs-pipeline
 
-Status: draft
+Status: implemented
 
 Issue: #741
 
-Repos: new repo `pyobs-pipeline-web`
+Repos: new repo `pyobs-pipeline`
 
 ## Problem
 
@@ -128,7 +128,7 @@ Two distinct things are involved, which the current pipeline keeps separate and 
 ### Step 1: Scaffold Django project
 
 Create the new repo with:
-- Django project structure (`pyobs_pipeline_web/` package with `settings.py`, `urls.py`, etc.)
+- Django project structure (`pyobs_pipeline/` package with `settings.py`, `urls.py`, etc.)
 - `pyproject.toml` managed with `uv` (`uv init`, `uv add django gunicorn celery redis`), `uv.lock` committed — matching the uv workflow used elsewhere in the pyobs ecosystem. Redis itself is a separate system service (distro package), not a Python dependency.
 - `templates/base.html` — sidebar layout, Bootstrap 5 dark theme, matching pyobs-web-admin pattern
 - `templates/` — login page, base template with sidebar
@@ -275,7 +275,7 @@ class DbScheduler(Scheduler):
                 reduce_period.delay(site.id, period.id)
 ```
 
-Run with `celery -A pyobs_pipeline_web beat --scheduler pyobs_pipeline_web.scheduler.DbScheduler`. This also means enabling/disabling a site in the web UI takes effect on the next tick, with no Beat restart needed — flipping `enabled` off stops auto-dispatch immediately, but `PENDING` rows keep appearing on schedule for manual start.
+Run with `celery -A pyobs_pipeline beat --scheduler pyobs_pipeline.scheduler.DbScheduler`. This also means enabling/disabling a site in the web UI takes effect on the next tick, with no Beat restart needed — flipping `enabled` off stops auto-dispatch immediately, but `PENDING` rows keep appearing on schedule for manual start.
 
 ### Reduction period turnover calculation
 
@@ -322,7 +322,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 COPY . .
-CMD ["uv", "run", "gunicorn", "pyobs_pipeline_web.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["uv", "run", "gunicorn", "pyobs_pipeline.wsgi:application", "--bind", "0.0.0.0:8000"]
 ```
 
 `docker-compose.yml`:
@@ -349,7 +349,7 @@ services:
 
   worker:
     build: .
-    command: uv run celery -A pyobs_pipeline_web worker --loglevel=info --concurrency=4 --pool=prefork
+    command: uv run celery -A pyobs_pipeline worker --loglevel=info --concurrency=4 --pool=prefork
     volumes:
       - ./data:/app/data
     depends_on:
@@ -358,7 +358,7 @@ services:
 
   beat:
     build: .
-    command: uv run celery -A pyobs_pipeline_web beat --loglevel=info --scheduler pyobs_pipeline_web.scheduler.DbScheduler
+    command: uv run celery -A pyobs_pipeline beat --loglevel=info --scheduler pyobs_pipeline.scheduler.DbScheduler
     volumes:
       - ./data:/app/data
     depends_on:
@@ -412,14 +412,14 @@ All prior open questions are resolved:
 
 ## Implementation checklist
 
-- [ ] Scaffold Django project with layout matching pyobs-web-admin
-- [ ] Implement Django models (Site, Pipeline, PipelineStep, ReductionPeriod)
-- [ ] Site management views (CRUD, enable/disable, scheduling control)
-- [ ] Pipeline builder views (template registry, step forms, reorder, add/remove, save pipeline)
-- [ ] Celery + Redis integration (reduce_period task, Beat trigger schedule)
-- [ ] ReductionPeriod management views (list, detail, start/stop/reset/restart)
-- [ ] Log viewer (read logs from DB, auto-refresh while running)
-- [ ] Dashboard (site status cards, last period, next scheduled run, recent periods table)
-- [ ] Dockerfile + docker-compose.yml (web, worker, beat, redis) + deploy documentation
-- [ ] Tests (models, views, Celery tasks, scheduler)
-- [ ] Update this doc's `Status:` to `implemented` once landed
+- [x] Scaffold Django project with layout matching pyobs-web-admin
+- [x] Implement Django models (Site, Pipeline, PipelineStep, ReductionPeriod)
+- [x] Site management views (CRUD, enable/disable, scheduling control)
+- [x] Pipeline builder views (template registry, step forms, reorder, add/remove, save pipeline)
+- [x] Celery + Redis integration (reduce_period task, Beat trigger schedule)
+- [x] ReductionPeriod management views (list, detail, start/stop/reset/restart)
+- [x] Log viewer (read logs from DB, auto-refresh while running)
+- [x] Dashboard (site status cards, last period, next scheduled run, recent periods table)
+- [x] Dockerfile + docker-compose.yml (web, worker, beat, redis) + deploy documentation
+- [x] Tests (models, views, Celery tasks, scheduler)
+- [x] Update this doc's `Status:` to `implemented` once landed

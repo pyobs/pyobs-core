@@ -10,7 +10,7 @@ from pyobs.images import Image
 from pyobs.robotic.utils.archive import Archive, FrameInfo
 from pyobs.robotic.utils.archive.local_archive import LocalArchive
 from pyobs.utils.enums import ImageType
-from pyobs.utils.pipeline import Pipeline, Reduction
+from pyobs.utils.pipeline import MasterCalibCreated, Pipeline, ProgressEvent, Reduction, ScienceFrameProcessed
 from pyobs.utils.time import Time
 
 
@@ -178,3 +178,68 @@ async def test_calibration_failure_for_one_combination_does_not_abort_others(tmp
     # science calibration still ran (and uploaded) for both instruments
     assert (tmp_path / "cam1.fits").exists()
     assert (tmp_path / "cam2.fits").exists()
+
+
+# ── progress callback ───────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_progress_callback_reports_calibs_and_cumulative_science_frames(tmp_path: Path) -> None:
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    for i in range(3):
+        write_fits(in_dir / f"bias{i}.fits", **make_frame_headers(image_type="bias", fname=f"bias{i}.fits"))
+        write_fits(in_dir / f"dark{i}.fits", **make_frame_headers(image_type="dark", fname=f"dark{i}.fits"))
+    for i in range(3):
+        write_fits(in_dir / f"flat{i}.fits", **make_frame_headers(image_type="skyflat", fname=f"flat{i}.fits"))
+    write_fits(in_dir / "obj0.fits", **make_frame_headers(fname="obj0.fits"))
+    write_fits(in_dir / "obj1.fits", **make_frame_headers(fname="obj1.fits"))
+
+    archive = LocalArchive(root=str(in_dir))
+    output = LocalArchive(root=str(tmp_path / "out"))
+    pipeline = Pipeline(steps=[])
+
+    events: list[ProgressEvent] = []
+    reduction = Reduction(
+        archive=archive,
+        pipeline=pipeline,
+        output=output,
+        min_flats=1,
+        progress_callback=events.append,
+    )
+    await reduction("siteA", "2024-01-01")
+
+    calib_events = [e for e in events if isinstance(e, MasterCalibCreated)]
+    frame_events = [e for e in events if isinstance(e, ScienceFrameProcessed)]
+
+    assert {e.image_type for e in calib_events} == {ImageType.BIAS, ImageType.DARK, ImageType.SKYFLAT}
+
+    # cumulative index/total across the whole night, not per-batch
+    assert [e.index for e in frame_events] == [1, 2]
+    assert all(e.total == 2 for e in frame_events)
+    assert all(e.status == "ok" for e in frame_events)
+
+
+@pytest.mark.asyncio
+async def test_progress_callback_error_in_callback_does_not_abort_reduction(tmp_path: Path) -> None:
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    write_fits(in_dir / "obj0.fits", **make_frame_headers(fname="obj0.fits"))
+
+    archive = LocalArchive(root=str(in_dir))
+    output = LocalArchive(root=str(tmp_path / "out"))
+    pipeline = Pipeline(steps=[])
+
+    def broken_callback(event: ProgressEvent) -> None:
+        raise RuntimeError("boom")
+
+    reduction = Reduction(
+        archive=archive,
+        pipeline=pipeline,
+        output=output,
+        create_calibs=False,
+        progress_callback=broken_callback,
+    )
+    await reduction("siteA", "2024-01-01")
+
+    assert (tmp_path / "out" / "obj0.fits").exists()

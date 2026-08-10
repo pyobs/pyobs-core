@@ -35,6 +35,9 @@ class Observation(BaseModel):
     state: ObservationState = ObservationState.PENDING
     priority: float | None = None
     target: Target | None = None
+    obsnum: str | None = None
+    """Per-night observation number, e.g. "20260810-001". Assigned by Mastermind when the
+    observation starts running; None before that (or if never observed)."""
 
     def __str__(self) -> str:
         return (

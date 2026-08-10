@@ -1,6 +1,7 @@
 # `OBSNUM`: per-night observation counter in FITS headers
 
-Status: proposed. Tracks #738. Repos: pyobs-core, pyobs-robotic-backend.
+Status: implemented, closed. Tracks #738. Repos: pyobs-core, pyobs-robotic-backend.
+Landed in pyobs-core#746 (released 2.0.0.dev71) and pyobs-robotic-backend#69.
 
 ## Problem
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 from unittest.mock import patch
 
 import astropy.units as u
@@ -55,14 +56,24 @@ def make_mastermind(obs_archive, runner=None, task_archive=None) -> Mastermind:
         runner = QuickRunner()
     runner.observation_archive = obs_archive
 
-    mm = Mastermind(schedule=obs_archive, runner=runner, tasks=task_archive)
+    # in-memory vfs so the obsnum cache file never touches real disk
+    mm = Mastermind(
+        schedule=obs_archive,
+        runner=runner,
+        tasks=task_archive,
+        vfs={
+            "class": "pyobs.vfs.VirtualFileSystem",
+            "roots": {"pyobs": {"class": "pyobs.vfs.MemoryFile"}},
+        },
+    )
     mm._running = True  # skip open()/start(), which would also register comm event handlers
     return mm
 
 
-def make_obs(duration: float = 60.0) -> Observation:
+def make_obs(duration: float = 60.0, obs_id: Any = None) -> Observation:
     task = Task(id=1, name="test_task", duration=duration)
     return Observation(
+        id=obs_id,
         task=task,
         start=NIGHT - TimeDelta(10 * u.second),
         end=NIGHT + TimeDelta(duration * u.second),
@@ -109,6 +120,17 @@ async def run_until_state(
             except (asyncio.CancelledError, Exception):
                 pass
             obs_archive.update_observation = original_update
+
+
+@pytest.fixture(autouse=True)
+def _clear_vfs_buffer():
+    """MemoryFile's buffer is a process-wide class dict; every Mastermind instance in these
+    tests shares the same (unnamed) module path, so it must be reset between tests."""
+    from pyobs.vfs.bufferedfile import BufferedFile
+
+    BufferedFile._bufferedFiles.clear()
+    yield
+    BufferedFile._bufferedFiles.clear()
 
 
 # ── tests ─────────────────────────────────────────────────────────────────────
@@ -200,3 +222,85 @@ async def test_mastermind_marks_observation_in_progress() -> None:
 
     reached = await run_until_state(mm, obs_archive, ObservationState.IN_PROGRESS)
     assert reached, "Observation did not reach IN_PROGRESS state"
+
+
+# ── obsnum tests ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_assigns_obsnum_to_observation() -> None:
+    """Observation.obsnum is set to "<night>-001" for the first observation of a night."""
+    obs_archive = make_obs_archive()
+    mm = make_mastermind(obs_archive)
+    await obs_archive.add_observations(ObservationList([make_obs()]))
+
+    await run_until_state(mm, obs_archive, ObservationState.COMPLETED)
+
+    loaded = await obs_archive.get_schedule()
+    assert any(o.obsnum == "20251103-001" for o in loaded)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_reports_obsnum_in_fits_header() -> None:
+    """OBSNUM appears in get_fits_header_before() with the same value as Observation.obsnum."""
+    obs_archive = make_obs_archive()
+    mm = make_mastermind(obs_archive)
+    await obs_archive.add_observations(ObservationList([make_obs(duration=1.0)]))
+
+    seen_headers = []
+    original_update = obs_archive.update_observation
+
+    async def tracking_update(o):
+        seen_headers.append(await mm.get_fits_header_before())
+        await original_update(o)
+
+    obs_archive.update_observation = tracking_update
+
+    await run_until_state(mm, obs_archive, ObservationState.IN_PROGRESS)
+    obs_archive.update_observation = original_update
+
+    # header was requested after obsnum was assigned but before update_observation ran
+    assert any("OBSNUM" in h for h in seen_headers)
+    header_obsnum = next(h["OBSNUM"].value for h in seen_headers if "OBSNUM" in h)
+    assert header_obsnum == "20251103-001"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_increments_obsnum_within_a_night() -> None:
+    """Two observations run back-to-back on the same night get consecutive obsnums."""
+    obs_archive = make_obs_archive()
+    mm = make_mastermind(obs_archive)
+    await obs_archive.add_observations(ObservationList([make_obs(duration=1.0, obs_id=1)]))
+    await run_until_state(mm, obs_archive, ObservationState.COMPLETED)
+
+    await obs_archive.add_observations(ObservationList([make_obs(duration=1.0, obs_id=2)]))
+    mm._running = True  # run_until_state's finally block stopped it after the first run
+    await run_until_state(mm, obs_archive, ObservationState.COMPLETED)
+
+    obsnums = sorted(o.obsnum for o in await obs_archive.get_schedule() if o.obsnum is not None)
+    assert obsnums == ["20251103-001", "20251103-002"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_resets_obsnum_on_new_night() -> None:
+    """obsnum resets to 001 when the night changes."""
+    obs_archive = make_obs_archive()
+    mm = make_mastermind(obs_archive)
+    await obs_archive.add_observations(ObservationList([make_obs(duration=1.0, obs_id=1)]))
+    await run_until_state(mm, obs_archive, ObservationState.COMPLETED)
+
+    next_night = NIGHT + TimeDelta(1 * u.day)
+    obs = make_obs(duration=1.0, obs_id=2)
+    obs.start = next_night - TimeDelta(10 * u.second)
+    obs.end = next_night + TimeDelta(1.0 * u.second)
+    await obs_archive.add_observations(ObservationList([obs]))
+    mm._running = True  # run_until_state's finally block stopped it after the first run
+    await run_until_state(mm, obs_archive, ObservationState.COMPLETED, now=next_night)
+
+    obsnums = {o.start.strftime("%Y%m%d"): o.obsnum for o in await obs_archive.get_schedule()}
+    assert obsnums[NIGHT.strftime("%Y%m%d")] == "20251103-001"
+    assert obsnums[next_night.strftime("%Y%m%d")] == "20251104-001"

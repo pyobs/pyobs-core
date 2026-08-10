@@ -65,6 +65,38 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         # observation name and exposure number
         self._task: Task | None = None
         self._task_target: Target | None = None
+        self._obsnum: str | None = None
+
+        # per-night observation counter
+        self._obsnum_cache = f"/pyobs/modules/{self.name}/obsnum.yaml"
+
+    async def _next_obsnum(self) -> str:
+        """Compute and persist the next per-night observation number.
+
+        Returns:
+            Compound "<night>-<counter>" string, e.g. "20260810-001".
+        """
+        night = Time.now().night_obs(self._observer) if self._observer is not None else Time.now().datetime.date()
+        night_str = night.strftime("%Y%m%d")
+
+        # load cache, bump counter, reset on night change
+        counter = 1
+        try:
+            cache = await self.vfs.read_yaml(self._obsnum_cache)
+            if cache is not None and cache.get("night") == night_str:
+                counter = cache["obsnum"] + 1
+        except (FileNotFoundError, ValueError, IndexError):
+            # IndexError: some VFS backends (e.g. MemoryFile) raise this for a missing file
+            # instead of FileNotFoundError
+            pass
+
+        # write it back
+        try:
+            await self.vfs.write_yaml(self._obsnum_cache, {"night": night_str, "obsnum": counter})
+        except (FileNotFoundError, ValueError):
+            log.warning("Could not write obsnum cache file.")
+
+        return f"{night_str}-{counter:03d}"
 
     async def open(self) -> None:
         """Open module."""
@@ -153,6 +185,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             # task is definitely not None here
             self._task = observation.task
             self._task_target = observation.target
+            self._obsnum = await self._next_obsnum()
 
             # ETA
             now = Time.now()
@@ -163,6 +196,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             observation.state = ObservationState.IN_PROGRESS
             observation.start = now
             observation.end = eta
+            observation.obsnum = self._obsnum
             await self._observation_archive.update_observation(observation)
 
             # run task in thread
@@ -184,6 +218,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 await self.comm.send_event(TaskFailedEvent(name=self._task.name, id=self._task.id))
                 self._task = None
                 self._task_target = None
+                self._obsnum = None
                 continue
 
             # send event and change state
@@ -196,6 +231,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             log.info("Finished task %s.", self._task.name)
             self._task = None
             self._task_target = None
+            self._obsnum = None
 
             # sleep?
             await asyncio.sleep(self._after_task_sleep)
@@ -217,6 +253,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             hdr = self._task.get_fits_headers()
             hdr["TASK"] = FitsHeaderEntry(self._task.name, "Name of task")
             hdr["REQNUM"] = FitsHeaderEntry(str(self._task.id), "Unique ID of task")
+            if self._obsnum is not None:
+                hdr["OBSNUM"] = FitsHeaderEntry(self._obsnum, "Observation number (night-obsnum)")
             return hdr
         else:
             return {}

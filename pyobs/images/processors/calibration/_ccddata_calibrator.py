@@ -8,6 +8,11 @@ from pyobs.images import Image
 
 class _CCDDataCalibrator:
     def __init__(self, image: Image, bias: Image | None = None, dark: Image | None = None, flat: Image | None = None):
+        # to_ccddata() below never carries a catalog through anyway, so drop it before trim() to
+        # avoid its stale-catalog guard rejecting an image whose catalog wouldn't survive regardless.
+        if image.safe_catalog is not None:
+            image = image.copy()
+            image.catalog = None
         self._image = image.trim()
         self._bias = self._optional_to_ccddata(bias)
         self._dark = self._optional_to_ccddata(dark)

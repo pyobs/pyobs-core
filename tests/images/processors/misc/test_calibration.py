@@ -1,10 +1,13 @@
 import logging
 
+import numpy as np
 import pytest
+from astropy.table import Table
 
 import pyobs.utils.pipeline
 from pyobs.images import Image
 from pyobs.images.processors.calibration import Calibration
+from pyobs.images.processors.calibration._ccddata_calibrator import _CCDDataCalibrator
 from pyobs.robotic.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 
@@ -130,6 +133,18 @@ async def test_call_calibration_not_found(mocker, caplog):
 
     assert caplog.records[0].message == "Could not find calibration frames: Test"
     assert image == result_image
+
+
+def test_ccddata_calibrator_drops_preexisting_catalog_before_trim():
+    # a catalog already attached to the raw science frame (e.g. quick-look photometry at the
+    # telescope) must not block calibration, since to_ccddata() never carries it through anyway
+    image = Image(data=np.zeros((4, 4), dtype=np.float32))
+    image.catalog = Table({"x": [1.0]})
+
+    calibrator = _CCDDataCalibrator(image)
+
+    assert calibrator._image.safe_catalog is None
+    assert image.safe_catalog is not None  # original image is untouched
 
 
 def test_verify_image_header_invalid():

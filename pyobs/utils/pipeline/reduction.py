@@ -7,12 +7,13 @@ from typing import Any
 
 from pyobs.images import Image
 from pyobs.object import get_object
-from pyobs.robotic.utils.archive import Archive
+from pyobs.robotic.utils.archive import Archive, FrameInfo
 from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import FilenameFormatter
-from pyobs.utils.time import Time
 
 from .pipeline import Pipeline
+from .progress import MasterCalibCreated, ProgressCallback, ScienceFrameProcessed
+from .reduction_base import ReductionBase
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ log = logging.getLogger(__name__)
 FILENAME = "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits"
 
 
-class Reduction:
+class Reduction(ReductionBase):
     def __init__(
         self,
         archive: dict[str, Any] | Archive,
@@ -30,6 +31,7 @@ class Reduction:
         output: str | dict[str, Any] | Archive | None = None,
         create_calibs: bool = True,
         calib_science: bool = True,
+        progress_callback: ProgressCallback | None = None,
     ):
         """Creates a Reduction object for reducing a given observation period.
 
@@ -43,14 +45,10 @@ class Reduction:
                 Archive is an output archive. If not set, results are written back to archive.
             create_calibs: If False, no calibration files are created for night.
             calib_science: If False, no science frames are calibrated.
+            progress_callback: See ReductionBase.
         """
+        super().__init__(archive=archive, pipeline=pipeline, min_flats=min_flats, progress_callback=progress_callback)
 
-        # get archive and science pipeline
-        self._archive = get_object(archive, Archive)
-        self._pipeline = get_object(pipeline, Pipeline, archive=archive)
-
-        # stuff
-        self._min_flats = min_flats
         self._store_local: str | None = output if isinstance(output, str) else None
         self._output_archive = (
             self._archive if output is None or isinstance(output, str) else get_object(output, Archive)
@@ -62,50 +60,14 @@ class Reduction:
         if self._store_local:
             os.makedirs(self._store_local, exist_ok=True)
 
-        # cache for master calibration frames
-        self._master_frames: dict[tuple[ImageType, str, str, str | None], Image] = {}
-
         # default filename patterns
         self._fmt_calib = FilenameFormatter(filenames_calib)
 
-    async def _find_master(
-        self,
-        night: str,
-        image_type: ImageType,
-        instrument: str,
-        binning: str,
-        filter_name: str | None = None,
-        max_days: float = 30.0,
-    ) -> Image | None:
-        """Find master calibration frame for given parameters using a cache.
-
-        Args:
-            image_type: image type.
-            instrument: Instrument name.
-            binning: Binning.
-            filter_name: Name of filter.
-            max_days: Maximum number of days from DATE-OBS to find frames.
-
-        Returns:
-            Image or None
-        """
-
-        # is in cache?
-        if (image_type, instrument, binning, filter_name) in self._master_frames:
-            return self._master_frames[image_type, instrument, binning, filter_name]
-
-        # try to download one
-        midnight = Time(night + " 23:59:59")
-        image = await self._pipeline.find_master(
-            self._archive, image_type, midnight, instrument, binning, filter_name, max_days=max_days
-        )
-        if image is not None:
-            # store and return it
-            self._master_frames[image_type, instrument, binning, filter_name] = image
-            return image
-        else:
-            # still nothing
-            return None
+        # populated by _count_science_frames() at the start of __call__, consumed by _calib_data()
+        # so science frames are only listed from the archive once per combination, not twice
+        self._science_frame_cache: dict[tuple[str, str, str], list[FrameInfo]] = {}
+        self._frames_done = 0
+        self._frames_total = 0
 
     async def _create_master_calib(
         self, night: str, instrument: str, image_type: ImageType, binning: str, filter_name: str | None = None
@@ -200,19 +162,41 @@ class Reduction:
             log.info("Uploading master calibration frame as %s...", calib.header["FNAME"])
             await self._output_archive.upload_frames([calib])
 
+        self._report_progress(
+            MasterCalibCreated(
+                image_type=image_type,
+                instrument=instrument,
+                binning=binning,
+                filter_name=filter_name,
+                filename=calib.header["FNAME"],
+            )
+        )
+
         # finished
         return calib
 
+    async def _count_science_frames(self, night: str, options: dict[str, list[Any]]) -> int:
+        """Pre-pass: list (not download) OBJECT frames for every instrument/binning/filter
+        combination once, caching the results so _calib_data() doesn't have to list them
+        again, and return the total count across the whole night for progress reporting."""
+        total = 0
+        for instrument in options["instruments"]:
+            for binning in options["binnings"]:
+                for filter_name in options["filters"]:
+                    infos = await self._archive.list_frames(
+                        night=night,
+                        instrument=instrument,
+                        image_type=ImageType.OBJECT,
+                        binning=binning,
+                        filter_name=filter_name,
+                        rlevel=0,
+                    )
+                    self._science_frame_cache[instrument, binning, filter_name] = infos
+                    total += len(infos)
+        return total
+
     async def _calib_data(self, night: str, instrument: str, binning: str, filter_name: str) -> None:
-        # get all frames
-        infos = await self._archive.list_frames(
-            night=night,
-            instrument=instrument,
-            image_type=ImageType.OBJECT,
-            binning=binning,
-            filter_name=filter_name,
-            rlevel=0,
-        )
+        infos = self._science_frame_cache.get((instrument, binning, filter_name), [])
         total = len(infos)
         if total == 0:
             return
@@ -239,8 +223,25 @@ class Reduction:
                     log.info("(%d/%d) Uploading calibrated images as %s...", i, total, calibrated.header["FNAME"])
                     await self._output_archive.upload_frames([calibrated])
 
-            except Exception:
+                self._frames_done += 1
+                self._report_progress(
+                    ScienceFrameProcessed(
+                        index=self._frames_done, total=self._frames_total, filename=info.filename, status="ok"
+                    )
+                )
+
+            except Exception as e:
                 log.exception("(%d/%d) Error processing image %s.", i, total, info.filename)
+                self._frames_done += 1
+                self._report_progress(
+                    ScienceFrameProcessed(
+                        index=self._frames_done,
+                        total=self._frames_total,
+                        filename=info.filename,
+                        status="error",
+                        error=str(e),
+                    )
+                )
 
     async def __call__(self, site: str, night: str) -> None:
         """Reduces all data im this night."""
@@ -254,6 +255,11 @@ class Reduction:
             len(options["binnings"]),
             len(options["filters"]),
         )
+
+        # pre-pass: know the total science-frame count up front for progress reporting, and
+        # cache the per-combination frame lists so _calib_data() doesn't list them again
+        if self._calib_science:
+            self._frames_total = await self._count_science_frames(night, options)
 
         # loop instruments
         for instrument in options["instruments"]:

@@ -1195,9 +1195,9 @@
     "semantic_hash": "37ae5cbbac569c2c4c52e66983c9dcca"
   },
   "pyobs/modules/robotic/mastermind.py": {
-    "mtime": 1785938141.9177382,
-    "ast_hash": "2b8ed41828199b7686c0b249e299f62a",
-    "semantic_hash": "2b8ed41828199b7686c0b249e299f62a"
+    "mtime": 1786360996.420144,
+    "ast_hash": "9bffc568b1b9e4ad82ca31f252011020",
+    "semantic_hash": ""
   },
   "pyobs/modules/robotic/pointing.py": {
     "mtime": 1785148294.114986,
@@ -1355,9 +1355,9 @@
     "semantic_hash": "d069edcb2d2af769a97cb236fd1d8e16"
   },
   "pyobs/robotic/observation.py": {
-    "mtime": 1783934216.4020479,
-    "ast_hash": "5240cec39aafb01041ee2b946781fc78",
-    "semantic_hash": "5240cec39aafb01041ee2b946781fc78"
+    "mtime": 1786360996.421144,
+    "ast_hash": "499c5dfae3bb10563bb98f6ccd3c063a",
+    "semantic_hash": ""
   },
   "pyobs/robotic/scheduler/__init__.py": {
     "mtime": 1780645976.287117,
@@ -2225,8 +2225,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1786356819.1625297,
-    "ast_hash": "8b2987bf9640a97a7a3fe4b90fd2f841",
+    "mtime": 1786361030.012334,
+    "ast_hash": "977836df8d4d9863106ad3ce14dfe521",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -2680,9 +2680,9 @@
     "semantic_hash": "8f51af345b7d7e505f73b761eaeaac56"
   },
   "tests/integration/test_mastermind.py": {
-    "mtime": 1784273818.4940631,
-    "ast_hash": "ab4c2cc6f7d380d0b64d58bf6054ac4c",
-    "semantic_hash": "ab4c2cc6f7d380d0b64d58bf6054ac4c"
+    "mtime": 1786360996.421144,
+    "ast_hash": "cfd2552a214eb64fced80bb0ea4ea3d0",
+    "semantic_hash": ""
   },
   "tests/integration/test_scheduler_mastermind.py": {
     "mtime": 1784101925.3172905,
@@ -4252,12 +4252,12 @@
   ".claude/settings.json": {
     "mtime": 1786350899.1746674,
     "ast_hash": "06ffbe96114e12bbce3001145bb21e3f",
-    "semantic_hash": "06ffbe96114e12bbce3001145bb21e3f"
+    "semantic_hash": ""
   },
   ".claude/settings.local.json": {
     "mtime": 1783073118.078388,
     "ast_hash": "429813734b69d1b0cc7f2e726cb63d2c",
-    "semantic_hash": "429813734b69d1b0cc7f2e726cb63d2c"
+    "semantic_hash": ""
   },
   "pyobs/utils/pipeline/progress.py": {
     "mtime": 1786356597.928277,
@@ -4267,6 +4267,11 @@
   "pyobs/utils/pipeline/reduction_base.py": {
     "mtime": 1786355177.5578642,
     "ast_hash": "22a38564aa423f4cd933282e7e19a7b2",
+    "semantic_hash": ""
+  },
+  "specs/design/obsnum_fits_header.md": {
+    "mtime": 1786361106.2737656,
+    "ast_hash": "1cd95f036c8c9695faf10559f340f8b4",
     "semantic_hash": ""
   }
 }

@@ -2070,9 +2070,9 @@
     "semantic_hash": "202f0d49100527abee6b1133b24b6719"
   },
   "pyobs/utils/pipeline/__init__.py": {
-    "mtime": 1786345637.3815527,
-    "ast_hash": "b632b1c844ee0d7223c31cdfb6e3a4a6",
-    "semantic_hash": "b632b1c844ee0d7223c31cdfb6e3a4a6"
+    "mtime": 1786355275.447459,
+    "ast_hash": "1ac37486232c882b60e3fbcfd6bf320c",
+    "semantic_hash": ""
   },
   "pyobs/utils/pipeline/pipeline.py": {
     "mtime": 1786345637.3815527,
@@ -2080,9 +2080,9 @@
     "semantic_hash": "a3a5a768123879c24b60396ae6b04fbf"
   },
   "pyobs/utils/pipeline/reduction.py": {
-    "mtime": 1786345637.3821127,
-    "ast_hash": "70ba71eb293e342cd36c703f6df7103f",
-    "semantic_hash": "70ba71eb293e342cd36c703f6df7103f"
+    "mtime": 1786355260.3253672,
+    "ast_hash": "6985c0072d12c56c982bcf0030894dd4",
+    "semantic_hash": ""
   },
   "pyobs/utils/publisher/__init__.py": {
     "mtime": 1780645976.294117,
@@ -2225,9 +2225,9 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1786345637.3821127,
-    "ast_hash": "d5712a7f12af802420f98cc775422694",
-    "semantic_hash": "d5712a7f12af802420f98cc775422694"
+    "mtime": 1786356819.1625297,
+    "ast_hash": "8b2987bf9640a97a7a3fe4b90fd2f841",
+    "semantic_hash": ""
   },
   "scripts/__init__.py": {
     "mtime": 1783934216.4090478,
@@ -3375,9 +3375,9 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "tests/utils/pipeline/test_reduction.py": {
-    "mtime": 1786345637.3849554,
-    "ast_hash": "5803b0d0b774cb7b67ee634297c23d4e",
-    "semantic_hash": "5803b0d0b774cb7b67ee634297c23d4e"
+    "mtime": 1786355468.3866313,
+    "ast_hash": "b040d067ac84a79c3a0408e60ad5a273",
+    "semantic_hash": ""
   },
   "tests/utils/skyflats/__init__.py": {
     "mtime": 1777461082.9722152,
@@ -3550,9 +3550,9 @@
     "semantic_hash": "00b0d911eea85650ae6efed869a9c35a"
   },
   "CLAUDE.md": {
-    "mtime": 1786354572.3072133,
-    "ast_hash": "1344893dddd604d9f95a57496d4eeb5f",
-    "semantic_hash": "1344893dddd604d9f95a57496d4eeb5f"
+    "mtime": 1786356669.0286796,
+    "ast_hash": "929efe9c62997305c724f92b2f8ba484",
+    "semantic_hash": ""
   },
   "README.md": {
     "mtime": 1783934216.3850477,
@@ -4258,5 +4258,15 @@
     "mtime": 1783073118.078388,
     "ast_hash": "429813734b69d1b0cc7f2e726cb63d2c",
     "semantic_hash": "429813734b69d1b0cc7f2e726cb63d2c"
+  },
+  "pyobs/utils/pipeline/progress.py": {
+    "mtime": 1786356597.928277,
+    "ast_hash": "aa8a72cd82c6aa4a73b2514bdd0eb27d",
+    "semantic_hash": ""
+  },
+  "pyobs/utils/pipeline/reduction_base.py": {
+    "mtime": 1786355177.5578642,
+    "ast_hash": "22a38564aa423f4cd933282e7e19a7b2",
+    "semantic_hash": ""
   }
 }

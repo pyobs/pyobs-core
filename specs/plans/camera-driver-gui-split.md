@@ -78,30 +78,61 @@ local driver rather than a vendor package).
 
 ## Findings: driver/gui correctness review, all 8 repos (reviewed 2026-08-11)
 
-Read/flag only, nothing fixed yet — fixes go through normal review once triaged with Tim. Two
-cross-cutting patterns showed up repeatedly, worth fixing as a fleet-wide pass rather than
-repo-by-repo: (1) most `gui.py` files call blocking SDK calls directly on the Qt event-loop thread
-even though the pyobs module next to them wraps the same calls in an executor; (2) abort/cancel
-handling is broken or entirely missing in most `gui.py` files.
+Read/flag only when first written — fixes go through normal review once triaged with Tim, and
+some have since landed (marked below). Two cross-cutting patterns showed up repeatedly, worth
+fixing as a fleet-wide pass rather than repo-by-repo: (1) most `gui.py` files call blocking SDK
+calls directly on the Qt event-loop thread even though the pyobs module next to them wraps the
+same calls in an executor; (2) abort/cancel handling is broken or entirely missing in most
+`gui.py` files.
 
 ### pyobs-qhyccd
 
-- [ ] `qhyccdcamera.py:322` — exposure timeout is hardcoded to the default `_SDK_CALL_TIMEOUT =
-      5.0`, but `expose_single_frame`/`ExpQHYCCDSingleFrame` blocks for the actual exposure
-      duration per QHYCCD SDK semantics. Any exposure >5s raises `TimeoutError` — would break real
-      astronomical exposures. Highest-severity finding across the whole review.
-- [ ] `gui.py:72` — `expose_single_frame()` runs directly on the Qt thread (unlike
-      `get_single_frame()`, which goes through `run_in_executor`); given the point above, this
-      freezes the UI for the full exposure. Confirms the asymmetry flagged in the original plan
-      and shows it's not actually safe.
-- [ ] `qhyccddriver.pyx:82` — `CAM_HUMIDITY = CONTROL_ID.CAM_HUMIDITY` is missing the trailing
-      comma every other `Control` member has, so its `.value` is a bare int, not a 1-tuple. Every
-      call site unconditionally does `.value[0]`, so this is a latent `TypeError` if `CAM_HUMIDITY`
-      is ever used. Not currently called anywhere — latent, not active.
-- [ ] `gui.py` never calls `device.close()` on exit — camera handle leaks.
+Two of the original findings below turned out to be wrong once checked against the vendor SDK
+header (`lib/usr/local/include/qhyccd.h`), which was sitting right there in the repo and should
+have been consulted the first time instead of inferring blocking behavior from the module's own
+code shape:
+
+- ~~exposure timeout hardcoded to 5s breaks exposures >5s~~ — **retracted.**
+  `ExpQHYCCDSingleFrame`'s doc comment is "start to expose one frame", returning
+  `QHYCCD_ERROR_EXPOSING` if a second call arrives while still exposing — i.e. it's a fire-and-
+  return trigger, not a blocking wait for the full exposure. The existing 5s timeout on it is
+  correct; `_wait_exposure`'s own `exposure_time - 0.5` sleep afterward is where the actual wait
+  happens. Confirmed via the header, not just re-reading the Python.
+- ~~`gui.py:72` UI freeze from calling `expose_single_frame()` on the Qt thread~~ — **retracted**
+  for the same reason: the call returns almost immediately, so there's nothing to freeze on.
+
+What checking the header turned up instead, fixed 2026-08-11:
+
+- [x] **Abort was completely non-functional**, in both the module and the GUI, and this wasn't
+      caught by the first read-through:
+      - `qhyccdcamera.py`'s `_abort_exposure()` had `self._driver.cancel_exposure()` commented
+        out, and no such method existed on the driver at all — abort did literally nothing to the
+        hardware, the exposure just kept running.
+      - `gui.py`'s `_expose_clicked()` created a fresh local `abort_event = asyncio.Event()` that
+        was never connected to `self.abort_exposure` (the instance `Event` that `_abort_clicked()`
+        actually sets) — the Abort button in the GUI couldn't interrupt anything even in principle.
+      - Fixed: added `QHYCCDDriver.cancel_exposure()` wrapping `CancelQHYCCDExposingAndReadout`
+        (chosen over the plain `CancelQHYCCDExposing` because its doc explicitly says "all cameras
+        support this mode" vs. "not all cameras can use this method", and it doesn't require a
+        separate readout call afterward — its docs say the opposite, "host software must not
+        readout the data"). `_expose()` now checks whether `_wait_exposure()` returned aborted and
+        raises `AbortedError` instead of calling `get_single_frame()` in that case (reading out
+        after a real cancel is unsupported per the SDK). `gui.py` now uses `self.abort_exposure`
+        directly instead of a disconnected local `Event`, and calls `cancel_exposure()` +
+        skips readout on abort, mirroring the module fix.
+- [x] `qhyccddriver.pyx:82` — `CAM_HUMIDITY = CONTROL_ID.CAM_HUMIDITY` was missing the trailing
+      comma every other `Control` member has, so its `.value` was a bare int instead of a
+      1-tuple, and every call site unconditionally does `.value[0]`. Latent (nothing currently
+      calls it), but fixed — one-character change.
+- [x] `gui.py` never called `device.close()` on exit — added a `closeEvent` override.
+
+Still open, lower priority, not touched:
+
 - [ ] `qhyccdcamera.py` `_run_blocking` — on timeout, the spawned thread keeps running and later
       calls `future.set_result()` on an already-cancelled future; no locking around `self._device`
-      between that orphaned thread and e.g. the 1s cooling poll.
+      between that orphaned thread and e.g. the 1s cooling poll. Same class of issue as the
+      `_run_blocking`-style helpers in several other repos below — worth a fleet-wide look rather
+      than a one-off fix here.
 
 ### pyobs-asi
 

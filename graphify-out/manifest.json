@@ -2225,8 +2225,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1786361030.012334,
-    "ast_hash": "977836df8d4d9863106ad3ce14dfe521",
+    "mtime": 1786361487.3699179,
+    "ast_hash": "31b18ac83cc7a06268a66655b0eba74c",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -4179,11 +4179,6 @@
     "ast_hash": "e010eca9d1698d910db7c4bea3b75698",
     "semantic_hash": "e010eca9d1698d910db7c4bea3b75698"
   },
-  "specs/steering/connected-projects-version-policy.md": {
-    "mtime": 1784752132.615811,
-    "ast_hash": "6a17e1c23868c31485c87a0175f4e434",
-    "semantic_hash": "6a17e1c23868c31485c87a0175f4e434"
-  },
   "specs/steering/finding-module-logs-under-pyobsd.md": {
     "mtime": 1785236229.60585,
     "ast_hash": "9a05045b24283c3e59bcac1ef065eda2",
@@ -4195,9 +4190,9 @@
     "semantic_hash": "5bc5798d1b384c38691d81fe45b47157"
   },
   "specs/steering/pyobs-project-tiers.md": {
-    "mtime": 1784752132.615811,
-    "ast_hash": "81b4d7cd229b218bf58fa5b7d5caa705",
-    "semantic_hash": "81b4d7cd229b218bf58fa5b7d5caa705"
+    "mtime": 1786446261.290494,
+    "ast_hash": "c3c3720a0822e37adb68ad71b5cc9447",
+    "semantic_hash": ""
   },
   "specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md": {
     "mtime": 1785937559.8738675,
@@ -4272,6 +4267,11 @@
   "specs/design/obsnum_fits_header.md": {
     "mtime": 1786361106.2737656,
     "ast_hash": "1cd95f036c8c9695faf10559f340f8b4",
+    "semantic_hash": ""
+  },
+  "specs/adrs/0011-keycloak-identity-broker-for-shared-auth.md": {
+    "mtime": 1786442265.17176,
+    "ast_hash": "0b2d07280883ad01e12dcbd2c162a312",
     "semantic_hash": ""
   }
 }

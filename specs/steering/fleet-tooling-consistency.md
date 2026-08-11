@@ -27,6 +27,13 @@ Every GitHub-hosted repo in the core and connected tiers should have:
    `target-branch: "develop"` — Dependabot only reads this file from the repo's *default* branch
    (`main` for most of the fleet), but the PRs it opens should still land on `develop` like every
    other change, not go straight to `main`.
+3. **Tests running in CI** (`.github/workflows/pytest.yml` or equivalent, running `uv run pytest`).
+   The bar is "runs in CI," not coverage — most of the fleet is hardware drivers, where a real
+   coverage target isn't practical (no camera/mount/dome attached in a CI runner). A repo meets this
+   with import/module-load smoke tests plus unit tests for whatever non-hardware logic exists
+   (config parsing, FITS header assembly, state machines); hardware I/O itself is out of scope. See
+   `specs/plans/core-tier-test-baseline-and-dependabot-automerge.md` for the concrete rollout plan
+   and per-repo pattern.
 
 The IAG-internal tier (`pyobs-iag50`, `pyobs-iagvt`, `pyobs-monet`, `pyobs-monti`) is GitLab-hosted,
 not GitHub — Dependabot doesn't apply there at all (GitLab has no equivalent configured for these
@@ -50,6 +57,13 @@ a response that might be an error body instead of the real one). The corrected r
 - **pyobs-tui**: pre-commit only, no ruff CI, no pyrefly CI, no dependabot.
 - **pyobs-andor, pyobs-gemini, pyobs-polaris, pyobs-robotic-backend, pyobs-task-editor,
   pyobs-web-admin, pyobs-web-client**: none of pre-commit/ruff CI/pyrefly CI/dependabot at all.
+
+**Tests running in CI (checked 2026-08-11):** only **pyobs-core** has a pytest CI workflow — not
+even pyobs-gui, despite it otherwise meeting the full baseline above. Every other repo checked
+(pyobs-alpaca, pyobs-aravis, pyobs-asi, pyobs-brot, pyobs-fli, pyobs-flipro, pyobs-sbig, pyobs-v4l,
+pyobs-zaber, pyobs-zwoeaf, pyobs-tis, pyobs-qhyccd, pyobs-gemini) has no `.github/workflows/*test*`
+at all. This is the largest single gap in the baseline. See
+`specs/plans/core-tier-test-baseline-and-dependabot-automerge.md` for the rollout plan.
 
 So the actual gap is much larger than "just Dependabot": most of the core tier is missing
 `pyrefly.yml` CI entirely (lint-only, not actually type-checked in CI), and 9 repos across

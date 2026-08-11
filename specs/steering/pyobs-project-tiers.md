@@ -11,57 +11,81 @@ guessing from whatever happens to be checked out locally.
 Actively maintained, expected to track pyobs-core closely, first candidates for any fleet-wide
 check or migration:
 
-- pyobs-alpaca
-- pyobs-andor
-- pyobs-aravis
-- pyobs-asi
-- pyobs-brot
-- pyobs-core
-- pyobs-fli
-- pyobs-flipro
-- pyobs-gemini
-- pyobs-gui
-- pyobs-sbig
-- pyobs-tis
-- pyobs-tui
-- pyobs-v4l
-- pyobs-zaber
-- pyobs-zwoeaf
+### Framework
+
+- pyobs-core — module system, interfaces, XMPP comms, robotic scheduler (Python, uv)
+
+### Cameras
+
+- pyobs-andor — Andor camera driver (Python, uv)
+- pyobs-aravis — Aravis/GenICam camera driver (Python, uv)
+- pyobs-asi — ZWO ASI camera driver (Python, uv)
+- pyobs-fli — FLI camera driver (Python, uv, Cython)
+- pyobs-flipro — FLI Pro-series camera driver (Python, uv, Cython)
+- pyobs-qhyccd — QHYCCD camera driver (Python, uv, Cython)
+- pyobs-sbig — SBIG camera driver (Python, uv, Cython)
+- pyobs-tis — The Imaging Source camera driver (Python, uv)
+- pyobs-v4l — Video4Linux camera driver (Python, uv)
+
+### Mounts, domes, and focusers
+
+- pyobs-alpaca — ASCOM Alpaca wrapper, a generic device wrapper over HTTP (Python, uv)
+- pyobs-brot — telescopes, domes, and roll-off roofs via BROTlib/MQTT (Python, uv)
+- pyobs-gemini — Optec Gemini rotator/focuser (Python, uv)
+- pyobs-zaber — Zaber motion-control stages (Python, uv)
+- pyobs-zwoeaf — ZWO electronic autofocuser (Python, uv)
+
+### User interfaces
+
+- pyobs-gui — desktop GUI (Python, uv, PySide6/Qt6)
+- pyobs-polaris — clean-room desktop client modeled on pyobs-gui (C++20, CMake, Qt6)
+- pyobs-tui — terminal UI (Python, uv, Textual)
+- pyobs-web-client — browser client (TypeScript, npm, Vue 3)
 
 ## Connected projects
 
 Depend on pyobs-core/the core projects but sit a layer further out (web/UI clients, task
 scheduling/authoring, not drivers):
 
-- pyobs-polaris
-- pyobs-robotic-backend
-- pyobs-task-editor
-- pyobs-web-admin
-- pyobs-web-client
+### Task scheduling and operations
+
+- pyobs-robotic-backend — REST API + web frontend for tasks/projects/observations/scheduling
+  (Python, uv, Django + DRF)
+- pyobs-task-editor — desktop app for authoring tasks (Python, uv, PySide6/Qt6)
+- pyobs-web-admin — start/stop/restart modules, tail logs, edit configs, from a browser
+  (Python, uv, Django)
+
+### Data processing and archiving
+
+- pyobs-archive — LCO-style image archive (Python, uv, Django)
+- pyobs-astrometry — astrometry.net web service for plate solving; wraps the C astrometry.net
+  toolchain (Python, Flask, no uv/lockfile — plain script + Dockerfile)
+- pyobs-pipeline — reduction-pipeline monitoring/configuration (Python, uv, Django)
+
+### Site and environment monitoring
+
+- pyobs-allsky-cloudcover — cloud-cover detection from allsky images, writes to InfluxDB
+  (Python + Rust, Poetry/Cargo — not uv)
+- pyobs-weather — weather-station aggregator with "is it good?" rules (Python, uv, Django)
+
+### Dashboards
+
+- pyobs-dashboard-utils — modules for building a dashboard (Python, uv)
+
+## Homepage
+
+- pyobs.github.io — static site (Ruby, Jekyll, GitHub Pages)
 
 ## IAG internal projects
 
-Specific to IAG's own telescopes/instruments, not general-purpose drivers:
+Specific to IAG's own telescopes/instruments, not general-purpose drivers. Not in the `pyobs`
+GitHub org, so descriptions/stacks below aren't independently verified the way the rest of this
+doc is:
 
 - pyobs-iag50
 - pyobs-iagvt
 - pyobs-monet
 - pyobs-monti
-
-## What's deliberately not on this list
-
-Everything else in the `pyobs` GitHub org (`pyobs-weather`, `pyobs-dashboard-utils`,
-`pyobs-allsky-cloudcover`, `pyobs.github.io`, `pyobs-astrometry`, `pyobs-archive`, ...) exists but
-isn't part of the actively-maintained fleet by default. Don't assume they're in scope for a
-fleet-wide pass unless asked explicitly.
-
-Note: `pyobs-celestron` was removed from the GitHub org entirely (2026-07-22) — it was an empty
-scaffold (one commit, a single unimplemented stub class), not an active project worth tracking
-here.
-
-Note: `pyobs-pilar` is archived on GitHub (2026-07-22) — real, substantial code and history, but
-orphaned once the matching hardware was retired. Not a candidate for fleet-wide passes; unarchive
-first if that hardware ever comes back.
 
 ## See also
 

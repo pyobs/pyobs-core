@@ -57,31 +57,33 @@ track pyobs-core's major version and which aren't:
 - pyobs-robotic-backend — REST API + web frontend for tasks/projects/observations/scheduling
   (Python, uv, Django + DRF) — 2.x, complies with the version policy
 - pyobs-web-admin — start/stop/restart modules, tail logs, edit configs, from a browser
-  (Python, uv, Django) — no pyobs-core dependency (policy doesn't apply), n/a
+  (Python, uv, Django) — 2.x (manually bumped 2026-08-11); no pyobs-core dependency, but the
+  version policy now applies fleet-wide regardless (see "Version policy" below)
 
 ### Data processing and archiving
 
-- pyobs-archive — LCO-style image archive (Python, uv, Django) — no pyobs-core dependency, n/a
+- pyobs-archive — LCO-style image archive (Python, uv, Django) — 2.x; no pyobs-core dependency,
+  but complies with the version policy anyway
 - pyobs-astrometry — astrometry.net web service for plate solving; wraps the C astrometry.net
   toolchain (Python, Flask, no uv/lockfile — plain script + Dockerfile) — no local checkout to
   check
 - pyobs-pipeline — reduction-pipeline monitoring/configuration (Python, uv, Django) — 2.x,
-  dependency floor also 2.x. Not in scope of the version policy despite having a real dependency
-  (see "Policy scope gaps" below)
+  dependency floor also 2.x. Complies with the version policy
 
 ### Site and environment monitoring
 
 - pyobs-allsky-cloudcover — cloud-cover detection from allsky images, writes to InfluxDB
-  (Python + Rust, Poetry/Cargo — not uv) — pyobs-core dependency is commented out in
-  `pyproject.toml`, not actually installed
-- pyobs-weather — weather-station aggregator with "is it good?" rules (Python, uv, Django) — no
-  pyobs-core dependency, n/a
+  (Python + Rust, Poetry/Cargo — not uv) — not 2.x (`0.1.0`); pyobs-core dependency is commented
+  out in `pyproject.toml`, not actually installed. Doesn't comply with the version policy
+- pyobs-weather — weather-station aggregator with "is it good?" rules (Python, uv, Django) — not
+  2.x (`1.3.6`); no pyobs-core dependency, but the version policy applies fleet-wide regardless —
+  doesn't comply
 
 ### Dashboards
 
-- pyobs-dashboard-utils — modules for building a dashboard (Python, uv) — pyobs-core dependency
-  floor is stale (`>=1.17.2`), well behind current pyobs-core; not in scope of the version policy
-  despite having a real dependency (see "Policy scope gaps" below)
+- pyobs-dashboard-utils — modules for building a dashboard (Python, uv) — not 2.x (`0.1.0`);
+  pyobs-core dependency floor is also stale (`>=1.17.2`), well behind current pyobs-core. Doesn't
+  comply with the version policy
 
 ## Homepage
 
@@ -111,52 +113,48 @@ Formerly listed here, no longer maintained/tracked:
   `pyobs-core>=1.54.4`, never migrated to the 2.0 line — also still receiving pushes up to the
   day it was archived (2026-08-11).
 
-## Version policy: connected-tier projects track pyobs-core's major version
+## Version policy: every pyobs project tracks pyobs-core's major version
 
-This policy applies only to connected-tier projects with a *real* `pyobs-core` dependency, and
-currently only **pyobs-robotic-backend** is actually held to it (task-editor was the other
-covered project until it was archived, see above).
+**Decided 2026-08-11: this now applies fleet-wide, not just to connected-tier projects with a
+real `pyobs-core` dependency.** Every project in this doc — core tier, connected tier, regardless
+of whether it actually imports `pyobs-core` — keeps its own major version aligned with
+pyobs-core's. This supersedes the narrower "only projects with a real dependency" scoping this
+section used to have.
 
-`web-admin`/`web-client`/`polaris` have no real `pyobs-core` coupling (web-admin talks XMPP
-directly, web-client is npm-only, polaris is its own C++ protocol client) — versioning them to
-match pyobs-core's major would be arbitrary, don't do it just for fleet-wide uniformity.
+### The policy
 
-### The policy (for pyobs-robotic-backend)
-
-1. The project's **major version must match the major version of the pyobs-core it depends on**.
-   Minor and patch versions are independent — each project keeps its own release cadence there,
-   unrelated to pyobs-core's minor/patch.
-2. While pyobs-core itself is on a pre-release/dev version (like now: `2.0.0.devN`), these projects
-   follow the same `.devN` suffix scheme for their own releases (e.g. `2.6.devN`, not a plain
+1. The project's **major version must match pyobs-core's current major version**. Minor and patch
+   versions are independent — each project keeps its own release cadence there, unrelated to
+   pyobs-core's minor/patch.
+2. While pyobs-core itself is on a pre-release/dev version (like now: `2.0.0.devN`), every project
+   follows the same `.devN` suffix scheme for their own releases (e.g. `2.6.devN`, not a plain
    `2.6.0`) — this signals "not yet stable against the pyobs-core version it targets," the same way
    pyobs-core's own `.devN` suffix does. Once pyobs-core cuts a stable (non-`.dev`) release for that
-   major version, these projects drop the `.dev` suffix too and settle into normal semver.
+   major version, every project drops the `.dev` suffix too and settles into normal semver.
 
 This mirrors what's already established practice for the **core**-tier driver repos (pyobs-asi,
-pyobs-aravis, etc.) — they've tracked pyobs-core's `2.0.0.devN` scheme all along.
+pyobs-aravis, etc.) — they've tracked pyobs-core's `2.0.0.devN` scheme all along. It now also
+covers **pyobs-web-admin** explicitly: no real `pyobs-core` dependency (it talks XMPP directly),
+but manually bumped to `2.0.0.dev0` on 2026-08-11 to get on the fleet-wide scheme regardless.
 
-pyobs-robotic-backend now complies (bumped to 2.x since the 2026-07-22 survey, when it was still
-`1.6.2` on `pyobs-core>=1.54.1`).
+`web-client` (npm/TypeScript, no Python version to bump) and `polaris` (C++/CMake, same) don't
+have an obvious way to apply a Python-style major-version bump — flagging this as unresolved
+rather than deciding unilaterally how (or whether) a non-Python project's version should track
+pyobs-core's. Worth a explicit decision later, not silently exempting them forever.
 
-### Policy scope gaps
-
-pyobs-pipeline and pyobs-dashboard-utils both have real `pyobs-core` dependencies (see tier list
-above) but aren't covered by "the policy" above, which is scoped narrowly to
-pyobs-robotic-backend. Neither follows the major-match/`.devN` scheme on its own version either.
-This is a known gap, not resolved here — flagging it rather than silently extending the policy to
-projects whose maintainers haven't signed off on it. pyobs-allsky-cloudcover has a similar gap but
-its `pyobs-core` dependency is currently commented out, so it's moot until that's reinstated.
+pyobs-robotic-backend complies (bumped to 2.x before the 2026-08-11 survey). pyobs-pipeline and
+pyobs-dashboard-utils have real `pyobs-core` dependencies and (pipeline only) already comply on
+version too — dashboard-utils still needs its own bump. pyobs-allsky-cloudcover's `pyobs-core`
+dependency is currently commented out, so it's moot until that's reinstated, but the policy still
+applies to its own version number regardless.
 
 Given how much changed in the 1.x -> 2.0 rewrite (breaking API changes across the fleet, seen
-repeatedly in driver fixes), a project that hasn't bumped most likely doesn't actually work against
-current pyobs-core yet. Bumping the version number alone would be misleading without first doing
-the real compatibility work and verifying it — not something to act on unprompted; each project's
-maintainer should sign off individually.
+repeatedly in driver fixes), a project bumping its version number alone doesn't mean it actually
+works against current pyobs-core — that still needs real compatibility verification, project by
+project. The version bump is a signal to chase, not a substitute for the work.
 
-pyobs-andor, pyobs-tui, and pyobs-task-editor were all found stalled on this same 1.x -> 2.0
-migration and were archived from the fleet entirely rather than fixed (see "Archived projects"
-above) — none were in scope of this policy (andor/tui are core-tier, task-editor is connected-tier
-but its dependency floor never moved off 1.x).
+pyobs-andor, pyobs-tui, and pyobs-task-editor were all found stalled on the 1.x -> 2.0 migration
+and were archived from the fleet entirely rather than fixed (see "Archived projects" above).
 
 ## Legacy major-version branches
 

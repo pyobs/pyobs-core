@@ -49,11 +49,32 @@ local driver rather than a vendor package).
       `set_exposure_time`, `start_exposure`, `is_exposing`, `grab_row`, `get_temp`,
       `set_temperature`. Model structure on `pyobs-qhyccd/pyobs_qhyccd/gui.py` or
       `pyobs-flipro/pyobs_flipro/gui.py`.
-- [ ] pyobs-tis — write `pyobs_tis/gui.py` driving `TIS` (`pyobs_tis/TIS.py`) directly, bypassing
-      `TISCamera`. Note TIS's API is GStreamer-pipeline-based (`openDevice`, `Start_pipeline`,
-      `Snap_image`, `Get_image`, `Stop_pipeline`, property get/set), a different shape than the
-      exposure-driven SDKs — check whether `ExposeWidget`/`ExposureTimeWidget` even fit, or whether
-      a simpler live-view widget is more honest to how the device actually works.
+- [x] pyobs-tis — `pyobs_tis/gui.py` written (2026-08-11), driving `TIS` directly, bypassing
+      `TisCamera`. As suspected, `ExposeWidget`/`ExposureTimeWidget` didn't fit — TIS pushes
+      frames continuously via a GStreamer callback rather than on a triggered exposure, so this
+      uses a Start/Stop live view instead: a new lightweight `LivePreviewWidget` (plain
+      `QLabel`/`QPixmap`, not `DataDisplayWidget`) fed via a Qt `Signal` emitted from TIS's
+      GStreamer thread (Qt queues the cross-thread delivery automatically), plus a generic
+      `PropertyPanel` that introspects `TIS.Get_Property`/`Set_Property` — numeric ranges get a
+      spinbox, booleans a checkbox, everything else (enums/buttons/strings) shows read-only since
+      tcam property type strings aren't reliably decodable without SDK docs on hand.
+      Driver additions needed along the way: `TIS.list_devices()` (non-interactive device
+      enumeration — `selectDevice()` was interactive-`input()`-only) and `TIS.get_property_names()`
+      (`List_Properties()` previously only printed, didn't return anything usable).
+      `pyproject.toml` gained a `gui` extra (`pyobs-core[gui]`, `qasync`) and a `tis-gui` script
+      entry point, matching pyobs-flipro's pattern.
+      **Not yet run against real hardware** — Tim has no TIS camera access right now. Needs
+      `python -m pyobs_tis.gui` (or `tis-gui` after `uv sync --extra gui`) verified against an
+      actual device before this is trusted: connect, confirm live view updates, confirm property
+      panel doesn't crash on real property types, confirm Stop/Start and window close release the
+      pipeline cleanly.
+      Also fixed in passing, since they blocked TIS from working at all: `tiscamera.py`'s image
+      callback was an `async def` handed to a synchronous GStreamer callback slot — it was never
+      awaited, so no image was ever processed. Now wrapped in a sync `_on_new_image` that does
+      `asyncio.run_coroutine_threadsafe`. Also fixed a use-after-unmap in
+      `TIS.__convert_sample_to_numpy` (numpy view was built after `mem.unmap()`, could read freed
+      memory — now copies before unmapping) and a leak on `Start_pipeline()` failure in
+      `tiscamera.py.open()` (now calls `Stop_pipeline()` before raising).
 
 ## Findings: driver/gui correctness review, all 8 repos (reviewed 2026-08-11)
 
@@ -192,28 +213,27 @@ handling is broken or entirely missing in most `gui.py` files.
       only in `FliCamera`, not in the driver or mixin, so query `get_window_binning()` fresh
       rather than assuming any state.
 
-### pyobs-tis (driver split only — gui.py not built yet)
+### pyobs-tis
 
-- [ ] `tiscamera.py:43` — `self.new_image` (an `async def`) is passed as `ImageCallback` and
-      invoked from `TIS.py:108` on a GStreamer streaming thread as a plain synchronous call. This
-      only creates a coroutine object; it's never awaited or scheduled onto the asyncio loop (no
-      `run_coroutine_threadsafe`). **Images are never actually processed right now** — likely the
-      single most serious finding of this whole review, and it's in currently-shipping code, not a
-      future gui.py.
-- [ ] `TIS.py:163-169` — `mem.unmap(info)` is called before building a numpy view over that same
-      buffer in `__convert_sample_to_numpy`; classic use-after-unmap, can yield corrupted or
-      garbage frame data even once the callback bug above is fixed.
+- [x] `tiscamera.py:43` (fixed 2026-08-11) — `self.new_image` (an `async def`) was passed as
+      `ImageCallback` and invoked from `TIS.py:108` on a GStreamer streaming thread as a plain
+      synchronous call, so it only ever created an unawaited coroutine. **Images were never
+      actually processed.** Fixed: `open()` now captures the running event loop and registers a
+      sync `_on_new_image` wrapper that does `asyncio.run_coroutine_threadsafe(self.new_image(tis),
+      self._loop)`.
+- [x] `TIS.py:163-169` (fixed 2026-08-11) — `mem.unmap(info)` was called before building a numpy
+      view over that same buffer in `__convert_sample_to_numpy`; use-after-unmap could yield
+      corrupted frame data. Fixed: the array is now `.copy()`'d before `mem.unmap()` runs.
+- [x] `tiscamera.py:46-47` (fixed 2026-08-11) — if `Start_pipeline()` returned `False`, `open()`
+      raised without releasing the already-created pipeline. Fixed: `Stop_pipeline()` now runs
+      before the raise.
 - [ ] `TIS.py:191-217` — `wait_for_image`/`Snap_image` poll `self.newsample`/`self.sample` with no
       lock while `on_new_buffer` mutates the same fields from the GStreamer thread; check-then-act
-      race.
-- [ ] `tiscamera.py:46-47` — if `Start_pipeline()` returns `False`, `open()` raises without
-      stopping/releasing the already-created pipeline — leak on that error path.
-- [ ] Confirms the plan's suspicion: TIS's API is continuous/callback-driven (GStreamer pushes
-      frames on its own thread), not synchronous-exposure-driven — a future `gui.py` should use a
-      live-view widget architecture, not `ExposeWidget`/`ExposureTimeWidget`. `Start_pipeline` and
-      `Snap_image`/`wait_for_image` are both blocking and must stay off the Qt thread; frames
-      arriving on the GStreamer thread need to be marshaled to Qt via signal/slot, not touched
-      directly.
+      race. Not exercised by `tiscamera.py` (which always sets a callback, so `Snap_image` is never
+      called) or by the new `gui.py` (same). Left open — only matters if something starts using
+      `Snap_image` instead of the callback path.
+- [x] `gui.py` written (2026-08-11) — see the "build missing gui.py" entry above for what it does
+      and the confirmed-good/still-needed items.
 
 ## Verification
 

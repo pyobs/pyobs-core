@@ -21,7 +21,7 @@ admin config, not pyobs code) rather than integrated as a second, separately-val
 ## 1. `pyobs-auth` package (new repo) — done, released
 
 Implemented and released: [github.com/pyobs/pyobs-auth](https://github.com/pyobs/pyobs-auth)
-(private), `2.0.0.dev1` on PyPI.
+(public), `2.0.0.dev4` on PyPI.
 
 - [x] Scaffold repo (matches other pyobs packages — `do-python-release` conventions).
 - [x] OIDC discovery + token handling against Keycloak — authorization-code grant (+ PKCE) for
@@ -38,7 +38,16 @@ Implemented and released: [github.com/pyobs/pyobs-auth](https://github.com/pyobs
       KeycloakAuthentication`) that archive/robotic-backend both wire into
       `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']`. Also shipped: `pyobs_auth.views`/`urls`
       for the browser-facing PKCE login-redirect + callback flow (not originally itemized here,
-      needed to actually complete user-facing SSO end to end).
+      needed to actually complete user-facing SSO end to end) plus a `LogoutView` doing
+      RP-Initiated Logout — ends the Keycloak SSO session too, but only for sessions that actually
+      came from Keycloak (checked via whether an `id_token` was stored at login), so a plain local
+      password session still just gets an ordinary local logout through the same URL.
+- [x] Stacking-safety fix: `KeycloakAuthentication` defers (returns `None`) instead of raising for
+      a Bearer token whose issuer doesn't match ours, rather than blocking a second, unmodifiable
+      Bearer-scheme authenticator from getting a turn (DRF stops the whole authenticator chain on
+      a raise, not on `None`). Not load-bearing for archive's full cutover (no second Bearer
+      authenticator there once `BearerAuthentication` is removed), but a real correctness fix kept
+      for future stacking scenarios.
 - [x] Config surface: one shared realm URL (same across services), per-service client ID/secret
       (one Keycloak client per service, within that shared realm — see design doc). Implemented as
       a single `PYOBS_AUTH` Django setting dict (`SERVER_URL`, `REALM`, `CLIENT_ID`,
@@ -50,23 +59,36 @@ Implemented and released: [github.com/pyobs/pyobs-auth](https://github.com/pyobs
       robotic-backend have different local `User`/`Profile` schemas and pyobs-auth can't assume
       one. Each service still keys its own resolver on `claims["sub"]`, per the design doc.
 
-## 2. pyobs-archive — cutover, not dual-path
+## 2. pyobs-archive — cutover, not dual-path — done, confirmed working end to end
 
-- [ ] Add `pyobs-auth` dependency; wire `KeycloakAuthentication` into
-      `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']` (`settings.py:189-194`) and Keycloak into
-      `AUTHENTICATION_BACKENDS` for the login flow.
-- [ ] User mapping: mint-on-first-login `User` similar to the current flow's
-      `get_or_create` (`backends.py`), but keyed on Keycloak's `sub` claim (new field), not
-      username/email — see design doc's realm/user-mapping decision.
-- [ ] Migration path for existing users: existing local `User`/`Profile` rows (from
-      password-grant observation-portal logins) need to end up linked to the right Keycloak `sub`
-      once a user first logs in via Keycloak/broker — decide the linking rule (match existing
-      `User` by email on first Keycloak login, vs. requiring a fresh account). Not a hard cutover
-      with no path for existing accounts.
-- [ ] Once the above is live and working: remove `OAuth2Backend`/`BearerAuthentication`
-      (`pyobs_archive/authentication/backends.py`) and the `OAUTH_CLIENT` setting
-      (`settings.py:197-202`) — full cutover, no permanent second code path.
-- [ ] Env vars for Keycloak client config.
+Login (and logout) tested live against the real `pyobs` realm on `auth.monet.uni-goettingen.de`.
+
+- [x] Added `pyobs-auth` dependency; wired `KeycloakAuthentication` into
+      `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']`. No `AUTHENTICATION_BACKENDS` entry for
+      Keycloak, unlike originally itemized here — the redirect-based OIDC flow doesn't fit that
+      shape (see design doc/pyobs-auth's own notes), it's handled by `pyobs_auth.views` instead.
+      `ModelBackend` (local Django username/password) stays the sole `AUTHENTICATION_BACKENDS`
+      entry and the default login on the login page — Keycloak is an additive option next to it,
+      not a replacement, confirmed as an explicit requirement partway through this work.
+- [x] User mapping: `pyobs_archive.authentication.keycloak.resolve_user`, mint-on-first-login,
+      keyed on `Profile.keycloak_sub` (new field + migration), not username/email.
+- [x] Migration path for existing users: `resolve_user` links an existing `User` by email on
+      first Keycloak login rather than minting a duplicate — see design doc's realm/user-mapping
+      decision. `Profile.access_token`/`refresh_token` columns (written by the old flow) left in
+      place rather than dropped — dead but low-risk to leave vs. a destructive migration.
+- [x] Removed `OAuth2Backend`/`BearerAuthentication` (`pyobs_archive/authentication/backends.py`,
+      deleted) and the `OAUTH_CLIENT` setting — full cutover, no permanent second code path. Real
+      trade-off accepted by doing this now rather than after step 0: until observation-portal is
+      actually brokered behind Keycloak, users whose only credential was an LCO/observation-portal
+      account have no way in until they're otherwise provisioned in Keycloak.
+- [x] Env vars for Keycloak client config (`KEYCLOAK_SERVER_URL`, `_REALM`, `_CLIENT_ID`,
+      `_CLIENT_SECRET`, `_REDIRECT_URI`, `_POST_LOGOUT_REDIRECT_URI`), documented in `README.md`/
+      `.env.example`. Leaving `KEYCLOAK_SERVER_URL` unset disables Keycloak entirely — the login
+      page's "Log in with Keycloak" button only renders when it's actually configured (new
+      `pyobs_archive.context_processors.keycloak`).
+- [x] Login template's "Log out" now posts to `pyobs_auth:logout` instead of Django's built-in
+      logout view, so it does the right thing (local-only vs. also ending the Keycloak SSO
+      session) regardless of how the session was established.
 
 ## 3. pyobs-robotic-backend
 

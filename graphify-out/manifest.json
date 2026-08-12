@@ -4185,13 +4185,13 @@
     "semantic_hash": "9a05045b24283c3e59bcac1ef065eda2"
   },
   "specs/steering/fleet-tooling-consistency.md": {
-    "mtime": 1784752132.615811,
-    "ast_hash": "5bc5798d1b384c38691d81fe45b47157",
-    "semantic_hash": "5bc5798d1b384c38691d81fe45b47157"
+    "mtime": 1786452680.7681022,
+    "ast_hash": "27637a2ecb821e12767d05fde36ad540",
+    "semantic_hash": ""
   },
   "specs/steering/pyobs-project-tiers.md": {
-    "mtime": 1786446261.290494,
-    "ast_hash": "c3c3720a0822e37adb68ad71b5cc9447",
+    "mtime": 1786451725.5497112,
+    "ast_hash": "7b2b87b285ba8648e605c5cfe6a485b1",
     "semantic_hash": ""
   },
   "specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md": {
@@ -4272,6 +4272,36 @@
   "specs/adrs/0011-keycloak-identity-broker-for-shared-auth.md": {
     "mtime": 1786442265.17176,
     "ast_hash": "0b2d07280883ad01e12dcbd2c162a312",
+    "semantic_hash": ""
+  },
+  "specs/plans/camera-driver-gui-split.md": {
+    "mtime": 1786462483.71537,
+    "ast_hash": "0b50dfa3f4358ec7771b9bc9cd809114",
+    "semantic_hash": ""
+  },
+  "specs/plans/core-tier-test-baseline-and-dependabot-automerge.md": {
+    "mtime": 1786452123.4130154,
+    "ast_hash": "2b6a08d08d4109cf3cf641ec31ad11e3",
+    "semantic_hash": ""
+  },
+  "specs/design/basevideo-raw-frame-streaming.md": {
+    "mtime": 1786518546.209639,
+    "ast_hash": "9fc7802349583cac374659334c6d5639",
+    "semantic_hash": ""
+  },
+  "specs/design/shared-auth-keycloak.md": {
+    "mtime": 1786531783.1107824,
+    "ast_hash": "c6205022d0dd692138275c5f29f55365",
+    "semantic_hash": ""
+  },
+  "specs/plans/basevideo-raw-frame-streaming.md": {
+    "mtime": 1786518546.209639,
+    "ast_hash": "2b930d6a891a5950f5a747779cfb181f",
+    "semantic_hash": ""
+  },
+  "specs/plans/shared-auth-keycloak.md": {
+    "mtime": 1786538030.9872224,
+    "ast_hash": "8e9f276323cead9456bb3eae15271b45",
     "semantic_hash": ""
   }
 }

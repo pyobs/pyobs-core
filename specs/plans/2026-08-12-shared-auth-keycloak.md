@@ -90,16 +90,25 @@ Login (and logout) tested live against the real `pyobs` realm on `auth.monet.uni
       logout view, so it does the right thing (local-only vs. also ending the Keycloak SSO
       session) regardless of how the session was established.
 
-## 3. pyobs-robotic-backend
+## 3. pyobs-robotic-backend — done
 
-- [ ] Add `pyobs-auth` dependency.
-- [ ] Add `KeycloakAuthentication` to `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']`
-      (`pyobs_robotic_backend/settings.py:148-155`), alongside the existing
-      `TokenAuthentication`/`SessionAuthentication` — additive, not a replacement (existing
-      pyobs-core → robotic-backend token calls must keep working, see design doc).
-- [ ] User mapping: robotic-backend has no `Profile`-equivalent model today — needs a new field/
-      model to store the Keycloak `sub` against its local `User`, mirroring archive's approach
-      (see design doc).
+- [x] Added `pyobs-auth` dependency. Blocked initially: pyobs-auth pinned `Django>=5.2,<6` on
+      PyPI, conflicting with robotic-backend's `django>=6.0.7` — fixed by widening the pin to
+      `<7` in pyobs-auth (full 36-test suite re-verified green against Django 6.1) and releasing
+      `2.0.0.dev5`.
+- [x] Added `pyobs_auth.authentication.KeycloakAuthentication` to
+      `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']` (`pyobs_robotic_backend/settings.py`),
+      alongside the existing `TokenAuthentication`/`SessionAuthentication` — additive, existing
+      pyobs-core → robotic-backend token calls unaffected. `pyobs_auth` added to
+      `INSTALLED_APPS`; `PYOBS_AUTH` setting (`KEYCLOAK_SERVER_URL`/`_REALM`/`_CLIENT_ID`/
+      `_CLIENT_SECRET` env vars, unset disables it) documented in README.md/.env.example. No
+      browser-facing login flow wired (`pyobs_auth.urls`/views) — out of scope here, API
+      Bearer-token auth only.
+- [x] User mapping: new `pyobs_robotic_backend.authentication` app (robotic-backend had no
+      `Profile`-equivalent) with a `KeycloakIdentity` model (`OneToOneField` to `User` +
+      `keycloak_sub`, migration `0001_initial`) and a `resolve_user` `USER_RESOLVER`, mirroring
+      archive's `resolve_user` shape — matches an existing `User` by email on first Keycloak
+      login (no observation-portal-era accounts to link here, unlike archive), else mints one.
 
 ## 4. Not in this plan
 

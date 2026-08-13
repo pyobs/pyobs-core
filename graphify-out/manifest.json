@@ -4034,141 +4034,6 @@
     "ast_hash": "f6ca4cba1e27fc41165f88bfd22452a1",
     "semantic_hash": "f6ca4cba1e27fc41165f88bfd22452a1"
   },
-  "specs/plans/ejabberd-throughput-benchmarking.md": {
-    "mtime": 1785929498.6378088,
-    "ast_hash": "da695c3c0e5138727590ac4b7e057326",
-    "semantic_hash": "da695c3c0e5138727590ac4b7e057326"
-  },
-  "specs/plans/enforce-state-publishing.md": {
-    "mtime": 1785929498.6259718,
-    "ast_hash": "7ba514d4b186a00c4cb897fb8219ef26",
-    "semantic_hash": "7ba514d4b186a00c4cb897fb8219ef26"
-  },
-  "specs/plans/event-role-advertising.md": {
-    "mtime": 1785929498.6344016,
-    "ast_hash": "d14f6270e8e1cc28b6842e6487a15dd4",
-    "semantic_hash": "d14f6270e8e1cc28b6842e6487a15dd4"
-  },
-  "specs/plans/exception-handling.md": {
-    "mtime": 1786345637.3821127,
-    "ast_hash": "7ba684e2dbce67720169de2d50733194",
-    "semantic_hash": "7ba684e2dbce67720169de2d50733194"
-  },
-  "specs/plans/gui-acl-aware-widget-gating.md": {
-    "mtime": 1785929498.6253312,
-    "ast_hash": "e60da3380ef003f17e59aa35b691349e",
-    "semantic_hash": "e60da3380ef003f17e59aa35b691349e"
-  },
-  "specs/plans/gui-iacquisition-widget.md": {
-    "mtime": 1785929498.6363335,
-    "ast_hash": "7c20dab4ee7efc45f2e76ac276cbdc70",
-    "semantic_hash": "7c20dab4ee7efc45f2e76ac276cbdc70"
-  },
-  "specs/plans/gui-iautofocus-widget.md": {
-    "mtime": 1785929498.6360502,
-    "ast_hash": "f30b482108c74d5115f074f8821a39d7",
-    "semantic_hash": "f30b482108c74d5115f074f8821a39d7"
-  },
-  "specs/plans/gui-iautoguiding-widget.md": {
-    "mtime": 1785929498.626419,
-    "ast_hash": "4c488f8cead3f671587d2d924ae6e737",
-    "semantic_hash": "4c488f8cead3f671587d2d924ae6e737"
-  },
-  "specs/plans/gui-interactive-login.md": {
-    "mtime": 1785929498.6266296,
-    "ast_hash": "70a843a7b6677fca0ea198bd766758ec",
-    "semantic_hash": "70a843a7b6677fca0ea198bd766758ec"
-  },
-  "specs/plans/gui-login-window.md": {
-    "mtime": 1785929498.6261213,
-    "ast_hash": "7dcdc43b1c6caae96fc7a85de88067d1",
-    "semantic_hash": "7dcdc43b1c6caae96fc7a85de88067d1"
-  },
-  "specs/plans/gui-navbar-shortcuts.md": {
-    "mtime": 1785929498.625591,
-    "ast_hash": "a06db9aeebf1382df65f614674a24065",
-    "semantic_hash": "a06db9aeebf1382df65f614674a24065"
-  },
-  "specs/plans/gui-telescopewidget-layout.md": {
-    "mtime": 1785929498.6257813,
-    "ast_hash": "bdbb86b70944ed292bfe25c489b544c1",
-    "semantic_hash": "bdbb86b70944ed292bfe25c489b544c1"
-  },
-  "specs/plans/gui-widget-plugins-and-packaging.md": {
-    "mtime": 1785929498.6349707,
-    "ast_hash": "a3492833a3ec5596ee997c4fee4d60d6",
-    "semantic_hash": "a3492833a3ec5596ee997c4fee4d60d6"
-  },
-  "specs/plans/httpfilecache-cors-token-auth.md": {
-    "mtime": 1786345637.3821127,
-    "ast_hash": "c8c5626836a3e9c1ab8ee62d246b2ce7",
-    "semantic_hash": "c8c5626836a3e9c1ab8ee62d246b2ce7"
-  },
-  "specs/plans/icamera-iexposure.md": {
-    "mtime": 1786345637.3821127,
-    "ast_hash": "a2f6372da80c0f68bc4085171e1bc99a",
-    "semantic_hash": "a2f6372da80c0f68bc4085171e1bc99a"
-  },
-  "specs/plans/idatasequence.md": {
-    "mtime": 1786345637.3821127,
-    "ast_hash": "534c612d883af76eff9ed4bdfe038ecc",
-    "semantic_hash": "534c612d883af76eff9ed4bdfe038ecc"
-  },
-  "specs/plans/image-trim.md": {
-    "mtime": 1786345637.3821127,
-    "ast_hash": "86b6a4e6d84daf23b5fc68d4a61b91da",
-    "semantic_hash": "86b6a4e6d84daf23b5fc68d4a61b91da"
-  },
-  "specs/plans/logevent-double-delivery-investigation.md": {
-    "mtime": 1786345637.3821127,
-    "ast_hash": "0bc98fe64ad435e48fb54dffef00ac66",
-    "semantic_hash": "0bc98fe64ad435e48fb54dffef00ac66"
-  },
-  "specs/plans/module-observer-location.md": {
-    "mtime": 1786345637.3821127,
-    "ast_hash": "f11c63efbb38a79cda4f20e9187603f7",
-    "semantic_hash": "f11c63efbb38a79cda4f20e9187603f7"
-  },
-  "specs/plans/night-archive-io-hardening.md": {
-    "mtime": 1786345637.383113,
-    "ast_hash": "da5fd566d1c198b990cf4ce8e2729aa3",
-    "semantic_hash": "da5fd566d1c198b990cf4ce8e2729aa3"
-  },
-  "specs/plans/object-kwarg-validation.md": {
-    "mtime": 1786345637.383113,
-    "ast_hash": "509b9906a3f07735de116128292b0705",
-    "semantic_hash": "509b9906a3f07735de116128292b0705"
-  },
-  "specs/plans/pipeline-step-error-control.md": {
-    "mtime": 1785929498.6340218,
-    "ast_hash": "98708962fc619ef4037c66751068a44a",
-    "semantic_hash": "98708962fc619ef4037c66751068a44a"
-  },
-  "specs/plans/pyobs-pipeline.md": {
-    "mtime": 1786345637.383113,
-    "ast_hash": "4126dca899feb9e775f6b581dfc40dc3",
-    "semantic_hash": "4126dca899feb9e775f6b581dfc40dc3"
-  },
-  "specs/plans/pyobs_2_0_work_plan.md": {
-    "mtime": 1785929498.6353924,
-    "ast_hash": "547ff76b8ae8223e9e34bcbf671cd77d",
-    "semantic_hash": "547ff76b8ae8223e9e34bcbf671cd77d"
-  },
-  "specs/plans/scheduler-archive-prefetch-for-process-isolation.md": {
-    "mtime": 1786345637.383113,
-    "ast_hash": "89825d27ce2226b17e014c33e71a87c1",
-    "semantic_hash": "89825d27ce2226b17e014c33e71a87c1"
-  },
-  "specs/plans/scheduler-event-loop-blocking.md": {
-    "mtime": 1786345637.3841128,
-    "ast_hash": "5c557df157d9039a9501314ca1a5d3e8",
-    "semantic_hash": "5c557df157d9039a9501314ca1a5d3e8"
-  },
-  "specs/plans/state-freshness-max-age.md": {
-    "mtime": 1785146582.9246588,
-    "ast_hash": "780167660f595cc195b633781762cf29",
-    "semantic_hash": "780167660f595cc195b633781762cf29"
-  },
   "specs/steering/astropy-iers-event-loop-stalls.md": {
     "mtime": 1785853973.3412008,
     "ast_hash": "5fb07e88ba5e51a2441101c966eb189c",
@@ -4274,16 +4139,6 @@
     "ast_hash": "0b2d07280883ad01e12dcbd2c162a312",
     "semantic_hash": ""
   },
-  "specs/plans/camera-driver-gui-split.md": {
-    "mtime": 1786462483.71537,
-    "ast_hash": "0b50dfa3f4358ec7771b9bc9cd809114",
-    "semantic_hash": ""
-  },
-  "specs/plans/core-tier-test-baseline-and-dependabot-automerge.md": {
-    "mtime": 1786452123.4130154,
-    "ast_hash": "2b6a08d08d4109cf3cf641ec31ad11e3",
-    "semantic_hash": ""
-  },
   "specs/design/basevideo-raw-frame-streaming.md": {
     "mtime": 1786518546.209639,
     "ast_hash": "9fc7802349583cac374659334c6d5639",
@@ -4294,12 +4149,157 @@
     "ast_hash": "c6205022d0dd692138275c5f29f55365",
     "semantic_hash": ""
   },
-  "specs/plans/basevideo-raw-frame-streaming.md": {
+  "specs/plans/2026-07-19-exception-handling.md": {
+    "mtime": 1786345637.3821127,
+    "ast_hash": "7ba684e2dbce67720169de2d50733194",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-19-icamera-iexposure.md": {
+    "mtime": 1786345637.3821127,
+    "ast_hash": "a2f6372da80c0f68bc4085171e1bc99a",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-19-idatasequence.md": {
+    "mtime": 1786345637.3821127,
+    "ast_hash": "534c612d883af76eff9ed4bdfe038ecc",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-19-image-trim.md": {
+    "mtime": 1786345637.3821127,
+    "ast_hash": "86b6a4e6d84daf23b5fc68d4a61b91da",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-19-module-observer-location.md": {
+    "mtime": 1786345637.3821127,
+    "ast_hash": "f11c63efbb38a79cda4f20e9187603f7",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-19-pyobs_2_0_work_plan.md": {
+    "mtime": 1785929498.6353924,
+    "ast_hash": "547ff76b8ae8223e9e34bcbf671cd77d",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-22-ejabberd-throughput-benchmarking.md": {
+    "mtime": 1785929498.6378088,
+    "ast_hash": "da695c3c0e5138727590ac4b7e057326",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-22-enforce-state-publishing.md": {
+    "mtime": 1785929498.6259718,
+    "ast_hash": "7ba514d4b186a00c4cb897fb8219ef26",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-22-state-freshness-max-age.md": {
+    "mtime": 1785146582.9246588,
+    "ast_hash": "780167660f595cc195b633781762cf29",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-26-gui-interactive-login.md": {
+    "mtime": 1785929498.6266296,
+    "ast_hash": "70a843a7b6677fca0ea198bd766758ec",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-27-gui-login-window.md": {
+    "mtime": 1785929498.6261213,
+    "ast_hash": "7dcdc43b1c6caae96fc7a85de88067d1",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-27-gui-widget-plugins-and-packaging.md": {
+    "mtime": 1785929498.6349707,
+    "ast_hash": "a3492833a3ec5596ee997c4fee4d60d6",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-29-gui-acl-aware-widget-gating.md": {
+    "mtime": 1785929498.6253312,
+    "ast_hash": "e60da3380ef003f17e59aa35b691349e",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-29-gui-iacquisition-widget.md": {
+    "mtime": 1785929498.6363335,
+    "ast_hash": "7c20dab4ee7efc45f2e76ac276cbdc70",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-29-gui-iautofocus-widget.md": {
+    "mtime": 1785929498.6360502,
+    "ast_hash": "f30b482108c74d5115f074f8821a39d7",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-29-gui-iautoguiding-widget.md": {
+    "mtime": 1785929498.626419,
+    "ast_hash": "4c488f8cead3f671587d2d924ae6e737",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-29-gui-navbar-shortcuts.md": {
+    "mtime": 1785929498.625591,
+    "ast_hash": "a06db9aeebf1382df65f614674a24065",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-29-gui-telescopewidget-layout.md": {
+    "mtime": 1785929498.6257813,
+    "ast_hash": "bdbb86b70944ed292bfe25c489b544c1",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-07-31-pipeline-step-error-control.md": {
+    "mtime": 1785929498.6340218,
+    "ast_hash": "98708962fc619ef4037c66751068a44a",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-03-scheduler-event-loop-blocking.md": {
+    "mtime": 1786345637.3841128,
+    "ast_hash": "5c557df157d9039a9501314ca1a5d3e8",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-04-event-role-advertising.md": {
+    "mtime": 1785929498.6344016,
+    "ast_hash": "d14f6270e8e1cc28b6842e6487a15dd4",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-04-httpfilecache-cors-token-auth.md": {
+    "mtime": 1786345637.3821127,
+    "ast_hash": "c8c5626836a3e9c1ab8ee62d246b2ce7",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-05-scheduler-archive-prefetch-for-process-isolation.md": {
+    "mtime": 1786345637.383113,
+    "ast_hash": "89825d27ce2226b17e014c33e71a87c1",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-08-logevent-double-delivery-investigation.md": {
+    "mtime": 1786345637.3821127,
+    "ast_hash": "0bc98fe64ad435e48fb54dffef00ac66",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-08-pyobs-pipeline.md": {
+    "mtime": 1786345637.383113,
+    "ast_hash": "4126dca899feb9e775f6b581dfc40dc3",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-09-night-archive-io-hardening.md": {
+    "mtime": 1786345637.383113,
+    "ast_hash": "da5fd566d1c198b990cf4ce8e2729aa3",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-09-object-kwarg-validation.md": {
+    "mtime": 1786345637.383113,
+    "ast_hash": "509b9906a3f07735de116128292b0705",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-11-basevideo-raw-frame-streaming.md": {
     "mtime": 1786518546.209639,
     "ast_hash": "2b930d6a891a5950f5a747779cfb181f",
     "semantic_hash": ""
   },
-  "specs/plans/shared-auth-keycloak.md": {
+  "specs/plans/2026-08-11-camera-driver-gui-split.md": {
+    "mtime": 1786462483.71537,
+    "ast_hash": "0b50dfa3f4358ec7771b9bc9cd809114",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md": {
+    "mtime": 1786452123.4130154,
+    "ast_hash": "2b6a08d08d4109cf3cf641ec31ad11e3",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-12-shared-auth-keycloak.md": {
     "mtime": 1786538030.9872224,
     "ast_hash": "8e9f276323cead9456bb3eae15271b45",
     "semantic_hash": ""

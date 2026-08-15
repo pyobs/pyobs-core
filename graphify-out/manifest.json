@@ -4260,8 +4260,8 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-05-scheduler-archive-prefetch-for-process-isolation.md": {
-    "mtime": 1786804657.143623,
-    "ast_hash": "4c08def51f6017a12e2ff9e665b2eedd",
+    "mtime": 1786817643.6516702,
+    "ast_hash": "c1b83663e1d78bd8b148333469a7c964",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-08-logevent-double-delivery-investigation.md": {

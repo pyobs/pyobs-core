@@ -448,7 +448,12 @@ class FocusModel(Module, IFocusModel):
 
         # fit
         log.info("Fitting coefficients...")
-        out = lmfit.minimize(self._residuals, params, args=(data,))
+        loop = asyncio.get_running_loop()
+
+        def _fit() -> Any:
+            return lmfit.minimize(self._residuals, params, args=(data,))
+
+        out = await loop.run_in_executor(None, _fit)
         if not hasattr(out, "params"):
             raise ValueError("No params returned from fit.")
         out_params = getattr(out, "params")
@@ -471,7 +476,7 @@ class FocusModel(Module, IFocusModel):
                         log.info("  %-10s = %10.5f", p[4:], out_params[p].value)
 
         # evaluate model
-        best_fit = self._model(out_params, data)
+        best_fit = await loop.run_in_executor(None, self._model, out_params, data)
         real_focus = data["focus"]
 
         # calculate RMS and reduced chi square

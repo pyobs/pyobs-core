@@ -111,6 +111,10 @@ class BaseCamera(
         # register exception
         self._register_exception(exc.GrabImageError, 3, timespan=600, callback=self._default_remote_error_callback)
 
+        # re-publish exposure progress while exposing, so clients see a live progress bar and
+        # remaining time instead of the frozen values from the EXPOSING status transition
+        self.add_background_task(self._publish_exposure_progress)
+
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
@@ -185,7 +189,7 @@ class BaseCamera(
             return 0.0
         duration = datetime.timedelta(seconds=self._exposure.exposure_time)
         diff = self._exposure.start + duration - datetime.datetime.now(datetime.UTC)
-        return diff.total_seconds()
+        return max(diff.total_seconds(), 0.0)
 
     async def _get_exposure_progress(self) -> float:
         """Returns the progress of the current exposure in percent.
@@ -208,6 +212,29 @@ class BaseCamera(
             # return max of 100
             percentage = diff.total_seconds() / self._exposure[1] * 100.0
             return min(percentage, 100.0)
+
+    async def _publish_exposure_progress(self) -> None:
+        """Background task: re-publish IExposure state while exposing.
+
+        _change_exposure_status() only publishes IExposure on status transitions, and at the
+        EXPOSING transition self._exposure isn't set yet, so progress and exposure_time_left are
+        both 0. Without this periodic re-publish, the GUI shows a frozen 0% bar and 0.0s remaining
+        for the whole exposure.
+        """
+        while True:
+            try:
+                if self._camera_status == ExposureStatus.EXPOSING:
+                    await self.comm.set_state(
+                        IExposure,
+                        ExposureState(
+                            status=self._camera_status,
+                            progress=await self._get_exposure_progress(),
+                            exposure_time_left=await self._get_exposure_time_left(),
+                        ),
+                    )
+            except Exception:
+                pass
+            await asyncio.sleep(1.0)
 
     @abstractmethod
     async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: asyncio.Event) -> Image:

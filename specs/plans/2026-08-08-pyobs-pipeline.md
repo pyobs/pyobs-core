@@ -408,7 +408,7 @@ All prior open questions are resolved:
 - Missed-tick backfill: `DbScheduler.tick()` backfills up to `MAX_BACKFILL_DAYS` (see "Scheduling").
 - `step_class` validation: at save time (see Step 4).
 - Worker pool isolation: shared pool, not per-site (see Consequences).
-- `pyobs.utils.pipeline.Night` → `Reduction` rename: implemented on branch `night-reduction-hardening` (PR #743, not yet merged as of this writing) — this project's Step 5 should still be sequenced after that PR lands on `develop`, since `PipelineStep.step_class`/`Pipeline.period_config` reference the dotted path directly.
+- `pyobs.utils.pipeline.Night` → `Reduction` rename: implemented and merged to `develop` (PR #743, 2026-08-09) — `PipelineStep.step_class`/`Pipeline.period_config` reference the dotted path directly, so they must use `pyobs.utils.pipeline.Reduction`.
 
 ## Implementation checklist
 

@@ -4260,8 +4260,8 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-05-scheduler-archive-prefetch-for-process-isolation.md": {
-    "mtime": 1786602632.9028003,
-    "ast_hash": "89825d27ce2226b17e014c33e71a87c1",
+    "mtime": 1786804657.143623,
+    "ast_hash": "4c08def51f6017a12e2ff9e665b2eedd",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-08-logevent-double-delivery-investigation.md": {
@@ -4270,13 +4270,13 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-08-pyobs-pipeline.md": {
-    "mtime": 1786602632.9038002,
-    "ast_hash": "4126dca899feb9e775f6b581dfc40dc3",
+    "mtime": 1786804934.6145446,
+    "ast_hash": "4aaeb9580783dc9faf50e0957b9f00d8",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-09-night-archive-io-hardening.md": {
-    "mtime": 1786602632.9048004,
-    "ast_hash": "da5fd566d1c198b990cf4ce8e2729aa3",
+    "mtime": 1786804961.526933,
+    "ast_hash": "48fe3665ba0c8f454198b8033249b0a0",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-09-object-kwarg-validation.md": {

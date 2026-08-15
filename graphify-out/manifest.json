@@ -1030,9 +1030,9 @@
     "semantic_hash": "a506eb4c744a5b9c64d2805f19f8568c"
   },
   "pyobs/modules/camera/basevideo.py": {
-    "mtime": 1784310355.0170407,
-    "ast_hash": "708289fdfb7e5fcf160dcfccbe82cfd1",
-    "semantic_hash": "708289fdfb7e5fcf160dcfccbe82cfd1"
+    "mtime": 1786793681.2688122,
+    "ast_hash": "35632045ba0851263e979e1df4045627",
+    "semantic_hash": ""
   },
   "pyobs/modules/camera/dummycamera.py": {
     "mtime": 1785163712.0644345,
@@ -2225,8 +2225,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1786371439.2457135,
-    "ast_hash": "31b18ac83cc7a06268a66655b0eba74c",
+    "mtime": 1786793442.2497163,
+    "ast_hash": "f697cfc637566637b6cbf873d081ba57",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {

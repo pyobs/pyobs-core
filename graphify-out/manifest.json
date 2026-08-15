@@ -2225,8 +2225,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1786793738.5145564,
-    "ast_hash": "f672ce57b56e61ac62db81e4cc7a7cac",
+    "mtime": 1786806704.771686,
+    "ast_hash": "32f53f0f16cda3ee63f733d9ed28bc8e",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {

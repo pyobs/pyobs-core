@@ -4280,8 +4280,8 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-09-object-kwarg-validation.md": {
-    "mtime": 1786602632.9058003,
-    "ast_hash": "509b9906a3f07735de116128292b0705",
+    "mtime": 1786818612.4487197,
+    "ast_hash": "11c570e483afb075e185d5ae0d98a903",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-11-basevideo-raw-frame-streaming.md": {

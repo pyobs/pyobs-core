@@ -184,15 +184,29 @@
   },
   "nodes": [
     {
+      "label": "pyobs-core",
+      "file_type": "code",
+      "type": "package",
+      "ecosystem": "python",
+      "source_file": "pyproject.toml",
+      "source_location": "L1",
+      "version": "2.0.0.dev75",
+      "_origin": "ast",
+      "id": "pkg_pyobs_core",
+      "community": 399,
+      "community_name": "pyobs-core",
+      "norm_label": "pyobs-core"
+    },
+    {
       "label": "basevideo.py",
       "file_type": "code",
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo",
       "community": 1,
       "community_name": "BaseGuiding",
-      "norm_label": "basevideo.py"
+      "norm_label": "basevideo.py",
+      "id": "pyobs_modules_camera_basevideo"
     },
     {
       "label": "calc_expose_timeout()",
@@ -200,10 +214,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L41",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_calc_expose_timeout",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "calc_expose_timeout()"
+      "norm_label": "calc_expose_timeout()",
+      "id": "pyobs_modules_camera_basevideo_calc_expose_timeout"
     },
     {
       "label": "IExposureTime",
@@ -211,10 +225,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "iexposuretime",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "iexposuretime"
+      "norm_label": "iexposuretime",
+      "id": "iexposuretime"
     },
     {
       "label": "Any",
@@ -222,10 +236,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "any",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "any"
+      "norm_label": "any",
+      "id": "any"
     },
     {
       "label": "NextImage",
@@ -233,10 +247,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L49",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_nextimage",
       "community": 61,
       "community_name": "test_basevideo.py",
-      "norm_label": "nextimage"
+      "norm_label": "nextimage",
+      "id": "pyobs_modules_camera_basevideo_nextimage"
     },
     {
       "label": "NamedTuple",
@@ -244,10 +258,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "namedtuple",
       "community": 61,
       "community_name": "test_basevideo.py",
-      "norm_label": "namedtuple"
+      "norm_label": "namedtuple",
+      "id": "namedtuple"
     },
     {
       "label": "ImageRequest",
@@ -255,10 +269,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L56",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_imagerequest",
       "community": 61,
       "community_name": "test_basevideo.py",
-      "norm_label": "imagerequest"
+      "norm_label": "imagerequest",
+      "id": "pyobs_modules_camera_basevideo_imagerequest"
     },
     {
       "label": ".__init__()",
@@ -266,10 +280,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L57",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_imagerequest_init",
       "community": 61,
       "community_name": "test_basevideo.py",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "pyobs_modules_camera_basevideo_imagerequest_init"
     },
     {
       "label": "LastImage",
@@ -277,10 +291,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L63",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_lastimage",
       "community": 61,
       "community_name": "test_basevideo.py",
-      "norm_label": "lastimage"
+      "norm_label": "lastimage",
+      "id": "pyobs_modules_camera_basevideo_lastimage"
     },
     {
       "label": "BaseVideo",
@@ -288,10 +302,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L70",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "basevideo"
+      "norm_label": "basevideo",
+      "id": "pyobs_modules_camera_basevideo_basevideo"
     },
     {
       "label": "Module",
@@ -299,10 +313,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "module",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "module"
+      "norm_label": "module",
+      "id": "module"
     },
     {
       "label": "ImageFitsHeaderMixin",
@@ -310,10 +324,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "imagefitsheadermixin",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "imagefitsheadermixin"
+      "norm_label": "imagefitsheadermixin",
+      "id": "imagefitsheadermixin"
     },
     {
       "label": "IVideo",
@@ -321,10 +335,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "ivideo",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "ivideo"
+      "norm_label": "ivideo",
+      "id": "ivideo"
     },
     {
       "label": "IImageType",
@@ -332,10 +346,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "iimagetype",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "iimagetype"
+      "norm_label": "iimagetype",
+      "id": "iimagetype"
     },
     {
       "label": ".__init__()",
@@ -343,10 +357,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L75",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_init",
       "community": 254,
       "community_name": "test_dummyvideo.py",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_init"
     },
     {
       "label": ".open()",
@@ -354,10 +368,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L158",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_open",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".open()"
+      "norm_label": ".open()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_open"
     },
     {
       "label": ".close()",
@@ -365,10 +379,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L175",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_close",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".close()"
+      "norm_label": ".close()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_close"
     },
     {
       "label": ".opened()",
@@ -376,10 +390,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L183",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_opened",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".opened()"
+      "norm_label": ".opened()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_opened"
     },
     {
       "label": ".web_handler()",
@@ -387,10 +401,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L187",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_web_handler",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".web_handler()"
+      "norm_label": ".web_handler()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_web_handler"
     },
     {
       "label": "Request",
@@ -398,10 +412,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "request",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "request"
+      "norm_label": "request",
+      "id": "request"
     },
     {
       "label": "Response",
@@ -409,10 +423,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "response",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "response"
+      "norm_label": "response",
+      "id": "response"
     },
     {
       "label": ".ping_handler()",
@@ -420,10 +434,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L198",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_ping_handler",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".ping_handler()"
+      "norm_label": ".ping_handler()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_ping_handler"
     },
     {
       "label": ".video_handler()",
@@ -431,10 +445,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L209",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_video_handler",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".video_handler()"
+      "norm_label": ".video_handler()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_video_handler"
     },
     {
       "label": "StreamResponse",
@@ -442,10 +456,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "streamresponse",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "streamresponse"
+      "norm_label": "streamresponse",
+      "id": "streamresponse"
     },
     {
       "label": ".image_handler()",
@@ -453,10 +467,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L256",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_image_handler",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".image_handler()"
+      "norm_label": ".image_handler()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_image_handler"
     },
     {
       "label": ".camera_active()",
@@ -464,10 +478,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L279",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_camera_active",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".camera_active()"
+      "norm_label": ".camera_active()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_camera_active"
     },
     {
       "label": ".activate_camera()",
@@ -475,10 +489,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L283",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_activate_camera",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".activate_camera()"
+      "norm_label": ".activate_camera()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_activate_camera"
     },
     {
       "label": ".deactivate_camera()",
@@ -486,10 +500,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L290",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_deactivate_camera",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".deactivate_camera()"
+      "norm_label": ".deactivate_camera()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_deactivate_camera"
     },
     {
       "label": "._active_update()",
@@ -497,10 +511,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L305",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_active_update",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "._active_update()"
+      "norm_label": "._active_update()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_active_update"
     },
     {
       "label": ".image_jpeg()",
@@ -508,10 +522,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L316",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_image_jpeg",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": ".image_jpeg()"
+      "norm_label": ".image_jpeg()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_image_jpeg"
     },
     {
       "label": ".create_jpeg()",
@@ -519,10 +533,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L326",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_create_jpeg",
       "community": 42,
       "community_name": "Any",
-      "norm_label": ".create_jpeg()"
+      "norm_label": ".create_jpeg()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_create_jpeg"
     },
     {
       "label": "NDArray",
@@ -530,10 +544,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "ndarray",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "ndarray"
+      "norm_label": "ndarray",
+      "id": "ndarray"
     },
     {
       "label": "._set_image()",
@@ -541,10 +555,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L346",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_set_image",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "._set_image()"
+      "norm_label": "._set_image()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_set_image"
     },
     {
       "label": "._create_image()",
@@ -552,10 +566,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L394",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_create_image",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "._create_image()"
+      "norm_label": "._create_image()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_create_image"
     },
     {
       "label": "Image",
@@ -563,10 +577,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "image",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "image"
+      "norm_label": "image",
+      "id": "image"
     },
     {
       "label": "._finish_image()",
@@ -574,10 +588,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L416",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_finish_image",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "._finish_image()"
+      "norm_label": "._finish_image()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_finish_image"
     },
     {
       "label": "ImageType",
@@ -585,10 +599,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "imagetype",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "imagetype"
+      "norm_label": "imagetype",
+      "id": "imagetype"
     },
     {
       "label": "timeout",
@@ -596,10 +610,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "timeout",
       "community": 272,
       "community_name": "._set_optimal_focus",
-      "norm_label": "timeout"
+      "norm_label": "timeout",
+      "id": "timeout"
     },
     {
       "label": ".grab_data()",
@@ -607,10 +621,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L449",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_grab_data",
       "community": 272,
       "community_name": "._set_optimal_focus",
-      "norm_label": ".grab_data()"
+      "norm_label": ".grab_data()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_grab_data"
     },
     {
       "label": ".set_image_type()",
@@ -618,10 +632,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L487",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_basevideo_set_image_type",
       "community": 42,
       "community_name": "Any",
-      "norm_label": ".set_image_type()"
+      "norm_label": ".set_image_type()",
+      "id": "pyobs_modules_camera_basevideo_basevideo_set_image_type"
     },
     {
       "label": "Calculates timeout for grabe_image().",
@@ -629,10 +643,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L42",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_42",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "calculates timeout for grabe_image()."
+      "norm_label": "calculates timeout for grabe_image().",
+      "id": "pyobs_modules_camera_basevideo_rationale_42"
     },
     {
       "label": "Base class for all webcam modules.",
@@ -640,10 +654,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L71",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_71",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "base class for all webcam modules."
+      "norm_label": "base class for all webcam modules.",
+      "id": "pyobs_modules_camera_basevideo_rationale_71"
     },
     {
       "label": "Creates a new BaseWebcam. On the receiving end, a VFS root with a HTTPFile must\u2026",
@@ -651,10 +665,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L91",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_91",
       "community": 254,
       "community_name": "test_dummyvideo.py",
-      "norm_label": "creates a new basewebcam. on the receiving end, a vfs root with a httpfile must..."
+      "norm_label": "creates a new basewebcam. on the receiving end, a vfs root with a httpfile must...",
+      "id": "pyobs_modules_camera_basevideo_rationale_91"
     },
     {
       "label": "Whether the server is started.",
@@ -662,10 +676,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L184",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_184",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "whether the server is started."
+      "norm_label": "whether the server is started.",
+      "id": "pyobs_modules_camera_basevideo_rationale_184"
     },
     {
       "label": "Handles access to / and returns HTML page. Args: request: Request to respond\u2026",
@@ -673,10 +687,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L188",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_188",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "handles access to / and returns html page. args: request: request to respond..."
+      "norm_label": "handles access to / and returns html page. args: request: request to respond...",
+      "id": "pyobs_modules_camera_basevideo_rationale_188"
     },
     {
       "label": "Handles GET access to /ping for testing connectivity. Args: request: Request to\u2026",
@@ -684,10 +698,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L199",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_199",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "handles get access to /ping for testing connectivity. args: request: request to..."
+      "norm_label": "handles get access to /ping for testing connectivity. args: request: request to...",
+      "id": "pyobs_modules_camera_basevideo_rationale_199"
     },
     {
       "label": "Handles access to /video.mjpg and returns the video. Args: request: Request to\u2026",
@@ -695,10 +709,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L210",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_210",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "handles access to /video.mjpg and returns the video. args: request: request to..."
+      "norm_label": "handles access to /video.mjpg and returns the video. args: request: request to...",
+      "id": "pyobs_modules_camera_basevideo_rationale_210"
     },
     {
       "label": "Handles access to /* and returns a specified image. Args: request: Request to\u2026",
@@ -706,10 +720,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L257",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_257",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "handles access to /* and returns a specified image. args: request: request to..."
+      "norm_label": "handles access to /* and returns a specified image. args: request: request to...",
+      "id": "pyobs_modules_camera_basevideo_rationale_257"
     },
     {
       "label": "Whether camera is currently active.",
@@ -717,10 +731,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L280",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_280",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "whether camera is currently active."
+      "norm_label": "whether camera is currently active.",
+      "id": "pyobs_modules_camera_basevideo_rationale_280"
     },
     {
       "label": "Can be overridden by derived class to implement inactivity sleep",
@@ -728,10 +742,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L298",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_298",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "can be overridden by derived class to implement inactivity sleep"
+      "norm_label": "can be overridden by derived class to implement inactivity sleep",
+      "id": "pyobs_modules_camera_basevideo_rationale_298"
     },
     {
       "label": "Can be overridden by derived class to implement inactivity sleep",
@@ -739,10 +753,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L302",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_302",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "can be overridden by derived class to implement inactivity sleep"
+      "norm_label": "can be overridden by derived class to implement inactivity sleep",
+      "id": "pyobs_modules_camera_basevideo_rationale_302"
     },
     {
       "label": "Checking active status regularly.",
@@ -750,10 +764,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L306",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_306",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "checking active status regularly."
+      "norm_label": "checking active status regularly.",
+      "id": "pyobs_modules_camera_basevideo_rationale_306"
     },
     {
       "label": "Return image as jpeg.",
@@ -761,10 +775,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L317",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_317",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "return image as jpeg."
+      "norm_label": "return image as jpeg.",
+      "id": "pyobs_modules_camera_basevideo_rationale_317"
     },
     {
       "label": "Create a JPEG ge from a numpy array and return as bytes. Args: data: Numpy\u2026",
@@ -772,10 +786,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L327",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_327",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "create a jpeg ge from a numpy array and return as bytes. args: data: numpy..."
+      "norm_label": "create a jpeg ge from a numpy array and return as bytes. args: data: numpy...",
+      "id": "pyobs_modules_camera_basevideo_rationale_327"
     },
     {
       "label": "Create FITS and JPEG images from data.",
@@ -783,10 +797,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L347",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_347",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "create fits and jpeg images from data."
+      "norm_label": "create fits and jpeg images from data.",
+      "id": "pyobs_modules_camera_basevideo_rationale_347"
     },
     {
       "label": "Create an Image object from numpy array. Args: data: Numpy array to convert to\u2026",
@@ -794,10 +808,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L395",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_395",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "create an image object from numpy array. args: data: numpy array to convert to..."
+      "norm_label": "create an image object from numpy array. args: data: numpy array to convert to...",
+      "id": "pyobs_modules_camera_basevideo_rationale_395"
     },
     {
       "label": "Finish up an image at the end of _create_image. Args: image: Image to finish\u2026",
@@ -805,10 +819,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L417",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_417",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "finish up an image at the end of _create_image. args: image: image to finish..."
+      "norm_label": "finish up an image at the end of _create_image. args: image: image to finish...",
+      "id": "pyobs_modules_camera_basevideo_rationale_417"
     },
     {
       "label": "Grabs an image ans returns reference. Args: broadcast: Broadcast existence of\u2026",
@@ -816,10 +830,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L450",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_450",
       "community": 272,
       "community_name": "._set_optimal_focus",
-      "norm_label": "grabs an image ans returns reference. args: broadcast: broadcast existence of..."
+      "norm_label": "grabs an image ans returns reference. args: broadcast: broadcast existence of...",
+      "id": "pyobs_modules_camera_basevideo_rationale_450"
     },
     {
       "label": "Set the image type. Args: image_type: New image type.",
@@ -827,10 +841,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L488",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_488",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "set the image type. args: image_type: new image type."
+      "norm_label": "set the image type. args: image_type: new image type.",
+      "id": "pyobs_modules_camera_basevideo_rationale_488"
     },
     {
       "label": "# TODO: find a better way to convert to uint8",
@@ -838,24 +852,10 @@
       "source_file": "pyobs/modules/camera/basevideo.py",
       "source_location": "L338",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basevideo_rationale_338",
       "community": 1,
       "community_name": "BaseGuiding",
-      "norm_label": "# todo: find a better way to convert to uint8"
-    },
-    {
-      "label": "pyobs-core",
-      "file_type": "code",
-      "type": "package",
-      "ecosystem": "python",
-      "source_file": "pyproject.toml",
-      "source_location": "L1",
-      "version": "2.0.0.dev74",
-      "_origin": "ast",
-      "community": 399,
-      "community_name": "pyobs-core",
-      "norm_label": "pyobs-core",
-      "id": "pkg_pyobs_core"
+      "norm_label": "# todo: find a better way to convert to uint8",
+      "id": "pyobs_modules_camera_basevideo_rationale_338"
     },
     {
       "label": "focusmodel.py",
@@ -103364,9 +103364,9 @@
       "source_location": "L5",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "abc",
-      "confidence_score": 1.0
+      "target": "abc"
     },
     {
       "relation": "imports_from",
@@ -103376,9 +103376,9 @@
       "source_location": "L6",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "datetime",
-      "confidence_score": 1.0
+      "target": "datetime"
     },
     {
       "relation": "imports_from",
@@ -103388,9 +103388,9 @@
       "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_interfaces_iexposuretime",
-      "confidence_score": 1.0
+      "target": "pyobs_interfaces_iexposuretime"
     },
     {
       "relation": "imports_from",
@@ -103400,9 +103400,9 @@
       "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_interfaces_iimagetype",
-      "confidence_score": 1.0
+      "target": "pyobs_interfaces_iimagetype"
     },
     {
       "relation": "imports_from",
@@ -103412,9 +103412,9 @@
       "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_interfaces_ivideo",
-      "confidence_score": 1.0
+      "target": "pyobs_interfaces_ivideo"
     },
     {
       "relation": "imports_from",
@@ -103424,9 +103424,9 @@
       "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_mixins_fitsheader",
-      "confidence_score": 1.0
+      "target": "pyobs_mixins_fitsheader"
     },
     {
       "relation": "contains",
@@ -103435,9 +103435,9 @@
       "source_location": "L70",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo"
     },
     {
       "relation": "contains",
@@ -103446,9 +103446,9 @@
       "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_modules_camera_basevideo_calc_expose_timeout",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_calc_expose_timeout"
     },
     {
       "relation": "contains",
@@ -103457,9 +103457,9 @@
       "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_modules_camera_basevideo_imagerequest",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_imagerequest"
     },
     {
       "relation": "contains",
@@ -103468,9 +103468,9 @@
       "source_location": "L63",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_modules_camera_basevideo_lastimage",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_lastimage"
     },
     {
       "relation": "contains",
@@ -103479,9 +103479,9 @@
       "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_modules_camera_basevideo_nextimage",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_nextimage"
     },
     {
       "relation": "imports_from",
@@ -103491,9 +103491,9 @@
       "source_location": "L21",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_utils_cache",
-      "confidence_score": 1.0
+      "target": "pyobs_utils_cache"
     },
     {
       "relation": "imports_from",
@@ -103503,9 +103503,9 @@
       "source_location": "L22",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_utils_enums",
-      "confidence_score": 1.0
+      "target": "pyobs_utils_enums"
     },
     {
       "relation": "imports_from",
@@ -103515,9 +103515,9 @@
       "source_location": "L20",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_utils_exceptions",
-      "confidence_score": 1.0
+      "target": "pyobs_utils_exceptions"
     },
     {
       "relation": "imports",
@@ -103527,9 +103527,9 @@
       "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo",
-      "target": "pyobs_utils_time",
-      "confidence_score": 1.0
+      "target": "pyobs_utils_time"
     },
     {
       "relation": "rationale_for",
@@ -103538,9 +103538,9 @@
       "source_location": "L338",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_338",
-      "target": "pyobs_modules_camera_basevideo",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo"
     },
     {
       "relation": "imports_from",
@@ -103598,9 +103598,9 @@
       "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_calc_expose_timeout",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103610,9 +103610,9 @@
       "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_calc_expose_timeout",
-      "target": "iexposuretime",
-      "confidence_score": 1.0
+      "target": "iexposuretime"
     },
     {
       "relation": "rationale_for",
@@ -103621,9 +103621,9 @@
       "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_42",
-      "target": "pyobs_modules_camera_basevideo_calc_expose_timeout",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_calc_expose_timeout"
     },
     {
       "relation": "references",
@@ -103633,9 +103633,9 @@
       "source_location": "L394",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_create_image",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103645,9 +103645,9 @@
       "source_location": "L326",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_create_jpeg",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103657,9 +103657,9 @@
       "source_location": "L449",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_grab_data",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103669,9 +103669,9 @@
       "source_location": "L75",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_init",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103681,9 +103681,9 @@
       "source_location": "L346",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_set_image",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103693,9 +103693,9 @@
       "source_location": "L487",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_set_image_type",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103777,9 +103777,9 @@
       "source_location": "L394",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_create_image",
-      "target": "pyobs_modules_camera_basevideo_nextimage",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_nextimage"
     },
     {
       "relation": "calls",
@@ -103789,9 +103789,9 @@
       "source_location": "L387",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_set_image",
-      "target": "pyobs_modules_camera_basevideo_nextimage",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_nextimage"
     },
     {
       "relation": "inherits",
@@ -103800,9 +103800,9 @@
       "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_nextimage",
-      "target": "namedtuple",
-      "confidence_score": 1.0
+      "target": "namedtuple"
     },
     {
       "relation": "imports",
@@ -103847,9 +103847,9 @@
       "source_location": "L63",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_lastimage",
-      "target": "namedtuple",
-      "confidence_score": 1.0
+      "target": "namedtuple"
     },
     {
       "relation": "calls",
@@ -103859,9 +103859,9 @@
       "source_location": "L468",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_grab_data",
-      "target": "pyobs_modules_camera_basevideo_imagerequest",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_imagerequest"
     },
     {
       "relation": "method",
@@ -103870,9 +103870,9 @@
       "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_imagerequest",
-      "target": "pyobs_modules_camera_basevideo_imagerequest_init",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_imagerequest_init"
     },
     {
       "relation": "imports",
@@ -103918,9 +103918,9 @@
       "source_location": "L377",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_set_image",
-      "target": "pyobs_modules_camera_basevideo_lastimage",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_lastimage"
     },
     {
       "relation": "imports",
@@ -103953,9 +103953,9 @@
       "source_location": "L70",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "iimagetype",
-      "confidence_score": 1.0
+      "target": "iimagetype"
     },
     {
       "relation": "inherits",
@@ -103964,9 +103964,9 @@
       "source_location": "L70",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "imagefitsheadermixin",
-      "confidence_score": 1.0
+      "target": "imagefitsheadermixin"
     },
     {
       "relation": "inherits",
@@ -103975,9 +103975,9 @@
       "source_location": "L70",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "ivideo",
-      "confidence_score": 1.0
+      "target": "ivideo"
     },
     {
       "relation": "inherits",
@@ -103986,9 +103986,9 @@
       "source_location": "L70",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "module",
-      "confidence_score": 1.0
+      "target": "module"
     },
     {
       "relation": "method",
@@ -103997,9 +103997,9 @@
       "source_location": "L297",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_activate_camera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_activate_camera"
     },
     {
       "relation": "method",
@@ -104008,9 +104008,9 @@
       "source_location": "L305",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_active_update",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_active_update"
     },
     {
       "relation": "method",
@@ -104019,9 +104019,9 @@
       "source_location": "L279",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_camera_active",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_camera_active"
     },
     {
       "relation": "method",
@@ -104030,9 +104030,9 @@
       "source_location": "L175",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_close",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_close"
     },
     {
       "relation": "method",
@@ -104041,9 +104041,9 @@
       "source_location": "L394",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_create_image",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_create_image"
     },
     {
       "relation": "method",
@@ -104052,9 +104052,9 @@
       "source_location": "L326",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_create_jpeg",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_create_jpeg"
     },
     {
       "relation": "method",
@@ -104063,9 +104063,9 @@
       "source_location": "L301",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_deactivate_camera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_deactivate_camera"
     },
     {
       "relation": "method",
@@ -104074,9 +104074,9 @@
       "source_location": "L416",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_finish_image",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_finish_image"
     },
     {
       "relation": "method",
@@ -104085,9 +104085,9 @@
       "source_location": "L449",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_grab_data",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_grab_data"
     },
     {
       "relation": "method",
@@ -104096,9 +104096,9 @@
       "source_location": "L256",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_image_handler",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_image_handler"
     },
     {
       "relation": "method",
@@ -104107,9 +104107,9 @@
       "source_location": "L316",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_image_jpeg",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_image_jpeg"
     },
     {
       "relation": "method",
@@ -104118,9 +104118,9 @@
       "source_location": "L75",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_init",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_init"
     },
     {
       "relation": "method",
@@ -104129,9 +104129,9 @@
       "source_location": "L158",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_open",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_open"
     },
     {
       "relation": "method",
@@ -104140,9 +104140,9 @@
       "source_location": "L183",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_opened",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_opened"
     },
     {
       "relation": "method",
@@ -104151,9 +104151,9 @@
       "source_location": "L198",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_ping_handler",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_ping_handler"
     },
     {
       "relation": "method",
@@ -104162,9 +104162,9 @@
       "source_location": "L346",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_set_image",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_set_image"
     },
     {
       "relation": "method",
@@ -104173,9 +104173,9 @@
       "source_location": "L487",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_set_image_type",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_set_image_type"
     },
     {
       "relation": "method",
@@ -104184,9 +104184,9 @@
       "source_location": "L209",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_video_handler",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_video_handler"
     },
     {
       "relation": "method",
@@ -104195,9 +104195,9 @@
       "source_location": "L187",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo",
-      "target": "pyobs_modules_camera_basevideo_basevideo_web_handler",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_web_handler"
     },
     {
       "relation": "rationale_for",
@@ -104206,9 +104206,9 @@
       "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_71",
-      "target": "pyobs_modules_camera_basevideo_basevideo",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo"
     },
     {
       "relation": "imports",
@@ -104299,9 +104299,9 @@
       "source_location": "L91",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_91",
-      "target": "pyobs_modules_camera_basevideo_basevideo_init",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_init"
     },
     {
       "relation": "calls",
@@ -104322,9 +104322,9 @@
       "source_location": "L184",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_184",
-      "target": "pyobs_modules_camera_basevideo_basevideo_opened",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_opened"
     },
     {
       "relation": "references",
@@ -104334,9 +104334,9 @@
       "source_location": "L187",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_web_handler",
-      "target": "request",
-      "confidence_score": 1.0
+      "target": "request"
     },
     {
       "relation": "references",
@@ -104346,9 +104346,9 @@
       "source_location": "L187",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_web_handler",
-      "target": "response",
-      "confidence_score": 1.0
+      "target": "response"
     },
     {
       "relation": "rationale_for",
@@ -104357,9 +104357,9 @@
       "source_location": "L188",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_188",
-      "target": "pyobs_modules_camera_basevideo_basevideo_web_handler",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_web_handler"
     },
     {
       "relation": "references",
@@ -104369,9 +104369,9 @@
       "source_location": "L256",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_image_handler",
-      "target": "request",
-      "confidence_score": 1.0
+      "target": "request"
     },
     {
       "relation": "references",
@@ -104381,9 +104381,9 @@
       "source_location": "L198",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_ping_handler",
-      "target": "request",
-      "confidence_score": 1.0
+      "target": "request"
     },
     {
       "relation": "references",
@@ -104393,9 +104393,9 @@
       "source_location": "L209",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_video_handler",
-      "target": "request",
-      "confidence_score": 1.0
+      "target": "request"
     },
     {
       "relation": "references",
@@ -104405,9 +104405,9 @@
       "source_location": "L256",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_image_handler",
-      "target": "response",
-      "confidence_score": 1.0
+      "target": "response"
     },
     {
       "relation": "references",
@@ -104417,9 +104417,9 @@
       "source_location": "L198",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_ping_handler",
-      "target": "response",
-      "confidence_score": 1.0
+      "target": "response"
     },
     {
       "relation": "rationale_for",
@@ -104428,9 +104428,9 @@
       "source_location": "L199",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_199",
-      "target": "pyobs_modules_camera_basevideo_basevideo_ping_handler",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_ping_handler"
     },
     {
       "relation": "calls",
@@ -104440,9 +104440,9 @@
       "source_location": "L234",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_video_handler",
-      "target": "pyobs_modules_camera_basevideo_basevideo_image_jpeg",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_image_jpeg"
     },
     {
       "relation": "references",
@@ -104452,9 +104452,9 @@
       "source_location": "L209",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_video_handler",
-      "target": "streamresponse",
-      "confidence_score": 1.0
+      "target": "streamresponse"
     },
     {
       "relation": "rationale_for",
@@ -104463,9 +104463,9 @@
       "source_location": "L210",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_210",
-      "target": "pyobs_modules_camera_basevideo_basevideo_video_handler",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_video_handler"
     },
     {
       "relation": "rationale_for",
@@ -104474,9 +104474,9 @@
       "source_location": "L257",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_257",
-      "target": "pyobs_modules_camera_basevideo_basevideo_image_handler",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_image_handler"
     },
     {
       "relation": "rationale_for",
@@ -104485,9 +104485,9 @@
       "source_location": "L280",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_280",
-      "target": "pyobs_modules_camera_basevideo_basevideo_camera_active",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_camera_active"
     },
     {
       "relation": "calls",
@@ -104497,9 +104497,9 @@
       "source_location": "L463",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_grab_data",
-      "target": "pyobs_modules_camera_basevideo_basevideo_activate_camera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_activate_camera"
     },
     {
       "relation": "calls",
@@ -104509,9 +104509,9 @@
       "source_location": "L320",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_image_jpeg",
-      "target": "pyobs_modules_camera_basevideo_basevideo_activate_camera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_activate_camera"
     },
     {
       "relation": "rationale_for",
@@ -104520,9 +104520,9 @@
       "source_location": "L298",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_298",
-      "target": "pyobs_modules_camera_basevideo_basevideo_activate_camera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_activate_camera"
     },
     {
       "relation": "calls",
@@ -104532,9 +104532,9 @@
       "source_location": "L311",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_active_update",
-      "target": "pyobs_modules_camera_basevideo_basevideo_deactivate_camera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_deactivate_camera"
     },
     {
       "relation": "rationale_for",
@@ -104543,9 +104543,9 @@
       "source_location": "L302",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_302",
-      "target": "pyobs_modules_camera_basevideo_basevideo_deactivate_camera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_deactivate_camera"
     },
     {
       "relation": "rationale_for",
@@ -104554,9 +104554,9 @@
       "source_location": "L306",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_306",
-      "target": "pyobs_modules_camera_basevideo_basevideo_active_update",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_active_update"
     },
     {
       "relation": "rationale_for",
@@ -104565,9 +104565,9 @@
       "source_location": "L317",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_317",
-      "target": "pyobs_modules_camera_basevideo_basevideo_image_jpeg",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_image_jpeg"
     },
     {
       "relation": "references",
@@ -104577,9 +104577,9 @@
       "source_location": "L326",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_create_jpeg",
-      "target": "ndarray",
-      "confidence_score": 1.0
+      "target": "ndarray"
     },
     {
       "relation": "rationale_for",
@@ -104588,9 +104588,9 @@
       "source_location": "L327",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_327",
-      "target": "pyobs_modules_camera_basevideo_basevideo_create_jpeg",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_create_jpeg"
     },
     {
       "relation": "calls",
@@ -104624,9 +104624,9 @@
       "source_location": "L394",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_create_image",
-      "target": "ndarray",
-      "confidence_score": 1.0
+      "target": "ndarray"
     },
     {
       "relation": "references",
@@ -104636,9 +104636,9 @@
       "source_location": "L346",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_set_image",
-      "target": "ndarray",
-      "confidence_score": 1.0
+      "target": "ndarray"
     },
     {
       "relation": "references",
@@ -104672,9 +104672,9 @@
       "source_location": "L357",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_set_image",
-      "target": "pyobs_modules_camera_basevideo_basevideo_create_image",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_create_image"
     },
     {
       "relation": "rationale_for",
@@ -104683,9 +104683,9 @@
       "source_location": "L347",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_347",
-      "target": "pyobs_modules_camera_basevideo_basevideo_set_image",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_set_image"
     },
     {
       "relation": "references",
@@ -104695,9 +104695,9 @@
       "source_location": "L394",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_create_image",
-      "target": "image",
-      "confidence_score": 1.0
+      "target": "image"
     },
     {
       "relation": "calls",
@@ -104707,9 +104707,9 @@
       "source_location": "L414",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_create_image",
-      "target": "pyobs_modules_camera_basevideo_basevideo_finish_image",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_finish_image"
     },
     {
       "relation": "rationale_for",
@@ -104718,9 +104718,9 @@
       "source_location": "L395",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_395",
-      "target": "pyobs_modules_camera_basevideo_basevideo_create_image",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_create_image"
     },
     {
       "relation": "references",
@@ -104730,9 +104730,9 @@
       "source_location": "L416",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_finish_image",
-      "target": "image",
-      "confidence_score": 1.0
+      "target": "image"
     },
     {
       "relation": "references",
@@ -104742,9 +104742,9 @@
       "source_location": "L416",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_finish_image",
-      "target": "imagetype",
-      "confidence_score": 1.0
+      "target": "imagetype"
     },
     {
       "relation": "rationale_for",
@@ -104753,9 +104753,9 @@
       "source_location": "L417",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_417",
-      "target": "pyobs_modules_camera_basevideo_basevideo_finish_image",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_finish_image"
     },
     {
       "relation": "references",
@@ -104765,9 +104765,9 @@
       "source_location": "L487",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_set_image_type",
-      "target": "imagetype",
-      "confidence_score": 1.0
+      "target": "imagetype"
     },
     {
       "relation": "references",
@@ -104777,9 +104777,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_basevideo_grab_data",
-      "target": "timeout",
-      "confidence_score": 1.0
+      "target": "timeout"
     },
     {
       "relation": "references",
@@ -104800,9 +104800,9 @@
       "source_location": "L450",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_450",
-      "target": "pyobs_modules_camera_basevideo_basevideo_grab_data",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_grab_data"
     },
     {
       "relation": "rationale_for",
@@ -104811,9 +104811,9 @@
       "source_location": "L488",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basevideo_rationale_488",
-      "target": "pyobs_modules_camera_basevideo_basevideo_set_image_type",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basevideo_basevideo_set_image_type"
     },
     {
       "relation": "imports_from",
@@ -346620,5 +346620,5 @@
       "source_file": "specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md"
     }
   ],
-  "built_at_commit": "fc14c947ecee56a7666ab45f9256388e8bf5035d"
+  "built_at_commit": "ce0bc9d1680d77462103719d8b6ecb0e3e083526"
 }

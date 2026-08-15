@@ -50,6 +50,22 @@ of the cost of building the full split:
 
 Not yet run. This plan stays on hold until one or the other happens.
 
+## Update 2026-08-15: second occurrence, still unconfirmed
+
+A new stall was logged on 2026-08-15 03:13 on the `scheduler` module (2.24s single check, 4.24s
+total), in the same "Finished calculating next task" → "Finished calculating schedule for N
+block(s)" window as both earlier incidents, with 44 blocks this run. The `evolve()` fix above is
+already active, so this is the first observed stall where the previously-confirmed main-thread cause
+can't explain it. That makes it *consistent with* the deferred step-4 mechanism (worker-thread GIL
+contention), but it is **not confirmation** — no `py-spy` capture was taken, and the steering doc
+documents a prior case where the same log-timing inference was wrong about which thread was at
+fault.
+
+Two details weaken the "scales with task count" framing: fewer blocks this run (44 vs 52) yet a
+*larger* stall (2.24s/4.24s vs 0.61s/2.61s). The stress test + `py-spy` capture recommended above is
+now the next action, not optional — a real occurrence of the symptom with the known main-thread
+cause already ruled out is the trigger the plan said it was waiting for.
+
 ## Problem
 
 The existing fix moved constraint/merit evaluation to a worker *thread*, not a worker *process*.

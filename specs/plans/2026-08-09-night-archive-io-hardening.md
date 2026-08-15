@@ -1,6 +1,9 @@
 # Plan: Harden and rename `Night` → `Reduction`; complete `LocalArchive` I/O
 
-Status: draft
+Status: implemented. All code and test items landed via PR #743 (2026-08-09) on `develop`, plus a
+follow-up (`dd014f70`) that added structured progress reporting and split out `ReductionBase`.
+Open item: the three site YAML configs (outside this repo) still need the deploy-time
+`Night`→`Reduction` dotted-path update.
 
 Related: `specs/plans/pyobs-pipeline.md` (issue #741) — blocking prerequisite. The pipeline-web
 project's `SitePipeline` model assumes input and output can each independently be a local
@@ -234,24 +237,24 @@ systemic `Object.__init__` case has its own plan, `specs/plans/object-kwarg-vali
 
 ## Implementation checklist
 
-- [ ] Rename `pyobs/utils/pipeline/night.py` → `reduction.py`, `class Night` → `class Reduction`
-- [ ] Update `pyobs/utils/pipeline/__init__.py` import and `__all__` for the rename
-- [ ] `Reduction.__init__`: replace `store_local` with unified `output: str | dict | Archive |
+- [x] Rename `pyobs/utils/pipeline/night.py` → `reduction.py`, `class Night` → `class Reduction`
+- [x] Update `pyobs/utils/pipeline/__init__.py` import and `__all__` for the rename
+- [x] `Reduction.__init__`: replace `store_local` with unified `output: str | dict | Archive |
       None` parameter, type-discriminated (str → local path, dict/Archive → output archive, None →
       defaults to `archive`)
-- [ ] `Reduction`: route `_create_master_calib` and `_calib_data` uploads through
+- [x] `Reduction`: route `_create_master_calib` and `_calib_data` uploads through
       `self._output_archive` (local-path case still handled by `self._store_local`, same
       precedence as before)
-- [ ] `Reduction`: wrap calibration-frame creation in `__call__` in per-combination try/except
-- [ ] `Reduction`: fix post-download frame-count check to `return None`
-- [ ] `Reduction`: create the local output directory if missing, when `output` resolves to a path
-- [ ] `Reduction`: remove unused `worker_procs`/`self._worker_processes`
-- [ ] `Reduction.__init__`: remove dead `**kwargs: Any` so unexpected/typo'd config keys raise
+- [x] `Reduction`: wrap calibration-frame creation in `__call__` in per-combination try/except
+- [x] `Reduction`: fix post-download frame-count check to `return None`
+- [x] `Reduction`: create the local output directory if missing, when `output` resolves to a path
+- [x] `Reduction`: remove unused `worker_procs`/`self._worker_processes`
+- [x] `Reduction.__init__`: remove dead `**kwargs: Any` so unexpected/typo'd config keys raise
       `TypeError` instead of being silently discarded
-- [ ] `LocalArchive.upload_frames`: implement real write (root-relative `FNAME`, raising
+- [x] `LocalArchive.upload_frames`: implement real write (root-relative `FNAME`, raising
       `ValueError` if missing, `mkdir`, `_update_root()` refresh)
-- [ ] Update/replace `test_upload_frames_is_noop` to assert real write behavior
-- [ ] New tests: `Reduction` with `output` set to an archive (input and output land in different
+- [x] Update/replace `test_upload_frames_is_noop` to assert real write behavior
+- [x] New tests: `Reduction` with `output` set to an archive (input and output land in different
       archives) and to a local path, per-combination exception isolation in calibration creation,
       local output directory auto-creation, `LocalArchive.upload_frames` writing + re-listability
       via `_update_root()`, `LocalArchive.upload_frames` raising `ValueError` on missing `FNAME`,
@@ -259,8 +262,8 @@ systemic `Object.__init__` case has its own plan, `specs/plans/object-kwarg-vali
 - [ ] Manually update the three site YAML configs (outside this repo) from `class:
       pyobs.utils.pipeline.Night` to `pyobs.utils.pipeline.Reduction` at deploy time — none of them
       currently set `store_local`, so no `output`-shape migration needed beyond the class rename
-- [ ] Update this doc's `Status:` to `implemented` once landed
-- [ ] Un-block `specs/plans/pyobs-pipeline.md` Step 5 (Celery task) — update its `Night` reference
+- [x] Update this doc's `Status:` to `implemented` once landed
+- [x] Un-block `specs/plans/pyobs-pipeline.md` Step 5 (Celery task) — update its `Night` reference
       to `Reduction`, and its config-building pseudocode should be revisited to build the unified
       `output` parameter (archive dict or local path string) for the `local`→`archive` and
       `archive`→`archive` (different) cases

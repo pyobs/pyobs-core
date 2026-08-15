@@ -433,7 +433,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # store it and return filename
         log.info("Writing image %s to cache...", filename)
-        self._cache[image.header["FNAME"]] = image.to_bytes()
+        loop = asyncio.get_running_loop()
+        data = await loop.run_in_executor(None, image.to_bytes)
+        self._cache[image.header["FNAME"]] = data
 
         # broadcast image path
         if broadcast and self._comm:

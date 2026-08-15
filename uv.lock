@@ -3402,7 +3402,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "2.0.0.dev72"
+version = "2.0.0.dev73"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -4384,8 +4384,8 @@ name = "sep"
 version = "1.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a5/34/14537815638e3878209ad14aa51099a5ec73aca7ef517ad49b2b85072241/sep-1.4.1.tar.gz", hash = "sha256:a0c8324ab66ee716080472cb212e4303e6c3e33b0d43763075b20d4cab793b25", size = 569714, upload-time = "2025-02-18T15:01:17.517Z" }
 wheels = [

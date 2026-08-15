@@ -184,15 +184,29 @@
   },
   "nodes": [
     {
+      "label": "pyobs-core",
+      "file_type": "code",
+      "type": "package",
+      "ecosystem": "python",
+      "source_file": "pyproject.toml",
+      "source_location": "L1",
+      "version": "2.0.0.dev76",
+      "_origin": "ast",
+      "id": "pkg_pyobs_core",
+      "community": 399,
+      "community_name": "pyobs-core",
+      "norm_label": "pyobs-core"
+    },
+    {
       "label": "2026-08-08-logevent-double-delivery-investigation.md",
       "file_type": "document",
       "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation",
       "community": 295,
       "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "2026-08-08-logevent-double-delivery-investigation.md"
+      "norm_label": "2026-08-08-logevent-double-delivery-investigation.md",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation"
     },
     {
       "label": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
@@ -200,10 +214,10 @@
       "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
       "community": 295,
       "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "investigation: pyobs-gui receives every logevent twice (saao/monet production)"
+      "norm_label": "investigation: pyobs-gui receives every logevent twice (saao/monet production)",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production"
     },
     {
       "label": "Problem",
@@ -211,10 +225,10 @@
       "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
       "source_location": "L9",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_problem",
       "community": 295,
       "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "problem"
+      "norm_label": "problem",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_problem"
     },
     {
       "label": "What's ruled out",
@@ -222,10 +236,10 @@
       "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
       "source_location": "L18",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_ruled_out",
       "community": 295,
       "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "what's ruled out"
+      "norm_label": "what's ruled out",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_ruled_out"
     },
     {
       "label": "What's confirmed",
@@ -233,10 +247,10 @@
       "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
       "source_location": "L47",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_confirmed",
       "community": 295,
       "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "what's confirmed"
+      "norm_label": "what's confirmed",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_confirmed"
     },
     {
       "label": "Next steps",
@@ -244,10 +258,10 @@
       "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
       "source_location": "L113",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_next_steps",
       "community": 295,
       "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "next steps"
+      "norm_label": "next steps",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_next_steps"
     },
     {
       "label": "Artifacts from this session",
@@ -255,10 +269,10 @@
       "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
       "source_location": "L160",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_artifacts_from_this_session",
       "community": 295,
       "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "artifacts from this session"
+      "norm_label": "artifacts from this session",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_artifacts_from_this_session"
     },
     {
       "label": "Access used",
@@ -266,10 +280,10 @@
       "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
       "source_location": "L188",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_access_used",
       "community": 295,
       "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "access used"
+      "norm_label": "access used",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_access_used"
     },
     {
       "label": "basecamera.py",
@@ -1744,20 +1758,6 @@
       "community_name": "Plan: Split archive prefetch from CPU-bound merit evaluation, to unblock a `ProcessPoolExecutor`",
       "norm_label": "consequences",
       "id": "specs_plans_2026_08_05_scheduler_archive_prefetch_for_process_isolation_consequences"
-    },
-    {
-      "label": "pyobs-core",
-      "file_type": "code",
-      "type": "package",
-      "ecosystem": "python",
-      "source_file": "pyproject.toml",
-      "source_location": "L1",
-      "version": "2.0.0.dev75",
-      "_origin": "ast",
-      "community": 399,
-      "community_name": "pyobs-core",
-      "norm_label": "pyobs-core",
-      "id": "pkg_pyobs_core"
     },
     {
       "label": "basevideo.py",
@@ -103427,9 +103427,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production"
     },
     {
       "relation": "contains",
@@ -103438,9 +103438,9 @@
       "source_location": "L188",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_access_used",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_access_used"
     },
     {
       "relation": "contains",
@@ -103449,9 +103449,9 @@
       "source_location": "L160",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_artifacts_from_this_session",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_artifacts_from_this_session"
     },
     {
       "relation": "contains",
@@ -103460,9 +103460,9 @@
       "source_location": "L113",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_next_steps",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_next_steps"
     },
     {
       "relation": "contains",
@@ -103471,9 +103471,9 @@
       "source_location": "L9",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_problem",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_problem"
     },
     {
       "relation": "contains",
@@ -103482,9 +103482,9 @@
       "source_location": "L47",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_confirmed",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_confirmed"
     },
     {
       "relation": "contains",
@@ -103493,9 +103493,9 @@
       "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_ruled_out",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_ruled_out"
     },
     {
       "relation": "imports_from",
@@ -346362,5 +346362,5 @@
       "source_file": "specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md"
     }
   ],
-  "built_at_commit": "d62573a977237fd938286604184a1d0e868684f3"
+  "built_at_commit": "0159542ffa98b13c961387c13dde4243e4d9fc83"
 }

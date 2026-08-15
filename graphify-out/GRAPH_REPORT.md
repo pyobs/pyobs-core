@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d62573a9`
+- Built from commit: `0159542f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1664,7 +1664,7 @@ Nodes (3): Exception handling across the RPC boundary (design doc), Issue #446 (
   specs/design/exception_handling.md · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **549 isolated node(s):** `Problem`, `What's ruled out`, `What's confirmed`, `Next steps`, `Artifacts from this session` (+544 more)
+- **549 isolated node(s):** `pyobs-core`, `Problem`, `What's ruled out`, `What's confirmed`, `Next steps` (+544 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **46 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 

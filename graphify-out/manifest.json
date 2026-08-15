@@ -1020,9 +1020,9 @@
     "semantic_hash": "7aed84cfd189f337d6b4c4e8c22f073e"
   },
   "pyobs/modules/camera/basecamera.py": {
-    "mtime": 1785059071.2775211,
-    "ast_hash": "07f0f9146ddbedf42c0afa8bec7f1a2f",
-    "semantic_hash": "07f0f9146ddbedf42c0afa8bec7f1a2f"
+    "mtime": 1786806124.4251943,
+    "ast_hash": "38554ac7e99d3fa72352f70a7dfd517d",
+    "semantic_hash": ""
   },
   "pyobs/modules/camera/basespectrograph.py": {
     "mtime": 1784310355.0170407,
@@ -4265,8 +4265,8 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-08-logevent-double-delivery-investigation.md": {
-    "mtime": 1786602632.9028003,
-    "ast_hash": "0bc98fe64ad435e48fb54dffef00ac66",
+    "mtime": 1786806295.036485,
+    "ast_hash": "6b2d0b1cdd0d55f6052cb77b22a60c14",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-08-pyobs-pipeline.md": {
@@ -4290,8 +4290,8 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-11-camera-driver-gui-split.md": {
-    "mtime": 1786602632.9068005,
-    "ast_hash": "0b50dfa3f4358ec7771b9bc9cd809114",
+    "mtime": 1786805371.9618528,
+    "ast_hash": "009c54fe9a1e510cab34a71446edc3e2",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md": {

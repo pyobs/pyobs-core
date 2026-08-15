@@ -49,7 +49,9 @@ local driver rather than a vendor package).
       `set_exposure_time`, `start_exposure`, `is_exposing`, `grab_row`, `get_temp`,
       `set_temperature`. Model structure on `pyobs-qhyccd/pyobs_qhyccd/gui.py` or
       `pyobs-flipro/pyobs_flipro/gui.py`.
-- [x] pyobs-tis — `pyobs_tis/gui.py` written (2026-08-11), driving `TIS` directly, bypassing
+- [ ] pyobs-tis — `pyobs_tis/gui.py` written (2026-08-11) **but reverted the same day** (`3d75ddb`,
+      "Revert 'Fix async image callback never firing, add pyobs_tis/gui.py'") — nothing below is in
+      the repo anymore; needs rewriting + hardware verification. Original work: drove `TIS` directly, bypassing
       `TisCamera`. As suspected, `ExposeWidget`/`ExposureTimeWidget` didn't fit — TIS pushes
       frames continuously via a GStreamer callback rather than on a triggered exposure, so this
       uses a Start/Stop live view instead: a new lightweight `LivePreviewWidget` (plain
@@ -229,11 +231,10 @@ Still open, lower priority, not touched:
       pattern `get_serial_string` gets right with a fixed `char serial[1024]`). Will crash or
       corrupt memory if called. Also missing `.decode('utf-8')` on the result. Fix before any
       gui.py or camera code calls this.
-- [ ] `flicamera.py` — **no SDK call anywhere is executor-wrapped**, not even the per-row
+- [x] `flicamera.py` — **no SDK call anywhere is executor-wrapped**, not even the per-row
       `grab_row()` readout loop; the whole module runs blocking calls directly on the event loop.
-      This is a bigger architectural gap from the qhyccd reference pattern than any other repo. Fix
-      this in the module before building `pyobs_fli/gui.py`, or the GUI will inherit the same
-      event-loop-blocking problem from day one.
+      Fixed (commit `7b0019e`, "Run blocking FLI SDK calls off the event loop") — all SDK calls,
+      including the readout loop, now go through `_run_blocking_or_raise`. Checked 2026-08-15.
 - [ ] `flibase.py:96-102` `_keep_alive` — reconnect path builds a new `FliDriver` but never calls
       `.open()` on it, and only catches `ValueError` (an `OSError` from a real USB disconnect
       propagates and kills the background task silently).
@@ -246,16 +247,16 @@ Still open, lower priority, not touched:
 
 ### pyobs-tis
 
-- [x] `tiscamera.py:43` (fixed 2026-08-11) — `self.new_image` (an `async def`) was passed as
+- [ ] `tiscamera.py:43` (fixed 2026-08-11, **reverted same day** `3d75ddb`) — `self.new_image` (an `async def`) was passed as
       `ImageCallback` and invoked from `TIS.py:108` on a GStreamer streaming thread as a plain
       synchronous call, so it only ever created an unawaited coroutine. **Images were never
       actually processed.** Fixed: `open()` now captures the running event loop and registers a
       sync `_on_new_image` wrapper that does `asyncio.run_coroutine_threadsafe(self.new_image(tis),
       self._loop)`.
-- [x] `TIS.py:163-169` (fixed 2026-08-11) — `mem.unmap(info)` was called before building a numpy
+- [ ] `TIS.py:163-169` (fixed 2026-08-11, **reverted same day** `3d75ddb`) — `mem.unmap(info)` was called before building a numpy
       view over that same buffer in `__convert_sample_to_numpy`; use-after-unmap could yield
       corrupted frame data. Fixed: the array is now `.copy()`'d before `mem.unmap()` runs.
-- [x] `tiscamera.py:46-47` (fixed 2026-08-11) — if `Start_pipeline()` returned `False`, `open()`
+- [ ] `tiscamera.py:46-47` (fixed 2026-08-11, **reverted same day** `3d75ddb`) — if `Start_pipeline()` returned `False`, `open()`
       raised without releasing the already-created pipeline. Fixed: `Stop_pipeline()` now runs
       before the raise.
 - [ ] `TIS.py:191-217` — `wait_for_image`/`Snap_image` poll `self.newsample`/`self.sample` with no
@@ -263,7 +264,7 @@ Still open, lower priority, not touched:
       race. Not exercised by `tiscamera.py` (which always sets a callback, so `Snap_image` is never
       called) or by the new `gui.py` (same). Left open — only matters if something starts using
       `Snap_image` instead of the callback path.
-- [x] `gui.py` written (2026-08-11) — see the "build missing gui.py" entry above for what it does
+- [ ] `gui.py` written (2026-08-11, **reverted same day** `3d75ddb`) — see the "build missing gui.py" entry above for what it does
       and the confirmed-good/still-needed items.
 
 ## Verification

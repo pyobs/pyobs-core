@@ -184,15 +184,103 @@
   },
   "nodes": [
     {
+      "label": "2026-08-08-logevent-double-delivery-investigation.md",
+      "file_type": "document",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation",
+      "community": 295,
+      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
+      "norm_label": "2026-08-08-logevent-double-delivery-investigation.md"
+    },
+    {
+      "label": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
+      "file_type": "document",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
+      "community": 295,
+      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
+      "norm_label": "investigation: pyobs-gui receives every logevent twice (saao/monet production)"
+    },
+    {
+      "label": "Problem",
+      "file_type": "document",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_problem",
+      "community": 295,
+      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
+      "norm_label": "problem"
+    },
+    {
+      "label": "What's ruled out",
+      "file_type": "document",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L18",
+      "_origin": "ast",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_ruled_out",
+      "community": 295,
+      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
+      "norm_label": "what's ruled out"
+    },
+    {
+      "label": "What's confirmed",
+      "file_type": "document",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L47",
+      "_origin": "ast",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_confirmed",
+      "community": 295,
+      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
+      "norm_label": "what's confirmed"
+    },
+    {
+      "label": "Next steps",
+      "file_type": "document",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L113",
+      "_origin": "ast",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_next_steps",
+      "community": 295,
+      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
+      "norm_label": "next steps"
+    },
+    {
+      "label": "Artifacts from this session",
+      "file_type": "document",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L160",
+      "_origin": "ast",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_artifacts_from_this_session",
+      "community": 295,
+      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
+      "norm_label": "artifacts from this session"
+    },
+    {
+      "label": "Access used",
+      "file_type": "document",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L188",
+      "_origin": "ast",
+      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_access_used",
+      "community": 295,
+      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
+      "norm_label": "access used"
+    },
+    {
       "label": "basecamera.py",
       "file_type": "code",
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera",
       "community": 4,
       "community_name": "Interface",
-      "norm_label": "basecamera.py"
+      "norm_label": "basecamera.py",
+      "id": "pyobs_modules_camera_basecamera"
     },
     {
       "label": "ExposureInfo",
@@ -200,10 +288,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L33",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_exposureinfo",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "exposureinfo"
+      "norm_label": "exposureinfo",
+      "id": "pyobs_modules_camera_basecamera_exposureinfo"
     },
     {
       "label": "NamedTuple",
@@ -211,10 +299,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "namedtuple",
       "community": 61,
       "community_name": "test_basevideo.py",
-      "norm_label": "namedtuple"
+      "norm_label": "namedtuple",
+      "id": "namedtuple"
     },
     {
       "label": "calc_expose_timeout()",
@@ -222,10 +310,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L40",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_calc_expose_timeout",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "calc_expose_timeout()"
+      "norm_label": "calc_expose_timeout()",
+      "id": "pyobs_modules_camera_basecamera_calc_expose_timeout"
     },
     {
       "label": "Any",
@@ -233,10 +321,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "any",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "any"
+      "norm_label": "any",
+      "id": "any"
     },
     {
       "label": "BaseCamera",
@@ -244,10 +332,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L45",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "basecamera"
+      "norm_label": "basecamera",
+      "id": "pyobs_modules_camera_basecamera_basecamera"
     },
     {
       "label": "Module",
@@ -255,10 +343,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "module",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "module"
+      "norm_label": "module",
+      "id": "module"
     },
     {
       "label": "ImageFitsHeaderMixin",
@@ -266,10 +354,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "imagefitsheadermixin",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "imagefitsheadermixin"
+      "norm_label": "imagefitsheadermixin",
+      "id": "imagefitsheadermixin"
     },
     {
       "label": "ICamera",
@@ -277,10 +365,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "icamera",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "icamera"
+      "norm_label": "icamera",
+      "id": "icamera"
     },
     {
       "label": "IExposure",
@@ -288,10 +376,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "iexposure",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "iexposure"
+      "norm_label": "iexposure",
+      "id": "iexposure"
     },
     {
       "label": "IExposureTime",
@@ -299,10 +387,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "iexposuretime",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "iexposuretime"
+      "norm_label": "iexposuretime",
+      "id": "iexposuretime"
     },
     {
       "label": "IImageType",
@@ -310,10 +398,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "iimagetype",
       "community": 266,
       "community_name": "BaseVideo",
-      "norm_label": "iimagetype"
+      "norm_label": "iimagetype",
+      "id": "iimagetype"
     },
     {
       "label": "IDataSequence",
@@ -321,10 +409,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "idatasequence",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "idatasequence"
+      "norm_label": "idatasequence",
+      "id": "idatasequence"
     },
     {
       "label": ".__init__()",
@@ -332,10 +420,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L52",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_init",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_init"
     },
     {
       "label": ".open()",
@@ -343,10 +431,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L118",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_open",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".open()"
+      "norm_label": ".open()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_open"
     },
     {
       "label": ".set_exposure_time()",
@@ -354,10 +442,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L141",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_set_exposure_time",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".set_exposure_time()"
+      "norm_label": ".set_exposure_time()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_set_exposure_time"
     },
     {
       "label": ".set_image_type()",
@@ -365,10 +453,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L154",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_set_image_type",
       "community": 42,
       "community_name": "Any",
-      "norm_label": ".set_image_type()"
+      "norm_label": ".set_image_type()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_set_image_type"
     },
     {
       "label": "ImageType",
@@ -376,10 +464,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "imagetype",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "imagetype"
+      "norm_label": "imagetype",
+      "id": "imagetype"
     },
     {
       "label": "._change_exposure_status()",
@@ -387,10 +475,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L164",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "._change_exposure_status()"
+      "norm_label": "._change_exposure_status()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status"
     },
     {
       "label": "ExposureStatus",
@@ -398,10 +486,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "exposurestatus",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "exposurestatus"
+      "norm_label": "exposurestatus",
+      "id": "exposurestatus"
     },
     {
       "label": "._get_exposure_time_left()",
@@ -409,10 +497,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L186",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "._get_exposure_time_left()"
+      "norm_label": "._get_exposure_time_left()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left"
     },
     {
       "label": "._get_exposure_progress()",
@@ -420,10 +508,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L194",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "._get_exposure_progress()"
+      "norm_label": "._get_exposure_progress()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress"
     },
     {
       "label": "._publish_exposure_progress()",
@@ -431,10 +519,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L216",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_publish_exposure_progress",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "._publish_exposure_progress()"
+      "norm_label": "._publish_exposure_progress()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_publish_exposure_progress"
     },
     {
       "label": "._expose()",
@@ -442,10 +530,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L240",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_expose",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "._expose()"
+      "norm_label": "._expose()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_expose"
     },
     {
       "label": "Event",
@@ -453,10 +541,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "event",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "event"
+      "norm_label": "event",
+      "id": "event"
     },
     {
       "label": "Image",
@@ -464,10 +552,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "image",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "image"
+      "norm_label": "image",
+      "id": "image"
     },
     {
       "label": "._init_exposure()",
@@ -475,10 +563,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L257",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_init_exposure",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "._init_exposure()"
+      "norm_label": "._init_exposure()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_init_exposure"
     },
     {
       "label": ".add_custom_fits_headers()",
@@ -486,10 +574,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L357",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_add_custom_fits_headers",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".add_custom_fits_headers()"
+      "norm_label": ".add_custom_fits_headers()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_add_custom_fits_headers"
     },
     {
       "label": "timeout",
@@ -497,10 +585,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "timeout",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "timeout"
+      "norm_label": "timeout",
+      "id": "timeout"
     },
     {
       "label": ".grab_data()",
@@ -508,10 +596,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L366",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_grab_data",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".grab_data()"
+      "norm_label": ".grab_data()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_grab_data"
     },
     {
       "label": ".grab_sequence()",
@@ -519,10 +607,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L401",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_grab_sequence",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".grab_sequence()"
+      "norm_label": ".grab_sequence()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_grab_sequence"
     },
     {
       "label": "._run_sequence()",
@@ -530,10 +618,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L429",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_run_sequence",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "._run_sequence()"
+      "norm_label": "._run_sequence()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_run_sequence"
     },
     {
       "label": ".abort_sequence()",
@@ -541,10 +629,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L457",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_abort_sequence",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".abort_sequence()"
+      "norm_label": ".abort_sequence()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_abort_sequence"
     },
     {
       "label": "._abort_exposure()",
@@ -552,10 +640,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L465",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_abort_exposure",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "._abort_exposure()"
+      "norm_label": "._abort_exposure()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_abort_exposure"
     },
     {
       "label": ".abort()",
@@ -563,10 +651,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L473",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_abort",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".abort()"
+      "norm_label": ".abort()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_abort"
     },
     {
       "label": "._abort_weather()",
@@ -574,10 +662,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L493",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_abort_weather",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "._abort_weather()"
+      "norm_label": "._abort_weather()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_abort_weather"
     },
     {
       "label": ".set_biassec_trimsec()",
@@ -585,10 +673,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L502",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_set_biassec_trimsec",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".set_biassec_trimsec()"
+      "norm_label": ".set_biassec_trimsec()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_set_biassec_trimsec"
     },
     {
       "label": "Header",
@@ -596,10 +684,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "header",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "header"
+      "norm_label": "header",
+      "id": "header"
     },
     {
       "label": ".apply_meridian_flip()",
@@ -607,10 +695,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L566",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_basecamera_apply_meridian_flip",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": ".apply_meridian_flip()"
+      "norm_label": ".apply_meridian_flip()",
+      "id": "pyobs_modules_camera_basecamera_basecamera_apply_meridian_flip"
     },
     {
       "label": "Info about a running exposure.",
@@ -618,10 +706,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L34",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_34",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "info about a running exposure."
+      "norm_label": "info about a running exposure.",
+      "id": "pyobs_modules_camera_basecamera_rationale_34"
     },
     {
       "label": "Calculates timeout for expose().",
@@ -629,10 +717,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L41",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_41",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "calculates timeout for expose()."
+      "norm_label": "calculates timeout for expose().",
+      "id": "pyobs_modules_camera_basecamera_rationale_41"
     },
     {
       "label": "Base class for all camera modules.",
@@ -640,10 +728,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L48",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_48",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "base class for all camera modules."
+      "norm_label": "base class for all camera modules.",
+      "id": "pyobs_modules_camera_basecamera_rationale_48"
     },
     {
       "label": "Creates a new BaseCamera. Args: fits_headers: Additional FITS headers. centre:\u2026",
@@ -651,10 +739,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L65",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_65",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "creates a new basecamera. args: fits_headers: additional fits headers. centre:..."
+      "norm_label": "creates a new basecamera. args: fits_headers: additional fits headers. centre:...",
+      "id": "pyobs_modules_camera_basecamera_rationale_65"
     },
     {
       "label": "Set the exposure time in seconds. Args: exposure_time: Exposure time in\u2026",
@@ -662,10 +750,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L142",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_142",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "set the exposure time in seconds. args: exposure_time: exposure time in..."
+      "norm_label": "set the exposure time in seconds. args: exposure_time: exposure time in...",
+      "id": "pyobs_modules_camera_basecamera_rationale_142"
     },
     {
       "label": "Set the image type. Args: image_type: New image type.",
@@ -673,10 +761,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L155",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_155",
       "community": 42,
       "community_name": "Any",
-      "norm_label": "set the image type. args: image_type: new image type."
+      "norm_label": "set the image type. args: image_type: new image type.",
+      "id": "pyobs_modules_camera_basecamera_rationale_155"
     },
     {
       "label": "Change exposure status and send event, Args: status: New exposure status.",
@@ -684,10 +772,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L165",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_165",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "change exposure status and send event, args: status: new exposure status."
+      "norm_label": "change exposure status and send event, args: status: new exposure status.",
+      "id": "pyobs_modules_camera_basecamera_rationale_165"
     },
     {
       "label": "Returns the remaining exposure time on the current exposure in seconds.",
@@ -695,10 +783,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L187",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_187",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "returns the remaining exposure time on the current exposure in seconds."
+      "norm_label": "returns the remaining exposure time on the current exposure in seconds.",
+      "id": "pyobs_modules_camera_basecamera_rationale_187"
     },
     {
       "label": "Returns the progress of the current exposure in percent. Returns: Progress of\u2026",
@@ -706,10 +794,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L195",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_195",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "returns the progress of the current exposure in percent. returns: progress of..."
+      "norm_label": "returns the progress of the current exposure in percent. returns: progress of...",
+      "id": "pyobs_modules_camera_basecamera_rationale_195"
     },
     {
       "label": "Background task: re-publish IExposure state while exposing.\u2026",
@@ -717,10 +805,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L217",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_217",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "background task: re-publish iexposure state while exposing...."
+      "norm_label": "background task: re-publish iexposure state while exposing....",
+      "id": "pyobs_modules_camera_basecamera_rationale_217"
     },
     {
       "label": "Actually do the exposure, should be implemented by derived classes. Args:\u2026",
@@ -728,10 +816,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L241",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_241",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "actually do the exposure, should be implemented by derived classes. args:..."
+      "norm_label": "actually do the exposure, should be implemented by derived classes. args:...",
+      "id": "pyobs_modules_camera_basecamera_rationale_241"
     },
     {
       "label": "Method that is always called at the very beginning of __expose and can be used\u2026",
@@ -739,10 +827,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L258",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_258",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "method that is always called at the very beginning of __expose and can be used..."
+      "norm_label": "method that is always called at the very beginning of __expose and can be used...",
+      "id": "pyobs_modules_camera_basecamera_rationale_258"
     },
     {
       "label": "Wrapper for a single exposure. Args: exposure_time: The requested exposure time\u2026",
@@ -750,10 +838,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L262",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_262",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "wrapper for a single exposure. args: exposure_time: the requested exposure time..."
+      "norm_label": "wrapper for a single exposure. args: exposure_time: the requested exposure time...",
+      "id": "pyobs_modules_camera_basecamera_rationale_262"
     },
     {
       "label": "Add FITS headers in derived classes. Args: image: Image to write FITS headers\u2026",
@@ -761,10 +849,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L358",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_358",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "add fits headers in derived classes. args: image: image to write fits headers..."
+      "norm_label": "add fits headers in derived classes. args: image: image to write fits headers...",
+      "id": "pyobs_modules_camera_basecamera_rationale_358"
     },
     {
       "label": "Grabs an image ans returns reference. Args: broadcast: Broadcast existence of\u2026",
@@ -772,10 +860,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L367",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_367",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "grabs an image ans returns reference. args: broadcast: broadcast existence of..."
+      "norm_label": "grabs an image ans returns reference. args: broadcast: broadcast existence of...",
+      "id": "pyobs_modules_camera_basecamera_rationale_367"
     },
     {
       "label": "Start a sequence of `count` images. Returns immediately; progress is available\u2026",
@@ -783,10 +871,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L402",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_402",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "start a sequence of `count` images. returns immediately; progress is available..."
+      "norm_label": "start a sequence of `count` images. returns immediately; progress is available...",
+      "id": "pyobs_modules_camera_basecamera_rationale_402"
     },
     {
       "label": "Runs a sequence of grab_data() calls, started by grab_sequence().",
@@ -794,10 +882,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L430",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_430",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "runs a sequence of grab_data() calls, started by grab_sequence()."
+      "norm_label": "runs a sequence of grab_data() calls, started by grab_sequence().",
+      "id": "pyobs_modules_camera_basecamera_rationale_430"
     },
     {
       "label": "Stop the sequence after the current image. The image currently exposing, if\u2026",
@@ -805,10 +893,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L458",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_458",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "stop the sequence after the current image. the image currently exposing, if..."
+      "norm_label": "stop the sequence after the current image. the image currently exposing, if...",
+      "id": "pyobs_modules_camera_basecamera_rationale_458"
     },
     {
       "label": "Abort the running exposure. Should be implemented by derived class. Raises:\u2026",
@@ -816,10 +904,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L466",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_466",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "abort the running exposure. should be implemented by derived class. raises:..."
+      "norm_label": "abort the running exposure. should be implemented by derived class. raises:...",
+      "id": "pyobs_modules_camera_basecamera_rationale_466"
     },
     {
       "label": "Aborts the current exposure and sequence. Derived class must implement\u2026",
@@ -827,10 +915,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L474",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_474",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "aborts the current exposure and sequence. derived class must implement..."
+      "norm_label": "aborts the current exposure and sequence. derived class must implement...",
+      "id": "pyobs_modules_camera_basecamera_rationale_474"
     },
     {
       "label": "Abort on bad weather, unless the shutter is closed (dark/bias) -- those don't\u2026",
@@ -838,10 +926,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L494",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_494",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "abort on bad weather, unless the shutter is closed (dark/bias) -- those don't..."
+      "norm_label": "abort on bad weather, unless the shutter is closed (dark/bias) -- those don't...",
+      "id": "pyobs_modules_camera_basecamera_rationale_494"
     },
     {
       "label": "Calculates and sets the BIASSEC and TRIMSEC areas. Args: hdr: FITS header\u2026",
@@ -849,10 +937,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L503",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_503",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "calculates and sets the biassec and trimsec areas. args: hdr: fits header..."
+      "norm_label": "calculates and sets the biassec and trimsec areas. args: hdr: fits header...",
+      "id": "pyobs_modules_camera_basecamera_rationale_503"
     },
     {
       "label": "If the telescope has a meridian flip (MERIDIAN keyword in header), flip the\u2026",
@@ -860,10 +948,10 @@
       "source_file": "pyobs/modules/camera/basecamera.py",
       "source_location": "L567",
       "_origin": "ast",
-      "id": "pyobs_modules_camera_basecamera_rationale_567",
       "community": 272,
       "community_name": "BaseCamera",
-      "norm_label": "if the telescope has a meridian flip (meridian keyword in header), flip the..."
+      "norm_label": "if the telescope has a meridian flip (meridian keyword in header), flip the...",
+      "id": "pyobs_modules_camera_basecamera_rationale_567"
     },
     {
       "label": "2026-08-11-camera-driver-gui-split.md",
@@ -5124,94 +5212,6 @@
       "community_name": "Plan: CORS + token auth for `HttpFileCache`",
       "norm_label": "consequences",
       "id": "specs_plans_2026_08_04_httpfilecache_cors_token_auth_consequences"
-    },
-    {
-      "label": "2026-08-08-logevent-double-delivery-investigation.md",
-      "file_type": "document",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 295,
-      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "2026-08-08-logevent-double-delivery-investigation.md",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation"
-    },
-    {
-      "label": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "file_type": "document",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 295,
-      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "investigation: pyobs-gui receives every logevent twice (saao/monet production)",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production"
-    },
-    {
-      "label": "Problem",
-      "file_type": "document",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L9",
-      "_origin": "ast",
-      "community": 295,
-      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "problem",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_problem"
-    },
-    {
-      "label": "What's ruled out",
-      "file_type": "document",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L18",
-      "_origin": "ast",
-      "community": 295,
-      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "what's ruled out",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_ruled_out"
-    },
-    {
-      "label": "What's confirmed",
-      "file_type": "document",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L47",
-      "_origin": "ast",
-      "community": 295,
-      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "what's confirmed",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_confirmed"
-    },
-    {
-      "label": "Next steps",
-      "file_type": "document",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L104",
-      "_origin": "ast",
-      "community": 295,
-      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "next steps",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_next_steps"
-    },
-    {
-      "label": "Artifacts from this session",
-      "file_type": "document",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L151",
-      "_origin": "ast",
-      "community": 295,
-      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "artifacts from this session",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_artifacts_from_this_session"
-    },
-    {
-      "label": "Access used",
-      "file_type": "document",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L179",
-      "_origin": "ast",
-      "community": 295,
-      "community_name": "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)",
-      "norm_label": "access used",
-      "id": "specs_plans_2026_08_08_logevent_double_delivery_investigation_access_used"
     },
     {
       "label": "2026-08-09-object-kwarg-validation.md",
@@ -103421,6 +103421,83 @@
   ],
   "links": [
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation",
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L188",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_access_used",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L160",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_artifacts_from_this_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L113",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_next_steps",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_problem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L47",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_confirmed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
+      "source_location": "L18",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_ruled_out",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -103428,9 +103505,9 @@
       "source_location": "L6",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "abc",
-      "confidence_score": 1.0
+      "target": "abc"
     },
     {
       "relation": "imports",
@@ -103440,9 +103517,9 @@
       "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "datetime",
-      "confidence_score": 1.0
+      "target": "datetime"
     },
     {
       "relation": "imports_from",
@@ -103452,9 +103529,9 @@
       "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_interfaces_icamera",
-      "confidence_score": 1.0
+      "target": "pyobs_interfaces_icamera"
     },
     {
       "relation": "imports_from",
@@ -103464,9 +103541,9 @@
       "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_interfaces_idatasequence",
-      "confidence_score": 1.0
+      "target": "pyobs_interfaces_idatasequence"
     },
     {
       "relation": "imports_from",
@@ -103476,9 +103553,9 @@
       "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_interfaces_iexposure",
-      "confidence_score": 1.0
+      "target": "pyobs_interfaces_iexposure"
     },
     {
       "relation": "imports_from",
@@ -103488,9 +103565,9 @@
       "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_interfaces_iexposuretime",
-      "confidence_score": 1.0
+      "target": "pyobs_interfaces_iexposuretime"
     },
     {
       "relation": "imports_from",
@@ -103500,9 +103577,9 @@
       "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_interfaces_iimagetype",
-      "confidence_score": 1.0
+      "target": "pyobs_interfaces_iimagetype"
     },
     {
       "relation": "imports_from",
@@ -103512,9 +103589,9 @@
       "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_mixins_fitsheader",
-      "confidence_score": 1.0
+      "target": "pyobs_mixins_fitsheader"
     },
     {
       "relation": "contains",
@@ -103523,9 +103600,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera"
     },
     {
       "relation": "contains",
@@ -103534,9 +103611,9 @@
       "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_calc_expose_timeout",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_calc_expose_timeout"
     },
     {
       "relation": "contains",
@@ -103545,9 +103622,9 @@
       "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_exposureinfo",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_exposureinfo"
     },
     {
       "relation": "imports_from",
@@ -103557,9 +103634,9 @@
       "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_utils_enums",
-      "confidence_score": 1.0
+      "target": "pyobs_utils_enums"
     },
     {
       "relation": "imports_from",
@@ -103569,9 +103646,9 @@
       "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera",
-      "target": "pyobs_utils_exceptions",
-      "confidence_score": 1.0
+      "target": "pyobs_utils_exceptions"
     },
     {
       "relation": "imports_from",
@@ -103605,9 +103682,9 @@
       "source_location": "L289",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "target": "pyobs_modules_camera_basecamera_exposureinfo",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_exposureinfo"
     },
     {
       "relation": "inherits",
@@ -103616,9 +103693,9 @@
       "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_exposureinfo",
-      "target": "namedtuple",
-      "confidence_score": 1.0
+      "target": "namedtuple"
     },
     {
       "relation": "rationale_for",
@@ -103627,9 +103704,9 @@
       "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_34",
-      "target": "pyobs_modules_camera_basecamera_exposureinfo",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_exposureinfo"
     },
     {
       "relation": "inherits",
@@ -103661,9 +103738,9 @@
       "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_calc_expose_timeout",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103673,9 +103750,9 @@
       "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_calc_expose_timeout",
-      "target": "pyobs_modules_camera_basecamera_basecamera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera"
     },
     {
       "relation": "rationale_for",
@@ -103684,9 +103761,9 @@
       "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_41",
-      "target": "pyobs_modules_camera_basecamera_calc_expose_timeout",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_calc_expose_timeout"
     },
     {
       "relation": "references",
@@ -103696,9 +103773,9 @@
       "source_location": "L473",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_abort",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103708,9 +103785,9 @@
       "source_location": "L457",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_abort_sequence",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103720,9 +103797,9 @@
       "source_location": "L493",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_abort_weather",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103732,9 +103809,9 @@
       "source_location": "L366",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_grab_data",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103744,9 +103821,9 @@
       "source_location": "L401",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_grab_sequence",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103756,9 +103833,9 @@
       "source_location": "L52",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_init",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103768,9 +103845,9 @@
       "source_location": "L141",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_set_exposure_time",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103780,9 +103857,9 @@
       "source_location": "L154",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_set_image_type",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -103947,9 +104024,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "icamera",
-      "confidence_score": 1.0
+      "target": "icamera"
     },
     {
       "relation": "inherits",
@@ -103958,9 +104035,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "idatasequence",
-      "confidence_score": 1.0
+      "target": "idatasequence"
     },
     {
       "relation": "inherits",
@@ -103969,9 +104046,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "iexposure",
-      "confidence_score": 1.0
+      "target": "iexposure"
     },
     {
       "relation": "inherits",
@@ -103980,9 +104057,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "iexposuretime",
-      "confidence_score": 1.0
+      "target": "iexposuretime"
     },
     {
       "relation": "inherits",
@@ -103991,9 +104068,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "iimagetype",
-      "confidence_score": 1.0
+      "target": "iimagetype"
     },
     {
       "relation": "inherits",
@@ -104002,9 +104079,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "imagefitsheadermixin",
-      "confidence_score": 1.0
+      "target": "imagefitsheadermixin"
     },
     {
       "relation": "inherits",
@@ -104013,9 +104090,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "module",
-      "confidence_score": 1.0
+      "target": "module"
     },
     {
       "relation": "method",
@@ -104024,9 +104101,9 @@
       "source_location": "L473",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort"
     },
     {
       "relation": "method",
@@ -104035,9 +104112,9 @@
       "source_location": "L465",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort_exposure",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort_exposure"
     },
     {
       "relation": "method",
@@ -104046,9 +104123,9 @@
       "source_location": "L457",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort_sequence",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort_sequence"
     },
     {
       "relation": "method",
@@ -104057,9 +104134,9 @@
       "source_location": "L493",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort_weather",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort_weather"
     },
     {
       "relation": "method",
@@ -104068,9 +104145,9 @@
       "source_location": "L357",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_add_custom_fits_headers",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_add_custom_fits_headers"
     },
     {
       "relation": "method",
@@ -104079,9 +104156,9 @@
       "source_location": "L566",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_apply_meridian_flip",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_apply_meridian_flip"
     },
     {
       "relation": "method",
@@ -104090,9 +104167,9 @@
       "source_location": "L164",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status"
     },
     {
       "relation": "method",
@@ -104101,9 +104178,9 @@
       "source_location": "L261",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_expose"
     },
     {
       "relation": "method",
@@ -104112,9 +104189,9 @@
       "source_location": "L194",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress"
     },
     {
       "relation": "method",
@@ -104123,9 +104200,9 @@
       "source_location": "L186",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left"
     },
     {
       "relation": "method",
@@ -104134,9 +104211,9 @@
       "source_location": "L366",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_grab_data",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_grab_data"
     },
     {
       "relation": "method",
@@ -104145,9 +104222,9 @@
       "source_location": "L401",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_grab_sequence",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_grab_sequence"
     },
     {
       "relation": "method",
@@ -104156,9 +104233,9 @@
       "source_location": "L52",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_init",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_init"
     },
     {
       "relation": "method",
@@ -104167,9 +104244,9 @@
       "source_location": "L257",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_init_exposure",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_init_exposure"
     },
     {
       "relation": "method",
@@ -104178,9 +104255,9 @@
       "source_location": "L118",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_open",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_open"
     },
     {
       "relation": "method",
@@ -104189,9 +104266,9 @@
       "source_location": "L216",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_publish_exposure_progress",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_publish_exposure_progress"
     },
     {
       "relation": "method",
@@ -104200,9 +104277,9 @@
       "source_location": "L429",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_run_sequence",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_run_sequence"
     },
     {
       "relation": "method",
@@ -104211,9 +104288,9 @@
       "source_location": "L502",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_set_biassec_trimsec",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_set_biassec_trimsec"
     },
     {
       "relation": "method",
@@ -104222,9 +104299,9 @@
       "source_location": "L141",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_set_exposure_time",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_set_exposure_time"
     },
     {
       "relation": "method",
@@ -104233,9 +104310,9 @@
       "source_location": "L154",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera",
-      "target": "pyobs_modules_camera_basecamera_basecamera_set_image_type",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_set_image_type"
     },
     {
       "relation": "rationale_for",
@@ -104244,9 +104321,9 @@
       "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_48",
-      "target": "pyobs_modules_camera_basecamera_basecamera",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera"
     },
     {
       "relation": "imports",
@@ -104358,9 +104435,9 @@
       "source_location": "L103",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_init",
-      "target": "event",
-      "confidence_score": 1.0
+      "target": "event"
     },
     {
       "relation": "rationale_for",
@@ -104369,9 +104446,9 @@
       "source_location": "L65",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_65",
-      "target": "pyobs_modules_camera_basecamera_basecamera_init",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_init"
     },
     {
       "relation": "calls",
@@ -104392,9 +104469,9 @@
       "source_location": "L142",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_142",
-      "target": "pyobs_modules_camera_basecamera_basecamera_set_exposure_time",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_set_exposure_time"
     },
     {
       "relation": "references",
@@ -104404,9 +104481,9 @@
       "source_location": "L154",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_set_image_type",
-      "target": "imagetype",
-      "confidence_score": 1.0
+      "target": "imagetype"
     },
     {
       "relation": "rationale_for",
@@ -104415,9 +104492,9 @@
       "source_location": "L155",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_155",
-      "target": "pyobs_modules_camera_basecamera_basecamera_set_image_type",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_set_image_type"
     },
     {
       "relation": "references",
@@ -104427,9 +104504,9 @@
       "source_location": "L261",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "target": "imagetype",
-      "confidence_score": 1.0
+      "target": "imagetype"
     },
     {
       "relation": "references",
@@ -104463,9 +104540,9 @@
       "source_location": "L164",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status",
-      "target": "exposurestatus",
-      "confidence_score": 1.0
+      "target": "exposurestatus"
     },
     {
       "relation": "calls",
@@ -104475,9 +104552,9 @@
       "source_location": "L181",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status",
-      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress"
     },
     {
       "relation": "calls",
@@ -104487,9 +104564,9 @@
       "source_location": "L182",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status",
-      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left"
     },
     {
       "relation": "calls",
@@ -104499,9 +104576,9 @@
       "source_location": "L383",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_grab_data",
-      "target": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status"
     },
     {
       "relation": "rationale_for",
@@ -104510,9 +104587,9 @@
       "source_location": "L165",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_165",
-      "target": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_change_exposure_status"
     },
     {
       "relation": "calls",
@@ -104522,9 +104599,9 @@
       "source_location": "L232",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_publish_exposure_progress",
-      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left"
     },
     {
       "relation": "rationale_for",
@@ -104533,9 +104610,9 @@
       "source_location": "L187",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_187",
-      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_time_left"
     },
     {
       "relation": "calls",
@@ -104545,9 +104622,9 @@
       "source_location": "L231",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_publish_exposure_progress",
-      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress"
     },
     {
       "relation": "rationale_for",
@@ -104556,9 +104633,9 @@
       "source_location": "L195",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_195",
-      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_get_exposure_progress"
     },
     {
       "relation": "rationale_for",
@@ -104567,9 +104644,9 @@
       "source_location": "L217",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_217",
-      "target": "pyobs_modules_camera_basecamera_basecamera_publish_exposure_progress",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_publish_exposure_progress"
     },
     {
       "relation": "references",
@@ -104579,9 +104656,9 @@
       "source_location": "L240",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "target": "event",
-      "confidence_score": 1.0
+      "target": "event"
     },
     {
       "relation": "references",
@@ -104591,9 +104668,9 @@
       "source_location": "L261",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "target": "image",
-      "confidence_score": 1.0
+      "target": "image"
     },
     {
       "relation": "calls",
@@ -104603,9 +104680,9 @@
       "source_location": "L328",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "target": "pyobs_modules_camera_basecamera_basecamera_add_custom_fits_headers",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_add_custom_fits_headers"
     },
     {
       "relation": "calls",
@@ -104615,9 +104692,9 @@
       "source_location": "L332",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "target": "pyobs_modules_camera_basecamera_basecamera_apply_meridian_flip",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_apply_meridian_flip"
     },
     {
       "relation": "calls",
@@ -104627,9 +104704,9 @@
       "source_location": "L277",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "target": "pyobs_modules_camera_basecamera_basecamera_init_exposure",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_init_exposure"
     },
     {
       "relation": "rationale_for",
@@ -104638,9 +104715,9 @@
       "source_location": "L241",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_241",
-      "target": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_expose"
     },
     {
       "relation": "rationale_for",
@@ -104649,9 +104726,9 @@
       "source_location": "L262",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_262",
-      "target": "pyobs_modules_camera_basecamera_basecamera_expose",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_expose"
     },
     {
       "relation": "references",
@@ -104661,9 +104738,9 @@
       "source_location": "L493",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_abort_weather",
-      "target": "event",
-      "confidence_score": 1.0
+      "target": "event"
     },
     {
       "relation": "references",
@@ -104697,9 +104774,9 @@
       "source_location": "L357",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_add_custom_fits_headers",
-      "target": "image",
-      "confidence_score": 1.0
+      "target": "image"
     },
     {
       "relation": "references",
@@ -104709,9 +104786,9 @@
       "source_location": "L566",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_apply_meridian_flip",
-      "target": "image",
-      "confidence_score": 1.0
+      "target": "image"
     },
     {
       "relation": "references",
@@ -104744,9 +104821,9 @@
       "source_location": "L258",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_258",
-      "target": "pyobs_modules_camera_basecamera_basecamera_init_exposure",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_init_exposure"
     },
     {
       "relation": "rationale_for",
@@ -104755,9 +104832,9 @@
       "source_location": "L358",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_358",
-      "target": "pyobs_modules_camera_basecamera_basecamera_add_custom_fits_headers",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_add_custom_fits_headers"
     },
     {
       "relation": "references",
@@ -104767,9 +104844,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_grab_data",
-      "target": "timeout",
-      "confidence_score": 1.0
+      "target": "timeout"
     },
     {
       "relation": "references",
@@ -104803,9 +104880,9 @@
       "source_location": "L434",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_run_sequence",
-      "target": "pyobs_modules_camera_basecamera_basecamera_grab_data",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_grab_data"
     },
     {
       "relation": "rationale_for",
@@ -104814,9 +104891,9 @@
       "source_location": "L367",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_367",
-      "target": "pyobs_modules_camera_basecamera_basecamera_grab_data",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_grab_data"
     },
     {
       "relation": "calls",
@@ -104826,9 +104903,9 @@
       "source_location": "L427",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_grab_sequence",
-      "target": "pyobs_modules_camera_basecamera_basecamera_run_sequence",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_run_sequence"
     },
     {
       "relation": "rationale_for",
@@ -104837,9 +104914,9 @@
       "source_location": "L402",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_402",
-      "target": "pyobs_modules_camera_basecamera_basecamera_grab_sequence",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_grab_sequence"
     },
     {
       "relation": "rationale_for",
@@ -104848,9 +104925,9 @@
       "source_location": "L430",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_430",
-      "target": "pyobs_modules_camera_basecamera_basecamera_run_sequence",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_run_sequence"
     },
     {
       "relation": "rationale_for",
@@ -104859,9 +104936,9 @@
       "source_location": "L458",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_458",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort_sequence",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort_sequence"
     },
     {
       "relation": "calls",
@@ -104871,9 +104948,9 @@
       "source_location": "L487",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_abort",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort_exposure",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort_exposure"
     },
     {
       "relation": "rationale_for",
@@ -104882,9 +104959,9 @@
       "source_location": "L466",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_466",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort_exposure",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort_exposure"
     },
     {
       "relation": "calls",
@@ -104894,9 +104971,9 @@
       "source_location": "L498",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_abort_weather",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort"
     },
     {
       "relation": "rationale_for",
@@ -104905,9 +104982,9 @@
       "source_location": "L474",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_474",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort"
     },
     {
       "relation": "rationale_for",
@@ -104916,9 +104993,9 @@
       "source_location": "L494",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_494",
-      "target": "pyobs_modules_camera_basecamera_basecamera_abort_weather",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_abort_weather"
     },
     {
       "relation": "references",
@@ -104928,9 +105005,9 @@
       "source_location": "L502",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_basecamera_set_biassec_trimsec",
-      "target": "header",
-      "confidence_score": 1.0
+      "target": "header"
     },
     {
       "relation": "rationale_for",
@@ -104939,9 +105016,9 @@
       "source_location": "L503",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_503",
-      "target": "pyobs_modules_camera_basecamera_basecamera_set_biassec_trimsec",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_set_biassec_trimsec"
     },
     {
       "relation": "rationale_for",
@@ -104950,9 +105027,9 @@
       "source_location": "L567",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_modules_camera_basecamera_rationale_567",
-      "target": "pyobs_modules_camera_basecamera_basecamera_apply_meridian_flip",
-      "confidence_score": 1.0
+      "target": "pyobs_modules_camera_basecamera_basecamera_apply_meridian_flip"
     },
     {
       "relation": "contains",
@@ -109985,83 +110062,6 @@
       "confidence_score": 1.0,
       "source": "specs_plans_2026_08_04_httpfilecache_cors_token_auth_implementation",
       "target": "specs_plans_2026_08_04_httpfilecache_cors_token_auth_3_tests"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L179",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_access_used"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L151",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_artifacts_from_this_session"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L104",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_next_steps"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L9",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_problem"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L47",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_confirmed"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "specs/plans/2026-08-08-logevent-double-delivery-investigation.md",
-      "source_location": "L18",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "specs_plans_2026_08_08_logevent_double_delivery_investigation_investigation_pyobs_gui_receives_every_logevent_twice_saao_monet_production",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation_what_s_ruled_out"
     },
     {
       "relation": "contains",
@@ -346362,5 +346362,5 @@
       "source_file": "specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md"
     }
   ],
-  "built_at_commit": "1c740ac054f0a5459e3155cb1ee5ea955c392260"
+  "built_at_commit": "d62573a977237fd938286604184a1d0e868684f3"
 }

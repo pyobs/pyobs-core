@@ -82,17 +82,26 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
    install) shows three changes landed since:
    - A **new virtual host** `monet.saao.ac.za` was added (previously only
      `monti.monet.saao.ac.za` existed as a vhost on this ejabberd instance).
-   - `tls: false` → `tls: true` for c2s (user confirmed: "I enabled TLS").
+   - `tls: false` → `tls: true` for c2s.
    - Shaper `rate`/`burst_size`/`fast` limits raised ~10x (3000→30000 / 20000→200000 /
      200000→2000000).
 
+   **Correction (2026-08-15):** the operator (Tim) says he never flipped TLS or added the
+   `monet.saao.ac.za` vhost. So the 2026-08-04 config change was made by someone/something else —
+   a SAAO sysadmin (hostname migration?), an unattended package update, or similar. Who made it is
+   now an open question worth answering before assuming any of the three diffs is benign.
+
    None of these three, individually, is *proven* to cause the double-PEP-delivery — that's the
    open thread. The local docker repro (point above) used a single, TLS-off, single-vhost setup,
-   so it didn't test the "two vhosts on one ejabberd node" configuration at all. That's the most
+   so it didn't test the "two vhosts on one ejabberd node" configuration at all. That was the most
    likely remaining candidate: **the new `monet.saao.ac.za` vhost coexisting with
    `monti.monet.saao.ac.za` on the same ejabberd node may be causing PEP/roster logic to
    double-fire**, e.g. via shared roster group scoping, s2s/component routing between the two
    similarly-named hosts, or some interaction between `mod_shared_roster` and having two vhosts.
+
+   **De-prioritized (2026-08-15):** Tim's read is that these config changes most probably had
+   nothing to do with the duplication, so the two-vhost theory is treated as a red herring rather
+   than the lead. The true trigger remains unknown; see the dedupe decision in Next steps.
 
 5. **Mnesia state is large and not obviously pruned**: `ejabberdctl mnesia_info_ctl` on
    production shows `pubsub_item: 19751 records` across `pubsub_node: 99 records` — averaging

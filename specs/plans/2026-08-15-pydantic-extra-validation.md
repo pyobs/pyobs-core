@@ -28,6 +28,18 @@ Set `extra="forbid"` **globally** on `BaseModel` and `PolymorphicBaseModel`. Bre
 configs is accepted. A hard failure at load time is the point: a misspelled or misplaced key should
 never again silently produce a task that does the wrong thing.
 
+## Gap: the imaging config models are not covered by this change
+
+The bug this plan is named after is in `pyobs/robotic/scripts/imaging/imaging.py:7`, which imports
+`BaseModel` from pydantic directly, not from `pyobs.utils.serialization`. `AcquisitionConfig`,
+`GuidingConfig`, `InstrumentConfig`, and `Configuration` are therefore plain pydantic models with
+`extra="ignore"`, and the misplaced `guiding_config`/`acquisition_config` keys are still dropped
+after this plan lands. Verified at runtime: `InstrumentConfig` is not a `pyobs` `BaseModel` subclass
+and its `extra` is unset. These four models must get `extra="forbid"` too (directly, or by
+inheriting `pyobs.utils.serialization.BaseModel`), or the regression test in the checklist below
+cannot raise. `object.py:24` and `config_schema.py:10` also import pydantic `BaseModel`, but only
+for `issubclass` checks, so they are unaffected.
+
 ## What breaks, and how to fix each
 
 Empirically confirmed by flipping `extra="forbid"` on `BaseModel` and running the full test suite
@@ -71,24 +83,36 @@ it because the injected kwargs were being silently ignored. The class-2 fix (rou
 through `context`) fixes this too, but it is worth flagging separately as a currently-broken
 behavior that has been hidden by `extra="ignore"`.
 
-## Open questions
+## Resolved questions
 
-- Class 3: do we make `Task` polymorphic, or strip `class` in `YamlTaskArchive`/`get_object`? Which
-  model classes currently receive a `class` key in real configs?
-- Class 2: minimal change is to strip the four injected params before `klass(**cfg)` and pass them
-  via `context`. Confirm no `Object` subclass (non-pydantic) depends on receiving those four as
-  real kwargs from `create_object`.
+- Class 3: make `Task` a `PolymorphicBaseModel`. It does receive `class` in real configs:
+  `YamlTaskArchive` reads task YAMLs with `class: pyobs.robotic.Task` (see `test_task.py:38` and the
+  docs examples), but `test_yaml_archives.py`'s `TASK_YAML` has no `class`. The polymorphic validator
+  pops `class` when present and no-ops when absent, so it handles both. It also adds `class` to
+  `Task.model_dump()`, which round-trips through `YamlObservationArchive` because `Observation.task`
+  re-validates via `Task`'s polymorphic validator. `BackendTaskArchive` validates `Task` from backend
+  JSON; whether that carries `class` is a sibling-repo question, but the polymorphic validator is
+  harmless either way.
+- Class 2: `create_object` is only called from module-level `get_object` (`pyobs/object.py:101`),
+  always with no args/kwargs. The four framework params are injected by `Object.get_object` into the
+  config dict before `create_object` runs. Non-pydantic `Object` subclasses need them as real kwargs;
+  pydantic models must get them via `model_validate(context=...)` instead. Branch on
+  `issubclass(klass, pydantic.BaseModel)`.
 
 ## Implementation checklist
 
-- [ ] Set `extra="forbid"` on `pyobs.utils.serialization.BaseModel` (and confirm
-      `PolymorphicBaseModel` inherits it).
+- [ ] Set `extra="forbid"` on `pyobs.utils.serialization.BaseModel` (confirmed `PolymorphicBaseModel`
+      inherits it).
 - [ ] Add `extra="ignore"` (or declare the fields) on the LCO portal models in
       `pyobs/robotic/storage/lco/_portal.py`.
 - [ ] Fix `create_object`/`get_object` to inject `comm`/`timezone`/`vfs`/`observer` via pydantic
-      `context` for pydantic models, not as constructor kwargs.
-- [ ] Resolve the `class`-key question (class 3) for `Task`.
+      `context` for pydantic models, not as constructor kwargs (branch on `issubclass(klass,
+      pydantic.BaseModel)`).
+- [ ] Make `Task` a `PolymorphicBaseModel` (class 3).
+- [ ] Set `extra="forbid"` on the imaging config models (`AcquisitionConfig`, `GuidingConfig`,
+      `InstrumentConfig`, `Configuration` in `pyobs/robotic/scripts/imaging/imaging.py`) or switch
+      them to `pyobs.utils.serialization.BaseModel`.
 - [ ] Run the full test suite; confirm only the enumerated tests were fixed, no new failures.
 - [ ] Add a regression test: a task YAML with a misplaced key (the `guiding_config` inside
-      `instrument_configs` case) raises `ValidationError` at load.
+      `instrument_configs` case) raises `ValidationError` at load. Requires the imaging-models fix.
 - [ ] Update this doc's `Status:` to `implemented` once landed.

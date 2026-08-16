@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 from pyobs.robotic.scheduler.constraints import Constraint
 from pyobs.robotic.scheduler.merits import Merit
-from pyobs.utils.serialization import BaseModel
+from pyobs.utils.serialization import BaseModel, PolymorphicBaseModel
 
 
 @dataclass
@@ -34,7 +34,7 @@ class TaskData:
         return self.target if self.target is not None else self.task.target
 
 
-class Task(BaseModel):
+class Task(PolymorphicBaseModel):
     id: Any | None = None
     name: str = Field(default="")
     project: str = Field(default="")

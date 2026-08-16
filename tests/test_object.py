@@ -1,7 +1,9 @@
 from unittest.mock import AsyncMock
 
+import pytest
+
 import pyobs
-from pyobs.object import Object
+from pyobs.object import Object, create_object
 
 
 def test_add_background_task():
@@ -50,3 +52,13 @@ def test_stop_background_task(mocker):
     obj._stop_background_tasks()
 
     pyobs.background_task.BackgroundTask.stop.assert_called_once()
+
+
+def test_create_object_pydantic_rejects_positional_args():
+    with pytest.raises(TypeError, match="positional args"):
+        create_object({"class": "pyobs.robotic.task.Task"}, "unexpected_positional")
+
+
+def test_create_object_pydantic_rejects_kwarg_config_collision():
+    with pytest.raises(TypeError, match="name"):
+        create_object({"class": "pyobs.robotic.task.Task", "name": "from_config"}, name="from_kwarg")

@@ -9,7 +9,7 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 
 from pyobs.object import Object
-from pyobs.utils.serialization import PolymorphicBaseModel
+from pyobs.utils.serialization import PolymorphicBaseModel, resolve_polymorphic_type_shorthand
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
@@ -39,12 +39,7 @@ class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):
         if "type" in config:
             from . import __all__ as constraints
 
-            constraints_lower = [c.lower() for c in constraints]
-            try:
-                idx = constraints_lower.index(config["type"].lower() + "constraint")
-            except ValueError:
-                raise ValueError(f"Invalid constraint type: {config['type']}")
-            config["class"] = f"pyobs.robotic.scheduler.constraints.{constraints[idx]}"
+            resolve_polymorphic_type_shorthand(config, constraints, "pyobs.robotic.scheduler.constraints", "constraint")
         return obj.pyobs_model_validate(Constraint, config, by_alias=True)
 
     @staticmethod

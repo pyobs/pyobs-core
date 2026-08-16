@@ -183,6 +183,19 @@ def create_object(config: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
     cfg = copy.copy(config)
     del cfg["class"]
 
+    # pydantic models don't accept comm/timezone/vfs/observer as constructor kwargs (extra="forbid"
+    # rejects them); route them through pydantic's context instead
+    if issubclass(klass, BaseModel):
+        if args:
+            raise TypeError("create_object() does not support positional args for pydantic models")
+        overlap = set(cfg) & set(kwargs)
+        if overlap:
+            keys = ", ".join(sorted(overlap))
+            raise TypeError(f"create_object() got multiple values for keyword argument(s): {keys}")
+        cfg = {**cfg, **kwargs}
+        context = {p: cfg.pop(p, None) for p in ("comm", "timezone", "vfs", "observer")}
+        return klass.model_validate(cfg, context=context, by_alias=True)
+
     # create object
     return klass(*args, **cfg, **kwargs)
 

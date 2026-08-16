@@ -102,6 +102,9 @@ class LcoConfiguration(BaseModel):
     type: str
     state: str = "PENDING"
     configuration_status: int | None = None
+    instrument_name: str = ""
+    guide_camera_name: str = ""
+    summary: ConfigurationSummary = Field(default_factory=ConfigurationSummary)
 
 
 class LcoWindow(BaseModel):
@@ -137,6 +140,14 @@ class LcoObservation(BaseModel):
     priority: int
     state: str
     configuration_statuses: list[ConfigurationStatus] = []
+    created: AstroPydanticTime | None = None
+    modified: AstroPydanticTime | None = None
+    ipp_value: float | None = None
+    name: str | None = None
+    observation_type: str | None = None
+    proposal: str | None = None
+    request_group_id: int | None = None
+    submitter: str | None = None
 
 
 class LcoSchedulableRequest(BaseModel):
@@ -150,6 +161,8 @@ class LcoSchedulableRequest(BaseModel):
     operator: str
     proposal: str
     requests: list[LcoRequest]
+    state: str
+    submitter: str
 
 
 class Portal(Object):

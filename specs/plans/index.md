@@ -71,3 +71,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   Keycloak integration. **in progress** (Repos: pyobs-archive, pyobs-robotic-backend)
 - [2026-08-15-pydantic-extra-validation.md](2026-08-15-pydantic-extra-validation.md) — make the
   pydantic config layer reject unknown keys. **draft**
+- [2026-08-16-explicit-pubsub-event-subscriptions.md](2026-08-16-explicit-pubsub-event-subscriptions.md) —
+  real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from
+  presence. **proposed**

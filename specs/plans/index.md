@@ -46,6 +46,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   (Repos: pyobs-pipeline)
 - [2026-08-09-night-archive-io-hardening.md](2026-08-09-night-archive-io-hardening.md) — rename
   `Night` → `Reduction`, complete `LocalArchive` I/O. **implemented**
+- [2026-08-15-log-loaded-pyobs-package-versions.md](2026-08-15-log-loaded-pyobs-package-versions.md) —
+  log loaded pyobs-* package versions at module startup. **implemented**
 
 ## Not finished
 
@@ -67,7 +69,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   baseline tests + grouped Dependabot auto-merge for core-tier repos. **proposed**
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
   Keycloak integration. **in progress** (Repos: pyobs-archive, pyobs-robotic-backend)
-- [2026-08-15-log-loaded-pyobs-package-versions.md](2026-08-15-log-loaded-pyobs-package-versions.md) —
-  log loaded pyobs-* package versions at module startup. **draft**
 - [2026-08-15-pydantic-extra-validation.md](2026-08-15-pydantic-extra-validation.md) — make the
   pydantic config layer reject unknown keys. **draft**

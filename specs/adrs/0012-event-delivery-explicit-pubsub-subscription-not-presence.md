@@ -1,15 +1,17 @@
 # Event delivery moves from PEP presence auto-subscribe to explicit pubsub subscription
 
-status: proposed
+status: accepted
 date: 2026-08-16
 
 ## Context and Problem Statement
 
-The LogEvent double-delivery investigation (`specs/plans/2026-08-08-logevent-double-delivery-investigation.md`,
-`logevent-double-delivery-fix-discussion.md`) established that event delivery in `XmppComm`
-already rides entirely on XEP-0163 PEP presence auto-subscribe, via the server-provisioned
-shared roster (`srg_user_add @all@`). `add_interest()`'s `+notify` disco/caps declaration — the
-thing that looks like it expresses "I want this event type" — has no effect on delivery at all;
+The LogEvent double-delivery investigation
+(`specs/plans/2026-08-08-logevent-double-delivery-investigation.md`,
+`specs/plans/2026-08-16-logevent-double-delivery-fix-discussion.md`) established that event
+delivery in `XmppComm` already rides entirely on XEP-0163 PEP presence auto-subscribe, via the
+server-provisioned shared roster (`srg_user_add @all@`). `add_interest()`'s `+notify` disco/caps
+declaration — the thing that looks like it expresses "I want this event type" — has no effect on
+delivery at all;
 delivery is decided at the presence layer before caps is ever consulted. Dropping
 `add_interest()` (the near-term fix for the `ms` double-send bug) removes a duplicate wire
 message, but does not introduce any filtering, because none existed: every module already

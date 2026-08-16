@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pyobs.comm.xmpp.xmppcomm import XmppComm
-from pyobs.events import LogEvent
+from pyobs.events import LogEvent, ModuleClosedEvent, ModuleOpenedEvent
 from pyobs.interfaces import IModule
 from pyobs.utils.enums import ModuleState
 
@@ -211,5 +211,127 @@ async def test_unregister_stops_delivery(make_xmpp_comm, make_unopened_comm) -> 
         await asyncio.sleep(2.0)
 
         assert len(received) == 1, f"expected exactly 1 event (before unregister), got {len(received)}"
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_local_event_handler_never_subscribes(make_xmpp_comm, make_unopened_comm) -> None:
+    """Registering a handler for a local event (e.g. ModuleOpenedEvent/ModuleClosedEvent, which
+    every real Module does via module.py/comm.py) must not attempt to subscribe to a peer's
+    node. Local events are synthesized directly in _got_online/_jid_got_offline, never published
+    to pubsub -- subscribing would retry forever against a node that will never exist."""
+
+    async def _run():
+        camera_comm = make_unopened_comm("camera")
+        _named_module("camera", camera_comm)
+        camera_comm = await make_xmpp_comm("camera", comm=camera_comm)
+        await camera_comm.set_presence(ModuleState.READY)
+
+        async def handler(event, from_client) -> bool:
+            return True
+
+        await camera_comm.register_event(ModuleOpenedEvent, handler)
+
+        control_comm = make_unopened_comm("control")
+        _named_module("control", control_comm)
+        control_comm = await make_xmpp_comm("control", comm=control_comm)
+        await control_comm.set_presence(ModuleState.READY)
+
+        await wait_for_peer(camera_comm, "control")
+        await asyncio.sleep(1.0)
+
+        assert (
+            camera_comm._event_subscriptions == set()
+        ), f"camera attempted a pubsub subscribe for a local event: {camera_comm._event_subscriptions}"
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_module_opened_and_closed_events_still_fire(make_xmpp_comm, make_unopened_comm) -> None:
+    """Local events must be unaffected by moving regular events onto the shared pubsub service --
+    they never touched pubsub either way."""
+
+    async def _run():
+        camera_comm = make_unopened_comm("camera")
+        _named_module("camera", camera_comm)
+        camera_comm = await make_xmpp_comm("camera", comm=camera_comm)
+        await camera_comm.set_presence(ModuleState.READY)
+
+        opened: list = []
+        closed: list = []
+
+        async def opened_handler(event, from_client) -> bool:
+            opened.append(from_client)
+            return True
+
+        async def closed_handler(event, from_client) -> bool:
+            closed.append(from_client)
+            return True
+
+        await camera_comm.register_event(ModuleOpenedEvent, opened_handler)
+        await camera_comm.register_event(ModuleClosedEvent, closed_handler)
+
+        control_comm = make_unopened_comm("control")
+        _named_module("control", control_comm)
+        control_comm = await make_xmpp_comm("control", comm=control_comm)
+        await control_comm.set_presence(ModuleState.READY)
+
+        assert await wait_for(lambda: "control" in opened), "ModuleOpenedEvent did not fire for control"
+
+        await control_comm.close()
+
+        assert await wait_for(lambda: "control" in closed), "ModuleClosedEvent did not fire for control"
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_restart_resubscribes_to_already_online_peer(make_xmpp_comm, make_unopened_comm) -> None:
+    """After a subscriber restarts (new session, same bare JID), it must resume receiving events
+    from a peer that stayed online throughout, with no special handling needed -- the new
+    session's own _got_online firing for each already-online peer covers it."""
+
+    async def _run():
+        control_comm = make_unopened_comm("control")
+        _named_module("control", control_comm)
+        control_comm = await make_xmpp_comm("control", comm=control_comm)
+        await control_comm.set_presence(ModuleState.READY)
+
+        camera_comm = make_unopened_comm("camera")
+        _named_module("camera", camera_comm)
+        camera_comm = await make_xmpp_comm("camera", comm=camera_comm)
+        await camera_comm.set_presence(ModuleState.READY)
+
+        await wait_for_peer(camera_comm, "control")
+
+        async def handler(event, from_client) -> bool:
+            pass
+
+        await camera_comm.register_event(LogEvent, handler)
+        await asyncio.sleep(1.0)
+
+        # restart: close the first session, open a fresh one under the same JID
+        await camera_comm.close()
+        await asyncio.sleep(0.5)
+
+        camera_comm2 = make_unopened_comm("camera")
+        _named_module("camera", camera_comm2)
+        camera_comm2 = await make_xmpp_comm("camera", comm=camera_comm2)
+        await camera_comm2.set_presence(ModuleState.READY)
+
+        received2: list = []
+
+        async def handler2(event, from_client) -> bool:
+            received2.append((event, from_client))
+            return True
+
+        await camera_comm2.register_event(LogEvent, handler2)
+
+        await wait_for_peer(camera_comm2, "control")
+        await asyncio.sleep(1.0)
+
+        await control_comm.send_event(_log_event("after restart"))
+
+        ok = await wait_for(lambda: len(received2) >= 1)
+        assert ok, "camera did not receive LogEvent after restarting with a fresh session"
 
     await asyncio.wait_for(_run(), timeout=60)

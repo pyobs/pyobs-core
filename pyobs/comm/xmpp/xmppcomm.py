@@ -672,8 +672,16 @@ class XmppComm(Comm):
 
         # subscribe to this peer's event nodes for every event type we currently handle -- a
         # handler registered before this peer came online never got a chance to subscribe to it
-        # from _register_events, since it wasn't in self._online_clients yet
-        for ev in self._event_handlers:
+        # from _register_events, since it wasn't in self._online_clients yet.
+        # Skip local events (e.g. ModuleOpenedEvent/ModuleClosedEvent, registered by every
+        # module via module.py/comm.py) -- they're synthesized locally here and in
+        # _jid_got_offline, never published to a node, so subscribing would retry forever
+        # against something that will never exist. Also skip event classes whose last handler
+        # was already removed -- unregister_event() discards from _events_subscribed but leaves
+        # an empty list in _event_handlers.
+        for ev, handlers in self._event_handlers.items():
+            if ev.local or not handlers:
+                continue
             asyncio.create_task(self._subscribe_event_with_retry(module_name, ev))
 
         # send event
@@ -790,8 +798,11 @@ class XmppComm(Comm):
 
         # publish to the shared pubsub service, same mechanism as state (see _set_state) --
         # the node id encodes the publishing module, since notifications from this service
-        # arrive "from" the service itself, not from us (see _event_node/_handle_event)
-        node = self._event_node(self._module.name, event.__class__)  # type: ignore[union-attr]
+        # arrive "from" the service itself, not from us (see _event_node/_handle_event).
+        # A module-less XmppComm (GUI, admin tool, observer) has no self._module -- fall back to
+        # the JID's own username, same identity peers would derive from our JID anyway.
+        publisher = self._module.name if self._module is not None else self.client.boundjid.user
+        node = self._event_node(publisher, event.__class__)
         await self._safe_send(
             self.client.plugin["xep_0060"].publish,
             self._pubsub_service,
@@ -836,9 +847,14 @@ class XmppComm(Comm):
         self.client.send_presence()
 
     async def _unregister_events(self, events: list[type[Event]]) -> None:
+        # unsubscribe goes to self._pubsub_service, not to the peer -- it doesn't depend on the
+        # peer being online, so this has to cover every (peer, ev) we're actually subscribed to,
+        # not just currently-online ones (a peer offline at unregister time would otherwise keep
+        # its server-side subscription, and we'd go on receiving that event's wire message)
         for ev in events:
-            for peer_jid in list(self._online_clients):
-                peer_module = peer_jid[: peer_jid.index("@")]
+            for peer_module, key_ev in list(self._event_subscriptions):
+                if key_ev is not ev:
+                    continue
                 self._event_subscriptions.discard((peer_module, ev))
                 node = self._event_node(peer_module, ev)
                 try:

@@ -8,7 +8,7 @@ integration suite (34/34 passing) — confirms no ejabberd config change is need
 with no registered handler never receives the wire message at all, not just "receives and drops."
 
 Decision record: `specs/adrs/0012-event-delivery-explicit-pubsub-subscription-not-presence.md`.
-Background: `logevent-double-delivery-fix-discussion.md`,
+Background: `specs/plans/2026-08-16-logevent-double-delivery-fix-discussion.md`,
 `specs/plans/2026-08-08-logevent-double-delivery-investigation.md`.
 
 ## Problem

@@ -190,6 +190,7 @@ class XmppComm(Comm):
         self._online_clients: list[str] = []
         self._interface_cache: dict[str, asyncio.Future[list[type[Interface]]]] = {}
         self._interface_features: dict[str, list[str]] = {}
+        self._peer_sent_events: dict[str, set[tuple[str, int]]] = {}
         self._warned_version_mismatches: set[tuple[str, str]] = set()
         self._user = user
         self._password = password
@@ -505,6 +506,14 @@ class XmppComm(Comm):
         # cache raw features for this JID, so a later version-mismatch can be diagnosed
         self._interface_features[jid] = features
 
+        # cache which event types this peer actually publishes (role="send" in the rich <event>
+        # schema elements from _get_disco_info) -- distinct from the plain urn:pyobs:event:
+        # feature list above, which covers subscribe-only registrations too and can't tell a
+        # publisher apart from a mere consumer. Used to gate event-node subscriptions so we don't
+        # retry forever against peers that will never publish to that node (see _got_online,
+        # _register_events).
+        self._peer_sent_events[jid] = self._parse_peer_sent_events(info)
+
         # keep only names whose remote-published version matches what this client expects --
         # a mismatch is treated the same as the interface not being there at all, rather than
         # silently using the local (possibly incompatible) class
@@ -526,6 +535,36 @@ class XmppComm(Comm):
 
         # finished
         return interface_names
+
+    @staticmethod
+    def _parse_peer_sent_events(info: Any) -> set[tuple[str, int]]:
+        """Extract (event class name, version) pairs a peer's disco#info marks role="send" for.
+
+        Reads the rich <{urn:pyobs:event:name:version}event role="..."> elements _get_disco_info
+        appends (see _event_role), not the plain urn:pyobs:event: feature list -- that list only
+        says the peer registered the event at all, sent or subscribe-only, and can't tell a
+        publisher apart from a mere consumer.
+        """
+        sent: set[tuple[str, int]] = set()
+        xml = getattr(info, "xml", None)
+        if xml is None:
+            return sent
+        ns_prefix = "urn:pyobs:event:"
+        for elem in xml:
+            tag = elem.tag
+            if not tag.startswith("{") or "}" not in tag:
+                continue
+            ns, _, local = tag[1:].partition("}")
+            if local != "event" or not ns.startswith(ns_prefix):
+                continue
+            if "send" not in elem.get("role", "").split():
+                continue
+            name = elem.get("name")
+            _, _, version_str = ns[len(ns_prefix) :].rpartition(":")
+            if not name or not version_str.isdigit():
+                continue
+            sent.add((name, int(version_str)))
+        return sent
 
     def _diagnose_missing_interface(self, client: str, obj_type: type[Any]) -> str | None:
         """Checks the disco#info features already cached for client for a version of obj_type
@@ -678,9 +717,16 @@ class XmppComm(Comm):
         # _jid_got_offline, never published to a node, so subscribing would retry forever
         # against something that will never exist. Also skip event classes whose last handler
         # was already removed -- unregister_event() discards from _events_subscribed but leaves
-        # an empty list in _event_handlers.
+        # an empty list in _event_handlers. Also skip event types this peer doesn't actually
+        # publish (per its disco#info role="send" list, cached above by _get_interfaces) --
+        # otherwise every module subscribes to every peer for every event type it handles, e.g. a
+        # camera's BadWeatherEvent handler retry-subscribing to admin:BadWeatherEvent forever,
+        # since that node will never be created.
+        peer_sent_events = self._peer_sent_events.get(jid, set())
         for ev, handlers in self._event_handlers.items():
             if ev.local or not handlers:
+                continue
+            if (ev.__name__, ev.version) not in peer_sent_events:
                 continue
             asyncio.create_task(self._subscribe_event_with_retry(module_name, ev))
 
@@ -834,11 +880,14 @@ class XmppComm(Comm):
             # e.g. pyobs-web-client to distinguish producers from consumers, see _event_role)
             self.client.plugin["xep_0030"].add_feature(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
 
-            # if we have a handler, subscribe to this event's node on every peer already online.
-            # A peer coming online later is covered by _got_online subscribing to every event
-            # currently in self._event_handlers.
+            # if we have a handler, subscribe to this event's node on every peer already online
+            # that actually publishes it (see _got_online for why this is gated). A peer coming
+            # online later is covered by _got_online subscribing to every event currently in
+            # self._event_handlers.
             if handler:
                 for peer_jid in list(self._online_clients):
+                    if (ev.__name__, ev.version) not in self._peer_sent_events.get(peer_jid, set()):
+                        continue
                     peer_module = peer_jid[: peer_jid.index("@")]
                     asyncio.create_task(self._subscribe_event_with_retry(peer_module, ev))
 

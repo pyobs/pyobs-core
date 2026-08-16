@@ -66,7 +66,7 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-11-camera-driver-gui-split.md](2026-08-11-camera-driver-gui-split.md) — driver/GUI split
   for all camera modules. **proposed** (Repos: qhyccd, fli, tis, asi, aravis, sbig, flipro, v4l)
 - [2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md](2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md) —
-  baseline tests + grouped Dependabot auto-merge for core-tier repos. **proposed**
+  baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented**
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
   Keycloak integration. **in progress** (Repos: pyobs-archive, pyobs-robotic-backend)
 - [2026-08-15-pydantic-extra-validation.md](2026-08-15-pydantic-extra-validation.md) — make the

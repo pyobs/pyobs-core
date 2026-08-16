@@ -16,6 +16,7 @@ from pyobs.modules import Module, MultiModule
 from pyobs.object import get_class_from_string, get_object
 from pyobs.utils.config import pre_process_yaml
 from pyobs.utils.logging.context import ModuleNameFilter
+from pyobs.utils.versions import loaded_pyobs_packages
 
 # just init logger with something here, will be overwritten in __init__
 log = logging.getLogger(__name__)
@@ -375,6 +376,13 @@ class Application:
 
             # open module
             log.info("Opening module...")
+
+            # record the loaded pyobs package versions for comm-less consumers (e.g. web-admin
+            # reading the log/journal); both construction paths have finished importing everything
+            # by this point
+            packages = loaded_pyobs_packages()
+            log.info("Loaded pyobs packages: %s", ", ".join(f"{k}={v}" for k, v in packages.items()))
+
             await self._module.startup()
             log.info("Started successfully.")
 

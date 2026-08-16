@@ -4,7 +4,7 @@ import inspect
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 
-from pyobs.utils.serialization import PolymorphicBaseModel
+from pyobs.utils.serialization import PolymorphicBaseModel, resolve_polymorphic_type_shorthand
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
@@ -27,25 +27,16 @@ class Merit(PolymorphicBaseModel, metaclass=ABCMeta):
     def create(config: Merit | dict[str, Any]) -> Merit:
         if isinstance(config, Merit):
             return config
-        elif "type" in config:
-            from . import __all__ as constraints
+        if "type" in config:
+            from . import __all__ as merits
 
-            constraints_lower = [c.lower() for c in constraints]
-            try:
-                idx = constraints_lower.index(config["type"].lower() + "merit")
-            except ValueError:
-                raise ValueError(f"Invalid merit type: {config['type']}")
+            resolve_polymorphic_type_shorthand(config, merits, "pyobs.robotic.scheduler.merits", "merit")
 
-            config["class"] = f"pyobs.robotic.scheduler.merits.{constraints[idx]}"
-            del config["type"]
-
-            obj = Merit.model_validate(config, by_alias=True)
-            if isinstance(obj, Merit):
-                return obj
-            else:
-                raise ValueError(f"Invalid merit config: {config}")
+        obj = Merit.model_validate(config, by_alias=True)
+        if isinstance(obj, Merit):
+            return obj
         else:
-            return Merit.model_validate(config, by_alias=True)
+            raise ValueError(f"Invalid merit config: {config}")
 
     @staticmethod
     def list() -> list[str]:

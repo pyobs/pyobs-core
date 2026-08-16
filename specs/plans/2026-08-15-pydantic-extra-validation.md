@@ -164,12 +164,35 @@ behavior that has been hidden by `extra="ignore"`.
 - **Fixed (minor):** removed `Merit.create`'s dead "dotted `type`" branch — it never set `class` in
   the first place, so it was already broken before this PR; conditionally deleting `type` only
   inside that branch would have left it half-fixed.
-- **Open, needs the user (not verifiable from the client side):** whether the new required
-  (no-default) fields on `LcoObservation`/`LcoSchedulableRequest` are actually always present on
-  every real portal response (e.g. a not-yet-run observation without `ipp_value`). Types were
-  inferred from `tests/robotic/storage/lco/conftest.py` fixtures only, as already flagged above.
-  Needs a check against the live self-hosted portal, or defaulting the less-certain fields, before
-  merge.
+- **Fixed — the required-fields concern was real, and worse than "might be missing sometimes":**
+  checked against the actual portal source (`/home/husser/astro/monet/observation-portal`, LCO's
+  Django app, our self-hosted deployment). `LcoSchedulableRequest`'s `state`/`submitter` are fine as
+  required — `requestgroup_as_dict()` (`requestgroups/models.py:29-36`) always sets them
+  unconditionally, and `RequestGroup.name`/`observation_type`/`operator`/`ipp_value`/`state` are all
+  non-nullable Django model fields, confirmed by reading the model definition
+  (`requestgroups/models.py:115-190`).
+
+  `LcoObservation`'s 8 new fields (`created`, `modified`, `ipp_value`, `name`, `observation_type`,
+  `proposal`, `request_group_id`, `submitter`) were wrong as required: **`Portal.observations()` and
+  `Portal.download_schedule()` hit two different endpoints with two different response shapes**, and
+  only one of them sends these fields.
+  - `download_schedule()` calls `GET /api/observations/`, routed through `ListAsDictMixin.list()`
+    (`common/mixins.py:8-13`), which calls `model.as_dict()` with no arguments →
+    `Observation.as_dict(no_request=False)` (default) → `observation_as_dict()`
+    (`observations/models.py:17-31`) sets all 8 fields unconditionally in the `no_request=False`
+    branch. This is the shape `tests/robotic/storage/lco/conftest.py`'s `OBSERVATIONS_RESPONSE`
+    fixture models, which is why the fields looked required from the fixtures alone.
+  - `observations()` (called from `ObservationArchive.observations`,
+    `observationarchive.py:179`) calls `GET /api/requests/{id}/observations/`, a custom action
+    (`requestgroups/viewsets.py:311-315`) that explicitly calls `o.as_dict(no_request=True)` — the
+    `no_request=True` branch in `observation_as_dict()` skips all 8 fields entirely, and `request`
+    stays a plain FK id instead of being expanded into a nested object. Confirmed pyobs's own
+    consumer (`observationarchive.py:179-193`) never reads those 8 fields anyway (only
+    `id`/`start`/`end`/`state`) — they were dead weight for that path even before extra="forbid".
+
+  Fixed by making all 8 fields `X | None = None` on `LcoObservation`. `request: int | LcoRequest`
+  was already correct — it already tolerates both the bare-FK-id shape (`no_request=True`) and the
+  expanded-object shape (`no_request=False`).
 - Rebased onto `origin/develop`'s actual tip (previously the PR's recorded base was two commits
   stale, making the diff look like 14 files/3 commits instead of the true 12 files/2 commits).
 - [x] Add a regression test: a task YAML with a misplaced key (the `guiding_config` inside

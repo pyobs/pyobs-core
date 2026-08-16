@@ -140,14 +140,14 @@ class LcoObservation(BaseModel):
     priority: int
     state: str
     configuration_statuses: list[ConfigurationStatus] = []
-    created: AstroPydanticTime
-    modified: AstroPydanticTime
-    ipp_value: float
-    name: str
-    observation_type: str
-    proposal: str
-    request_group_id: int
-    submitter: str
+    created: AstroPydanticTime | None = None
+    modified: AstroPydanticTime | None = None
+    ipp_value: float | None = None
+    name: str | None = None
+    observation_type: str | None = None
+    proposal: str | None = None
+    request_group_id: int | None = None
+    submitter: str | None = None
 
 
 class LcoSchedulableRequest(BaseModel):

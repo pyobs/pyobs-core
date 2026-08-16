@@ -4378,5 +4378,10 @@
     "mtime": 1786787596.643933,
     "ast_hash": "cb26ddb6ed7bf75b8e60361c50546fe9",
     "semantic_hash": ""
+  },
+  "specs/plans/2026-08-15-log-loaded-pyobs-package-versions.md": {
+    "mtime": 1786819336.0944858,
+    "ast_hash": "b2950dde122b0e47f39506104329664e",
+    "semantic_hash": ""
   }
 }

@@ -25,8 +25,8 @@
     "semantic_hash": "332d1b275af3b1e81c2c2d397ef1126d"
   },
   "pyobs/application.py": {
-    "mtime": 1786870753.8034463,
-    "ast_hash": "7b5c15311a72bb86ac988f88ac3c77d0",
+    "mtime": 1786871936.742259,
+    "ast_hash": "256a62b0e0b3b842b887378a9a41a254",
     "semantic_hash": ""
   },
   "pyobs/background_task.py": {
@@ -1000,9 +1000,9 @@
     "semantic_hash": "687e193fb89e270690e5f27b82d4f11a"
   },
   "pyobs/mixins/weatheraware.py": {
-    "mtime": 1785163712.0644345,
-    "ast_hash": "a0c27e6a40a2d94f9932edb86cf45ac9",
-    "semantic_hash": "a0c27e6a40a2d94f9932edb86cf45ac9"
+    "mtime": 1786878803.4706135,
+    "ast_hash": "3bf74ff07bb14995ab4a71241ff57758",
+    "semantic_hash": ""
   },
   "pyobs/modules/__init__.py": {
     "mtime": 1782030067.175109,
@@ -2115,7 +2115,7 @@
     "semantic_hash": "69450519f310fcb6bc13a29c8bce5f9f"
   },
   "pyobs/utils/serialization.py": {
-    "mtime": 1786785851.9934237,
+    "mtime": 1786871418.066319,
     "ast_hash": "45ef78b103bb45c71f86e353b984b182",
     "semantic_hash": "45ef78b103bb45c71f86e353b984b182"
   },
@@ -2760,9 +2760,9 @@
     "semantic_hash": "9567882271a4e6b683ed3cc4782000f3"
   },
   "tests/mixins/test_weatheraware.py": {
-    "mtime": 1785163712.074314,
-    "ast_hash": "a2333960f0b8de83f496a9e5b9d04eaf",
-    "semantic_hash": "a2333960f0b8de83f496a9e5b9d04eaf"
+    "mtime": 1786878787.547589,
+    "ast_hash": "9d68e08e75f2bf71c783ec384a471591",
+    "semantic_hash": ""
   },
   "tests/modules/__init__.py": {
     "mtime": 1772898126.5216818,
@@ -4115,8 +4115,8 @@
     "semantic_hash": ""
   },
   ".claude/settings.local.json": {
-    "mtime": 1783022979.6827137,
-    "ast_hash": "115aa741ef212ceb88d40b0af77c2c01",
+    "mtime": 1786876179.5519993,
+    "ast_hash": "341148929f923806134fd86322720a07",
     "semantic_hash": ""
   },
   "pyobs/utils/pipeline/progress.py": {
@@ -4265,8 +4265,8 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-08-logevent-double-delivery-investigation.md": {
-    "mtime": 1786806641.2805529,
-    "ast_hash": "6b2d0b1cdd0d55f6052cb77b22a60c14",
+    "mtime": 1786878940.5994785,
+    "ast_hash": "24483b45fc8a2884fd6bd7090795e183",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-08-pyobs-pipeline.md": {
@@ -4375,12 +4375,12 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-15-pydantic-extra-validation.md": {
-    "mtime": 1786787596.643933,
-    "ast_hash": "cb26ddb6ed7bf75b8e60361c50546fe9",
+    "mtime": 1786871618.855046,
+    "ast_hash": "435a1c0e794e578ab284da56458df052",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-15-log-loaded-pyobs-package-versions.md": {
-    "mtime": 1786870810.7972012,
+    "mtime": 1786871936.743259,
     "ast_hash": "9921e088f34acf648560ba5e9aaab54d",
     "semantic_hash": ""
   },
@@ -4395,7 +4395,7 @@
     "semantic_hash": ""
   },
   "specs/plans/index.md": {
-    "mtime": 1786870832.2894857,
+    "mtime": 1786871936.743259,
     "ast_hash": "f85a3eaecec60f65d9be36c73631fb51",
     "semantic_hash": ""
   },
@@ -4405,12 +4405,12 @@
     "semantic_hash": ""
   },
   "pyobs/utils/versions.py": {
-    "mtime": 1786870778.8297777,
-    "ast_hash": "d420834582fbd1376c88594535759fe6",
+    "mtime": 1786871936.742259,
+    "ast_hash": "c1b64a39722cff4ef4d275797ce93417",
     "semantic_hash": ""
   },
   "tests/utils/test_versions.py": {
-    "mtime": 1786870763.0105681,
+    "mtime": 1786871936.743259,
     "ast_hash": "8dcbd57331acef46e51f64cf2876471e",
     "semantic_hash": ""
   }

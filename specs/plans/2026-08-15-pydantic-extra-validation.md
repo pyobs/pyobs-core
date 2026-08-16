@@ -112,6 +112,22 @@ behavior that has been hidden by `extra="ignore"`.
   re-validates via `Task`'s polymorphic validator. `BackendTaskArchive` validates `Task` from backend
   JSON; whether that carries `class` is a sibling-repo question, but the polymorphic validator is
   harmless either way.
+  - **Sibling-repo question closed** (checked against `pyobs-robotic-backend` source directly):
+    `Observation.model_dump(use_task_id=True)` only embeds the full `Task` (now including `class`)
+    when `task.id is None`; `BackendObservationArchive.add_observations`/`update_observation`
+    (`pyobs/robotic/storage/backend/observationarchive.py:110,189`) are the only callers with
+    `use_task_id=True`. In the actual runtime path, tasks always come from
+    `BackendTaskArchive.get_schedulable_tasks()`, which loads them from `GET /api/tasks/` — always
+    already carrying a server-assigned `id`. So `task.id is None` never occurs when
+    `BackendObservationArchive` is paired with `BackendTaskArchive`. A hypothetical mixed config
+    (e.g. `YamlTaskArchive`, whose tasks default to `id: None` unless the YAML sets one, paired with
+    `BackendObservationArchive`) was already non-functional before this PR regardless of `class`:
+    `pyobs-robotic-backend`'s `ObservationSerializer.task` is a plain Django `ForeignKey` with no
+    custom field override, so DRF auto-generates a `PrimaryKeyRelatedField` that rejects a nested
+    dict outright (`"Incorrect type. Expected pk value, received dict."`). And even where a task
+    dict does legitimately reach the backend (`POST /api/tasks/`), `TaskSerializer.to_internal_value`
+    already defensively strips a top-level `class` key (`if "class" in data: del data["class"]`).
+    No behavior change in any reachable path.
 - Class 2: `create_object` is only called from module-level `get_object` (`pyobs/object.py:101`),
   always with no args/kwargs. The four framework params are injected by `Object.get_object` into the
   config dict before `create_object` runs. Non-pydantic `Object` subclasses need them as real kwargs;

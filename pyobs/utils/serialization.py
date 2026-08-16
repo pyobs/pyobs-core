@@ -61,7 +61,7 @@ class PolymorphicBaseModel(BaseModel, metaclass=ABCMeta):  # type: ignore[misc]
             sub_cls_name = modified_value.pop("class", None)
             if sub_cls_name is not None:
                 klass = get_class_from_string(sub_cls_name)
-                return klass.model_validate(modified_value, context=info.context)
+                return klass.model_validate(modified_value, context=info.context, by_alias=True)
         return handler(value)
 
 

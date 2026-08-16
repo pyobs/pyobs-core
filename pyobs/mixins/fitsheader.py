@@ -31,6 +31,7 @@ class FitsHeaderMixin:
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits",
         frame_number: bool = True,
         night_obs: bool = True,
+        fits_header_timeout: float = 15.0,
         **kwargs: Any,
     ):
         """Initialise the mixin.
@@ -41,6 +42,9 @@ class FitsHeaderMixin:
             filename: Filename pattern for FITS images.
             frame_number: Whether to add frame number to FITS file header.
             night_obs: If True, DAY-OBS will contain the night of observation, not the calendar day.
+            fits_header_timeout: Maximum seconds to wait for a peer's FITS headers before skipping
+                them. A peer that never answers (e.g. a laptop put to sleep without closing its
+                client) would otherwise stall the frame for the full XMPP IQ timeout.
         """
         module = cast(Module, self)
 
@@ -48,6 +52,7 @@ class FitsHeaderMixin:
         self._fitsheadermixin_fits_namespaces = fits_namespaces
         self._fitsheadermixin_filename_pattern = filenames
         self._fitsheadermixin_fits_headers = fits_headers if fits_headers is not None else {}
+        self._fitsheadermixin_header_timeout = fits_header_timeout
         if "OBSERVER" not in self._fitsheadermixin_fits_headers:
             self._fitsheadermixin_fits_headers["OBSERVER"] = ["pyobs", "Name of observer"]
         self._fitsheadermixin_night_obs = night_obs
@@ -98,12 +103,28 @@ class FitsHeaderMixin:
             futures: Futures to get headers from.
         """
 
+        # Bound the whole collection to a single deadline: a peer that never answers its
+        # IQ (e.g. a laptop put to sleep without closing its client) would otherwise stall
+        # the frame for the full XMPP IQ timeout (~120s) per dead peer. Give up on anything
+        # still pending and proceed without its headers.
+        pending: set[Task[Any]] = set()
+        if futures:
+            _, pending = await asyncio.wait(futures.values(), timeout=self._fitsheadermixin_header_timeout)
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+
         # get fits headers from other clients
         for client, future in futures.items():
             # join thread
             log.info("Fetching FITS headers from %s...", client)
+            if future in pending:
+                log.warning("Could not fetch FITS headers from %s: timed out.", client)
+                continue
+
             try:
-                headers = await future
+                headers = future.result()
             except exc.RemoteError as e:
                 log.warning("Could not fetch FITS headers from %s: %s.", client, str(e))
                 continue

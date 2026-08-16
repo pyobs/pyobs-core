@@ -183,6 +183,13 @@ def create_object(config: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
     cfg = copy.copy(config)
     del cfg["class"]
 
+    # pydantic models don't accept comm/timezone/vfs/observer as constructor kwargs (extra="forbid"
+    # rejects them); route them through pydantic's context instead
+    if issubclass(klass, BaseModel):
+        cfg = {**cfg, **kwargs}
+        context = {p: cfg.pop(p, None) for p in ("comm", "timezone", "vfs", "observer")}
+        return klass.model_validate(cfg, context=context)
+
     # create object
     return klass(*args, **cfg, **kwargs)
 

@@ -38,6 +38,7 @@ class Merit(PolymorphicBaseModel, metaclass=ABCMeta):
                     raise ValueError(f"Invalid merit type: {config['type']}")
 
                 config["class"] = f"pyobs.robotic.scheduler.merits.{constraints[idx]}"
+                del config["type"]
 
             obj = Merit.model_validate(config, by_alias=True)
             if isinstance(obj, Merit):

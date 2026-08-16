@@ -25,7 +25,7 @@ class BaseModel(PydanticBaseModel, PrivateAttrMixin):
     _observer: Observer | None = PrivateAttr(default=None)
     _comm: Comm | None = PrivateAttr(default=None)
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     @model_validator(mode="after")
     def _inject_context_into_children(self, info: ValidationInfo) -> Self:

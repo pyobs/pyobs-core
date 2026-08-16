@@ -130,6 +130,36 @@ def test_from_ccddata_non_values(mock_image):
     assert_equal_image_params(image, mock_image)
 
 
+def test_from_ndarray_builds_header_and_preserves_dtype():
+    data = np.arange(6, dtype="<u2").reshape(2, 3)
+    meta = {
+        "NAXIS1": 3,
+        "NAXIS2": 2,
+        "DTYPE": "<u2",
+        "DATE-OBS": "2026-08-11T22:04:11.123456",
+        "IMAGETYP": "object",
+    }
+
+    image = Image.from_ndarray(data, meta)
+
+    np.testing.assert_array_equal(image.data, data)
+    assert image.data.dtype == np.dtype("<u2")
+    assert image.header["DATE-OBS"] == "2026-08-11T22:04:11.123456"
+    assert image.header["IMAGETYP"] == "object"
+    assert image.header["NAXIS1"] == 3
+    assert image.header["NAXIS2"] == 2
+
+
+def test_from_ndarray_skips_dtype_key():
+    data = np.zeros((2, 2), dtype=np.float32)
+    meta = {"DTYPE": "<f4", "DATE-OBS": "2026-01-01T00:00:00"}
+
+    image = Image.from_ndarray(data, meta)
+
+    assert "DTYPE" not in image.header
+    assert image.header["DATE-OBS"] == "2026-01-01T00:00:00"
+
+
 def test__from_hdu_list_no_hdu():
     hdu = fits.PrimaryHDU(None)
     img_hdu = fits.ImageHDU(None)

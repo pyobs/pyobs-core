@@ -114,8 +114,13 @@ class FitsHeaderMixin:
                 for key, entry in headers.items():
                     image.header[key] = (entry.value, entry.comment)
 
-    async def add_fits_headers(self, image: Image | fits.PrimaryHDU) -> None:
-        """Add requested FITS headers to header of given image.
+    def add_local_fits_headers(self, image: Image | fits.PrimaryHDU) -> None:
+        """Add the cheap, local FITS headers to the given image (no I/O, no comm).
+
+        This is the always-on half of add_fits_headers(): the configured static
+        fits_headers dict plus the computed fields from _fitsheadermixin_add_fits_headers().
+        The frame-sequence-number step is deliberately kept out (it does a VFS read+write
+        per call), so video-rate callers can reuse this without hitting the VFS on every frame.
 
         Args:
             image: Image with header to add to.
@@ -130,6 +135,18 @@ class FitsHeaderMixin:
 
         # add more fits headers
         self._fitsheadermixin_add_fits_headers(image)
+
+    async def add_fits_headers(self, image: Image | fits.PrimaryHDU) -> None:
+        """Add requested FITS headers to header of given image.
+
+        Args:
+            image: Image with header to add to.
+        """
+
+        # cheap, local half
+        self.add_local_fits_headers(image)
+
+        # persistent nightly frame-sequence number (VFS I/O -- not per-frame safe)
         if self._fitsheadermixin_enable_frame_number:
             await self._fitsheadermixin_add_framenum(image)
 
@@ -281,6 +298,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
         self._fitsheadermixin_warned_cdelt = False
         self._fitsheadermixin_warned_crpix = False
         self._fitsheadermixin_warned_cd_matrix = False
+        self._fitsheadermixin_warned_centre = False
 
     @property
     def rotation(self) -> float | None:
@@ -335,8 +353,9 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
         if self._fitsheadermixin_centre is not None:
             hdr["DET-CPX1"] = (self._fitsheadermixin_centre[0], "x-pixel on mechanical axis in unbinned image")
             hdr["DET-CPX2"] = (self._fitsheadermixin_centre[1], "y-pixel on mechanical axis in unbinned image")
-        else:
+        elif not self._fitsheadermixin_warned_centre:
             log.warning("Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).")
+            self._fitsheadermixin_warned_centre = True
 
         # reference pixel in binned image
         if "DET-CPX1" in hdr and "DET-BIN1" in hdr and "DET-CPX2" in hdr and "DET-BIN2" in hdr:

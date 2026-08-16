@@ -203,6 +203,24 @@ async def test_add_fits_headers_skips_frame_number_when_disabled() -> None:
     assert "FRAMENUM" not in image.header
 
 
+def test_add_local_fits_headers_sets_headers_without_vfs_io() -> None:
+    m = make_module(frame_number=True)
+    m._vfs = MagicMock()
+    m._vfs.read_yaml = AsyncMock()
+    m._vfs.write_yaml = AsyncMock()
+    image = make_image(**{"DATE-OBS": "2024-01-01T03:00:00.000"})
+
+    m.add_local_fits_headers(image)
+
+    assert image.header["EXTNAME"] == "SCI"
+    assert image.header["OBSERVER"] == "pyobs"
+    assert image.header["MJD-OBS"] == pytest.approx(60310.125)
+    assert "FRAMENUM" not in image.header
+    # the whole point of the split: no VFS I/O on the local half
+    m._vfs.read_yaml.assert_not_called()
+    m._vfs.write_yaml.assert_not_called()
+
+
 # ── _fitsheadermixin_add_fits_headers (base) ────────────────────────────────
 
 

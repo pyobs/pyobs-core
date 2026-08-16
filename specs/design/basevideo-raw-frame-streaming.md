@@ -1,6 +1,6 @@
 # `BaseVideo`: raw-frame streaming endpoint, alongside the existing MJPEG live view
 
-Status: proposed
+Status: implemented
 
 ## Problem
 

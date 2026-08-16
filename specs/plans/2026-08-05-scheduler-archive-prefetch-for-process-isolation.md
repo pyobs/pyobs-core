@@ -1,8 +1,9 @@
 # Plan: Split archive prefetch from CPU-bound merit evaluation, to unblock a `ProcessPoolExecutor`
 
-Status: partially implemented — steps 1-3 (prefetch + freeze) implemented 2026-08-06 to fix the
-`run_cpu_bound` + aiohttp session event-loop conflict. Step 4 (`ProcessPoolExecutor` swap) deferred
-until real GIL contention is confirmed by a stress test or real fleet growth.
+Status: steps 1-3 (prefetch + freeze) implemented 2026-08-06 to fix the `run_cpu_bound` + aiohttp
+session event-loop conflict. Step 4 (`ProcessPoolExecutor` swap) dropped 2026-08-15 — stress test
+showed no worker-thread GIL contention at 6x current scale (see "Update 2026-08-15" below).
+Recommend marking closed.
 
 Issues: follow-up to `specs/plans/scheduler-event-loop-blocking.md` (implemented 2026-07-30, fixed
 a 2.86s/4.86s stall by moving `evaluate_constraints_and_merits` onto a dedicated
@@ -65,6 +66,59 @@ Two details weaken the "scales with task count" framing: fewer blocks this run (
 *larger* stall (2.24s/4.24s vs 0.61s/2.61s). The stress test + `py-spy` capture recommended above is
 now the next action, not optional — a real occurrence of the symptom with the known main-thread
 cause already ruled out is the trigger the plan said it was waiting for.
+
+## Update 2026-08-15: stress test ran — no worker-thread GIL contention at 6x scale
+
+The synthetic stress test recommended above was run (`/tmp/opencode/stress_scheduler.py`, not
+committed): a task list of sidereal blocks with Airmass/SolarElevation/MoonSeparation constraints
+and ConstantMerit, far beyond `iagvt`'s current ~50 blocks/run, run through `OnDemandScheduler.schedule()`
+with the existing `ThreadPoolExecutor` unchanged and an event-loop-lag watchdog active.
+
+Scaling ladder, all zero stalls:
+
+- 30 tasks → 18.7s
+- 60 tasks → 33.3s
+- 100 tasks → 56.9s
+- 300 tasks → 152.4s (6x `iagvt` scale), still zero stalls
+
+This matches the plan's own closing condition ("if even a large synthetic load shows nothing, that's
+a much stronger basis for closing this plan outright") and is consistent with the earlier `py-spy`
+capture: the real stalls were main-thread synchronous astropy work (the `evolve()` sunset lookup,
+fixed in `2.0.0.dev65`), not GIL starvation from the worker thread. Step 4 (`ProcessPoolExecutor`
+swap) has no observed evidence driving it, at any tested scale.
+
+The stress test's workload was also the wrong shape for `iagvt`. It was written assuming sidereal
+night-time blocks (Airmass/MoonSeparation on fixed targets), but `iagvt` is a solar telescope — its
+active block set at the time was exactly **1 task** with a single `SolarElevationConstraint`
+(`min_elevation: 0`, `max_elevation: 15`, `direction: both`). That constraint short-circuits to
+`data.sun_altaz(time)` (a cached astroplan call) plus a range check — no target-coordinate transform,
+no moon lookup, no barycentric correction. So the real workload is *lighter* than the synthetic one,
+not heavier or merely "different": the worker thread does almost nothing, which makes GIL contention
+from it even less plausible as the 2026-08-15 stall's cause.
+
+That said, this still does not identify what actually produced the 2026-08-15 03:13 stall. An initial
+guess was archive network I/O in the schedule path (`prefetch()`/`add_observations()` hitting
+`iagvtsrv:8097` over aiohttp), but that is **ruled out too**: aiohttp awaits run on the loop and do not
+block it, and the synchronous work actually in the schedule path is tiny when measured —
+
+- `data.night()` → `sun_set_time(previous)` on the main thread: 17 ms/call, `@cache`d per time
+- `_log_scheduled_task` → `observer.altaz()` on the main thread: 2.2 ms/block
+- pydantic `model_dump`/`model_validate` of a 44-block schedule: negligible
+
+— none of which adds up to a 2.24s single-check stall even in aggregate, and IERS auto-download is
+already disabled. So every mechanism that can be modeled offline (worker-thread GIL, synchronous
+astropy on the main thread, aiohttp) is now ruled out or too small by an order of magnitude. The
+2026-08-15 stall's cause is genuinely unknown, and the steering doc's warning applies directly here:
+the last time the cause was guessed from log timing alone, the guess was wrong about which thread was
+at fault, and only a live `py-spy` capture found it. That remains the correct next tool — a capture
+armed on the "Finished calculating next task" log line, same technique as before.
+
+Status update: **steps 1-3 stay implemented** (the prefetch/freeze split is independently valuable,
+per Consequences). **Step 4 is dropped** — the executor swap is no longer justified. The GIL-contention
+premise was tested and not found (synthetic stress test, zero stalls at 6x scale), and `iagvt`'s real
+workload (a single solar block with one `SolarElevationConstraint`) is even lighter, so worker-thread
+CPU work is effectively absent there. Recommend marking this plan closed. The unresolved 2026-08-15
+stall is a separate open item, not an argument to keep this plan alive.
 
 ## Problem
 

@@ -11,6 +11,8 @@ import pytest
 
 from pyobs.interfaces import IWeather, WeatherState
 from pyobs.modules.roof import DummyRoof
+from pyobs.utils.enums import MotionStatus
+from pyobs.utils.exceptions import ParkError
 
 
 class _FakeProxyContext:
@@ -83,3 +85,21 @@ async def test_weather_check_treats_fresh_good_state_as_good_weather() -> None:
     await _run_one_weather_check_iteration(roof, fake_proxy)
 
     assert roof.is_weather_good() is True
+
+
+@pytest.mark.asyncio
+async def test_set_bad_weather_does_not_retry_park_while_in_error_state() -> None:
+    """Regression test: a device stuck in MotionStatus.ERROR must not have park() called on
+    every bad-weather check -- that's exactly what BrotRoof/BrotTelescope's park() raises
+    ParkError for, and repeated fire-and-forget calls flooded the logs with
+    'Task exception was never retrieved'."""
+    roof = DummyRoof(weather="weatherstation")
+    await roof._change_motion_status(MotionStatus.ERROR)
+    roof.park = AsyncMock(side_effect=ParkError("Roof is in error state. Cannot close."))  # type: ignore[method-assign]
+
+    set_bad_weather = getattr(roof, "_WeatherAwareMixin__set_bad_weather")
+    await set_bad_weather()
+    await set_bad_weather()
+    await set_bad_weather()
+
+    roof.park.assert_not_called()

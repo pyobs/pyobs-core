@@ -19,16 +19,14 @@ planning notes.
 
 ### Cross-repo docs
 
-`pyobs-core` is the only repo in the `pyobs` ecosystem with this `specs/` structure — sibling repos
-(`pyobs-gui`, `pyobs-polaris`, hardware-driver plugins, etc.) don't have their own, and setting one
-up per repo for the occasional cross-repo doc isn't worth the overhead. Design docs, plans, and ADRs
-that concern (or are actually implemented in) a sibling repo still live here. Two things to keep
-that discoverable:
+`pyobs-core` only keeps specs for its own work and for things that span more than one project.
+Design docs, plans, and ADRs that concern a sibling repo (`pyobs-gui`, `pyobs-polaris`,
+hardware-driver plugins, etc.) as well as `pyobs-core` still live here.
 
-- Add a `Repos:` line under `Status:` naming every repo the doc concerns, so it's obvious at a
-  glance this isn't `pyobs-core`-only.
-- The concerned sibling repo(s) should carry a one-line `specs/README.md` pointer back here (not a
-  full `specs/` structure of their own) — see e.g. `pyobs-gui/specs/README.md`.
+- Every `specs/` directory keeps a human-readable `index.md` listing its docs.
+- A cross-repo doc adds a `Repos:` line under `Status:` naming every repo it concerns, so it's
+  obvious at a glance this isn't `pyobs-core`-only.
+- Sibling repos reference the specs that are about them in their own `specs/index.md`.
 
 ## Tooling
 

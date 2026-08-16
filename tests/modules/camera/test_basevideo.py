@@ -55,6 +55,13 @@ def test_init_custom_values() -> None:
     assert bv._sleep_time == 30
 
 
+def test_fits_header_timeout_reaches_mixin() -> None:
+    """BaseVideo must forward fits_header_timeout to ImageFitsHeaderMixin, not swallow it into
+    Module's catch-all **kwargs -- see issue #764 / PR #765."""
+    bv = make_basevideo(fits_header_timeout=1.0)
+    assert bv._fitsheadermixin_header_timeout == 1.0
+
+
 # ── open / close ────────────────────────────────────────────────────────────
 
 

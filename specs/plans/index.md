@@ -48,6 +48,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   `Night` → `Reduction`, complete `LocalArchive` I/O. **implemented**
 - [2026-08-15-log-loaded-pyobs-package-versions.md](2026-08-15-log-loaded-pyobs-package-versions.md) —
   log loaded pyobs-* package versions at module startup. **implemented**
+- [2026-08-16-fits-header-fetch-timeout.md](2026-08-16-fits-header-fetch-timeout.md) — bound the
+  FITS-header fetch so a dead peer can't stall the frame. **implemented, closed**
 
 ## Not finished
 

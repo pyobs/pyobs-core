@@ -89,6 +89,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         cache_size: int = 5,
         flip: bool = False,
         sleep_time: int = 60,
+        fits_header_timeout: float = 15.0,
         **kwargs: Any,
     ):
         """Creates a new BaseWebcam.
@@ -110,6 +111,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             cache_size: Size of cache for previous images.
             flip: Whether to flip around Y axis.
             sleep_time: Time in s with inactivity after which the camera should go to sleep.
+            fits_header_timeout: Maximum seconds to wait for a peer's FITS headers before skipping them.
         """
         Module.__init__(self, **kwargs)
         ImageFitsHeaderMixin.__init__(
@@ -119,6 +121,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             centre=centre,
             rotation=rotation,
             filenames=filenames,
+            fits_header_timeout=fits_header_timeout,
         )
 
         # store

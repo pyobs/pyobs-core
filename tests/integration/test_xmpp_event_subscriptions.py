@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pyobs.comm.xmpp.xmppcomm import XmppComm
-from pyobs.events import LogEvent, ModuleClosedEvent, ModuleOpenedEvent
+from pyobs.events import BadWeatherEvent, LogEvent, ModuleClosedEvent, ModuleOpenedEvent
 from pyobs.interfaces import IModule
 from pyobs.utils.enums import ModuleState
 
@@ -333,5 +333,76 @@ async def test_restart_resubscribes_to_already_online_peer(make_xmpp_comm, make_
 
         ok = await wait_for(lambda: len(received2) >= 1)
         assert ok, "camera did not receive LogEvent after restarting with a fresh session"
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_peer_not_advertising_send_never_subscribed(make_xmpp_comm, make_unopened_comm) -> None:
+    """A module must not subscribe to a peer's node for an event type that peer never declared
+    as "send" in its disco#info -- e.g. a camera's BadWeatherEvent handler must not retry-subscribe
+    to a peer that only ever receives (or never registered) BadWeatherEvent, since that node will
+    never be created. See _peer_sent_events / _get_disco_info's role="send" tagging."""
+
+    async def _run():
+        camera_comm = make_unopened_comm("camera")
+        _named_module("camera", camera_comm)
+        camera_comm = await make_xmpp_comm("camera", comm=camera_comm)
+        await camera_comm.set_presence(ModuleState.READY)
+
+        async def handler(event, from_client) -> bool:
+            return True
+
+        await camera_comm.register_event(BadWeatherEvent, handler)
+
+        control_comm = make_unopened_comm("control")
+        _named_module("control", control_comm)
+        control_comm = await make_xmpp_comm("control", comm=control_comm)
+        await control_comm.set_presence(ModuleState.READY)
+
+        await wait_for_peer(camera_comm, "control")
+        # give the (would-be) background subscribe-with-retry task time to fire if the gate
+        # were missing
+        await asyncio.sleep(1.0)
+
+        assert ("control", BadWeatherEvent) not in camera_comm._event_subscriptions, (
+            "camera subscribed to control's BadWeatherEvent node even though control never " "advertised sending it"
+        )
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_handler_receives_event_from_send_only_peer(make_xmpp_comm, make_unopened_comm) -> None:
+    """The flip side of test_peer_not_advertising_send_never_subscribed: a peer that registers an
+    event handler-less (declaring it only sends, never subscribes) still gets subscribed to and
+    delivers events normally -- the gate keys off the peer's advertised "send" role, not off
+    whether the subscriber itself ever received a matching disco feature some other way."""
+
+    async def _run():
+        control_comm = make_unopened_comm("control")
+        _named_module("control", control_comm)
+        control_comm = await make_xmpp_comm("control", comm=control_comm)
+        await control_comm.set_presence(ModuleState.READY)
+        # handler-less register_event: declares "send" role only, no subscription of its own
+        await control_comm.register_event(BadWeatherEvent)
+
+        camera_comm = make_unopened_comm("camera")
+        _named_module("camera", camera_comm)
+        camera_comm = await make_xmpp_comm("camera", comm=camera_comm)
+        await camera_comm.set_presence(ModuleState.READY)
+
+        received: list = []
+
+        async def handler(event, from_client) -> bool:
+            received.append((event, from_client))
+            return True
+
+        await camera_comm.register_event(BadWeatherEvent, handler)
+        await wait_for_peer(camera_comm, "control")
+        await asyncio.sleep(1.0)
+
+        await control_comm.send_event(BadWeatherEvent())
+
+        ok = await wait_for(lambda: len(received) >= 1)
+        assert ok, "camera did not receive BadWeatherEvent from a peer that declared it as send-only"
 
     await asyncio.wait_for(_run(), timeout=60)

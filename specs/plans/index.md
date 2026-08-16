@@ -24,8 +24,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   login/settings dialog for pyobs-gui. **implemented, closed** (Repos: pyobs-core, pyobs-gui)
 - [2026-07-27-gui-login-window.md](2026-07-27-gui-login-window.md) — pyobs-gui login window.
   **implemented, closed** (Repos: pyobs-gui, pyobs-core)
-- [2026-07-27-gui-widget-plugins-and-packaging.md](2026-07-27-gui-widget-plugins-and-packaging.md) —
-  widget plugin mechanism + `pyside6-deploy` packaging. **draft** (Repos: pyobs-gui)
 - [2026-07-29-gui-acl-aware-widget-gating.md](2026-07-29-gui-acl-aware-widget-gating.md) — ACL-aware
   widget gating. **implemented, closed** (Repos: pyobs-gui, pyobs-core)
 - [2026-07-29-gui-iacquisition-widget.md](2026-07-29-gui-iacquisition-widget.md) — `IAcquisition`
@@ -36,8 +34,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   widget. **implemented, closed** (Repos: pyobs-gui, pyobs-core)
 - [2026-07-29-gui-navbar-shortcuts.md](2026-07-29-gui-navbar-shortcuts.md) — navbar keyboard
   shortcuts. **implemented, closed** (Repos: pyobs-gui)
-- [2026-07-29-gui-telescopewidget-layout.md](2026-07-29-gui-telescopewidget-layout.md) —
-  `TelescopeWidget` width-floor investigation. **proposed** (Repos: pyobs-gui)
 - [2026-07-31-pipeline-step-error-control.md](2026-07-31-pipeline-step-error-control.md) — per-step
   error control in image-processing pipelines. **implemented**
 - [2026-08-03-scheduler-event-loop-blocking.md](2026-08-03-scheduler-event-loop-blocking.md) — stop
@@ -46,14 +42,21 @@ Implementation plans, checklist-style. Newest at the bottom.
   send/subscribe role in disco#info. **implemented, closed** (Repos: pyobs-core, pyobs-web-client)
 - [2026-08-04-httpfilecache-cors-token-auth.md](2026-08-04-httpfilecache-cors-token-auth.md) — CORS
   + token auth for `HttpFileCache`. **implemented, closed** (Repos: pyobs-core, pyobs-web-client)
-- [2026-08-05-scheduler-archive-prefetch-for-process-isolation.md](2026-08-05-scheduler-archive-prefetch-for-process-isolation.md) —
-  split archive prefetch from CPU-bound merit evaluation. **steps 1-3 implemented**
-- [2026-08-08-logevent-double-delivery-investigation.md](2026-08-08-logevent-double-delivery-investigation.md) —
-  pyobs-gui receives every LogEvent twice. **investigating, open** (Repos: pyobs-core, pyobs-monet)
 - [2026-08-08-pyobs-pipeline.md](2026-08-08-pyobs-pipeline.md) — pyobs-pipeline. **implemented**
   (Repos: pyobs-pipeline)
 - [2026-08-09-night-archive-io-hardening.md](2026-08-09-night-archive-io-hardening.md) — rename
   `Night` → `Reduction`, complete `LocalArchive` I/O. **implemented**
+
+## Not finished
+
+- [2026-07-27-gui-widget-plugins-and-packaging.md](2026-07-27-gui-widget-plugins-and-packaging.md) —
+  widget plugin mechanism + `pyside6-deploy` packaging. **draft** (Repos: pyobs-gui)
+- [2026-07-29-gui-telescopewidget-layout.md](2026-07-29-gui-telescopewidget-layout.md) —
+  `TelescopeWidget` width-floor investigation. **proposed** (Repos: pyobs-gui)
+- [2026-08-05-scheduler-archive-prefetch-for-process-isolation.md](2026-08-05-scheduler-archive-prefetch-for-process-isolation.md) —
+  split archive prefetch from CPU-bound merit evaluation. **steps 1-3 implemented**
+- [2026-08-08-logevent-double-delivery-investigation.md](2026-08-08-logevent-double-delivery-investigation.md) —
+  pyobs-gui receives every LogEvent twice. **investigating, open** (Repos: pyobs-core, pyobs-monet)
 - [2026-08-09-object-kwarg-validation.md](2026-08-09-object-kwarg-validation.md) — surface
   unrecognized kwargs in `Object.__init__`. **investigated, not started**
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —

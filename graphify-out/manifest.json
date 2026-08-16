@@ -25,9 +25,9 @@
     "semantic_hash": "332d1b275af3b1e81c2c2d397ef1126d"
   },
   "pyobs/application.py": {
-    "mtime": 1785953387.1991732,
-    "ast_hash": "5e718adf07b6f665c2eb5dc16ffc78de",
-    "semantic_hash": "5e718adf07b6f665c2eb5dc16ffc78de"
+    "mtime": 1786870753.8034463,
+    "ast_hash": "7b5c15311a72bb86ac988f88ac3c77d0",
+    "semantic_hash": ""
   },
   "pyobs/background_task.py": {
     "mtime": 1782030067.154109,
@@ -3550,8 +3550,8 @@
     "semantic_hash": "00b0d911eea85650ae6efed869a9c35a"
   },
   "CLAUDE.md": {
-    "mtime": 1785783826.795178,
-    "ast_hash": "929efe9c62997305c724f92b2f8ba484",
+    "mtime": 1786868089.3428438,
+    "ast_hash": "0420778b396d671282237010845646e5",
     "semantic_hash": ""
   },
   "README.md": {
@@ -4300,8 +4300,8 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-12-shared-auth-keycloak.md": {
-    "mtime": 1786787596.6339328,
-    "ast_hash": "be5ae8eb1c5e1cc862c121bbf52b3652",
+    "mtime": 1786869672.4781022,
+    "ast_hash": "0822c25751000d4b8e85606651d56b15",
     "semantic_hash": ""
   },
   "scripts/xmpp/show_module_versions.py": {
@@ -4380,8 +4380,38 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-15-log-loaded-pyobs-package-versions.md": {
-    "mtime": 1786819336.0944858,
-    "ast_hash": "b2950dde122b0e47f39506104329664e",
+    "mtime": 1786870810.7972012,
+    "ast_hash": "9921e088f34acf648560ba5e9aaab54d",
+    "semantic_hash": ""
+  },
+  "specs/adrs/index.md": {
+    "mtime": 1786868142.138726,
+    "ast_hash": "7479791de3b61763601afa5912f06ac6",
+    "semantic_hash": ""
+  },
+  "specs/design/index.md": {
+    "mtime": 1786868134.7927425,
+    "ast_hash": "ec1f359324e3ed2dadc257c0aaec604d",
+    "semantic_hash": ""
+  },
+  "specs/plans/index.md": {
+    "mtime": 1786870832.2894857,
+    "ast_hash": "f85a3eaecec60f65d9be36c73631fb51",
+    "semantic_hash": ""
+  },
+  "specs/steering/index.md": {
+    "mtime": 1786868147.7647388,
+    "ast_hash": "d2129d72092392efbc5d8078ceef2880",
+    "semantic_hash": ""
+  },
+  "pyobs/utils/versions.py": {
+    "mtime": 1786870778.8297777,
+    "ast_hash": "d420834582fbd1376c88594535759fe6",
+    "semantic_hash": ""
+  },
+  "tests/utils/test_versions.py": {
+    "mtime": 1786870763.0105681,
+    "ast_hash": "8dcbd57331acef46e51f64cf2876471e",
     "semantic_hash": ""
   }
 }

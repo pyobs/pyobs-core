@@ -63,7 +63,7 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md](2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md) —
   baseline tests + grouped Dependabot auto-merge for core-tier repos. **proposed**
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
-  Keycloak integration. **proposed** (Repos: pyobs-archive, pyobs-robotic-backend)
+  Keycloak integration. **in progress** (Repos: pyobs-archive, pyobs-robotic-backend)
 - [2026-08-15-log-loaded-pyobs-package-versions.md](2026-08-15-log-loaded-pyobs-package-versions.md) —
   log loaded pyobs-* package versions at module startup. **draft**
 - [2026-08-15-pydantic-extra-validation.md](2026-08-15-pydantic-extra-validation.md) — make the

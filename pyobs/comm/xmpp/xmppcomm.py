@@ -240,6 +240,11 @@ class XmppComm(Comm):
         self._pubsub_service = f"pubsub.{self._domain}"
         self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
         self._client_states: dict[str, tuple[ModuleState, str]] = {}  # jid -> (state, error_string)
+
+        # pubsub for events -- desired (peer module name, event class) subscriptions. A key's
+        # presence drives _subscribe_event_with_retry's retry loop; removing it (unregister, or
+        # never re-added on a fresh connect) is what stops a still-retrying subscribe.
+        self._event_subscriptions: set[tuple[str, type[Event]]] = set()
         self._capabilities: dict[type, Any] = {}  # interface → Capabilities instance
         self._own_states: dict[type, Any] = {}  # interface → last published state for this module
         self._presence_callbacks: dict[str, list[Callable[[ModuleState, str], None]]] = {}
@@ -665,6 +670,12 @@ class XmppComm(Comm):
         if jid not in self._online_clients:
             self._online_clients.append(jid)
 
+        # subscribe to this peer's event nodes for every event type we currently handle -- a
+        # handler registered before this peer came online never got a chance to subscribe to it
+        # from _register_events, since it wasn't in self._online_clients yet
+        for ev in self._event_handlers:
+            asyncio.create_task(self._subscribe_event_with_retry(module_name, ev))
+
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
 
@@ -777,11 +788,15 @@ class XmppComm(Comm):
         # set xml and send event
         stanza.xml = ET.fromstring(f'<event xmlns="pyobs:event">{body}</event>')
 
-        # send it
+        # publish to the shared pubsub service, same mechanism as state (see _set_state) --
+        # the node id encodes the publishing module, since notifications from this service
+        # arrive "from" the service itself, not from us (see _event_node/_handle_event)
+        node = self._event_node(self._module.name, event.__class__)  # type: ignore[union-attr]
         await self._safe_send(
-            self.client.plugin["xep_0163"].publish,
-            stanza,
-            node=f"urn:pyobs:event:{event.__class__.__name__}:{event.version}",
+            self.client.plugin["xep_0060"].publish,
+            self._pubsub_service,
+            node,
+            payload=stanza,
             callback=functools.partial(self._send_event_callback, event=event),
         )
 
@@ -804,17 +819,73 @@ class XmppComm(Comm):
     ) -> None:
         # loop events
         for ev in events:
-            # register event at XMPP
+            # register event at XMPP (disco advertising only -- unrelated to delivery, used by
+            # e.g. pyobs-web-client to distinguish producers from consumers, see _event_role)
             self.client.plugin["xep_0030"].add_feature(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
 
-            # if we have a handler, we're also interested in receiving such events
+            # if we have a handler, subscribe to this event's node on every peer already online.
+            # A peer coming online later is covered by _got_online subscribing to every event
+            # currently in self._event_handlers.
             if handler:
-                # add interest
-                self.client.plugin["xep_0163"].add_interest(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
+                for peer_jid in list(self._online_clients):
+                    peer_module = peer_jid[: peer_jid.index("@")]
+                    asyncio.create_task(self._subscribe_event_with_retry(peer_module, ev))
 
         # update caps and send presence
         await self._safe_send(self.client.plugin["xep_0115"].update_caps)
         self.client.send_presence()
+
+    async def _unregister_events(self, events: list[type[Event]]) -> None:
+        for ev in events:
+            for peer_jid in list(self._online_clients):
+                peer_module = peer_jid[: peer_jid.index("@")]
+                self._event_subscriptions.discard((peer_module, ev))
+                node = self._event_node(peer_module, ev)
+                try:
+                    await self._safe_send(self.client.plugin["xep_0060"].unsubscribe, self._pubsub_service, node)
+                except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                    pass  # already gone server-side
+
+    @staticmethod
+    def _event_node(module: str, event_class: type[Event]) -> str:
+        return f"pyobs:event:{module}:{event_class.__name__}:{event_class.version}"
+
+    @staticmethod
+    def _event_node_module(node: str) -> str | None:
+        """Recover the publishing module's name from an event node id, since notifications from
+        the shared pubsub service arrive "from" the service itself, not from the publisher."""
+        parts = node.split(":")
+        if len(parts) == 5 and parts[0] == "pyobs" and parts[1] == "event":
+            return parts[2]
+        return None
+
+    async def _subscribe_event_with_retry(self, peer_module: str, event_class: type[Event]) -> None:
+        """Subscribe to a peer's event node, retrying until the node exists.
+
+        Mirrors _subscribe_with_retry (state). Runs as a background task; retries indefinitely
+        with capped backoff since the peer may not have published (and thus auto-created the
+        node) yet. Stops early if _unregister_events drops the (peer_module, event_class) key
+        in the meantime.
+        """
+        key = (peer_module, event_class)
+        if key in self._event_subscriptions:
+            return
+        self._event_subscriptions.add(key)
+        node = self._event_node(peer_module, event_class)
+        attempt = 0
+        while key in self._event_subscriptions:
+            try:
+                await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
+                return
+            except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                attempt += 1
+                if attempt == 30:
+                    log.warning(
+                        "Still failing to subscribe to event node %s after %d attempts, will keep retrying",
+                        node,
+                        attempt,
+                    )
+                await asyncio.sleep(_retry_delay(attempt))
 
     def _handle_event_sync(self, msg: Any) -> None:
         """Synchronous entry point for the MatchXMLMask Callback.
@@ -843,13 +914,16 @@ class XmppComm(Comm):
                         for callback in callbacks:
                             callback(state_obj)
         else:
-            asyncio.create_task(self._handle_event(msg))
+            asyncio.create_task(self._handle_event(msg, node))
 
-    async def _handle_event(self, msg: Any) -> None:
+    async def _handle_event(self, msg: Any, node: str) -> None:
         """Handles an event.
 
         Args:
             msg: Received XMPP message.
+            node: pubsub node id the event arrived on. Notifications from the shared pubsub
+                service come "from" that service, not from the publisher, so the publishing
+                module's name has to come from the node id (see _event_node) instead of msg["from"].
         """
 
         # get body, unescape it, parse it
@@ -863,8 +937,13 @@ class XmppComm(Comm):
             # ignore this message
             return
 
-        # did we send this?
-        if msg["from"] == self.client.boundjid.bare:
+        from_module = self._event_node_module(node)
+        if from_module is None:
+            return
+
+        # did we send this? (we never subscribe to our own node, so this shouldn't happen, but
+        # stay defensive rather than assume)
+        if self._module is not None and from_module == self._module.name:
             return
 
         # create event and check timestamp
@@ -877,7 +956,7 @@ class XmppComm(Comm):
             return
 
         # send it to module
-        self._send_event_to_module(event, msg["from"].username)
+        self._send_event_to_module(event, from_module)
 
     async def _safe_send(self, method: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any) -> Any:
         """Safely send an XMPP message.

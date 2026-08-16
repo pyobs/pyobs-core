@@ -1,0 +1,215 @@
+"""Integration tests for explicit pubsub event subscriptions.
+
+Covers specs/adrs/0012-event-delivery-explicit-pubsub-subscription-not-presence.md /
+specs/plans/2026-08-16-explicit-pubsub-event-subscriptions.md: events are published/subscribed
+via the shared pubsub.<domain> service (same mechanism as state), not XEP-0163 PEP, so delivery
+is gated by an explicit subscription instead of presence.
+
+Requires a live ejabberd server with a third registered user ("control") in addition to the
+usual "camera"/"observer" -- see tests/xmpp/docker-compose.yml. Run with:
+
+    PYOBS_TEST_XMPP_HOST=localhost PYOBS_TEST_XMPP_DOMAIN=localhost \\
+    pytest -m xmpp tests/integration/test_xmpp_event_subscriptions.py -v
+"""
+
+from __future__ import annotations
+
+import asyncio
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from pyobs.comm.xmpp.xmppcomm import XmppComm
+from pyobs.events import LogEvent
+from pyobs.interfaces import IModule
+from pyobs.utils.enums import ModuleState
+
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration, pytest.mark.xmpp]
+
+
+def _named_module(name: str, comm) -> MagicMock:
+    """Minimal module stub with a *real* name matching the comm's own JID user --
+    needed here (unlike tests/integration/conftest.py's make_module, which hardcodes
+    "camera") because event node ids embed the publishing module's name and must match
+    what subscribers derive from the peer's JID."""
+    m = MagicMock()
+    m.interfaces = [IModule]
+    m.name = name
+    comm.module = m
+    return m
+
+
+async def wait_for(condition, *, timeout: float = 15.0, interval: float = 0.1) -> bool:
+    deadline = asyncio.get_event_loop().time() + timeout
+    while asyncio.get_event_loop().time() < deadline:
+        if condition():
+            return True
+        await asyncio.sleep(interval)
+    return False
+
+
+async def wait_for_peer(comm, peer: str, *, timeout: float = 15.0) -> None:
+    ok = await wait_for(lambda: peer in comm.clients, timeout=timeout)
+    assert ok, f"{peer!r} did not appear in client list within {timeout}s"
+
+
+def _log_event(message: str) -> LogEvent:
+    return LogEvent(time="2026-08-16T00:00:00", level="INFO", filename="x.py", function="f", line=1, message=message)
+
+
+async def test_handler_receives_event_from_peer(make_xmpp_comm, make_unopened_comm) -> None:
+    """A module with a registered LogEvent handler receives events published by a peer."""
+
+    async def _run():
+        camera_comm = make_unopened_comm("camera")
+        _named_module("camera", camera_comm)
+        camera_comm = await make_xmpp_comm("camera", comm=camera_comm)
+        await camera_comm.set_presence(ModuleState.READY)
+
+        control_comm = make_unopened_comm("control")
+        _named_module("control", control_comm)
+        control_comm = await make_xmpp_comm("control", comm=control_comm)
+        await control_comm.set_presence(ModuleState.READY)
+
+        await wait_for_peer(camera_comm, "control")
+
+        received: list = []
+
+        async def handler(event, from_client) -> bool:
+            received.append((event, from_client))
+            return True
+
+        await camera_comm.register_event(LogEvent, handler)
+
+        # give the background subscribe-with-retry task time to complete
+        await asyncio.sleep(1.0)
+
+        await control_comm.send_event(_log_event("hello"))
+
+        ok = await wait_for(lambda: len(received) >= 1)
+        assert ok, "camera did not receive LogEvent from control"
+        event, from_client = received[0]
+        assert event.data["message"] == "hello"
+        assert from_client == "control"
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_non_subscriber_never_gets_the_wire_message(make_xmpp_comm, make_unopened_comm) -> None:
+    """A module that never registered a LogEvent handler must not even receive the pubsub
+    notification on the wire -- not "receives and drops", actually never delivered."""
+
+    async def _run():
+        observer_comm = make_unopened_comm("observer")
+        _named_module("observer", observer_comm)
+
+        sync_calls: list = []
+        original = XmppComm._handle_event_sync
+
+        def spy(self, msg):
+            sync_calls.append(self)
+            return original(self, msg)
+
+        with patch.object(XmppComm, "_handle_event_sync", spy):
+            observer_comm = await make_xmpp_comm("observer", comm=observer_comm)
+            await observer_comm.set_presence(ModuleState.READY)
+
+            control_comm = make_unopened_comm("control")
+            _named_module("control", control_comm)
+            control_comm = await make_xmpp_comm("control", comm=control_comm)
+            await control_comm.set_presence(ModuleState.READY)
+
+            await wait_for_peer(observer_comm, "control")
+
+            # observer registers no LogEvent handler at all
+            await asyncio.sleep(1.0)
+
+            await control_comm.send_event(_log_event("nobody should see this"))
+
+            # give it a real chance to arrive if delivery were (incorrectly) presence-based
+            await asyncio.sleep(2.0)
+
+            observer_sync_calls = [c for c in sync_calls if c is observer_comm]
+            assert observer_sync_calls == [], (
+                f"observer's _handle_event_sync fired {len(observer_sync_calls)}x for an event "
+                "it never subscribed to -- delivery is not actually filtered"
+            )
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_late_registered_handler_still_receives_events(make_xmpp_comm, make_unopened_comm) -> None:
+    """Registering a handler after a peer is already online must still result in a subscription
+    (covered by _got_online re-subscribing peers already online at registration time)."""
+
+    async def _run():
+        control_comm = make_unopened_comm("control")
+        _named_module("control", control_comm)
+        control_comm = await make_xmpp_comm("control", comm=control_comm)
+        await control_comm.set_presence(ModuleState.READY)
+
+        camera_comm = make_unopened_comm("camera")
+        _named_module("camera", camera_comm)
+        camera_comm = await make_xmpp_comm("camera", comm=camera_comm)
+        await camera_comm.set_presence(ModuleState.READY)
+
+        await wait_for_peer(camera_comm, "control")
+
+        # control has been online for a while before camera ever registers a handler
+        await asyncio.sleep(0.5)
+
+        received: list = []
+
+        async def handler(event, from_client) -> bool:
+            received.append((event, from_client))
+            return True
+
+        await camera_comm.register_event(LogEvent, handler)
+        await asyncio.sleep(1.0)
+
+        await control_comm.send_event(_log_event("late subscribe"))
+
+        ok = await wait_for(lambda: len(received) >= 1)
+        assert ok, "camera did not receive LogEvent after late handler registration"
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_unregister_stops_delivery(make_xmpp_comm, make_unopened_comm) -> None:
+    """After the last handler for an event class is removed, no further events must arrive."""
+
+    async def _run():
+        camera_comm = make_unopened_comm("camera")
+        _named_module("camera", camera_comm)
+        camera_comm = await make_xmpp_comm("camera", comm=camera_comm)
+        await camera_comm.set_presence(ModuleState.READY)
+
+        control_comm = make_unopened_comm("control")
+        _named_module("control", control_comm)
+        control_comm = await make_xmpp_comm("control", comm=control_comm)
+        await control_comm.set_presence(ModuleState.READY)
+
+        await wait_for_peer(camera_comm, "control")
+
+        received: list = []
+
+        async def handler(event, from_client) -> bool:
+            received.append((event, from_client))
+            return True
+
+        await camera_comm.register_event(LogEvent, handler)
+        await asyncio.sleep(1.0)
+
+        await control_comm.send_event(_log_event("before unregister"))
+        ok = await wait_for(lambda: len(received) >= 1)
+        assert ok, "camera did not receive LogEvent before unregister"
+
+        await camera_comm.unregister_event(LogEvent, handler)
+        await asyncio.sleep(1.0)
+
+        await control_comm.send_event(_log_event("after unregister"))
+        await asyncio.sleep(2.0)
+
+        assert len(received) == 1, f"expected exactly 1 event (before unregister), got {len(received)}"
+
+    await asyncio.wait_for(_run(), timeout=60)

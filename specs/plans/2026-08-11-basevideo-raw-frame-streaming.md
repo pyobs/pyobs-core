@@ -56,7 +56,9 @@ on `BaseVideo`). Just the producer-side changes to `pyobs/modules/camera/basevid
       - wait on `self._new_frame`, clear after each read — coalesces backpressure automatically,
         no explicit frame-drop bookkeeping needed
       - call `activate_camera()` on connect; keep updating `_active_time` for the duration of the
-        connection (every frame served, not just at connect)
+        connection, independent of frame arrival (a bounded `asyncio.wait_for` on `self._new_frame`
+        re-touches activity on timeout too, not just on frame arrival — otherwise a connected but
+        frame-less raw client, e.g. producer paused, could let the camera sleep out from under it)
       - clean up (deregister, let `_active_time` age out normally) on client disconnect
         (`aiohttp.client_exceptions.ClientConnectionResetError`, matching `video_handler`'s existing
         handling at `basevideo.py:248-251`)

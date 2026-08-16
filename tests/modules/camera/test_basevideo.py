@@ -249,7 +249,9 @@ async def test_image_jpeg_returns_last_jpeg() -> None:
     bv = make_basevideo()
     bv.activate_camera = AsyncMock()
     bv._frame_num = 5
-    bv._last_image = LastImage(data=np.zeros((2, 2)), image=None, jpeg=b"jpeg-bytes", filename=None)
+    bv._last_image = LastImage(
+        data=np.zeros((2, 2)), image=None, jpeg=b"jpeg-bytes", filename=None, date_obs="2024-01-01T00:00:00.000000"
+    )
 
     num, jpeg = await bv.image_jpeg()
 
@@ -562,7 +564,7 @@ def test_raw_frame_meta_and_little_endian_bytes() -> None:
     bv = make_basevideo()
     data = np.arange(6, dtype=np.uint16).reshape(2, 3)
 
-    meta_bytes, frame = bv._raw_frame(data)
+    meta_bytes, frame = bv._raw_frame(data, "2024-01-01T00:00:00.000000")
 
     meta = json.loads(meta_bytes)
     assert meta["DTYPE"] == "<u2"
@@ -596,3 +598,38 @@ async def test_raw_handler_writes_once_per_wake_and_keeps_active(mocker) -> None
     assert response.write.await_count == 1
     assert bv.camera_active is True
     assert bv._active_time > 0
+
+
+@pytest.mark.asyncio
+async def test_raw_handler_touches_activity_without_new_frame(mocker) -> None:
+    # no frame has arrived yet -- the wait must time out and re-touch activity
+    # anyway, per design doc §5, instead of blocking indefinitely
+    bv = make_basevideo(sleep_time=0.02)
+
+    response = MagicMock()
+    response.prepare = AsyncMock()
+    from aiohttp.client_exceptions import ClientConnectionResetError
+
+    response.write = AsyncMock(side_effect=ClientConnectionResetError())
+    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+
+    real_activate = bv.activate_camera
+    activate_calls = 0
+
+    async def activate_side_effect() -> None:
+        nonlocal activate_calls
+        activate_calls += 1
+        await real_activate()
+        if activate_calls == 2:
+            # this is the timeout-triggered re-touch with no frame yet produced;
+            # now produce one so the next loop iteration can wake normally
+            await bv._set_image(np.zeros((2, 2), dtype=np.uint16))
+
+    bv.activate_camera = activate_side_effect  # type: ignore[method-assign]
+
+    await bv.raw_handler(make_request())
+
+    # call #1: on connect: call #2: timeout re-touch (no frame yet); call #3: after real wake
+    assert activate_calls >= 2
+    assert response.write.await_count == 1
+    assert bv.camera_active is True

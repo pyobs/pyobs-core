@@ -67,6 +67,7 @@ class LastImage(NamedTuple):
     image: Image | None
     jpeg: bytes | None
     filename: str | None
+    date_obs: str
 
 
 class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
@@ -134,6 +135,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._last_image: LastImage | None = None
         self._last_time = 0.0
         self._flip = flip
+        # 60s is a starting point, not measured -- trades off against _activate_camera()/
+        # _deactivate_camera() cost, which is driver-specific and mostly unknown right now;
+        # too short relative to that cost risks flapping (rapid activate/deactivate cycling)
         self._sleep_time = sleep_time
         self._new_frame = asyncio.Event()
 
@@ -273,8 +277,16 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         while True:
             # wait for a new frame; the event coalesces multiple frames that
-            # arrive while a slow consumer is still writing into a single wake
-            await self._new_frame.wait()
+            # arrive while a slow consumer is still writing into a single wake.
+            # Bounded by a timeout so a connected-but-frame-less stretch (producer
+            # paused, exposure gap) still re-touches activity -- otherwise the
+            # camera could go back to sleep out from under an active raw consumer
+            # even though the connection is still open (design doc §5).
+            try:
+                await asyncio.wait_for(self._new_frame.wait(), timeout=self._sleep_time / 2)
+            except TimeoutError:
+                await self.activate_camera()
+                continue
             self._new_frame.clear()
 
             # keep activity fresh for the duration of this connection
@@ -286,7 +298,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
                 continue
 
             # build frame bytes (JSON meta header + raw little-endian bytes)
-            meta, frame = self._raw_frame(last.data)
+            meta, frame = self._raw_frame(last.data, last.date_obs)
 
             # now send it!
             try:
@@ -302,11 +314,12 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # return response
         return response
 
-    def _raw_frame(self, data: NDArray[Any]) -> tuple[bytes, bytes]:
+    def _raw_frame(self, data: NDArray[Any], date_obs: str) -> tuple[bytes, bytes]:
         """Build the JSON meta header and raw bytes for one frame.
 
         Args:
             data: Numpy array to send.
+            date_obs: Acquisition timestamp, captured in _set_image() -- not send time.
 
         Returns:
             Tuple of (meta header bytes, raw frame bytes).
@@ -315,7 +328,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # build a header using the same cheap, local sub-step as grab_data()'s FITS
         # path (no VFS I/O, no cross-module comm) -- see design doc §3
         image = Image(data)
-        image.header["DATE-OBS"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
+        image.header["DATE-OBS"] = date_obs
         image.header["IMAGETYP"] = self._image_type
         self.add_local_fits_headers(image)
 
@@ -432,6 +445,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
     async def _set_image(self, data: NDArray[Any]) -> None:
         """Create FITS and JPEG images from data."""
 
+        # capture acquisition time now, not when a raw-stream consumer later sends it
+        date_obs = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
+
         # flip image?
         if self._flip:
             data: NDArray[Any] = np.flip(data, axis=0)
@@ -460,7 +476,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
                 self._last_time = now
 
         # store both
-        self._last_image = LastImage(data=data, image=image, jpeg=jpeg, filename=filename)
+        self._last_image = LastImage(data=data, image=image, jpeg=jpeg, filename=filename, date_obs=date_obs)
         self._frame_num += 1
 
         # signal any raw-stream consumers that a new frame is available

@@ -31,6 +31,7 @@ services:
       CTL_ON_START: >-
         ! register camera localhost pyobs ;
         ! register observer localhost pyobs ;
+        ! register control localhost pyobs ;
         srg_create all localhost all all all ;
         srg_user_add @all@ localhost all localhost
     healthcheck:

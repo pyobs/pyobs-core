@@ -64,7 +64,7 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-09-object-kwarg-validation.md](2026-08-09-object-kwarg-validation.md) — surface
   unrecognized kwargs in `Object.__init__`. **investigated, not started**
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —
-  raw-frame streaming endpoint in `BaseVideo`. **proposed**
+  raw-frame streaming endpoint in `BaseVideo`. **implemented**
 - [2026-08-11-camera-driver-gui-split.md](2026-08-11-camera-driver-gui-split.md) — driver/GUI split
   for all camera modules. **proposed** (Repos: qhyccd, fli, tis, asi, aravis, sbig, flipro, v4l)
 - [2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md](2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md) —

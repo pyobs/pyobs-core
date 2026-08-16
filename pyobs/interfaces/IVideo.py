@@ -8,7 +8,8 @@ from .IData import IData
 
 @dataclass
 class VideoCapabilities:
-    video: str = ""
+    mjpeg: str | None = None
+    raw: str | None = None
 
 
 class IVideo(IData, metaclass=ABCMeta):

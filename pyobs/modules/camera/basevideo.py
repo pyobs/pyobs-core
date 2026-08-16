@@ -1,9 +1,11 @@
 import asyncio
 import io
+import json
 import logging
 import time
 from abc import ABCMeta
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any, NamedTuple
 
 import aiohttp
@@ -65,6 +67,7 @@ class LastImage(NamedTuple):
     image: Image | None
     jpeg: bytes | None
     filename: str | None
+    date_obs: str
 
 
 class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
@@ -76,16 +79,16 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self,
         http_port: int = 37077,
         interval: float = 0.5,
-        video_path: str = "/webcam/video.mjpg",
+        video_path: str | None = "/webcam/video.mjpg",
+        raw_path: str | None = "/webcam/video.raw",
         filenames: str = "/webcam/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits",
         fits_namespaces: list[str] | None = None,
         fits_headers: dict[str, Any] | None = None,
         centre: tuple[float, float] | None = None,
         rotation: float = 0.0,
         cache_size: int = 5,
-        live_view: bool = True,
         flip: bool = False,
-        sleep_time: int = 600,
+        sleep_time: int = 60,
         fits_header_timeout: float = 15.0,
         **kwargs: Any,
     ):
@@ -98,14 +101,14 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             http_port: HTTP port for webserver.
             exposure_time: Initial exposure time.
             interval: Min interval for grabbing images.
-            video_path: VFS path to video.
+            video_path: VFS path to video. None disables the MJPEG live view.
+            raw_path: VFS path to the raw frame stream. None disables it.
             filename: Filename pattern for FITS images.
             fits_namespaces: List of namespaces for FITS headers that this camera should request.
             fits_headers: Additional FITS headers.
             centre: (x, y) tuple of camera centre.
             rotation: Rotation east of north.
             cache_size: Size of cache for previous images.
-            live_view: If True, live view is served via web server.
             flip: Whether to flip around Y axis.
             sleep_time: Time in s with inactivity after which the camera should go to sleep.
             fits_header_timeout: Maximum seconds to wait for a peer's FITS headers before skipping them.
@@ -126,8 +129,8 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._port = http_port
         self._interval = interval
         self._video_path = video_path
+        self._raw_path = raw_path
         self._frame_num = 0
-        self._live_view = live_view
         self._image_type = ImageType.OBJECT
         self._image_request_lock = asyncio.Lock()
         self._image_requests: list[ImageRequest] = []
@@ -135,7 +138,11 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._last_image: LastImage | None = None
         self._last_time = 0.0
         self._flip = flip
+        # 60s is a starting point, not measured -- trades off against _activate_camera()/
+        # _deactivate_camera() cost, which is driver-specific and mostly unknown right now;
+        # too short relative to that cost risks flapping (rapid activate/deactivate cycling)
         self._sleep_time = sleep_time
+        self._new_frame = asyncio.Event()
 
         # active
         self._active = False
@@ -147,14 +154,12 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # define web server
         self._app = web.Application()
-        self._app.add_routes(
-            [
-                web.get("/", self.web_handler),
-                web.get("/ping", self.ping_handler),
-                web.get("/video.mjpg", self.video_handler),
-                web.get("/{filename}", self.image_handler),
-            ]
-        )
+        routes = [web.get("/ping", self.ping_handler), web.get("/{filename}", self.image_handler)]
+        if self._video_path is not None:
+            routes += [web.get("/", self.web_handler), web.get("/video.mjpg", self.video_handler)]
+        if self._raw_path is not None:
+            routes.append(web.get("/video.raw", self.raw_handler))
+        self._app.add_routes(routes)
         self._runner = web.AppRunner(self._app)
         self._site: web.TCPSite | None = None
 
@@ -169,8 +174,8 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         await self._site.start()
         self._is_listening = True
 
-        # publish video URL as capability
-        await self.comm.set_capabilities(IVideo, VideoCapabilities(video=self._video_path))
+        # publish video URLs as capabilities
+        await self.comm.set_capabilities(IVideo, VideoCapabilities(mjpeg=self._video_path, raw=self._raw_path))
 
         # publish initial state
         await self.comm.set_state(IImageType, ImageTypeState(image_type=self._image_type))
@@ -226,10 +231,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         last_num = None
         last_time = 0.0
-        interval = 1.0
         while True:
             # not reached interval?
-            if time.time() < last_time + interval:
+            if time.time() < last_time + self._interval:
                 await asyncio.sleep(0.01)
                 continue
 
@@ -255,6 +259,101 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # return response
         return response
+
+    async def raw_handler(self, request: web.Request) -> web.StreamResponse:
+        """Handles access to /video.raw and returns raw frames.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response containing raw frame stream.
+        """
+
+        # activate camera
+        await self.activate_camera()
+
+        # create response
+        response = web.StreamResponse()
+        response.content_type = "multipart/x-mixed-replace; boundary=--rawboundary"
+        await response.prepare(request)
+
+        while True:
+            # wait for a new frame; the event coalesces multiple frames that
+            # arrive while a slow consumer is still writing into a single wake.
+            # Bounded by a timeout so a connected-but-frame-less stretch (producer
+            # paused, exposure gap) still re-touches activity -- otherwise the
+            # camera could go back to sleep out from under an active raw consumer
+            # even though the connection is still open (design doc §5).
+            try:
+                await asyncio.wait_for(self._new_frame.wait(), timeout=self._sleep_time / 2)
+            except TimeoutError:
+                await self.activate_camera()
+                continue
+            self._new_frame.clear()
+
+            # keep activity fresh for the duration of this connection
+            await self.activate_camera()
+
+            # get current frame
+            last = self._last_image
+            if last is None:
+                continue
+
+            # build frame bytes (JSON meta header + raw little-endian bytes)
+            meta, frame = self._raw_frame(last.data, last.date_obs)
+
+            # now send it!
+            try:
+                await response.write(
+                    b"--rawboundary\r\n"
+                    b"Content-Type: application/octet-stream\r\n"
+                    b"X-Pyobs-Frame-Meta: " + meta + b"\r\n\r\n" + frame + b"\r\n"
+                )
+            except aiohttp.client_exceptions.ClientConnectionResetError:
+                # end stream
+                break
+
+        # return response
+        return response
+
+    def _raw_frame(self, data: NDArray[Any], date_obs: str) -> tuple[bytes, bytes]:
+        """Build the JSON meta header and raw bytes for one frame.
+
+        Args:
+            data: Numpy array to send.
+            date_obs: Acquisition timestamp, captured in _set_image() -- not send time.
+
+        Returns:
+            Tuple of (meta header bytes, raw frame bytes).
+        """
+
+        # build a header using the same cheap, local sub-step as grab_data()'s FITS
+        # path (no VFS I/O, no cross-module comm) -- see design doc §3
+        image = Image(data)
+        image.header["DATE-OBS"] = date_obs
+        image.header["IMAGETYP"] = self._image_type
+        self.add_local_fits_headers(image)
+
+        # serialize header as a JSON dict, carrying DTYPE so the consumer can
+        # decode the raw bytes unambiguously (numpy's dtype string bakes in byte order)
+        meta: dict[str, Any] = {}
+        for key in image.header:
+            meta[key] = self._json_safe(image.header[key])
+        meta["DTYPE"] = data.dtype.newbyteorder("<").str
+        meta_bytes = json.dumps(meta, separators=(",", ":")).encode()
+
+        # raw bytes, forced to little-endian regardless of host order
+        frame = np.ascontiguousarray(data, dtype=data.dtype.newbyteorder("<")).tobytes()
+
+        return meta_bytes, frame
+
+    @staticmethod
+    def _json_safe(value: Any) -> Any:
+        """Convert a FITS header value to a JSON-serializable Python scalar."""
+        if isinstance(value, np.generic):
+            return value.item()
+        return str(value) if isinstance(value, StrEnum) else value
 
     async def image_handler(self, request: web.Request) -> web.Response:
         """Handles access to /* and returns a specified image.
@@ -349,6 +448,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
     async def _set_image(self, data: NDArray[Any]) -> None:
         """Create FITS and JPEG images from data."""
 
+        # capture acquisition time now, not when a raw-stream consumer later sends it
+        date_obs = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
+
         # flip image?
         if self._flip:
             data: NDArray[Any] = np.flip(data, axis=0)
@@ -368,7 +470,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # convert to jpeg only if we need live view
         now = time.time()
         jpeg = None
-        if self._live_view:
+        if self._video_path is not None:
             # check interval
             if now - self._last_time > self._interval:
                 # write to buffer and reset interval
@@ -377,8 +479,11 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
                 self._last_time = now
 
         # store both
-        self._last_image = LastImage(data=data, image=image, jpeg=jpeg, filename=filename)
+        self._last_image = LastImage(data=data, image=image, jpeg=jpeg, filename=filename, date_obs=date_obs)
         self._frame_num += 1
+
+        # signal any raw-stream consumers that a new frame is available
+        self._new_frame.set()
 
         # prepare next image
         if len(self._image_requests) > 0:

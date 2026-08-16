@@ -3,6 +3,14 @@
 Notes from a working discussion with Tim, 2026-08-16. Companion to
 `2026-08-08-logevent-double-delivery-investigation.md`.
 
+Status: the "explicit pubsub subscriptions"/"can roster and pubsub delivery be split" sections
+below (the discussion that led to real interest-based event filtering) were actioned as
+`specs/adrs/0012-event-delivery-explicit-pubsub-subscription-not-presence.md` and
+`specs/plans/2026-08-16-explicit-pubsub-event-subscriptions.md` — but the mechanism that actually
+shipped there (publish/subscribe via the existing shared `pubsub.<domain>` service, mirroring
+state) differs from the PEP-`access_model` approach sketched here; see that ADR for why. This
+doc is kept as-is as the historical record of the discussion, not updated to match.
+
 ## Proposed fix (from the investigation, point 15)
 
 Drop `add_interest()` in `XmppComm._register_events()` (`pyobs/comm/xmpp/xmppcomm.py:813`).

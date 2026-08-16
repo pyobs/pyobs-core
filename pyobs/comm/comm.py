@@ -470,16 +470,26 @@ class Comm:
         """
 
         # same derived-events expansion as register_event(), so this mirrors exactly what was added
+        unsubscribed: list[type[Event]] = []
         for ev in self._get_derived_events(event_class):
             handlers = self._event_handlers.get(ev)
             if handlers is not None and handler in handlers:
                 handlers.remove(handler)
                 if not handlers:
                     self._events_subscribed.discard(ev)
+                    unsubscribed.append(ev)
+
+        # only event classes that just lost their last handler need the comm layer to actually
+        # tear anything down (e.g. XmppComm unsubscribing from peers' event nodes)
+        if unsubscribed and not event_class.local:
+            await self._unregister_events(unsubscribed)
 
     async def _register_events(
         self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
+        pass
+
+    async def _unregister_events(self, events: list[type[Event]]) -> None:
         pass
 
     async def set_state(self, interface: type[Interface], state: Any) -> None:

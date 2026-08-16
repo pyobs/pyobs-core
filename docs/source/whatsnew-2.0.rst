@@ -298,6 +298,28 @@ subclasses ``ICamera``/``ISpectrograph`` directly (not via ``BaseCamera``/``Base
 and actually wants exposure-progress semantics, add ``IExposure`` to its own bases explicitly and
 publish ``ExposureState`` via ``self.comm.set_state(...)``.
 
+``IVideo`` gains a raw stream, ``video`` renamed to ``mjpeg``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``VideoCapabilities.video`` is renamed to ``mjpeg``, and a new ``raw`` field
+(``str | None``) advertises the path of the new raw-frame endpoint (see
+`Raw-frame video streaming`_ below). ``live_view`` is folded into ``video_path``, alongside a new
+``raw_path``. Breaking for any client reading ``VideoCapabilities.video`` by name.
+
+Other renamed/removed utilities
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ``pyobs.utils.pipeline.Night`` is renamed to ``Reduction`` (the class covers solar reductions
+  too, not just nighttime ones). ``store_local`` is replaced by a single ``output`` parameter
+  (a local path, a dict, or an ``Archive``), so input and output archives can differ. The dead
+  ``worker_procs`` parameter and the ``**kwargs`` catch-all on ``Reduction.__init__`` are removed,
+  so a typo'd config key now raises ``TypeError`` instead of being silently swallowed.
+* ``AperturePhotometry`` is now abstract — it was never meant to be instantiated directly (that's
+  what ``PhotUtilsPhotometry``/``SepPhotometry`` are for), and its ``__module__`` override
+  advertised an import path the package never actually re-exported.
+* The generated TypeScript interface exports (``export/typescript/``) are removed. Breaking for
+  any external tooling that consumed them.
+
 Exception handling
 ---------------------
 
@@ -388,6 +410,16 @@ Raise the shaper limits in ``ejabberd.yml``:
 ``scripts/xmpp/install-ejabberd.sh`` applies this (plus routing a host onto the ``fast``
 shaper via its own vhost ACL) for new hosts automatically.
 
+``HttpFileCache`` authentication
+------------------------------------
+
+``HttpFile``'s Basic Auth credentials were never actually checked by ``HttpFileCache`` — the
+server accepted every request regardless. Basic Auth is replaced by an opt-in ``token`` param,
+checked via constant-time compare, and the download handler gained CORS headers (plus the
+required ``OPTIONS`` preflight handler) so browser ``fetch()`` clients like
+``pyobs-web-client`` can read cross-origin. Breaking for any client still sending Basic Auth
+credentials and expecting them to matter.
+
 New features
 ============
 
@@ -424,6 +456,10 @@ has died — or whose last update was delayed by a slow server — doesn't leave
 trusted forever. ``WeatherAwareMixin`` uses this for its own weather checks (default 120s),
 so a dead ``Weather`` update loop degrades to bad-weather within a couple of check cycles
 instead of trusting a frozen "good" reading indefinitely.
+
+``BaseCamera`` now actually keeps ``IExposure``'s ``progress``/``exposure_time_left`` live during
+an exposure (re-published once a second) — previously they were only published on status
+transitions, so both stayed frozen at 0 for the whole exposure despite the state existing.
 
 Some interfaces need a variable, hardware-dependent set of fields rather than a fixed
 schema — a telescope's temperature sensors vary in name and count by installation. These
@@ -569,6 +605,46 @@ default ``0``) is skipped after the last grab and cut short immediately by eithe
 ``abort_sequence()`` or ``abort()`` instead of idling out the full wait. Dithering/offsets
 between grabs remain out of scope -- that's a pointing-layer concern, not this interface's.
 
+Per-step pipeline error handling
+------------------------------------
+
+``ImageProcessor`` gained an ``on_error`` kwarg (``"raise"`` (default) / ``"error"`` / ``"info"``
+/ ``"ignore"``) and a ``handle_error(image, error)`` override point.
+``PipelineMixin.run_pipeline()`` now dispatches each step's ``ImageError`` per that step's own
+setting instead of aborting the whole chain on the first failure from any step — lets one step
+stay fatal (a calibration path that must have a valid WCS) while another is non-fatal (a
+quick-look pipeline where a missing WCS is fine) within the same pipeline run:
+
+.. code-block:: yaml
+
+   pipeline:
+     - class: pyobs.utils.pipeline.Calibration
+       on_error: raise      # abort the run if calibration fails
+     - class: pyobs.utils.pipeline.AstrometryDotNet
+       on_error: info       # log and continue if plate-solving fails
+
+``AstrometryDotNet``'s old ``exceptions: bool`` kwarg is deprecated in favor of ``on_error``
+(``exceptions=False`` behaves like ``on_error="error"``; ``on_error`` wins if both are set).
+Calling a migrated processor directly, outside a pipeline, still always raises regardless of
+``on_error``/``exceptions``.
+
+OBSNUM: per-night observation numbers
+------------------------------------------
+
+``Mastermind`` now assigns a compound ``<night>-<counter>`` observation number
+(``Observation.obsnum``) when a task starts running, persisted via a VFS-cached per-night
+counter and written to the ``OBSNUM`` FITS header — lets frames from possibly-multiple cameras
+be tied back to the observation that produced them.
+
+Raw-frame video streaming
+------------------------------
+
+``BaseVideo`` gained a raw-frame streaming endpoint alongside its existing MJPEG stream: a
+multipart, event-driven feed of a JSON FITS-keyed meta header plus raw little-endian frame
+bytes, with latest-frame-wins backpressure (a slow client drops stale frames rather than
+queuing them up). See `IVideo gains a raw stream, video renamed to mjpeg`_ above for the
+capability-level change.
+
 Access control (ACLs)
 ----------------------
 
@@ -634,6 +710,8 @@ Other notable changes
   synchronous blocking call anywhere in the module (or a background task) shows up as a
   logged stall (once when it starts, once when it clears, with total duration) instead of
   only being visible indirectly as peers timing out trying to reach that module.
+* Every module now logs the versions of loaded ``pyobs-*`` packages at startup, alongside the
+  IERS-cache priming that already happens there.
 
 Upgrading
 =========
@@ -659,3 +737,8 @@ GUI/client), check for, in roughly descending order of how likely they are to af
    ``exc.register_exception(...)`` — see `Exception handling`_ above.
 #. If you run your own ejabberd server, apply the ``mod_pubsub`` config change above, and
    raise the ``shaper`` limits if you expect real fleet traffic.
+#. Any code reading ``VideoCapabilities.video`` — rename to ``mjpeg``.
+#. Any code using ``pyobs.utils.pipeline.Night``, its ``store_local`` param, or
+   ``worker_procs`` — rename to ``Reduction`` and switch to the ``output`` param.
+#. Any client relying on ``HttpFile``'s Basic Auth against ``HttpFileCache`` — switch to the
+   new token param, since Basic Auth credentials are no longer accepted at all.

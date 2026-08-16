@@ -1,4 +1,229 @@
-v2.0.0.dev53 (unreleased)
+v2.0.0.dev78 (unreleased)
+*************************
+* ``BaseVideo`` gained a raw-frame streaming endpoint (``/video.raw``) alongside the existing MJPEG
+  stream: a multipart, event-driven feed of a JSON FITS-keyed meta header plus raw little-endian
+  frame bytes, with latest-frame-wins backpressure (a slow client drops stale frames instead of
+  queuing). ``VideoCapabilities.video`` is renamed to ``mjpeg``, and a new ``raw`` field
+  (``str | None``) advertises the raw endpoint's path; ``live_view`` collapses into ``video_path``
+  alongside the new ``raw_path``. ``add_fits_headers()`` is split into ``add_local_fits_headers()``
+  (no VFS I/O, usable per-frame) plus the persistent ``FRAMENUM`` step. Also fixed
+  ``video_handler``'s hardcoded 1 fps interval and lowered the default ``sleep_time`` to 60s. A
+  connected-but-idle raw client now keeps the camera awake correctly: ``raw_handler`` bounds its
+  wait for a new frame with a timeout and re-touches the activity timestamp even when no frame
+  arrives, instead of only doing so when a frame is actually sent. ``DATE-OBS`` is captured at
+  acquisition time (in ``_set_image()``) rather than at send time, avoiding drift under frame
+  coalescing or scheduling delay. See ``specs/design/2026-08-11-basevideo-raw-frame-streaming.md``.
+  (#766, #770)
+* Bounded ``add_requested_fits_headers()``'s wait for peer-supplied FITS headers with a single
+  ``asyncio.wait()`` deadline (new ``fits_header_timeout`` kwarg on ``FitsHeaderMixin``, default
+  15s), instead of awaiting every header future with no timeout at all -- a peer that never answers
+  its IQ (e.g. a laptop put to sleep without closing its client) previously stalled frame
+  finalization for the full ~120s XMPP IQ timeout. Fixed two bugs found while implementing this:
+  ``asyncio.wait()`` raised ``ValueError`` on an empty futures dict (any module with no comm, or no
+  peer implementing ``IFitsHeaderBefore``/``IFitsHeaderAfter``), crashing every exposure; and
+  ``BaseCamera``/``BaseVideo`` passed an explicit keyword list to
+  ``ImageFitsHeaderMixin.__init__`` instead of forwarding ``**kwargs``, silently dropping a
+  configured ``fits_header_timeout`` for exactly the modules (e.g. ``fli230``) that motivated this
+  fix. Fixes #764. (#765, #768)
+
+v2.0.0.dev77 (2026-08-16)
+*************************
+* Every module now logs the versions of loaded ``pyobs-*`` packages at startup, alongside the
+  existing IERS-cache priming. Guarded with the same try/except as that priming, so broken
+  dist-info metadata on any installed package can't abort startup; an editable install won't show
+  up in the output (``packages_distributions()`` can't derive its top-level-name mapping without
+  ``RECORD`` file entries), which is fine since the only consumer only needs this in production.
+  (#759)
+* Fixed ``WeatherAwareMixin`` retrying ``park()`` on every 10s bad-weather check while a device was
+  already in ``MotionStatus.ERROR``, instead of only once: the error-state guard only suppressed
+  the *first* post-error ``park()`` call, then fell through and called it again on every subsequent
+  check. Devices whose ``park()`` raises on ``ERROR`` status (``BrotRoof``, ``BrotTelescope``)
+  flooded logs with a ``ParkError`` plus "Task exception was never retrieved" every cycle, since the
+  call happens via a fire-and-forget background task.
+
+v2.0.0.dev76 (2026-08-15)
+*************************
+* ``BaseCamera`` now publishes live ``IExposure`` state (``progress``/``exposure_time_left``) once
+  a second while ``EXPOSING``, via a new background task; previously it only published on status
+  transitions, so both values stayed frozen at 0 for the whole exposure.
+  ``exposure_time_left`` is clamped to ``>= 0``.
+
+v2.0.0.dev75 (2026-08-15)
+*************************
+* ``BaseVideo``'s image-cache write now offloads ``image.to_bytes()`` to a worker thread (matching
+  the existing ``create_jpeg()`` pattern), instead of serializing a ~5MB FITS frame directly on the
+  event loop -- same class of fix as ``Vfs.write_image()``/``write_fits()`` in dev53, applied to a
+  different choke point.
+
+v2.0.0.dev74 (2026-08-15)
+*************************
+* ``FocusModel``'s coefficient fit (``lmfit.minimize`` plus residual model evaluation) now runs on
+  a worker thread instead of directly on the event loop.
+
+v2.0.0.dev71 (2026-08-10)
+*************************
+* Added ``OBSNUM``: ``Mastermind`` now assigns a compound ``<night>-<counter>`` observation number
+  when a task starts running, persisted via a VFS-cached per-night counter and written to both
+  ``Observation.obsnum`` and the ``OBSNUM`` FITS header -- lets frames from possibly-multiple
+  cameras be tied back to the observation that produced them. See
+  ``specs/design/obsnum_fits_header.md``. (#738)
+
+v2.0.0.dev70 (2026-08-10)
+*************************
+* Added structured progress reporting to ``Reduction`` (a ``progress_callback`` reporting
+  master-calib creation and per-frame science calibration results as they happen, with a cumulative
+  whole-night frame total computed via a cheap pre-pass), so a caller (e.g. ``pyobs-pipeline``'s web
+  UI) can drive a live progress bar instead of only tailing free-text logs. ``Reduction`` is split
+  into an abstract ``ReductionBase`` (archive/pipeline plumbing, master-calib cache/lookup, the
+  progress-callback mechanism) and the concrete ``Reduction``, giving a future second reduction
+  strategy a base to build on.
+* ``PipelineMixin`` now propagates a ``Pipeline``'s own ``archive`` into any step that doesn't
+  specify its own -- ``Reduction`` already passed ``archive=archive`` into
+  ``get_object(pipeline, Pipeline, archive=archive)``, clearly intending it to reach steps like
+  ``Calibration``, but ``Pipeline.__init__`` absorbed it into ``Object.__init__(**kwargs)`` and
+  dropped it, so every ``Calibration`` step had to redundantly repeat the same archive config
+  already set at the ``Reduction``/site level. An explicit per-step ``archive`` still overrides it.
+* Fixed ``Calibration`` aborting when a science frame arrived with a catalog already attached (e.g.
+  quick-look photometry done at the telescope): it tripped ``Image.trim()``'s stale-catalog guard,
+  even though ``to_ccddata()`` never carries a catalog through anyway. The pre-existing catalog is
+  now dropped before trimming.
+* Made ``AperturePhotometry`` abstract instead of exporting it as if instantiable directly -- it's a
+  base class for ``PhotUtilsPhotometry``/``SepPhotometry`` (each supplies its own calculator), and
+  its ``__module__`` override advertised a dotted path the package's ``__init__.py`` never actually
+  re-exported. Breaking change for any external code instantiating ``AperturePhotometry`` directly
+  (subclasses that define their own ``__init__``, as both existing ones already do, are unaffected).
+* Removed the generated TypeScript interface exports (``export/typescript/``) -- breaking change for
+  any external tooling consuming them.
+
+v2.0.0.dev68 (2026-08-09)
+*************************
+* Renamed ``pyobs.utils.pipeline.Night`` to ``Reduction`` (fits solar telescopes too, not just
+  nighttime ones). Replaced ``store_local`` with a single ``output`` param (local path, dict, or
+  ``Archive``), so input and output can be different archives. Implemented
+  ``LocalArchive.upload_frames`` (previously a silent no-op), including a ``ValueError`` on a
+  missing ``FNAME`` header and a ``_update_root()`` refresh after write; the local output directory
+  is now auto-created if missing. Calibration-frame creation failures are now isolated per
+  instrument/binning/filter combination instead of aborting the whole run. Fixed a missing
+  ``return None`` after the post-download frame-count check. Removed the dead ``worker_procs``
+  param and the ``**kwargs`` catch-all on ``Reduction.__init__``, so a typo'd kwarg now raises
+  ``TypeError`` instead of being silently swallowed. Breaking change for any external code using
+  ``Night``, ``store_local``, or ``worker_procs`` directly.
+
+v2.0.0.dev67 (2026-08-06)
+*************************
+* Re-landed the ``OnDemandScheduler`` event-loop offload (added in dev53, briefly reverted in
+  dev66) unchanged, alongside a prefetch/freeze split for ``ObservationArchiveEvolution``: a new
+  ``prefetch()`` fetches every task's observations plus the one real "current" night
+  (``night(start)``) up front, then ``freeze()`` makes a subsequent task-id cache miss raise
+  ``RuntimeError`` instead of silently falling back to a live archive lookup, while a miss on any
+  other (necessarily later, necessarily empty) night seeds an empty result instead of fetching or
+  raising. Groundwork for eventually moving that evaluation from a worker thread to a worker
+  process (real GIL isolation); the thread-shared live archive connection was the blocker, since a
+  process pool can't share it. See ``specs/plans/scheduler-archive-prefetch-for-process-isolation.md``.
+
+v2.0.0.dev66 (2026-08-05)
+*************************
+* Briefly reverted the ``OnDemandScheduler`` event-loop offload added in dev53 while investigating
+  the process-isolation groundwork above; re-landed unchanged in dev67, so only a dev66 build itself
+  ran evaluation synchronously on the event loop again.
+* ``Mastermind`` now logs a task failing with a domain ``PyobsError`` (e.g. ``AcquisitionError``) at
+  INFO instead of ERROR with a full traceback -- these are expected outcomes, not bugs; only a
+  genuinely unclassified exception still logs loudly.
+
+v2.0.0.dev65 (2026-08-05)
+*************************
+* Fixed a scheduler event-loop stall traced live (``py-spy dump``) to the **main** thread, not the
+  worker thread the dev53 offload targets: ``ObservationArchiveEvolution.evolve()`` called
+  ``Time.now().night_obs()`` directly on the event loop for every scheduled task, redoing an
+  uncached astropy sunset computation each time -- a 52-block schedule triggered this dozens of
+  times in a few seconds. ``evolve()`` now takes the night as a parameter
+  (``data.night(task.start)``, reusing ``DataProvider``'s existing cache) instead of computing it
+  from ``Time.now()`` internally. Also a correctness fix: keying off "now" filed a task scheduled
+  hours ahead under the wrong night's bucket, which a later ``FollowMerit``/``PerNightMerit`` check
+  for that night would then miss. See
+  ``specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md``.
+* IERS auto-download being disabled (``iers_offline``) now logs at info instead of warning -- it's a
+  deliberate config choice, not an anomaly.
+
+v2.0.0.dev64 (2026-08-05)
+*************************
+* Fixed ``ArchiveFile._upload`` referencing ``self._auth``, which was never set (leftover from
+  before auth moved to ``self._headers``/token-based auth) -- any actual write to a
+  ``pyobs-archive`` backend crashed with ``AttributeError`` before the request was even sent.
+
+v2.0.0.dev63 (2026-08-05)
+*************************
+* Downgraded routine no-detection acquisition log lines ("no on-sky distance found", a missed
+  sun/star detection) from warning to info -- neither is actionable on its own, since the
+  acquisition loop just retries; warning level was noise for something expected to happen
+  occasionally.
+
+v2.0.0.dev62 (2026-08-05)
+*************************
+* ``ImageFitsHeaderMixin``'s missing-WCS-header warnings (``CDELT1``/``2``, ``CRPIX1``/``2``, the
+  CD-matrix) now fire once per module lifetime instead of once per frame, for cameras missing the
+  relevant config/header fields.
+* ``BackendTaskArchive`` now follows pagination when fetching tasks/projects/observations from
+  ``pyobs-robotic-backend`` (DRF ``PageNumberPagination``, 100/page) via a new
+  ``http_request_paginated()`` that follows the "next" link until exhausted -- previously only the
+  first page's results were ever read, so tasks or projects past page 1 were silently invisible
+  regardless of how long they'd existed.
+* ``Mastermind``'s ``get_next_observation``/``get_current_observation`` now skip and log an
+  observation whose task failed to resolve (``Observation.task`` left ``None`` -- e.g. a deleted
+  task, or the backend task-cache poll racing the observation-schedule poll) instead of returning
+  it, which previously propagated a bare ``None`` into ``task_runner.can_run()`` and crashed
+  Mastermind's background thread with an ``AttributeError``.
+
+v2.0.0.dev61 (2026-08-04)
+*************************
+* Added CORS headers to ``HttpFileCache.download_handler`` (previously blocked browser ``fetch()``
+  clients like ``pyobs-web-client`` from cross-origin reads) and an opt-in token param, checked via
+  constant-time compare, plus the required ``OPTIONS`` preflight handler -- replacing ``HttpFile``'s
+  Basic Auth, which ``HttpFileCache`` was silently ignoring since the server never enforced any auth
+  at all. (#725)
+
+v2.0.0.dev60 (2026-08-04)
+*************************
+* Moved the ``iers_offline`` warning log after handler setup, so it actually reaches a configured
+  log handler instead of firing before one exists.
+
+v2.0.0.dev59 (2026-08-04)
+*************************
+* Added an ``iers_offline`` config option: the existing ``PYOBS_IERS_OFFLINE`` env-var check is now
+  also reachable via ``Application.__init__(iers_offline=...)`` and wired through
+  ``PyobsCLI.GLOBAL_CONFIG_KEYS``, letting ``/etc/pyobs.yaml`` (or a ``--iers-offline`` flag)
+  disable astropy's IERS/leap-second auto-download regardless of how the module process was spawned
+  (``pyobsd`` vs. ``pyobs-web-admin``), unlike an env var, which only propagates through whichever
+  launcher's own environment it happens to inherit.
+* Fixed ``syslog`` being unsettable via ``pyobs.yaml``: it was missing from
+  ``PyobsCLI.GLOBAL_CONFIG_KEYS`` even though a ``--syslog`` flag exists, so a ``pyobs:`` section in
+  the config file silently had no effect on it.
+
+v2.0.0.dev58 (2026-08-04)
+*************************
+* ``pyobsd status``'s CPU measurement is now opt-in (``--cpu-interval SECONDS``, sampling all
+  modules over one shared sleep) instead of always-on -- previously every "status" call paid a
+  blocking 0.1s per running module, and that short a window is too close to ``/proc``'s tick
+  granularity to give a meaningful reading anyway. Uptime/RSS still report instantly.
+
+v2.0.0.dev56 (2026-08-04)
+*************************
+* Also prime the leap-second table when warming astropy's IERS cache at startup (see dev55):
+  ``IERS_Auto.open()`` only covers UT1-UTC/polar motion, and the leap-second table is a separate
+  auto-download that was still landing inside ``basetelescope.py``'s celestial-header task and
+  blocking the loop there even after dev55's fix. Uses ``update_leap_seconds()`` (not the
+  lower-level ``LeapSeconds.auto_open()``), which both fetches it and installs it into ``erfa``.
+* Exported ``DummyMode`` from ``pyobs.modules.utils``.
+
+v2.0.0.dev55 (2026-08-04)
+*************************
+* Astropy's IERS cache is now primed once at startup, off the event loop via an executor, before
+  module/comm setup -- left implicit, the first UT1-UTC lookup happened inside
+  ``basetelescope.py``'s periodic celestial-header task and triggered astropy's ``auto_download``
+  synchronously, blocking the event loop for however long the download took at an unpredictable
+  point during normal operation.
+
+v2.0.0.dev54 (2026-08-04)
 *************************
 * ``XmppComm``'s disco#info now tags each advertised ``<event>`` element with a ``role``
   attribute (``"send"``, ``"subscribe"``, or ``"send subscribe"``), derived from splitting
@@ -9,6 +234,9 @@ v2.0.0.dev53 (unreleased)
   ``_events_subscribed`` once its last handler is removed, so a torn-down subscription stops
   being advertised (previously it stayed advertised forever). See
   ``specs/plans/event-role-advertising.md``.
+
+v2.0.0.dev53 (2026-08-03)
+*************************
 * Offloaded ``OnDemandScheduler``'s per-timestep constraint/merit evaluation
   (``find_next_best_task``/``check_for_better_task``/``can_postpone_task``) onto a dedicated
   single-worker ``ThreadPoolExecutor`` (new ``pyobs/robotic/scheduler/_executor.py``'s
@@ -43,6 +271,7 @@ v2.0.0.dev53 (unreleased)
   ``SunCamera``/``FTS`` right at the ``vfs.write_image()`` call. Callers that were working around
   this themselves (serializing via ``asyncio.to_thread`` and uploading raw bytes with
   ``write_bytes()`` instead) no longer need to.
+
 v2.0.0.dev52 (2026-07-29)
 *************************
 * Guarded optional WCS/image-type handling against missing capabilities: ``_ResponseImageWriter``

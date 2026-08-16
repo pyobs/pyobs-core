@@ -1,6 +1,6 @@
 # Plan: raw-frame streaming endpoint in `BaseVideo`
 
-Status: implemented
+Status: implemented, closed (merged 2026-08-16, PR #766)
 Design: `specs/design/basevideo-raw-frame-streaming.md`
 
 ## Context
@@ -100,3 +100,32 @@ on `BaseVideo`). Just the producer-side changes to `pyobs/modules/camera/basevid
 - A guiding-side consumer of the raw stream.
 - WebSocket alternative (see design doc's "Alternatives considered" — not pursuing unless the
   chosen approach proves insufficient).
+
+## Post-merge fixes (review, 2026-08-16)
+
+Three bugs found and fixed on top of the original PR before merge:
+
+- **`raw_handler` liveness.** `_active_time` was only re-touched on frame arrival, so a
+  connected-but-frame-less raw client (producer paused, exposure gap) could let the camera go back
+  to sleep out from under it, contradicting §5 of the design doc. Fixed by bounding the wait on
+  `self._new_frame` with `asyncio.wait_for(..., timeout=self._sleep_time / 2)` and re-touching
+  activity on timeout too, not just on frame arrival.
+- **`DATE-OBS` stamped at send time.** `_raw_frame()` computed it itself when the handler happened
+  to process the frame, drifting from true acquisition time under coalescing or scheduling delay.
+  Fixed by capturing it in `_set_image()` at acquisition time and carrying it through the new
+  `LastImage.date_obs` field.
+- **Missing trade-off comment on `sleep_time`.** The checklist above required flagging the
+  `_activate_camera()`/`_deactivate_camera()` cost trade-off in a code comment; it wasn't there.
+  Added next to `self._sleep_time = sleep_time`.
+
+One review finding was retracted after verification: iterating `astropy.io.fits.Header` for
+`COMMENT`/`HISTORY` cards yields the key once per card, but `header[key]` returns the same full
+`_HeaderCommentaryCards` list each time, so the meta-dict build in `_raw_frame()` doesn't lose data
+the way it first appeared to.
+
+Follow-up filed as pyobs-core#769: `_raw_frame()` redoes the per-frame header/JSON/byte-copy work
+once per connected raw client instead of once per frame and shared. Deferred — precomputing in
+`_set_image()` would cost something even with zero raw clients connected, conflicting with the
+design's "costs nothing when no raw client is connected" property (§1); the right fix is a lazy
+cache keyed by frame number, worth doing once multiple simultaneous raw consumers are a near-term
+reality, not needed for this PR's single-consumer case.

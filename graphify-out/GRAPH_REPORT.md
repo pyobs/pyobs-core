@@ -1,38 +1,38 @@
 # Graph Report - pyobs-core  (2026-08-16)
 
 ## Corpus Check
-- 790 files · ~415,132 words
+- 790 files · ~420,403 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 8817 nodes · 21195 edges · 458 communities (402 shown, 56 thin omitted)
-- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 1391 edges (avg confidence: 0.55)
+- 8823 nodes · 21187 edges · 435 communities (391 shown, 44 thin omitted)
+- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 1387 edges (avg confidence: 0.55)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `516cc99f`
+- Built from commit: `1489838e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- BaseTelescope
+- _DummyTelescopeBase
 - BaseGuiding
 - Time
-- Module
+- RunningState
 - Interface
 - test_presence.py
 - Image
-- .to_astropy
+- enums.py
 - PyobsError
 - ImageProcessor
-- Any
-- BaseCamera
-- WeatherSensors
 - XmppComm
-- _ResponseImageWriter
-- .__init__
+- BaseCamera
+- WeatherApi
+- .get_interfaces
+- LcoObservationArchive
+- VirtualFileSystem
 - TimeDelta
-- test_schedulereader.py
+- test_units.py
 - DummyRoof
 - mixins/test_fitsheader.py
 - Event
@@ -42,27 +42,27 @@
 - LocalComm
 - tests/test_events.py
 - test_lco_http.py
-- FlatFieldPointing
-- SiderealTarget
+- DummySolarTelescope
+- test_transit.py
 - WindowingWidget
 - Interfaces (pyobs.interfaces) API doc
-- test_control.py
+- Script
 - test_basetelescope.py
-- Any
+- Module
 - Portal
-- utils/exceptions.py
-- test_parallel.py
-- _AbortableModule
-- _dataclass_to_xml
+- MotionStatus
+- Future
+- ModuleState
+- CoolingState
 - IPointingAltAz.py
-- ObservationList
-- OffsetsAltAzEvent
-- _SourceCatalog
-- Any
+- Observation
+- SkyOffsets
+- PillowHelper
+- Comm
 - test_transitimaging.py
 - robotic/test_scheduler.py
 - StandAlone
-- .__call__
+- _DotNetRequest
 - test_schedulewriter.py
 - test_stellarexptime.py
 - StarExpTimeEstimator
@@ -78,46 +78,46 @@
 - FilenameFormatter
 - test_basevideo.py
 - test_yaml_archives.py
-- Project
+- LcoTaskArchive
 - FlatFielder
 - IExposure
 - Telegram
-- benchmark_state_throughput.py
+- FlatField
 - SolarElevationConstraint
 - Offsets
 - .now
 - PyObsError
 - test_proxy.py
 - XEP_0009
-- VirtualFileSystem
+- SiderealTarget
 - PyobsDaemon
 - MockWeather
 - test_config.py
-- test_dummyvideo.py
+- ExposureTimeState
 - test_acquisition.py
 - Weather
-- CoolingState
-- ProjectionFocusSeries
+- test_scheduler_mastermind.py
+- test_csvpicker_scheduler.py
 - .set_focus
-- AperturePhotometry
+- test_lcoscript.py
 - Ring
 - application.py
-- XmppClient
+- xmppcomm.py
 - test_exception_logging.py
-- DaophotSourceDetection
+- _DaoBackgroundRemover
 - Application
 - DummyComm
 - CallModuleScript
 - ProjectedOffsets
 - test_pyobs_archive.py
 - HttpFile
-- Object
+- LcoTask
 - InfluxHandler
 - FocusSeries
 - SepSourceDetection
 - make_proxy_cm
 - test_autoguiding.py
-- timeout
+- MultiModule
 - ResolvableErrorLogger
 - test_coordinates.py
 - get_registered_interface
@@ -128,8 +128,8 @@
 - Mixins (pyobs.mixins) API doc
 - Script base class
 - test_background_task.py
-- Test Commlogging (comm)
-- test_imagewriter.py
+- CommLoggingHandler
+- NewImageEvent
 - test_dummyradectelescope.py
 - ImagingScript
 - HttpFileCache
@@ -140,16 +140,16 @@
 - CLAUDE.md (repo guide)
 - SFTPFile
 - FocusModel
-- ._expose
+- test_transit_mastermind.py
 - ImageSourceFilter
 - test_darkbias.py
 - TaskData
-- Archive
+- Pipeline
 - Plan: pyobs-pipeline
 - Test Localcomm (local)
-- ImageWatcher
-- .__init__
-- test_camerasettings.py
+- OnSkyDistance
+- test_astroplanscheduler.py
+- BrightestStarOffsets
 - test_dummymode.py
 - SkyFlatsBasePointing
 - test_autofocus.py
@@ -158,57 +158,57 @@
 - pyobs.py
 - Robotic recipe (doc)
 - is_valid_jid
-- test_basecamera.py
+- .__init__
 - test_config_schema.py
-- ImageType
+- _CalibrationCache
 - Scheduler
 - RollingTimeAverage
-- SkyOffsets
+- datetime
 - LogScript
 - tests/xmpp/docker-compose.yml (ejabberd integration test container)
 - `OBSNUM`: per-night observation counter in FITS headers
 - 3rd party packages (doc)
-- sourcedetection.py
+- XEP_0009_timeout
 - SSHFile
 - create_rst.py
-- Any
+- FitsHeaderOffsets
 - SoftBin
 - AddMask
-- FrameInfo
+- Archive
 - SkyCoord
 - comm/test_events.py
 - NewSpectrumEvent
-- LogEvent
+- .__init__
 - ._filter_data
 - ExpTimeEval
 - Stellarium
 - Overview (doc)
 - TaskStartedEvent
-- fits.py
-- .can_run
+- fitssec
+- lco/taskrunner.py
 - Scheduler
 - test_grab_sequence.py
 - binding.py
-- test_comm_interface_resolution.py
+- BrightestStarGuiding
 - .get_config_value
 - CLI
-- get_class_from_string
+- MotionStatusChangedEvent
 - graphify reference: extra exports and benchmark
-- test_aperture_photometry.py
+- .add_fits_headers
 - Steering: astropy IERS auto-download blocks event loop
-- acquisition.py
-- format_filename
-- ._disconnected
+- OffsetResult
+- GuidingStatisticsSkyOffset
+- run_cpu_bound
 - Merit
 - ejabberd shaper throttling bug (xmpp_socket.erl re-arm) & fix
-- configdb.py
+- PyobsArchive
 - Plan: Make the pydantic config layer reject unknown keys (`extra="forbid"`)
 - Work Plan
 - Plan: `pyobs-gui` TelescopeWidget layout — width floor investigation & design notes
 - PointingSeries
 - GridNode
 - .set_tracking_rate
-- ._set_optimal_focus
+- ._residuals
 - What's New in pyobs 2.0 (doc)
 - New scenario: reconnect-storm (2026-07-27, production incident follow-up)
 - SkyflatPriorities
@@ -216,7 +216,7 @@
 - .get_permitted_methods
 - test_imagewatcher.py
 - test_backend_archives.py
-- .__call__
+- test_dummyvideo.py
 - show_module_info.py
 - integration/conftest.py
 - .set_cooling
@@ -225,11 +225,11 @@
 - BaseModel (pyobs.utils.serialization)
 - Decision
 - Smooth
-- _DaoBackgroundRemover
+- RemoveBackground
 - DataCache
 - Plan: Widget plugin mechanism + `pyside6-deploy` packaging for `pyobs-gui`
 - Plan: Split archive prefetch from CPU-bound merit evaluation, to unblock a `ProcessPoolExecutor`
-- PySepStatsCalculator
+- TaskFinishedEvent
 - Image (pyobs.images.processors.image) API doc
 - Offsets (pyobs.images.processors.offsets) API doc
 - Constraint
@@ -237,7 +237,7 @@
 - test_module_state_publishing.py
 - WeatherStatus
 - graphify reference: query, path, explain
-- ._record_exception
+- _event_schema_to_xml
 - BufferedFile
 - .retrieve_class_on_deserialization
 - .__init__
@@ -256,7 +256,7 @@
 - Plan: Advertise event send/subscribe role in disco#info
 - reset_network
 - Module.startup() lifecycle helper
-- CreateFilename
+- .image_handler
 - Plan: Stop scheduler constraint/merit evaluation from blocking the event loop
 - .__init__
 - watch_log_events_no_interest.py
@@ -268,23 +268,23 @@
 - test_pyobsd.py
 - Two-phase Object lifecycle; rationale: __init__ must not touch hardware/external services (only store params, create children, register background tasks); open() is where side effects happen, so objects can be constructed cheaply/safely before being started
 - Simulation recipe (doc)
-- Future
-- PhotometryFocusSeries
+- ._set_presence
+- ExpTime
 - graphify reference: add a URL and watch a folder
 - Decision
 - graphify reference: commit hook and native CLAUDE.md integration
 - graphify reference: incremental update and cluster-only
-- .__call__
+- .set_offsets_radec
 - TempFile
 - robotic
 - Archive (image archive base)
-- ._register_exception
+- .real_pos
 - Comm
-- _PhotometryCalculator
+- Any
 - BaseVideo
 - SMBFile
 - ._get_next
-- .__init__
+- asyncio
 - Plan: `pyobs-gui` navbar keyboard shortcuts
 - filters.py
 - DummyCamera
@@ -292,11 +292,11 @@
 - conftest.py
 - Misc (pyobs.images.processors.misc) API doc
 - PolymorphicBaseModel
-- .get_sensor_value
+- WeatherSensors
 - RemoteError
 - .get_interfaces
 - .flat_field
-- test_memory_archives.py
+- ObservationList
 - .move_heliocentric_polar
 - MockBaseDome
 - GoodWeatherEvent
@@ -305,16 +305,16 @@
 - pyobs.modules.utils (doc)
 - Plan: Add baseline tests to core-tier repos, then enable grouped Dependabot auto-merge
 - Plan: CORS + token auth for `HttpFileCache`
-- TaskFinishedEvent
-- .grab_sequence
+- TaskFailedEvent
+- IDataSequence
 - Plan: `pyobs-gui` IAutoGuiding widget
-- IStructuredConfig
+- .set_config
 - graphify reference: GitHub clone and cross-repo merge
 - Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)
 - ._expose
 - .night_obs
 - graphify reference: transcribe video and audio
-- MotionStatusChangedEvent
+- LogEvent
 - ADR-0008: _safe_send keeps bounded retry unlike capability/subscribe fetches
 - Module._watch_event_loop_lag
 - Plan: Surface unrecognized kwargs in `Object.__init__` instead of silently discarding them
@@ -324,8 +324,8 @@
 - Plan: Decouple `ICamera`/`IExposure` (reconstructed)
 - GuidingStatisticsPixelOffset
 - plans/index.md
-- test_scriptrunner.py
-- ModuleNameFilter
+- ScriptRunner
+- Object
 - CLAUDE.md
 - Target
 - extraction-spec.md
@@ -335,49 +335,27 @@
 - check_ejabberd_notify.py
 - .__init__
 - Kiosk
-- test_dummyaltaztelescope.py
 - Photometry (pyobs.images.processors.photometry) API doc
-- GuiApplication
 - _event_role
-- Any
-- _dummytelescopebase.py
-- .__init__
+- FitsHeaderEntry
 - steering/index.md
-- ConfigDB
-- .__init__
 - .__init__
 - ModuleGui
 - .__init__
-- .set_exposure_time
 - .set_offsets_altaz
-- .set_gain
 - .abort
 - .set_rotation
-- .__init__
 - pyobs.modules.weather (doc)
-- ._subscribe_presence
 - .__init__
-- .__init__
-- .__init__
-- .abort
-- .calibrate
-- .grab_data
-- .set_optimal_focus
-- .set_mode
-- .track_body
+- Save
+- IFilters
 - README.md
 - Install-ejabberd (xmpp)
 - XmppComm._disconnected
 - Autocompletion ()
-- .track_orbital_elements
+- _propagate_elements
 - pyobs.modules.pointing (doc)
-- .add_pointing_measurement
-- .run
-- .run_script
-- .sync_target
-- .set_window
-- .__init__
-- reset_network
+- test_localcomm_state.py
 - Any
 - TypedDict
 - check_changelog.sh
@@ -415,10 +393,10 @@
 2. `Image` - 444 edges
 3. `Task` - 227 edges
 4. `Interface` - 186 edges
-5. `Module` - 180 edges
+5. `Module` - 179 edges
 6. `ObservationList` - 168 edges
 7. `DataProvider` - 168 edges
-8. `Event` - 152 edges
+8. `Event` - 149 edges
 9. `ImageType` - 117 edges
 10. `Comm` - 113 edges
 
@@ -461,119 +439,123 @@
 - **Interface registry purity-filter regression involving BaseCamera/DummyCamera** — specs_design_external_interfaces_registry_interface_registry, specs_design_external_interfaces_registry_basecamera_dummycamera_bug, specs_design_external_interfaces_registry_dummycamera_module [INFERRED 0.75]
 - **Event-loop-blocking diagnosis family (astropy IERS, vendor SDK calls, scheduler CPU-bound)** — specs_steering_astropy_iers_event_loop_stalls_doc, specs_steering_blocking_sdk_calls_must_not_run_on_the_event_loop_doc, specs_steering_scheduler_cpu_bound_merit_evaluation_stalls_event_loop_doc [INFERRED 0.85]
 
-## Communities (458 total, 56 thin omitted)
+## Communities (435 total, 44 thin omitted)
 
-### Community 0 - "BaseTelescope"
-Cohesion: 0.04
-Nodes (49): Any, StrEnum, Discrete, hardware-native tracking rate., Switches to the given tracking mode. Args: mode: Tracking mode to switch to.…, TrackingMode, BaseTelescope, Any, _ra_rate_on_sky() (+41 more)
+### Community 0 - "_DummyTelescopeBase"
+Cohesion: 0.03
+Nodes (51): FiltersCapabilities, FilterState, FocuserState, IFocuser, The module is a focusing device., AltitudeLimitError, BaseTelescope, BodyResolutionError (+43 more)
 
 ### Community 1 - "BaseGuiding"
-Cohesion: 0.07
-Nodes (23): ExposureTimeState, AutoGuiding, Any, An auto-guiding system., Initializes a new auto guiding system. Args: exposure_time: Initial exposure…, Set the exposure time in seconds. Args: exposure_time: Exposure time in…, Starts/resets auto-guiding., BaseGuiding (+15 more)
+Cohesion: 0.09
+Nodes (19): AutoGuiding, Any, An auto-guiding system., Initializes a new auto guiding system. Args: exposure_time: Initial exposure…, Set the exposure time in seconds. Args: exposure_time: Exposure time in…, Starts/resets auto-guiding., BasePointing, Any (+11 more)
 
 ### Community 2 - "Time"
 Cohesion: 0.03
-Nodes (99): ndarray, SkyCoord, Constraint, ndarray, SkyCoord, Returns a boolean mask of candidates passing this constraint. Default…, MoonIlluminationConstraint, Moon illumination constraint. (+91 more)
+Nodes (101): # TODO: add abort (see old robotic/scheduler.py), AirmassConstraint, ndarray, SkyCoord, Constraint, ndarray, SkyCoord, Returns a boolean mask of candidates passing this constraint. Default… (+93 more)
 
-### Community 3 - "Module"
+### Community 3 - "RunningState"
 Cohesion: 0.04
-Nodes (67): AbstractEventLoop, AutoFocusResult, AutoFocusState, IAutoFocus, Any, SECONDS, The module can perform an autofocus., Perform an autofocus series. This method performs an autofocus series with… (+59 more)
+Nodes (60): IAbortable, Any, Abort current actions., The module has an abortable action., AcquisitionAttempt, AcquisitionResult, AcquisitionState, IAcquisition (+52 more)
 
 ### Community 4 - "Interface"
 Cohesion: 0.03
-Nodes (119): ABC, The Comm object is responsible for all communication between modules (see…, _event_schema_to_xml(), _interface_schema_to_xml(), Element, Shared XML serializer for pyobs 2.0 (urn:pyobs:rpc:1). Both the state pub/sub…, Map a Python type hint to a (wire_type_string, unit_string|None) pair., Build the <{ns}interface> disco#info schema element for one Interface subclass. (+111 more)
+Nodes (111): ABC, Converts a list of interface names to interface classes. Args: interfaces: list…, The Comm object is responsible for all communication between modules (see…, IAutonomous, The module does some autonomous actions, mainly used for warnings to users., ICalibrate, Any, Calibrate the device. Raises: GeneralError: If calibration failed. (+103 more)
 
 ### Community 5 - "test_presence.py"
 Cohesion: 0.05
-Nodes (52): Announce this module to already-connected peers, mirroring XmppComm's presence-…, ModuleOpenedEvent, Event to be sent when a module has opened., ModuleLocation, _FakeProxyContext, make_xmpp_comm(), asyncio, Tests for Phase 2.5 Presence and Capabilities implementation. (+44 more)
+Nodes (51): ModuleOpenedEvent, Event to be sent when a module has opened., ModuleLocation, _FakeProxyContext, make_xmpp_comm(), asyncio, Tests for Phase 2.5 Presence and Capabilities implementation., Module.open() passes empty string for label when _label is None. (+43 more)
 
 ### Community 6 - "Image"
 Cohesion: 0.03
 Nodes (77): MetaClass, Image, CCDData, Create Image from a bytes array containing a FITS file. Args: data: Bytes array…, Create image from FITS file. Args: filename: Name of file to load image from.…, Create image from astropy.CCDData. Args: data: CCDData to create image from.…, Load Image from HDU list. Args: data: HDU list. Returns: Image., A container class for astronomical image data and associated metadata. This… (+69 more)
 
+### Community 7 - "enums.py"
+Cohesion: 0.07
+Nodes (38): F, IImageType, ImageTypeState, Any, The module supports different image types (e.g. object, bias, dark, etc),…, Set the image type. Args: image_type: New image type., CameraSettingsMixin, Mixin for a device that should be able to set camera settings. (+30 more)
+
 ### Community 8 - "PyobsError"
-Cohesion: 0.08
-Nodes (20): Declare that the given PyobsError types (and their subclasses) fire often…, AbortedError, AcquisitionError, DeviceBusyError, GeneralError, InvalidArgumentError, ModuleError, ModuleStartingError (+12 more)
+Cohesion: 0.06
+Nodes (29): Exception, Declare that the given PyobsError types (and their subclasses) fire often…, Watch for repeated occurrences of exc_type -- optionally scoped to a specific…, Records exception for severity tracking (see _register_exception) and fires any…, Whether exception should count as an instance of exc_type for severity-handler…, Checks all handlers against all recorded exceptions and returns those whose…, Execute a local method safely with type conversion All incoming variables in…, AbortedError (+21 more)
 
 ### Community 9 - "ImageProcessor"
 Cohesion: 0.04
-Nodes (53): Annotation processors doc, Some info about :class:`pyobs.images.Image`., ImageProcessor, The error handling mode for this step., Processes an image. Args: image: Image to process. Returns: Processed image., Resets state of image processor, Circle, Draw a circle on an image, optionally interpreting the center in WCS… (+45 more)
+Nodes (42): Some info about :class:`pyobs.images.Image`., ImageProcessor, The error handling mode for this step., Processes an image. Args: image: Image to process. Returns: Processed image., Resets state of image processor, AddFitsHeaders, Keyword, Any (+34 more)
 
-### Community 10 - "Any"
-Cohesion: 0.07
-Nodes (16): Any, Store published capabilities for inclusion in disco#info responses., Return this client's own published capabilities., Fetch and deserialize capabilities for a remote module's interface. Retries…, Subscribe to a pubsub node, retrying until the node exists. Runs as a…, Create a new XMPP Comm module. Either a fill JID needs to be provided, or a set…, Authentication failed. Args: event: XMPP event., Capped exponential backoff with full jitter. Used for retry loops that can end… (+8 more)
+### Community 10 - "XmppComm"
+Cohesion: 0.04
+Nodes (41): Any, Store published capabilities for inclusion in disco#info responses., Return this client's own published capabilities., Fetch and deserialize capabilities for a remote module's interface. Retries…, Subscribe to a pubsub node, retrying until the node exists. Runs as a…, Create a new XMPP Comm module. Either a fill JID needs to be provided, or a set…, Called, when the module connected to this Comm changes. Args: module: The…, Open the connection to the XMPP server. Returns: Whether opening was successful. (+33 more)
 
 ### Community 11 - "BaseCamera"
+Cohesion: 0.04
+Nodes (50): DataSequenceState, ExposureState, IExposure, The module controls a camera., BaseCamera, calc_expose_timeout(), ExposureInfo, Any (+42 more)
+
+### Community 12 - "WeatherApi"
+Cohesion: 0.19
+Nodes (10): Any, ClientSession, WeatherApi, MockResponse, Any, asyncio, test_get_current_status(), test_get_sensor_value() (+2 more)
+
+### Community 13 - ".get_interfaces"
+Cohesion: 0.40
+Nodes (3): Returns list of interfaces for given client. Args: client: Name of client.…, Return list of interfaces for the given JID. Args: jid: JID to get interfaces…, Checks, whether the given client supports the given interface. Args: client:…
+
+### Community 14 - "LcoObservationArchive"
 Cohesion: 0.06
-Nodes (36): ExposureState, BaseCamera, calc_expose_timeout(), Any, Header, Set the exposure time in seconds. Args: exposure_time: Exposure time in…, Set the image type. Args: image_type: New image type., Change exposure status and send event, Args: status: New exposure status. (+28 more)
+Nodes (27): AcquisitionConfig, Configuration, GuidingConfig, InstrumentConfig, MockLcoObservationArchive, Any, ObservingBlock, TypedDict (+19 more)
 
-### Community 12 - "WeatherSensors"
-Cohesion: 0.13
-Nodes (15): Any, Return value for given sensor. Args: station: Name of weather station to get…, Set a simulated sensor's value, for use in tests and simulations. Args: sensor:…, Any, ClientSession, WeatherApi, Enumerator for sensors of a weather station. Attributes: TIME: Time of…, WeatherSensors (+7 more)
-
-### Community 13 - "XmppComm"
-Cohesion: 0.06
-Nodes (23): Send XMPP presence stanza reflecting the module lifecycle state. ModuleState…, See Comm.mark_ready(). Remembers readiness on self (survives client recreation…, Called, when the module connected to this Comm changes. Args: module: The…, Open the connection to the XMPP server. Returns: Whether opening was successful., Builds full JID from a given username. Args: name: Username to build JID for.…, Returns list of interfaces for given client. Args: client: Name of client.…, Return list of interfaces for the given JID. Args: jid: JID to get interfaces…, Checks the disco#info features already cached for client for a version of… (+15 more)
-
-### Community 14 - "_ResponseImageWriter"
-Cohesion: 0.11
-Nodes (10): Any, Logger, WCS, _RequestLogger, Any, WCS, astrometry.net gives a CD matrix, so we have to delete the PC matrix and the…, _ResponseImageWriter (+2 more)
-
-### Community 15 - ".__init__"
-Cohesion: 0.09
-Nodes (14): Any, Create a new image watcher. Args: watchpath: Path to watch. destinations:…, Any, Creates a new image writer. Args: filename: Pattern for filename to store…, Args: label: Label for module. If None, name is used. own_comm: If True, module…, Any, Creates a new StandAlone object. Args: message: Message to log in the given…, Any (+6 more)
+### Community 15 - "VirtualFileSystem"
+Cohesion: 0.08
+Nodes (23): Any, DataFrame, HDUList, Convenience function for writing an Image to a FITS file. Args: filename: Name…, Convenience function for writing an Image to a FITS file. Args: filename: Name…, Convenience function for writing bytes to a file. Args: filename: Name of file…, Convenience function for reading a CSV file into a DataFrame. Args: filename:…, Convenience function for writing a CSV file from a DataFrame. Args: filename:… (+15 more)
 
 ### Community 16 - "TimeDelta"
-Cohesion: 0.04
-Nodes (105): AstroplanScheduler, Any, ObservingBlock, Actually do the scheduling, usually run in a separate process., Scheduler based on astroplan., AirmassConstraint, ConstantMerit, Merit function that returns a constant value. (+97 more)
+Cohesion: 0.06
+Nodes (61): ConstantMerit, Merit function that returns a constant value., model_validator, Self, Merit function that uses time windows., TimeWindow, TimeWindowMerit, OnDemandScheduler (+53 more)
 
-### Community 17 - "test_schedulereader.py"
-Cohesion: 0.15
-Nodes (21): LcoScheduleReader, Update list of requests. Args: force: Force update., Fetch schedule from portal. Returns: Dictionary with tasks. Raises: Timeout: If…, Fetch schedule from portal. Args: start_before: Task must start before this…, Returns the active scheduled task at the given time. Args: time: Time to return…, Scheduler for using the LCO portal, make_observation(), make_reader() (+13 more)
+### Community 17 - "test_units.py"
+Cohesion: 0.11
+Nodes (21): Any, Convert annotated float parameters to astropy Quantities before the method…, with_units(), Focuser, IFocus, IMixed, IMove, IMultiUnit (+13 more)
 
 ### Community 18 - "DummyRoof"
 Cohesion: 0.06
-Nodes (41): pyobs.modules.roof (doc), BaseDome, BaseRoof, DummyRoof, WeatherState, DummyRoof, Any, Get the percentage the roof is open. (+33 more)
+Nodes (43): asyncio, pyobs.modules.roof (doc), BaseDome, BaseRoof, DummyRoof, DummyRoof, DummyRoof, Any (+35 more)
 
 ### Community 19 - "mixins/test_fitsheader.py"
-Cohesion: 0.06
-Nodes (66): FitsHeaderMixin, ImageFitsHeaderMixin, Any, PrimaryHDU, Add requested FITS headers to header of given image. Args: image: Image with…, Add FITS header keywords to the given FITS header. Args: image: Image with…, Add FRAMENUM keyword to header Args: image: Image with header to add to., Helper methods for all modules that implement IImageGrabber. (+58 more)
+Cohesion: 0.08
+Nodes (56): Any, Initialise the mixin. Args: fits_namespaces: List of namespaces for FITS…, Initialise the mixin. Args: fits_namespaces: List of namespaces for FITS…, Request FITS headers from other modules. Returns: Futures from all modules., Add requested FITS headers to header of given image. Args: image: Image with…, Any, Creates a new pipeline cammera., FitsModule (+48 more)
 
 ### Community 20 - "Event"
-Cohesion: 0.05
-Nodes (42): Event, Base class for all events., DataType, TypedDict, DataType, TypedDict, DataType, TypedDict (+34 more)
+Cohesion: 0.06
+Nodes (45): Event, Base class for all events., DataType, TypedDict, DataType, TypedDict, DataType, TypedDict (+37 more)
 
 ### Community 21 - "PipelineMixin"
-Cohesion: 0.05
-Nodes (44): Handle an ImageError raised by this step, when on_error == "error". Override…, PipelineMixin, Any, Mixin for a module that needs to implement an image pipeline., Initializes the mixin. Args: steps: Pipeline steps to run on images. archive:…, Resets all previous state of the involved image processors., PipelineCamera, Any (+36 more)
+Cohesion: 0.07
+Nodes (34): Handle an ImageError raised by this step, when on_error == "error". Override…, PipelineMixin, Mixin for a module that needs to implement an image pipeline., Resets all previous state of the involved image processors., Pipeline, Runs an image pipeline., ImageError, _ArchiveAwareStep (+26 more)
 
 ### Community 22 - "AstrometryDotNet"
-Cohesion: 0.06
-Nodes (27): AstrometryDotNet, Any, Init new astronomy.net processor. Args: url: URL to service. source_count:…, Deprecated, use on_error instead., Find astrometric solution on given image. Writes WCSERR=1 into FITS header on…, Perform astrometric solving using an astrometry.net-compatible service. This…, _DotNetRequestBuilder, _DotNetRequest (+19 more)
+Cohesion: 0.05
+Nodes (38): ImageProcessor on_error kwarg / per-step error handling, Astrometry processors doc, AstrometryDotNet (astrometry processor), Astrometry, Finds astrometric solution to a given image. Args: image: Image to analyse.…, Base class for astrometry processors, AstrometryDotNet, Deprecated, use on_error instead. (+30 more)
 
 ### Community 23 - "test_flatfielder.py"
 Cohesion: 0.08
 Nodes (60): make_flatfielder(), make_observer(), make_twilight_observer(), asyncio, parametrize, Regression test for #481: median == bias_level used to raise ZeroDivisionError., Observer stub returning a constant solar altitude for every sun_altaz() call., Observer stub distinguishing the first (now) vs second (+10min) sun_altaz()… (+52 more)
 
 ### Community 24 - "LocalComm"
-Cohesion: 0.06
-Nodes (49): LocalComm, Store presence state and dispatch to all subscribers., Return presence state of a connected module., Returns list of currently connected clients., Send an event to other clients., LocalNetwork, ConfigAppliedState, DummyConfig (+41 more)
+Cohesion: 0.07
+Nodes (22): LocalComm, Any, Store capabilities locally., Return this client's own published capabilities., Fetch capabilities from a remote module., Store presence state and dispatch to all subscribers., Return presence state of a connected module., Announce this module to already-connected peers, mirroring XmppComm's presence-… (+14 more)
 
 ### Community 25 - "tests/test_events.py"
 Cohesion: 0.04
-Nodes (58): Comm API doc (pyobs.comm), Events API doc (pyobs.events), BadWeatherEvent, Event to be sent on bad weather., EventFactory, Create Event from a dictionary. Args: obj_dict: JSON string for event. Returns:…, ExposureStatusChangedEvent, Any (+50 more)
+Nodes (59): Comm API doc (pyobs.comm), Events API doc (pyobs.events), BadWeatherEvent, Event to be sent on bad weather., Create Event from a dictionary. Args: obj_dict: JSON string for event. Returns:…, ExposureStatusChangedEvent, Event to be sent, when the exposure status of a device changes., FilterChangedEvent (+51 more)
 
 ### Community 26 - "test_lco_http.py"
-Cohesion: 0.13
-Nodes (30): make_observation_archive(), make_task_archive(), Create LcoTaskArchive without background tasks or Object.__init__., Create LcoObservationArchive without background tasks or Object.__init__., make_lco_task(), asyncio, get_task returns task when found in cache., get_task returns None when task not in cache. (+22 more)
-
-### Community 27 - "FlatFieldPointing"
-Cohesion: 0.20
-Nodes (10): Modules for performing flatfields. TODO: write doc, FlatFieldPointing, Any, Module for pointing a telescope., Initialize a new flat field pointing. Args: telescope: Telescope to point…, Abort current actions., make_pointing_module(), asyncio (+2 more)
-
-### Community 28 - "SiderealTarget"
 Cohesion: 0.08
-Nodes (30): model_validator, Self, SkyCoord, Target, SiderealTarget, make_merit(), asyncio, transit_time should be jd0 + n*period for integer n closest to now. (+22 more)
+Nodes (43): Camera, CameraType, ConfigurationType, Enclosure, Instrument, InstrumentType, Mode, ModeType (+35 more)
+
+### Community 27 - "DummySolarTelescope"
+Cohesion: 0.13
+Nodes (19): DummySolarTelescope, Any, Moves to and continuously tracks a Heliocentric Polar (mu, psi) coordinate., Moves to and continuously tracks a Heliographic Stonyhurst (lon, lat)…, Moves to and continuously tracks a Helioprojective (theta_x, theta_y)…, Background task: while a solar-relative target is active, keeps the simulated…, A dummy telescope dedicated to solar pointing (Heliocentric Polar/Heliographic…, Converts Heliocentric Polar (mu, psi) to (ra, dec) in degrees, ICRS. Mirrors… (+11 more)
+
+### Community 28 - "test_transit.py"
+Cohesion: 0.22
+Nodes (14): make_merit(), asyncio, transit_time should be jd0 + n*period for integer n closest to now., end_time = transit_time + (duration/2 + ingress*duration) / 86400., With ingress=0, end_time = transit_time + duration/2., Merit returns 1.0 when phase is inside the transit window., test_end_time_after_transit_time(), test_end_time_longer_with_larger_ingress() (+6 more)
 
 ### Community 29 - "WindowingWidget"
 Cohesion: 0.05
@@ -583,113 +565,113 @@ Nodes (14): BinningWidget, DataDisplayWidget, PrimaryHDU, Slot, Select path for 
 Cohesion: 0.04
 Nodes (53): Interfaces (pyobs.interfaces) API doc, IAbortable, IAcquisition, IAutoFocus, IAutoGuiding, IAutonomous, IBinning, ICalibrate (+45 more)
 
-### Community 31 - "test_control.py"
-Cohesion: 0.08
-Nodes (53): CasesRunner, Script for distinguishing cases., Returns FITS header for the current status of this module. Args: namespaces: If…, ConditionalRunner, Script for running an if condition., Returns FITS header for the current status of this module. Args: namespaces: If…, ParallelRunner, Script for running other scripts in parallel. (+45 more)
+### Community 31 - "Script"
+Cohesion: 0.09
+Nodes (55): CasesRunner, Script for distinguishing cases., Returns FITS header for the current status of this module. Args: namespaces: If…, Estimate duration of the script for the current case., ConditionalRunner, Script for running an if condition., ParallelRunner, Script for running other scripts in parallel. (+47 more)
 
 ### Community 32 - "test_basetelescope.py"
-Cohesion: 0.13
-Nodes (26): OrbitalElements, _orbital_plane_to_ecliptic_cartesian(), _perifocal_to_radec(), _propagate_elements(), Rotates a perifocal-plane position into heliocentric ecliptic coordinates, then…, Rotates a perifocal-plane position (AU) into heliocentric ecliptic Cartesian…, Two-body Kepler propagation of orbital elements to (ra, dec) in degrees, ICRS.…, Solves M = E - e*sin(E) for the eccentric anomaly E, via Newton-Raphson. Args:… (+18 more)
+Cohesion: 0.17
+Nodes (18): _orbital_plane_to_ecliptic_cartesian(), Rotates a perifocal-plane position (AU) into heliocentric ecliptic Cartesian…, Solves M = E - e*sin(E) for the eccentric anomaly E, via Newton-Raphson. Args:…, Solves D + D**3/3 = M for D (Barker's equation, near-parabolic/cometary…, _solve_barker_equation(), _solve_kepler_equation(), parametrize, test_calculate_derotator_position() (+10 more)
 
-### Community 33 - "Any"
-Cohesion: 0.07
-Nodes (16): Any, ConfigValue, Signature, Returns name of module., Parse the optional "acl" config block into _acl_allow/_acl_deny/_acl_mode.…, Expand any interface names (e.g. "ICamera") in an "allow" entry list into that…, Whether the acl policy denies `sender` calling `method`, ignoring `mode`…, Returns a dictionary with config caps. (+8 more)
+### Community 33 - "Module"
+Cohesion: 0.04
+Nodes (39): AbstractEventLoop, setter, The module that this Comm object is attached to., The module that this Comm object is attached to., Module, Any, ConfigValue, Signature (+31 more)
 
 ### Community 34 - "Portal"
-Cohesion: 0.13
-Nodes (11): Portal, Any, Do a GET request on the portal. Args: url: URL to request. Returns: Response…, Clear schedule after given start time. Args: start: Start time to clear…, Submit observations. Args: observations: List of observations to submit., Send report to LCO portal Args: status_id: id of config status status: Status…, Delay re-attempt to send report to LCO portal Args: status_id: id of config…, Fetch schedule from portal. Args: start_before: Task must start before this… (+3 more)
+Cohesion: 0.11
+Nodes (13): Portal, Any, Do a GET request on the portal. Args: url: URL to request. Returns: Response…, Clear schedule after given start time. Args: start: Start time to clear…, Submit observations. Args: observations: List of observations to submit., Send report to LCO portal Args: status_id: id of config status status: Status…, Delay re-attempt to send report to LCO portal Args: status_id: id of config…, Fetch schedule from portal. Args: start_before: Task must start before this… (+5 more)
 
-### Community 35 - "utils/exceptions.py"
-Cohesion: 0.03
-Nodes (83): IDome, The module controls a dome, i.e. a :class:`~pyobs.interfaces.IRoof` with a…, Any, Returns FITS header for the current status of this module. Args: namespaces: If…, FitsHeaderEntry, IFitsHeaderBefore, Any, The module provides some additional header entries for FITS headers before some… (+75 more)
+### Community 35 - "MotionStatus"
+Cohesion: 0.06
+Nodes (41): IMode, ModeCapabilities, ModeState, Any, The module can change modes in a device., Set the current mode. Args: mode: Name of mode to set. group: Name of the group…, DeviceMotionStatus, IMotion (+33 more)
 
-### Community 36 - "test_parallel.py"
+### Community 36 - "Future"
+Cohesion: 0.08
+Nodes (36): Wait until all devices are in one of the given motion states. Args: abort:…, Run script. Raises: InterruptedError: If interrupted, acquire_lock(), event_wait(), Future, Any, Lock, Sets a new timeout for the method call. Cancels any existing timeout handle and… (+28 more)
+
+### Community 37 - "ModuleState"
 Cohesion: 0.10
-Nodes (31): Wait until all devices are in one of the given motion states. Args: abort:…, acquire_lock(), event_wait(), Lock, asyncio, _on_timeout sets TimeoutError on the future., _on_timeout is a no-op if future is already resolved., wait_all awaits all futures and returns their results. (+23 more)
+Nodes (21): ModuleState, Enumerator for module states. Attributes: CLOSED: Module is closed. STARTING:…, _AbortableModule, Any, asyncio, parametrize, Minimal test module with one guarded (non-whitelisted) RPC method., Module implementing IStartStop, whose abstract `start(**kwargs)` RPC method has… (+13 more)
 
-### Community 37 - "_AbortableModule"
-Cohesion: 0.11
-Nodes (19): _AbortableModule, Any, asyncio, parametrize, Minimal test module with one guarded (non-whitelisted) RPC method., Module implementing IStartStop, whose abstract `start(**kwargs)` RPC method has…, A freshly constructed module hasn't been started yet., A regular RPC method must be rejected while the module is still STARTING. (+11 more)
-
-### Community 38 - "_dataclass_to_xml"
-Cohesion: 0.11
-Nodes (18): _dataclass_to_xml(), _parse_scalar(), Any, Deserialize an XML element (produced by ``value_to_xml``) to a Python value.…, Serialize a dataclass to ``<{namespace}state>`` with plain field children. Each…, Deserialize a ``<{ns}state>`` element to a dataclass instance. Handles both…, Parse a raw text value to the given type (legacy state format fallback)., Serialize a Python value to an XML element using the pyobs vocabulary. The… (+10 more)
+### Community 38 - "CoolingState"
+Cohesion: 0.12
+Nodes (22): _dataclass_to_xml(), _parse_scalar(), Any, Element, Shared XML serializer for pyobs 2.0 (urn:pyobs:rpc:1). Both the state pub/sub…, Deserialize an XML element (produced by ``value_to_xml``) to a Python value.…, Serialize a dataclass to ``<{namespace}state>`` with plain field children. Each…, Deserialize a ``<{ns}state>`` element to a dataclass instance. Handles both… (+14 more)
 
 ### Community 39 - "IPointingAltAz.py"
-Cohesion: 0.07
-Nodes (37): AltAzState, IPointingAltAz, The module can move to Alt/Az coordinates, usually combined with…, IPointingRaDec, Any, DEGREES, RaDecState, The module can move to RA/Dec coordinates, usually combined with… (+29 more)
+Cohesion: 0.05
+Nodes (48): AltAzState, IPointingAltAz, The module can move to Alt/Az coordinates, usually combined with…, IPointingRaDec, Any, DEGREES, RaDecState, The module can move to RA/Dec coordinates, usually combined with… (+40 more)
 
-### Community 40 - "ObservationList"
-Cohesion: 0.02
-Nodes (147): Mastermind, Any, Returns FITS header for the current status of this module. Args: namespaces: If…, Mastermind for a full robotic mode., Initialize a new auto focus system. Args: schedule: Object that can return…, Observation, ObservationList, ObservationState (+139 more)
+### Community 40 - "Observation"
+Cohesion: 0.03
+Nodes (94): Mastermind, Any, Returns FITS header for the current status of this module. Args: namespaces: If…, Mastermind for a full robotic mode., Initialize a new auto focus system. Args: schedule: Object that can return…, Initialize a new scheduler. Args: scheduler: Scheduler to use. tasks: Task…, Observation, ObservationState (+86 more)
 
-### Community 41 - "OffsetsAltAzEvent"
-Cohesion: 0.12
-Nodes (13): DataTypeAltAz, DataTypeRaDec, OffsetsAltAzEvent, OffsetsEvent, OffsetsRaDecEvent, Any, TypedDict, Event to be sent when an RA/Dec offset is to be moved. (+5 more)
+### Community 41 - "SkyOffsets"
+Cohesion: 0.10
+Nodes (22): BaseCoordinateFrame, Angle, SkyCoord, Returns separatation between both coordinates, either in their own or a given…, Calculates spherical offset from first coordinate to second. Args: frame:…, Args: frame: Coordinate frame to use, or None to use coordinates' own frames.…, SkyOffsets, DummySkyOffsets (+14 more)
 
-### Community 42 - "_SourceCatalog"
-Cohesion: 0.13
-Nodes (12): Any, DataFrame, floating, NDArray, Table, _SourceCatalog, test_filter_detection_flag(), test_filter_detection_flag_default() (+4 more)
+### Community 42 - "PillowHelper"
+Cohesion: 0.14
+Nodes (13): Annotation processors doc, Circle, Draw a circle on an image, optionally interpreting the center in WCS…, Draws a circle on the image. Args: image: Image to draw on. Returns: Output…, Crosshair, Drawn a crosshair on the image. Args: image: Image to draw on. Returns: Output…, Draw a crosshair (circle plus orthogonal lines) on an image, optionally using…, PillowHelper (+5 more)
 
-### Community 43 - "Any"
-Cohesion: 0.07
-Nodes (18): Any, ProxyType, Returns object directly if it is of given type. Otherwise get proxy of client…, Backend hook, called when a proxy exists but doesn't implement obj_type.…, Calls proxy() in a safe way and returns None instead of raising an exception., Returns a context manager; use as `async with self.proxy(...) as x:`., Same as proxy(), but yields None inside the block instead of raising., True if a proxy of the given type can currently be resolved. Doesn't keep a… (+10 more)
+### Community 43 - "Comm"
+Cohesion: 0.04
+Nodes (36): Comm responsibility: Discovery (clients_with_interface), Comm responsibility: Events (broadcast typed events), Comm, Any, ProxyType, Returns object directly if it is of given type. Otherwise get proxy of client…, Backend hook, called when a proxy exists but doesn't implement obj_type.…, Calls proxy() in a safe way and returns None instead of raising an exception. (+28 more)
 
 ### Community 44 - "test_transitimaging.py"
 Cohesion: 0.07
-Nodes (38): EarthLocation, model_validator, Self, SkyCoord, Merit function for observing transits., Returns the time of the next mid-transit., Returns the time until which observations should run: mid-transit + duration/2…, TransitMerit (+30 more)
+Nodes (37): EarthLocation, model_validator, Self, SkyCoord, Merit function for observing transits., Returns the time of the next mid-transit., Returns the time until which observations should run: mid-transit + duration/2…, TransitMerit (+29 more)
 
 ### Community 45 - "robotic/test_scheduler.py"
 Cohesion: 0.13
 Nodes (39): Scheduler, DummyTask, make_async_gen(), make_obs(), make_scheduler(), asyncio, Regression test: _on_task_finished is registered for both TaskFinishedEvent and…, _state_for() (+31 more)
 
 ### Community 46 - "StandAlone"
-Cohesion: 0.10
-Nodes (38): pyobs.modules.test (doc), StandAlone, Quickstart (doc), pyobs-core (pip package), Test modules. TODO: write doc, Example module that only logs the given message forever in the given interval., Thread function for async processing., StandAlone (+30 more)
+Cohesion: 0.09
+Nodes (40): pyobs.modules.test (doc), StandAlone, Quickstart (doc), pyobs-core (pip package), Test modules. TODO: write doc, Any, Example module that only logs the given message forever in the given interval., Creates a new StandAlone object. Args: message: Message to log in the given… (+32 more)
 
-### Community 47 - ".__call__"
-Cohesion: 0.33
-Nodes (4): EarthLocation, SkyCoord, Take the pixel offsets stored in the meta data of the image and apply them to…, Return RA/Dec of central pixel and of central pixel plus offsets. Args: image:…
+### Community 47 - "_DotNetRequest"
+Cohesion: 0.12
+Nodes (7): Any, Init new astronomy.net processor. Args: url: URL to service. source_count:…, _DotNetRequestBuilder, _DotNetRequest, Any, asyncio, test_generate_request_error_msg()
 
 ### Community 48 - "test_schedulewriter.py"
-Cohesion: 0.25
-Nodes (16): make_portal(), Shared helpers for LCO tests., Create Portal bypassing Object.__init__ and aiohttp session., make_configdb(), make_lco_observation(), make_writer(), asyncio, test_add_schedule_calls_portal() (+8 more)
+Cohesion: 0.12
+Nodes (25): InstrumentLocation, ConfigDB, LcoScheduleWriter, Any, Scheduler for using the LCO portal, Creates a new LCO scheduler. Args: portal: Portal to use. configdb: ConfigDB to…, Add the list of scheduled tasks to the schedule. Args: tasks: Scheduled tasks., Clear schedule after given start time. Args: start_time: Start time to clear… (+17 more)
 
 ### Community 49 - "test_stellarexptime.py"
-Cohesion: 0.08
-Nodes (38): WindowState, ExposureTimeProvider, Determine and return the exposure time in seconds. Returns: Exposure time in…, Abstract base class for providers that determine camera exposure time., ndarray, Find the brightest star near the image centre by fitting a 2D Gaussian. Args:…, Determines exposure time by finding a star near the image centre and adjusting…, Determine the optimal exposure time. Returns: Optimal exposure time in seconds. (+30 more)
+Cohesion: 0.11
+Nodes (34): ndarray, Find the brightest star near the image centre by fitting a 2D Gaussian. Args:…, Determines exposure time by finding a star near the image centre and adjusting…, Determine the optimal exposure time. Returns: Optimal exposure time in seconds., StellarExposureTimeProvider, attach_proxies(), make_camera_mocks(), make_image() (+26 more)
 
 ### Community 50 - "StarExpTimeEstimator"
 Cohesion: 0.07
-Nodes (27): Exposure Time estimators doc, ExpTimeEstimator (exptime processor base), StarExpTimeEstimator (exptime processor), ExpTime, ExpTimeEstimator, Any, Estimate exposure time., Init new exposure time estimator. (+19 more)
+Nodes (25): Exposure Time estimators doc, ExpTimeEstimator (exptime processor base), StarExpTimeEstimator (exptime processor), ExpTimeEstimator, Any, Estimate exposure time., Init new exposure time estimator., Any (+17 more)
 
 ### Community 51 - "RPC"
-Cohesion: 0.08
-Nodes (22): fault_to_xml(), params_to_xml(), Any, ClientXMPP, Element, Exception, Parse <fault> and return (exception_qualified_name, message)., RPC wrapper around XEP-0009 using pyobs 2.0 payload encoding (urn:pyobs:rpc:1). (+14 more)
+Cohesion: 0.09
+Nodes (23): fault_to_xml(), params_to_xml(), Any, ClientXMPP, Element, Exception, Parse <fault> and return (exception_qualified_name, message)., RPC wrapper around XEP-0009 using pyobs 2.0 payload encoding (urn:pyobs:rpc:1). (+15 more)
 
 ### Community 52 - "WindowCapabilities"
-Cohesion: 0.12
-Nodes (28): ModuleCapabilities, WindowCapabilities, Returns label of module., make_module(), Minimal module stub satisfying what XmppComm needs on connect. IModule must be…, get_capabilities_from_disco(), Integration tests for Phase 2.5 Presence and Discovery. Requires a live…, LOCAL state must arrive as away presence. (+20 more)
+Cohesion: 0.08
+Nodes (42): ModuleCapabilities, WindowCapabilities, make_module(), Minimal module stub satisfying what XmppComm needs on connect. IModule must be…, get_capabilities_from_disco(), Integration tests for Phase 2.5 Presence and Discovery. Requires a live…, LOCAL state must arrive as away presence., Module.set_state() must automatically push presence — no explicit call. (+34 more)
 
 ### Community 53 - "test_shellcommand.py"
 Cohesion: 0.10
 Nodes (29): ParserState, Any, Enum, ShellCommand, ShellCommandResponse, asyncio, test_command_number_increments(), test_execute_invalid_param() (+21 more)
 
 ### Community 54 - "Calibration"
-Cohesion: 0.08
-Nodes (26): ImageProcessor on_error kwarg / per-step error handling, Additional Modules index (docs), Image processors index (docs), Astrometry processors doc, AstrometryDotNet (astrometry processor), Calibration processors doc, Calibration, Calibrate an image. Args: image: Image to calibrate. Returns: Calibrated image. (+18 more)
+Cohesion: 0.09
+Nodes (21): Additional Modules index (docs), Image processors index (docs), Calibration processors doc, Calibration, Calibrate an image. Args: image: Image to calibrate. Returns: Calibrated image., Calibrate an image using master bias, dark, and flat frames fetched from an…, Find master calibration frame for given parameters using a cache. Args:…, _CCDDataCalibrator (+13 more)
 
 ### Community 55 - ".get_object"
-Cohesion: 0.09
-Nodes (20): ObjectClass, PydanticModel, Move telescope to pointing., create_object(), get_object(), get_safe_object(), Any, ProxyType (+12 more)
+Cohesion: 0.06
+Nodes (28): ObjectClass, PydanticModel, _ProxyContext, ProxyType, Returned by Comm.proxy() / Object.proxy() / Comm.safe_proxy(). Must be used as:…, Move telescope to pointing., create_object(), get_object() (+20 more)
 
 ### Community 56 - "Publisher"
-Cohesion: 0.10
-Nodes (17): Any, Measures seeing on reduced images with a catalog., Creates a new seeing estimator. Args: sources: List of sources (e.g. cameras)…, Puts a new images in the DB with the given ID. Args: event: New image event…, Seeing, LogPublisher, Any, Initialize new log publisher. Args: level: Level to log on. (+9 more)
+Cohesion: 0.09
+Nodes (20): Any, Creates a new seeing estimator. Args: sources: List of sources (e.g. cameras)…, CsvPublisher, Any, DataFrame, Initialize new CSV publisher. Args: filename: Name of file to log in., Publish the given results. Args: **kwargs: Results to publish., Return data that has so far been published. (+12 more)
 
 ### Community 57 - "_SepAperturePhotometry"
-Cohesion: 0.15
-Nodes (11): Any, floating, NDArray, Table, since SEP sums up whole pixels, we need to do the same on an image of ones for…, _SepAperturePhotometry, asyncio, fixture (+3 more)
+Cohesion: 0.05
+Nodes (37): AperturePhotometry, Any, Base class for aperture photometry processors -- not meant to be used directly,…, Do aperture photometry on given image. Args: image: Image to do aperture…, _PhotometryCalculator, Table, Abstract class for photometry calculators., Photometry (+29 more)
 
 ### Community 58 - "Any"
 Cohesion: 0.11
@@ -697,51 +679,51 @@ Nodes (13): ImageHDU, Any, floating, HDUList, Header, NDArray, setter, Table (+5
 
 ### Community 59 - "Proxy"
 Cohesion: 0.07
-Nodes (23): Comm responsibility: Method calls (via Proxy), Proxy, _ProxyContext, Any, ProxyType, Signature, Execute a method on the remote client. Args: method: Name of method to call.…, Create local methods for the remote client. (+15 more)
+Nodes (29): Comm responsibility: Method calls (via Proxy), Proxy, Any, Signature, Execute a method on the remote client. Args: method: Name of method to call.…, Create local methods for the remote client., Function wrapper for remote calls. Args: method: Name of method to wrap.…, Called by Comm whenever a new state arrives. Not intended to be called directly… (+21 more)
 
 ### Community 60 - "FilenameFormatter"
-Cohesion: 0.14
-Nodes (13): Format filename with given formatter., FilenameFormatter, Header, Returns value for given key. Args: hdr: fits.Header to take value from. key:…, Formats a filename given a format template and a FITS header. Args: hdr: FITS…, Format a given placeholder. Args: placeholder: Placeholder to format. hdr: FITS…, Sets a given string to lowercase. Args: hdr: FITS header to take values from.…, Formats time using the given delimiter. Args: hdr: FITS header to take values… (+5 more)
+Cohesion: 0.07
+Nodes (29): Format filename with given formatter., CreateFilename, Any, Add filename to image. Args: image: Image to add filename to. Returns: Image…, Format and set a filename for the image using a pattern, storing it in the…, Init an image processor that adds a filename to an image. Args: pattern:…, FilenameFormatter, format_filename() (+21 more)
 
 ### Community 61 - "test_basevideo.py"
 Cohesion: 0.16
 Nodes (34): ImageRequest, make_basevideo(), make_request(), asyncio, test_activate_camera_from_inactive_calls_hook(), test_activate_camera_when_already_active_skips_hook(), test_active_update_deactivates_after_sleep_timeout(), test_active_update_skips_deactivate_when_recently_active() (+26 more)
 
 ### Community 62 - "test_yaml_archives.py"
-Cohesion: 0.10
-Nodes (41): Any, DataFrame, HDUList, Convenience function for writing an Image to a FITS file. Args: filename: Name…, Convenience function for writing an Image to a FITS file. Args: filename: Name…, Convenience function for writing bytes to a file. Args: filename: Name of file…, Convenience function for reading a CSV file into a DataFrame. Args: filename:…, Convenience function for writing a CSV file from a DataFrame. Args: filename:… (+33 more)
+Cohesion: 0.24
+Nodes (28): make_obs(), make_obs_archive(), make_task(), make_task_archive(), asyncio, Verify observations are actually written to disk in valid YAML., test_add_and_load_observations(), test_add_empty_list_is_noop() (+20 more)
 
-### Community 63 - "Project"
+### Community 63 - "LcoTaskArchive"
 Cohesion: 0.07
-Nodes (16): # TODO: add abort (see old robotic/scheduler.py), Abstract base class for tasks scheduler., TaskScheduler, FileSystemTaskArchive, Any, Task archive based on files., Creates a new filesystem-based task archive. Args: extension: Extension of…, Returns time when last time any blocks changed. (+8 more)
+Nodes (18): FileSystemTaskArchive, Any, Task archive based on files., Creates a new filesystem-based task archive. Args: extension: Extension of…, Returns time when last time any blocks changed., Returns list of projects. Returns: List of projects., Returns list of schedulable tasks. Returns: List of schedulable tasks, Returns the task with the given ID. Returns: Task with given ID. (+10 more)
 
 ### Community 64 - "FlatFielder"
-Cohesion: 0.06
-Nodes (32): ICamera, The module controls a camera., IFilters, Any, The module can change filters in a device., Set the current filter. Args: filter_name: Name of filter to set. Raises:…, ITelescope, The module controls a telescope. (+24 more)
+Cohesion: 0.09
+Nodes (21): ICamera, The module controls a camera., Initialize a new flat fielder. Args: telescope: Name of ITelescope. camera:…, FlatFielder, Enum, Calls next step in state machine. Args: telescope: Telescope to use. camera:…, Returns True, if functions are based on filters., Do a quick initial check. Returns: False, if flat-field time for this filter is… (+13 more)
 
 ### Community 65 - "IExposure"
 Cohesion: 0.06
 Nodes (34): Comm._get_client, ADR-0001: Check Interface.state by own declaration, not inheritance, Composite interfaces inheriting stateful bases (ICamera, IDome, ITelescope, ...), Interface.capabilities (ClassVar), Interface.has_own_state(), Interface.state (ClassVar), XmppComm disco#info feature registration, ADR-0006: Proxy.wait_for_state() returns None on timeout (+26 more)
 
 ### Community 66 - "Telegram"
-Cohesion: 0.14
-Nodes (18): CallbackContext, Any, Save storage file. Args: context: Telegram context., Is user authorized? Args: context: Telegram context. user_id: ID of user.…, Store new user in auth database. Args: context: Telegram context. user_id: ID…, Handle /start command. Args: update: Message to process. context: Telegram…, Handle /exec command. Args: update: Message to process. context: Telegram…, Handle click on buttons. Args: update: Message to process. context: Telegram… (+10 more)
+Cohesion: 0.13
+Nodes (19): CallbackContext, Any, Save storage file. Args: context: Telegram context., Is user authorized? Args: context: Telegram context. user_id: ID of user.…, Store new user in auth database. Args: context: Telegram context. user_id: ID…, Handle /start command. Args: update: Message to process. context: Telegram…, Handle /exec command. Args: update: Message to process. context: Telegram…, Handle click on buttons. Args: update: Message to process. context: Telegram… (+11 more)
 
-### Community 67 - "benchmark_state_throughput.py"
-Cohesion: 0.06
-Nodes (53): BinningState, IBinning, Any, The camera supports binning, to be used together with…, Set the camera binning. Args: x: X binning. y: Y binning. Raises: ValueError:…, FlatField, Any, Enum (+45 more)
+### Community 67 - "FlatField"
+Cohesion: 0.14
+Nodes (12): IFlatField, The module performs flat-fielding., FlatField, Any, List available binnings. Returns: List of available binnings as (x, y) tuples., Set the camera binning. Args: x: X binning. y: Y binning. Raises: ValueError:…, List available filters. Returns: List of available filters., Set the current filter. Args: filter_name: Name of filter to set. (+4 more)
 
 ### Community 68 - "SolarElevationConstraint"
 Cohesion: 0.17
 Nodes (27): AtNightConstraint, Solar elevation constraint., SolarElevationConstraint, constraint(), data(), observer(), asyncio, fixture (+19 more)
 
 ### Community 69 - "Offsets"
-Cohesion: 0.03
-Nodes (64): AltAzOffsets, GenericOffset, OnSkyDistance, Angle, PixelOffsets, RaDecOffsets, AstrometryOffsets, CorrelationMaxCloseToBorderError (+56 more)
+Cohesion: 0.08
+Nodes (23): PixelOffsets, AstrometryOffsets, CorrelationMaxCloseToBorderError, Any, Exception, SkyCoord, Compute pixel offsets from WCS by comparing image reference coordinates to…, Initializes new astrometry offsets. MUST run after an astrometry processor. (+15 more)
 
 ### Community 70 - ".now"
-Cohesion: 0.08
-Nodes (28): Observer, ObservationArchiveEvolution, date, Observer, Populates the task cache and the one real night (anchored to `start`) up front.…, Freezes observation cache. After this: a task-id miss raises RuntimeError; a…, Returns list of observations for the given task. Args: date: Date of night to…, SkyCoord (+20 more)
+Cohesion: 0.10
+Nodes (25): Compute and persist the next per-night observation number. Returns: Compound…, Observer, ObservationArchiveEvolution, date, Observer, Populates the task cache and the one real night (anchored to `start`) up front.…, Freezes observation cache. After this: a task-id miss raises RuntimeError; a…, Returns list of observations for the given task. Args: date: Date of night to… (+17 more)
 
 ### Community 71 - "PyObsError"
 Cohesion: 0.07
@@ -752,52 +734,52 @@ Cohesion: 0.12
 Nodes (33): _cooling_state(), make_proxy(), asyncio, Methods from both interfaces are callable., A CoolingState timestamped `age_seconds` in the past., Callers that don't pass max_age see no behavior change, however old the cached…, A future interface whose State dataclass has no `time` field fails loudly at…, Create a Proxy with a mock comm. (+25 more)
 
 ### Community 73 - "XEP_0009"
-Cohesion: 0.07
-Nodes (13): BasePlugin, Expose method to public., Expose method to public., Expose method to public., Small fix for the original XEP_0009 plugin., Route RPC-level errors (e.g. forbidden, item-not-found) through the same…, XEP_0009, A plugin for SleekXMPP, adding a timeout to RPC calls. (+5 more)
+Cohesion: 0.12
+Nodes (7): Expose method to public., Expose method to public., Expose method to public., Small fix for the original XEP_0009 plugin., Route RPC-level errors (e.g. forbidden, item-not-found) through the same…, XEP_0009, XEP_0009_original
 
-### Community 74 - "VirtualFileSystem"
+### Community 74 - "SiderealTarget"
 Cohesion: 0.05
-Nodes (52): PrivateAttrMixin, DynamicTarget, SkyCoord, Target, Pick the best available target given current conditions. For static targets…, HeliocentricPolarTarget, Target, HelioprojectiveTarget (+44 more)
+Nodes (52): DynamicTarget, SkyCoord, Target, Pick the best available target given current conditions. For static targets…, HeliocentricPolarTarget, Target, HelioprojectiveTarget, SkyCoord (+44 more)
 
 ### Community 75 - "PyobsDaemon"
 Cohesion: 0.14
 Nodes (10): Any, PyobsDaemon, Return the bare module name from a config or PID file path., Strip a leading underscore, which marks a module as disabled. PID and log files…, Return sorted module names from *.yaml files, excluding *.shared.yaml., Read and return the PID from the module's PID file, or None., Return the live PID for a module, or None. Cleans up stale PID files., Return uptime (seconds) and rss_mb for a running PID. No CPU -- that needs a… (+2 more)
 
 ### Community 76 - "MockWeather"
-Cohesion: 0.14
-Nodes (22): WeatherSensorReading, MockWeather, Any, Return value for given sensor. Args: station: Name of weather station to get…, Returns FITS header for the current status of this module. Args: namespaces: If…, A mock weather station for testing and simulations., Creates a new mock weather station. Args: good: Initial weather-good state.…, Set the simulated weather-good state, for use in tests and simulations. Fires a… (+14 more)
+Cohesion: 0.15
+Nodes (20): MockWeather, Any, Returns FITS header for the current status of this module. Args: namespaces: If…, A mock weather station for testing and simulations., Creates a new mock weather station. Args: good: Initial weather-good state.…, Set the simulated weather-good state, for use in tests and simulations. Fires a…, asyncio, test_active_flag_defaults_true_and_tracks_stop() (+12 more)
 
 ### Community 77 - "test_config.py"
 Cohesion: 0.10
 Nodes (31): include_parts(), pre_process_yaml(), Any, Replaces blocks of the form {include <source.yaml> <key>} in the loaded config…, Include nested contents from another YAML file. Args: include: dictionary based…, Finds anchors ('&') in the included file. Args: filename: name of the file with…, Replaces aliases ('<<: *...') in the main file by the anchor in the included…, reload_anchors() (+23 more)
 
-### Community 78 - "test_dummyvideo.py"
-Cohesion: 0.17
-Nodes (15): DummyVideo, Any, A dummy video module for testing — streams simulated noise frames., Creates a new dummy video module. Args: fps: Frames per second to simulate.…, Set the exposure time (frame interval). Args: exposure_time: Exposure time in…, Background task that generates simulated frames., make_dummyvideo(), asyncio (+7 more)
+### Community 78 - "ExposureTimeState"
+Cohesion: 0.06
+Nodes (28): GuidingState, IAutoGuiding, The module can perform auto-guiding., ExposureTimeState, IExposureTime, Any, SECONDS, The camera supports exposure times, to be used together with… (+20 more)
 
 ### Community 79 - "test_acquisition.py"
-Cohesion: 0.20
-Nodes (33): EarthLocation, Take the pixel offsets stored in the meta data of the image and apply them to…, OffsetResult, EarthLocation, Take the pixel offsets stored in the meta data of the image and apply them to…, make_acquisition(), make_camera(), make_image() (+25 more)
+Cohesion: 0.28
+Nodes (28): make_acquisition(), make_camera(), make_image(), make_telescope(), asyncio, offsets_frame: 'radec', 'altaz', or None (telescope supports neither offsets…, _state_for(), test_abort_sets_event() (+20 more)
 
 ### Community 80 - "Weather"
 Cohesion: 0.15
 Nodes (24): Builds the current per-sensor readings from the last raw status, for state…, Connection to pyobs-weather., Weather, asyncio, test_active_flag_defaults_true_and_tracks_stop(), test_calc_system_init_eta(), test_get_fits_header_before(), test_get_fits_header_before_invalid() (+16 more)
 
-### Community 81 - "CoolingState"
-Cohesion: 0.18
-Nodes (18): ModuleClosedEvent, Event to be sent when a module has closed., CoolingState, Integration tests for the XEP-0060 state pub/sub path. Requires a live ejabberd…, proxy.get_state(ICooling) must return the latest value without an RPC round-…, When the remote module disconnects, _client_disconnected must call…, After disconnect and reconnect, the next proxy() call must produce a fresh…, Poll *condition* until truthy or *timeout* seconds elapse. (+10 more)
+### Community 81 - "test_scheduler_mastermind.py"
+Cohesion: 0.21
+Nodes (22): make_obs_archive(), make_task(), asyncio, integration, Scheduled observation end - start matches task duration., Full pipeline: scheduler creates observation, mastermind runs it to completion., Full pipeline: mastermind marks observation FAILED when runner raises., MemoryTaskArchive provides tasks to the scheduler correctly. (+14 more)
 
-### Community 82 - "ProjectionFocusSeries"
-Cohesion: 0.16
-Nodes (11): ProjectionFocusSeries, Any, floating, NDArray, Returns a list of data points., Fit focus from analysed images Returns: Tuple of new focus and its error, Creates a sine window function of the same size as some 1-D array "arr".…, Removes global slopes and fills up bad rows (ybad) or columns (xbad). (+3 more)
+### Community 82 - "test_csvpicker_scheduler.py"
+Cohesion: 0.25
+Nodes (20): make_dynamic_task(), make_vfs(), asyncio, integration, Path, CsvPicker filters out targets that fail the airmass constraint., OnDemandScheduler resolves DynamicTarget via CsvPicker to a SiderealTarget., Scheduler produces no observations when all CSV targets are invisible. (+12 more)
 
 ### Community 83 - ".set_focus"
 Cohesion: 0.40
 Nodes (4): Any, MM, Sets new focus. Args: focus: New focus value in mm. Raises:…, Sets focus offset. Args: offset: New focus offset in mm. Raises: ValueError: If…
 
-### Community 84 - "AperturePhotometry"
-Cohesion: 0.12
-Nodes (11): AperturePhotometry, Any, Base class for aperture photometry processors -- not meant to be used directly,…, Do aperture photometry on given image. Args: image: Image to do aperture…, Photometry, Do aperture photometry on given image. Args: image: Image to do aperture…, Base class for photometry processors., Any (+3 more)
+### Community 84 - "test_lcoscript.py"
+Cohesion: 0.17
+Nodes (18): FakeScript, make_lco_script(), make_request(), Any, asyncio, Minimal script used to verify LcoScript's dispatch., can_run() resolves and delegates to the script named in…, run() delegates to the named script and copies its exptime_done back. (+10 more)
 
 ### Community 85 - "Ring"
 Cohesion: 0.14
@@ -807,29 +789,29 @@ Nodes (9): integer, Any, floating, NDArray, Estimate pixel guiding offsets from 
 Cohesion: 0.22
 Nodes (12): Actually run the application., Force astropy's IERS-A table and leap-second table to be loaded/downloaded now,…, _warm_iers_cache(), loaded_pyobs_packages(), Return the version of every loaded ``pyobs``-prefixed distribution. Builds the…, _fake_modules(), test_defaults_to_sys_modules(), test_excludes_non_pyobs_distributions() (+4 more)
 
-### Community 87 - "XmppClient"
+### Community 87 - "xmppcomm.py"
 Cohesion: 0.08
-Nodes (19): Any, Disconnect only, instead of slixmpp's default reconnect-in-place. xep_0199's…, Called when the server sends a <stream:error/>, e.g. when this connection gets…, Whether this client was (or is being) kicked because another session connected…, Human-readable reason text sent alongside the conflict stream error, if any., Wait for client to connect. Returns: Success or not., XMPP client for pyobs., Session start event. Args: event: The event sent at session start. (+11 more)
+Nodes (20): Any, Disconnect only, instead of slixmpp's default reconnect-in-place. xep_0199's…, Called when the server sends a <stream:error/>, e.g. when this connection gets…, Whether this client was (or is being) kicked because another session connected…, Human-readable reason text sent alongside the conflict stream error, if any., Wait for client to connect. Returns: Success or not., XMPP client for pyobs., Session start event. Args: event: The event sent at session start. (+12 more)
 
 ### Community 88 - "test_exception_logging.py"
-Cohesion: 0.27
-Nodes (20): Callback for flat-field class to call with statistics., FocusError, _AbortableModule, asyncio, Minimal test module whose abort() raises whatever exception it's given. Starts…, test_call_id_is_attached_to_the_exception_and_included_in_the_log_line(), test_call_id_omitted_from_log_line_when_not_given(), test_disable_exception_logging_covers_subclasses() (+12 more)
-
-### Community 89 - "DaophotSourceDetection"
 Cohesion: 0.17
-Nodes (13): DaophotSourceDetection, Any, floating, NDArray, Table, Initializes a wrapper for photutils. See its documentation for details. Args:…, Find stars in given image and append catalog. Args: image: Image to find stars…, Detect astronomical point sources using a DAOPhot-style algorithm via… (+5 more)
+Nodes (24): PresenceCallback, Register a presence callback and deliver the current state immediately., Callback for flat-field class to call with statistics., FocusError, _AbortableModule, Any, asyncio, Exception (+16 more)
+
+### Community 89 - "_DaoBackgroundRemover"
+Cohesion: 0.06
+Nodes (33): Source Detection processors doc, DaophotSourceDetection (detection processor), SepSourceDetection (detection processor), _DaoBackgroundRemover, Any, floating, NDArray, DaophotSourceDetection (+25 more)
 
 ### Community 90 - "Application"
 Cohesion: 0.15
 Nodes (23): Application, React to signals and quit the module., Class for initializing and shutting down a pyobs process., make_bare_application(), Any, asyncio, Tests for Application's module_factory path (see specs/plans/gui-interactive-…, Config path: _module is already set in __init__, so _main() must not touch the… (+15 more)
 
 ### Community 91 - "DummyComm"
-Cohesion: 0.13
-Nodes (16): DummyComm, A dummy implementation of the Comm interface., Always return zero clients., No interfaces implemented., Interfaces are never supported., Send an event to other clients. Args: event (Event): Event to send, comm(), asyncio (+8 more)
+Cohesion: 0.09
+Nodes (20): Creates a comm module., DummyComm, Any, A dummy implementation of the Comm interface., Creates a new dummy comm. Args: name: Name to report for this comm. Defaults to…, Always return zero clients., No interfaces implemented., Interfaces are never supported. (+12 more)
 
 ### Community 92 - "CallModuleScript"
-Cohesion: 0.20
-Nodes (17): CallModuleScript, Script for calling a method on a module., asyncio, fixture, script(), test_can_run_false_when_module_unavailable(), test_can_run_true_when_module_available(), test_can_run_uses_interface_for_proxy() (+9 more)
+Cohesion: 0.12
+Nodes (23): Any, get_class_from_string(), Get class from a given string. Args: class_name: Name of class as string.…, _build_params_model(), CallModuleScript, _get_valid_param_names(), model_validator, Script for calling a method on a module. (+15 more)
 
 ### Community 93 - "ProjectedOffsets"
 Cohesion: 0.14
@@ -843,21 +825,21 @@ Nodes (23): PyobsArchiveFrameInfo, Frame info for pyobs archive., make_archive()
 Cohesion: 0.10
 Nodes (18): ArchiveFile, Wraps a file in an archive. To be used in combination with pyobs-archive., Creates a new archive file. Args: name: Name of file. mode: Open mode (r/w).…, If in write mode, actually send the file to the archive., HttpFile, Any, Read number of bytes from stream. Args: n: Number of bytes to read. Read until…, Write data into the stream. Args: s: Bytes of data to write. (+10 more)
 
-### Community 96 - "Object"
-Cohesion: 0.03
-Nodes (96): PydanticBaseModel, Object, :class:`~pyobs.object.Object` is the base for almost all classes in *pyobs*. It…, Base class for all objects in *pyobs*., Whether object has been opened., Can be overloaded to quit program., Any, AcquisitionConfig (+88 more)
+### Community 96 - "LcoTask"
+Cohesion: 0.06
+Nodes (34): Any, LcoRequest, LcoSchedulableRequest, ConfigStatus, LcoTask, Any, Target, Returns observation_type of this task. Returns: observation_type of this task. (+26 more)
 
 ### Community 97 - "InfluxHandler"
 Cohesion: 0.28
 Nodes (4): InfluxHandler, Any, LogRecord, WriteOptions
 
 ### Community 98 - "FocusSeries"
-Cohesion: 0.11
-Nodes (22): AutoFocusPoint, fit_hyperbola(), Fit a hyperbola Args: x_arr: X data y_arr: Y data y_err: Y errors Returns:…, FocusSeries, Analyse given image. Args: image: Image to analyse focus_value: Value to fit…, Returns a list of data points., Fit focus from analysed images Returns: Tuple of new focus and its error, Base class for focus series helper classes. (+14 more)
+Cohesion: 0.06
+Nodes (38): AutoFocusPoint, fit_hyperbola(), Fit a hyperbola Args: x_arr: X data y_arr: Y data y_err: Y errors Returns:…, FocusSeries, Analyse given image. Args: image: Image to analyse focus_value: Value to fit…, Returns a list of data points., Fit focus from analysed images Returns: Tuple of new focus and its error, Base class for focus series helper classes. (+30 more)
 
 ### Community 99 - "SepSourceDetection"
-Cohesion: 0.16
-Nodes (17): Background, Any, floating, NDArray, Initializes a wrapper for SEP. See its documentation for details. Highly…, Find stars in given image and append catalog. Args: image: Image to find stars…, Remove background from image in data. Args: data: Data to remove background…, Detect astronomical sources using SEP (Source Extractor for Python). This… (+9 more)
+Cohesion: 0.06
+Nodes (33): Background, Any, floating, NDArray, Initializes a wrapper for SEP. See its documentation for details. Highly…, Find stars in given image and append catalog. Args: image: Image to find stars…, Remove background from image in data. Args: data: Data to remove background…, Detect astronomical sources using SEP (Source Extractor for Python). This… (+25 more)
 
 ### Community 100 - "make_proxy_cm"
 Cohesion: 0.21
@@ -867,21 +849,21 @@ Nodes (27): make_proxy_cm(), Wrap value in a MagicMock standing in for the async
 Cohesion: 0.20
 Nodes (32): make_guiding(), make_image(), asyncio, _state_for(), test_auto_guiding_sleeps_when_disabled(), test_auto_guiding_takes_and_processes_image_when_enabled(), test_get_fits_header_after_includes_statistics(), test_get_fits_header_before_reports_closed_loop() (+24 more)
 
-### Community 102 - "timeout"
-Cohesion: 0.07
-Nodes (25): F, ConfigCapabilities, A module in *pyobs* is the smalles executable unit. The base class for all…, MultiModule, raises(), Wait until all sub-module tasks have finished., Cancel sub-module tasks and close shared objects., Quit all sub-modules. (+17 more)
+### Community 102 - "MultiModule"
+Cohesion: 0.14
+Nodes (9): MultiModule, Wait until all sub-module tasks have finished., Cancel sub-module tasks and close shared objects., Quit all sub-modules., Wrapper for running multiple modules in a single process., Checks, whether this multi-module contains a module of given name., Returns module of given name., Open MultiModule. Shared/non-module child objects are opened normally. Each… (+1 more)
 
 ### Community 103 - "ResolvableErrorLogger"
-Cohesion: 0.17
-Nodes (9): Any, Creates a new LCO scheduler. Args: url: URL to portal site: Site filter for…, Any, Logger, Logging for resolvable errors. Args: logger: Logger to use. error_level: Log…, Log an error message., ResolvableErrorLogger, create_logger() (+1 more)
+Cohesion: 0.23
+Nodes (7): Any, Logger, Logging for resolvable errors. Args: logger: Logger to use. error_level: Log…, Log an error message., ResolvableErrorLogger, create_logger(), test_logger()
 
 ### Community 104 - "test_coordinates.py"
 Cohesion: 0.15
 Nodes (25): offset_altaz_to_radec(), offset_radec_to_altaz(), EarthLocation, SkyCoord, make_altaz(), make_radec(), SkyCoord, Zero offset returns (0, 0). (+17 more)
 
 ### Community 105 - "get_registered_interface"
-Cohesion: 0.10
-Nodes (23): get_registered_interface(), Look up a registered interface class by name, or None if unknown., All currently-registered interface classes, keyed by name., registered_interfaces(), List interfaces and methods of this module., Tests for the import-time interface registry in pyobs/interfaces/interface.py.…, Re-importing the same interface module twice resolves to the same class object…, Two genuinely different classes claiming the same name must raise TypeError… (+15 more)
+Cohesion: 0.13
+Nodes (20): get_registered_interface(), Look up a registered interface class by name, or None if unknown., All currently-registered interface classes, keyed by name., registered_interfaces(), Tests for the import-time interface registry in pyobs/interfaces/interface.py.…, Re-importing the same interface module twice resolves to the same class object…, Two genuinely different classes claiming the same name must raise TypeError…, Mutating the returned dict must not affect the live registry. (+12 more)
 
 ### Community 106 - "What You Must Do When Invoked"
 Cohesion: 0.08
@@ -897,7 +879,7 @@ Nodes (17): Blockers found while getting the environment working (2026-07-27), C
 
 ### Community 109 - "_PhotUtilAperturePhotometry"
 Cohesion: 0.17
-Nodes (10): _PhotUtilAperturePhotometry, Table, PhotUtilsPhotometry, Any, Perform photometry using PhotUtils., test_init(), asyncio, test_call_const() (+2 more)
+Nodes (12): ApertureMask, CircularAperture, _PhotUtilAperturePhotometry, Any, floating, NDArray, Table, Any (+4 more)
 
 ### Community 110 - "Mixins (pyobs.mixins) API doc"
 Cohesion: 0.09
@@ -911,21 +893,21 @@ Nodes (25): IMode, TaskData, AutoFocusScript, CallModuleScript, CasesRunner, Con
 Cohesion: 0.17
 Nodes (19): BackgroundTask, Any, make_task(), asyncio, Too many fast failures calls parent.quit() when restart=True., Too many fast failures with restart=False just stops without calling quit., Failures spread over time don't trigger the rapid-failure quit., test_cancelled_error_exits_cleanly() (+11 more)
 
-### Community 113 - "Test Commlogging (comm)"
+### Community 113 - "CommLoggingHandler"
 Cohesion: 0.12
 Nodes (20): Send an event to all connected modules. Args: event: Event to send.…, CommLoggingHandler, Any, A logging handler that sends all messages through a Comm module., Create a new logging handler. Args: comm: Comm module to use., Send a new log entry to the comm module. Args: rec: Log record to send., comm(), handler() (+12 more)
 
-### Community 114 - "test_imagewriter.py"
-Cohesion: 0.47
-Nodes (11): make_image_event(), make_writer(), asyncio, test_process_event_accepts_all_when_no_filter(), test_process_event_accepts_listed_source(), test_process_event_filters_by_source(), test_process_event_queues_filename(), test_process_event_rejects_wrong_type() (+3 more)
+### Community 114 - "NewImageEvent"
+Cohesion: 0.07
+Nodes (29): NewImageEvent, Any, Event to be sent on a new image., Initializes new NewImageEvent. Args: filename: Name of new image file.…, ImageWriter, Any, Writes new images to disk., Creates a new image writer. Args: filename: Pattern for filename to store… (+21 more)
 
 ### Community 115 - "test_dummyradectelescope.py"
 Cohesion: 0.24
 Nodes (21): TrackingRateCapabilities, make_dummyradectelescope(), asyncio, test_move_altaz_clears_tracked_body(), test_move_altaz_resets_tracking_mode_to_off(), test_move_radec_clears_tracked_body(), test_move_radec_resets_tracking_mode_to_sidereal(), test_move_task_applies_tracking_rate_to_position() (+13 more)
 
 ### Community 116 - "ImagingScript"
-Cohesion: 0.17
-Nodes (9): ImagingScript, InstrumentConfig, Any, Target, Run script. Raises: InterruptedError: If interrupted, Returns FITS header for the current status of this module. Args: namespaces: If…, Return the exposure time, computing it dynamically if needed., Default script for imaging configs. (+1 more)
+Cohesion: 0.15
+Nodes (10): ImagingScript, InstrumentConfig, Any, Target, Run script. Raises: InterruptedError: If interrupted, Returns FITS header for the current status of this module. Args: namespaces: If…, Estimate the duration of this script in seconds., Return the exposure time, computing it dynamically if needed. (+2 more)
 
 ### Community 117 - "HttpFileCache"
 Cohesion: 0.15
@@ -956,28 +938,28 @@ Cohesion: 0.22
 Nodes (5): Any, VFS wrapper for a file that can be accessed over a SFTP connection., Open/create a file over a SSH connection. Args: name: Name of file. mode: Open…, Returns content of given path. Args: path: Path to list. kwargs: Parameters for…, SFTPFile
 
 ### Community 124 - "FocusModel"
-Cohesion: 0.13
-Nodes (24): OptimalFocusState, FocusModel, MissingSensorError, The weather station returned an invalid/missing reading -- plausibly transient,…, Receive FocusFoundEvent. Args: event: The event itself sender: The name of the…, The configured sensor name isn't in the responding module's temperature data --…, Calculate new focus model from saved entries., A focus model that is automatically applied to an IFocuser. If, e.g., the model… (+16 more)
+Cohesion: 0.10
+Nodes (23): FocusModel, Returns the optimal focus. Args: filter_name: If given, use this filter name…, Sets optimal focus. Args: filter_name: Name of filter to use. Raises:…, Sets optimal focus. Raises: WeatherDataError: If the weather station returned…, Receive FocusFoundEvent. Args: event: The event itself sender: The name of the…, Calculate new focus model from saved entries., A focus model that is automatically applied to an IFocuser. If, e.g., the model…, Receive FilterChangedEvent and set focus. Args: event: The event itself sender:… (+15 more)
 
-### Community 125 - "._expose"
+### Community 125 - "test_transit_mastermind.py"
 Cohesion: 0.22
-Nodes (5): Actually do the exposure, should be implemented by derived classes. Args:…, Method that is always called at the very beginning of __expose and can be used…, Wrapper for a single exposure. Args: exposure_time: The requested exposure time…, Add FITS headers in derived classes. Args: image: Image to write FITS headers…, If the telescope has a meridian flip (MERIDIAN keyword in header), flip the…
+Nodes (19): Configuration, make_transit_merit(), make_transit_observation(), make_transit_task(), asyncio, integration, Mastermind picks up a transit observation and runs it to completion., Mastermind marks transit observation FAILED when runner raises. (+11 more)
 
 ### Community 126 - "ImageSourceFilter"
 Cohesion: 0.12
 Nodes (17): ImageSourceFilter, Any, floating, NDArray, Table, Filters the source table after pysep detection has run Args:…, Filter a source catalog by border distance, quality metrics, and brightness,…, Convert from FITS to numpy conventions for pixel coordinates. (+9 more)
 
 ### Community 127 - "test_darkbias.py"
-Cohesion: 0.23
-Nodes (19): DarkBiasScript, Script for running darks or biases., Whether this config can currently run. Returns: True if script can run now., Run script. Raises: InterruptedError: If interrupted, make_camera(), make_script(), asyncio, Create a mock camera supporting all or some interfaces. (+11 more)
+Cohesion: 0.33
+Nodes (17): DarkBiasScript, Script for running darks or biases., make_camera(), make_script(), asyncio, Create a mock camera supporting all or some interfaces., Wire up comm mocks for a DarkBiasScript.run call. safe_proxy is used for…, setup_run_comm() (+9 more)
 
 ### Community 128 - "TaskData"
 Cohesion: 0.03
-Nodes (64): datetime, Estimate duration of the dark/bias series., PointingScript, Script for pointing the telescope for flats., Whether this config can currently run. Returns: True if script can run now., Run script. Raises: InterruptedError: If interrupted, Estimate duration of slewing to the flat-field pointing., # TODO: get a better estimate for slewing (+56 more)
+Nodes (28): Whether this config can currently run. Returns: True if script can run now., Run script. Raises: InterruptedError: If interrupted, Estimate duration of the dark/bias series., Whether this config can currently run. Returns: True if script can run now., Run script. Raises: InterruptedError: If interrupted, Estimate duration of slewing to the flat-field pointing., Estimate duration of the sky flats. The actual schedule depends on sky…, Whether this config can currently run. Returns: True if script can run now. (+20 more)
 
-### Community 129 - "Archive"
-Cohesion: 0.10
-Nodes (31): ProgressEvent, Archive, Base class for image archives., Pipeline, Any, Create master bias frame. Args: images: List of raw bias frames. Returns:…, Create master dark frame. Args: images: List of raw dark frames. bias: Bias…, Create master flat frame. Args: images: List of raw flat frames. bias: Bias… (+23 more)
+### Community 129 - "Pipeline"
+Cohesion: 0.14
+Nodes (24): ProgressEvent, Pipeline, Calibrate a single science frame. Args: image: Image to calibrate. Returns:…, Pipeline based on the astropy package ccdproc., MasterCalibCreated, A master calibration frame (BIAS/DARK/SKYFLAT) was created and stored/uploaded., One science frame finished processing (successfully or not). index/total are…, ScienceFrameProcessed (+16 more)
 
 ### Community 130 - "Plan: pyobs-pipeline"
 Cohesion: 0.08
@@ -987,29 +969,29 @@ Nodes (24): Celery task, Consequences, Django models, Implementation checklist, 
 Cohesion: 0.18
 Nodes (22): make_comm(), asyncio, fixture, Sender also receives its own events., Reset LocalNetwork singleton between tests., #677: a late-joining module must announce itself via ModuleOpenedEvent once…, get_interfaces returns [] when the remote client has no module., reset_network() (+14 more)
 
-### Community 132 - "ImageWatcher"
-Cohesion: 0.17
-Nodes (8): CurrentFile, ImageWatcher, Add a file to the file queue. Args: filename (str): Local filename of new file., Can be overwritten by derived classes to do extra processing on files. All…, Can be overwritten by derived classes to do clean up after successful copying.…, Watch for new files and write them to all given destinations. Watches a path…, Modules for image operations. TODO: write doc, test_constructor_raises_without_destinations()
+### Community 132 - "OnSkyDistance"
+Cohesion: 0.14
+Nodes (7): AltAzOffsets, OnSkyDistance, Angle, RaDecOffsets, test_alt_az_offsets(), test_onskydistance(), test_radecoffsets()
 
-### Community 133 - ".__init__"
-Cohesion: 0.15
-Nodes (8): EarthLocation, Observer, Location of the observer, derived from :attr:`observer` (there is no separately…, .. note:: Objects must always be opened and closed using…, Initialize a new scheduler. Args: twilight: astronomical or nautical, Any, Initialize a new flat fielder. Args: functions: Function f(h) for each filter…, tzinfo
+### Community 133 - "test_astroplanscheduler.py"
+Cohesion: 0.10
+Nodes (35): AstroplanScheduler, Any, ObservingBlock, Actually do the scheduling, usually run in a separate process., Scheduler based on astroplan., Initialize a new scheduler. Args: twilight: astronomical or nautical, _EmptyPicker, _FixedPicker (+27 more)
 
-### Community 134 - "test_camerasettings.py"
-Cohesion: 0.42
-Nodes (9): make_camera_proxy(), make_module(), asyncio, Minimal concrete module for exercising CameraSettingsMixin in isolation., Capabilities for a Proxy are fetched in the background (see…, SettingsModule, test_raises_when_capabilities_never_arrive(), test_sets_binning_before_window() (+1 more)
+### Community 134 - "BrightestStarOffsets"
+Cohesion: 0.18
+Nodes (13): BrightestStarOffsets, Angle, Any, Table, Processes an image and sets x/y pixel offset to reference in offset attribute.…, Compute pixel offsets from the image center to the brightest star and store…, Initializes a new auto guiding system., asyncio (+5 more)
 
 ### Community 135 - "test_dummymode.py"
 Cohesion: 0.32
 Nodes (13): _event_of_type(), make_dummymode(), asyncio, Find the most recent state object set_state() was called with for the given…, Find the send_event() call with an event of the given type., _state_for(), test_init_default_modes(), test_init_park_stop_motion_are_noops() (+5 more)
 
 ### Community 136 - "SkyFlatsBasePointing"
-Cohesion: 0.17
-Nodes (8): Move telescope. Args: telescope: Telescope to use., Base class for flat pointings., SkyFlatsBasePointing, model_validator, Self, Static flat pointing., Move telescope. Args: telescope: Telescope to use., SkyFlatsStaticPointing
+Cohesion: 0.12
+Nodes (14): Any, Initialize a new flat fielder. Args: functions: Function f(h) for each filter…, Move telescope. Args: telescope: Telescope to use., Base class for flat pointings., SkyFlatsBasePointing, model_validator, Self, Static flat pointing. (+6 more)
 
 ### Community 137 - "test_autofocus.py"
-Cohesion: 0.27
-Nodes (18): isinstance_class(), Shared test-double helpers used across multiple test modules., Build a fresh class purely for isinstance() checks against a MagicMock.…, make_autofocus(), make_script(), make_task(), make_telescope(), asyncio (+10 more)
+Cohesion: 0.23
+Nodes (20): AutoFocusScript, Script for running autofocus series., isinstance_class(), Shared test-double helpers used across multiple test modules., Build a fresh class purely for isinstance() checks against a MagicMock.…, make_autofocus(), make_script(), make_task() (+12 more)
 
 ### Community 138 - "Grid"
 Cohesion: 0.09
@@ -1020,8 +1002,8 @@ Cohesion: 0.24
 Nodes (21): _cancel_after(), _make_image(), make_kiosk(), asyncio, Side effect that raises CancelledError starting from the n-th call., test_camera_thread_captures_and_adjusts_exposure_time(), test_camera_thread_clips_exposure_time_to_minimum(), test_camera_thread_continues_on_file_not_found() (+13 more)
 
 ### Community 140 - "pyobs.py"
-Cohesion: 0.15
-Nodes (8): main(), Any, PyobsCLI, Start process as a daemon. Args: pid_file: Name of PID file., Class for initializing and running pyobs CLI., Returns pyobs version of module., React to other modules connecting., version()
+Cohesion: 0.12
+Nodes (13): GuiApplication, Derived Application class that uses a Qt GUI. Allows for graceful shutdown in…, main(), Any, PyobsCLI, Start process as a daemon. Args: pid_file: Name of PID file., Class for initializing and running pyobs CLI., main() (+5 more)
 
 ### Community 141 - "Robotic recipe (doc)"
 Cohesion: 0.17
@@ -1031,32 +1013,32 @@ Nodes (21): pyobs.modules.robotic (doc), Mastermind (module), PointingSeries, Sc
 Cohesion: 0.21
 Nodes (6): is_valid_jid(), Whether jid is a valid user@domain or user@domain/resource JID -- exactly what…, JID parsing/validation in XmppComm.__init__ and the reusable is_valid_jid()…, The actual production bug this was found from: a JID ending in "/" with nothing…, re.match alone doesn't anchor the end -- confirms the pattern is anchored so…, TestIsValidJid
 
-### Community 143 - "test_basecamera.py"
-Cohesion: 0.18
-Nodes (15): asyncio, parametrize, DummyCamera's _expose() must raise AbortedError, not some guessed builtin, when…, Test basic open/close of BaseCamera., #547: BaseCamera must abort on BadWeatherEvent., #547: a BadWeatherEvent must actually trigger abort() -- exposure + any running…, #672: a BadWeatherEvent must not interrupt a dark/bias sequence -- the shutter…, Test the methods for remaining exposure time and progress. (+7 more)
+### Community 143 - ".__init__"
+Cohesion: 0.12
+Nodes (9): Any, Initializes the mixin. Args: steps: Pipeline steps to run on images. archive:…, Any, Creates a new HTTP publisher for images. Args: pipeline: Pipeline to run on…, Any, Create master bias frame. Args: images: List of raw bias frames. Returns:…, Create master dark frame. Args: images: List of raw dark frames. bias: Bias…, Create master flat frame. Args: images: List of raw flat frames. bias: Bias… (+1 more)
 
 ### Community 144 - "test_config_schema.py"
 Cohesion: 0.20
 Nodes (22): ConfigFieldSchema, ConfigSchema, dataclass_to_schema(), _field_schema(), Any, _pydantic_field_schema(), pydantic_to_schema(), Recursively derive a ConfigSchema from a dataclass type. Handles: plain scalars… (+14 more)
 
-### Community 145 - "ImageType"
-Cohesion: 0.09
-Nodes (19): _CalibrationCache, Any, Init a new image calibration pipeline step. Args: archive: Archive to fetch…, Any, Set the image type. Args: image_type: New image type., LcoDefaultScript, Returns FITS header for the current status of this module. Args: namespaces: If…, Default script for LCO configs. (+11 more)
+### Community 145 - "_CalibrationCache"
+Cohesion: 0.17
+Nodes (9): _CalibrationCache, Any, Init a new image calibration pipeline step. Args: archive: Archive to fetch…, mock_image(), fixture, test_add_to_cache(), test_add_to_cache_size(), test_find_cache_entry_emtpy() (+1 more)
 
 ### Community 146 - "Scheduler"
-Cohesion: 0.14
-Nodes (8): Any, Compares two lists of tasks and returns two lists, containing those that are…, Trigger a re-schedule., Re-schedule when task has started and we can predict its end. Args: event: The…, Reset current task, when it has finished or failed. Args: event: The task…, Re-schedule on incoming good weather event. Args: event: The good weather…, Initialize a new scheduler. Args: scheduler: Scheduler to use. tasks: Task…, Scheduler
+Cohesion: 0.15
+Nodes (7): Any, Compares two lists of tasks and returns two lists, containing those that are…, Trigger a re-schedule., Re-schedule when task has started and we can predict its end. Args: event: The…, Reset current task, when it has finished or failed. Args: event: The task…, Re-schedule on incoming good weather event. Args: event: The good weather…, Scheduler
 
 ### Community 147 - "RollingTimeAverage"
-Cohesion: 0.10
-Nodes (24): Any, Runs an async callable to completion on a dedicated worker thread, off the…, run_cpu_bound(), RollingTimeAverage, _T, asyncio, test_run_cpu_bound_propagates_exception(), test_run_cpu_bound_returns_value() (+16 more)
+Cohesion: 0.15
+Nodes (16): RollingTimeAverage, Values older than interval are excluded from average., With min_interval, returns None if no values are older than min_interval., With min_interval, returns average if there are values older than min_interval., Only values within the rolling interval are included., add() cleans up values older than interval., test_add_evicts_expired_values(), test_average_clears_old_values() (+8 more)
 
-### Community 148 - "SkyOffsets"
-Cohesion: 0.05
-Nodes (36): BaseCoordinateFrame, IN, OUT, Angle, SkyCoord, Returns separatation between both coordinates, either in their own or a given…, Calculates spherical offset from first coordinate to second. Args: frame:…, Args: frame: Coordinate frame to use, or None to use coordinates' own frames.… (+28 more)
+### Community 148 - "datetime"
+Cohesion: 0.13
+Nodes (12): datetime, IN, OUT, GuidingStatistics, Any, Calculates statistics for guiding., Inits a stat measurement session for a client. Args: client: name/id of the…, Add statistics to given header. Args: client: id/name of the client header:… (+4 more)
 
 ### Community 149 - "LogScript"
-Cohesion: 0.20
+Cohesion: 0.22
 Nodes (12): DebugTriggerScript, Script for a debug trigger., LogScript, Script for logging something., asyncio, Expression has access to 'now' as a datetime., test_debug_trigger_can_run(), test_debug_trigger_sets_triggered() (+4 more)
 
 ### Community 151 - "`OBSNUM`: per-night observation counter in FITS headers"
@@ -1067,9 +1049,9 @@ Nodes (28): 1. Event-driven frame delivery, not polling, 2. Backpressure: latest
 Cohesion: 0.11
 Nodes (20): 3rd party packages (doc), Astroplan, Astropy, Astroquery, Cython, LMFIT, matplotlib, NumPy (+12 more)
 
-### Community 153 - "sourcedetection.py"
-Cohesion: 0.16
-Nodes (11): Source Detection processors doc, DaophotSourceDetection (detection processor), SepSourceDetection (detection processor), Any, Detect a disk on image. Args: image: Image to use. Returns: Image with new FITS…, Detect a roughly circular bright disk by thresholding and distance transform.…, Init a new simple disk processor. Args: threshold: Threshold to determine if a…, SimpleDisk (+3 more)
+### Community 153 - "XEP_0009_timeout"
+Cohesion: 0.17
+Nodes (6): BasePlugin, A plugin for SleekXMPP, adding a timeout to RPC calls., XEP_0009_timeout, SleekXMPP: The Sleek XMPP Library Copyright (C) 2011 Nathanael C. Fritz, Dann…, MethodTimeout, ElementBase
 
 ### Community 154 - "SSHFile"
 Cohesion: 0.12
@@ -1079,9 +1061,9 @@ Nodes (12): Any, VFS wrapper for a file that can be accessed over a SFTP connect
 Cohesion: 0.33
 Nodes (18): create_image_processors_rst(), create_modules_rst(), create_rst_overview(), create_utils_rst(), find_classes_in_modules(), find_python_modules(), find_submodules(), Any (+10 more)
 
-### Community 156 - "Any"
-Cohesion: 0.12
-Nodes (7): Any, Store capabilities locally., Return this client's own published capabilities., Fetch capabilities from a remote module., Execute a given method on a remote client., Publish state locally and dispatch to subscribers., Subscribe to state updates from a remote module.
+### Community 156 - "FitsHeaderOffsets"
+Cohesion: 0.19
+Nodes (10): GenericOffset, FitsHeaderOffsets, Any, Compute a 2D offset from FITS header coordinates and store it in image…, Initializes new fits header offsets., Processes an image and sets x/y pixel offset to reference in offset attribute.…, asyncio, test_attribute_validation() (+2 more)
 
 ### Community 157 - "SoftBin"
 Cohesion: 0.16
@@ -1091,9 +1073,9 @@ Nodes (11): Any, floating, NDArray, Bin a 2D image by averaging non-overlapping 
 Cohesion: 0.21
 Nodes (13): AddMask, Any, floating, NDArray, Add mask to image. Args: image: Image to add mask to. Returns: Image with mask, Attach a precomputed mask to an image based on instrument and binning. This…, Init an image processor that adds a mask to an image. Args: masks: Dictionary…, asyncio (+5 more)
 
-### Community 159 - "FrameInfo"
-Cohesion: 0.11
-Nodes (12): FrameInfo, Base class for frame infos., Any, TypedDict, PyobsArchive, PyobsArchiveFrameInfoDict, Connector class to running pyobs-archive instance., test_build_query_empty_when_nothing_given() (+4 more)
+### Community 159 - "Archive"
+Cohesion: 0.10
+Nodes (15): Archive, FrameInfo, Any, Base class for frame infos., Base class for image archives., TypedDict, PyobsArchiveFrameInfoDict, Find and download master calibration frame. Args: archive: Image archive.… (+7 more)
 
 ### Community 160 - "SkyCoord"
 Cohesion: 0.13
@@ -1107,9 +1089,9 @@ Nodes (15): asyncio, Tests for Comm.register_event / unregister_event. Covers…
 Cohesion: 0.14
 Nodes (11): NewSpectrumEvent, Any, Event to be sent on a new image., Initializes new NewSpectrumEvent. Args: filename: Name of new image file., HDUList, Store spectrum at given destination. Can be overwritten by derived classes to…, Actually do the exposure, should be implemented by derived classes. Args:…, Wrapper for a single exposure. Args: broadcast: Whether or not the new image… (+3 more)
 
-### Community 163 - "LogEvent"
-Cohesion: 0.08
-Nodes (15): LogEvent, Event for log entries., FluentLogger, Any, Log to fluentd server., Initialize a new logger. Args: hostname: Hostname of server. port: Port of…, Process a new log entry. Args: event: The log event. sender: Name of sender., Utilities TODO: write doc (+7 more)
+### Community 163 - ".__init__"
+Cohesion: 0.05
+Nodes (23): Args: label: Label for module. If None, name is used. own_comm: If True, module…, List interfaces and methods of this module., FluentLogger, Any, Log to fluentd server., Initialize a new logger. Args: hostname: Hostname of server. port: Port of…, Process a new log entry. Args: event: The log event. sender: Name of sender., Utilities TODO: write doc (+15 more)
 
 ### Community 164 - "._filter_data"
 Cohesion: 0.24
@@ -1120,8 +1102,8 @@ Cohesion: 0.11
 Nodes (15): ExpTimeEval, Any, Observer, Return list of binnings., Return list of filters., Estimate exposure time for given filter Args: solalt: Solar altitude. binning:…, Initialize object with the given time. Args: time: Start time for all further…, Estimates exposure time for a given filter and binning at a given time offset… (+7 more)
 
 ### Community 166 - "Stellarium"
-Cohesion: 0.14
-Nodes (8): BaseTransport, Any, Exception, Send coordinates to clients., A stellarium telescope., Initialize a new stellarium telescope proxy. Args: telescope: Name of telescope…, Stellarium, StellariumProtocol
+Cohesion: 0.18
+Nodes (6): BaseTransport, Exception, Send coordinates to clients., A stellarium telescope., Stellarium, StellariumProtocol
 
 ### Community 167 - "Overview (doc)"
 Cohesion: 0.18
@@ -1131,17 +1113,17 @@ Nodes (17): Overview (doc), Access control (ACL), Comm, Events, Interface, Modul
 Cohesion: 0.16
 Nodes (9): Any, Event to be sent when a task has started., Initializes a new task started event. Args: name: Name of task that just…, TaskStartedEvent, test_task_started_invalid_name(), test_task_started_missing_id(), test_task_started_no_eta(), test_task_started_properties() (+1 more)
 
-### Community 169 - "fits.py"
-Cohesion: 0.22
+### Community 169 - "fitssec"
+Cohesion: 0.23
 Nodes (12): fitssec(), parse_section_bounds(), Any, NDArray, Parse a FITS section keyword (e.g. TRIMSEC) into 0-based, half-open slice…, Trim an image to TRIMSEC or BIASSEC. Args: hdu: HDU to take data from. keyword:…, DummyHdu, test_fitssec_no_keyword() (+4 more)
 
-### Community 170 - ".can_run"
-Cohesion: 0.16
-Nodes (9): Any, Target, Creates a new LCO task runner. Args: scripts: External scripts, Run a task. Args: task: Task to run target: Resolved target for this specific…, Checks whether this task could run now. Args: task: Task to run target:…, Get config script for given configuration. Args: request: LCO request. Returns:…, Target, Checks, whether this task could run now. Args: task: Task to run target:… (+1 more)
+### Community 170 - "lco/taskrunner.py"
+Cohesion: 0.15
+Nodes (10): LcoTaskRunner, Any, Target, Creates a new LCO task runner. Args: scripts: External scripts, Run a task. Args: task: Task to run target: Resolved target for this specific…, Checks whether this task could run now. Args: task: Task to run target:…, Get config script for given configuration. Args: request: LCO request. Returns:…, Target (+2 more)
 
 ### Community 171 - "Scheduler"
 Cohesion: 0.11
-Nodes (14): Iterator for scheduler items, Iterate over scheduler items, Return schedule item., Find a possible slot for a given filter/binning in the given schedule Args:…, A single item in the flat scheduler, Checks, whether a new scheduler item would overlap an existing item Args:…, Initializes a new scheduler item Args: start: Start time in seconds end: End…, Nice string representation for item (+6 more)
+Nodes (11): Run script. Raises: InterruptedError: If interrupted, Iterator for scheduler items, Iterate over scheduler items, Return schedule item., Find a possible slot for a given filter/binning in the given schedule Args:…, Checks, whether a new scheduler item would overlap an existing item Args:…, Scheduler for taking flat fields, Calculate schedule starting at given time Args: time: Time to start schedule at (+3 more)
 
 ### Community 172 - "test_grab_sequence.py"
 Cohesion: 0.29
@@ -1151,9 +1133,9 @@ Nodes (16): make_camera(), asyncio, Tests for BaseCamera.grab_sequence()/abort_s
 Cohesion: 0.23
 Nodes (8): fault2xml(), py2xml(), Any, Element, rpcbase64, rpctime, xml2fault(), xml2py()
 
-### Community 174 - "test_comm_interface_resolution.py"
-Cohesion: 0.29
-Nodes (8): Converts a list of interface names to interface classes. Args: interfaces: list…, LogCaptureFixture, Tests for Comm._interface_names_to_classes -- the base-Comm chokepoint that…, An interface defined entirely outside pyobs.interfaces resolves the same way…, test_resolves_external_interface(), test_resolves_known_and_skips_unknown_in_same_list(), test_resolves_known_core_interfaces(), test_skips_unknown_name()
+### Community 174 - "BrightestStarGuiding"
+Cohesion: 0.19
+Nodes (7): BrightestStarGuiding, Any, SkyCoord, Table, Initializes a new auto guiding system., Processes an image and sets x/y pixel offset to reference in offset attribute.…, Compute guiding offsets by tracking the brightest star relative to an initial…
 
 ### Community 175 - ".get_config_value"
 Cohesion: 0.40
@@ -1163,33 +1145,33 @@ Nodes (4): Any, ConfigValue, Returns current value of config item with given nam
 Cohesion: 0.16
 Nodes (9): CLI, Initializes a new instance of the CLI class., Overwrite this to set CLI parameters with argparse., Overwrite this to actually run the CLI., Load config from config file, Load config from environment variables., main(), PyobsDaemonCLI (+1 more)
 
-### Community 177 - "get_class_from_string"
+### Community 177 - "MotionStatusChangedEvent"
 Cohesion: 0.20
-Nodes (6): Any, get_class_from_string(), Get class from a given string. Args: class_name: Name of class as string.…, _build_params_model(), _get_valid_param_names(), model_validator
+Nodes (7): MotionStatusChangedEvent, Any, Event to be sent when the motion status of a device has changed., test_motion_status_invalid_status(), test_motion_status_no_interfaces(), test_motion_status_properties(), test_motion_status_roundtrip()
 
 ### Community 178 - "graphify reference: extra exports and benchmark"
 Cohesion: 0.22
 Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only if --wiki flag), Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag), Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag), Step 7b - SVG export (only if --svg flag), Step 7c - GraphML export (only if --graphml flag), Step 7d - MCP server (only if --mcp flag), Step 8 - Token reduction benchmark (only if total_words > 5000)
 
-### Community 179 - "test_aperture_photometry.py"
-Cohesion: 0.26
-Nodes (9): MockPhotometryCalculator, asyncio, QTable, AperturePhotometry.__init__ is abstract -- concrete calculators…, test_call_invalid_catalog(), test_call_invalid_data(), test_call_invalid_pixelscale(), test_call_valid() (+1 more)
+### Community 179 - ".add_fits_headers"
+Cohesion: 0.24
+Nodes (6): PrimaryHDU, Add requested FITS headers to header of given image. Args: image: Image with…, Add FITS header keywords to the given FITS header. Args: image: Image with…, Add FRAMENUM keyword to header Args: image: Image with header to add to., Format filename according to given pattern and store in header of image. Args:…, Add FITS header keywords to the given FITS header. Args: image: Image with…
 
 ### Community 180 - "Steering: astropy IERS auto-download blocks event loop"
 Cohesion: 0.32
 Nodes (8): BaseTelescope._celestial / _update_celestial_headers, Steering: astropy IERS auto-download blocks event loop, iers_offline config flag (stopgap fix), Steering: Blocking vendor SDK calls must never run directly on the event loop, _run_blocking() pattern (pyobs_aravis.araviscamera.AravisCamera), _wait_for_frame() tight-poll wrapper pattern, Steering: OnDemandScheduler.evolve() uncached sunset lookup stalls event loop, ObservationArchiveEvolution.evolve() Time.night_obs() bug (fixed via memoization)
 
-### Community 181 - "acquisition.py"
-Cohesion: 0.05
-Nodes (46): AcquisitionAttempt, AcquisitionResult, AcquisitionState, IAcquisition, Any, The module can acquire a target, usually by accessing a telescope and a camera., Acquire target at given coordinates. If no RA/Dec are given, start from current…, CameraSettingsMixin (+38 more)
+### Community 181 - "OffsetResult"
+Cohesion: 0.09
+Nodes (25): ITelescope, The module controls a telescope., OffsetFrame, Coordinate frame an offset is expressed in, whichever the mount supports.…, ApplyAltAzOffsets, Any, EarthLocation, Apply offsets from a given image to a given telescope. (+17 more)
 
-### Community 182 - "format_filename"
-Cohesion: 0.19
-Nodes (10): ImageWriter, Writes new images to disk., Puts a new images in the DB with the given ID. Args: event: New image event…, format_filename(), Formats a filename given a format template and a FITS header. Args: hdr: FITS…, test_date_obs(), test_default(), test_filter() (+2 more)
+### Community 182 - "GuidingStatisticsSkyOffset"
+Cohesion: 0.25
+Nodes (7): GuidingStatisticsSkyOffset, Calculates RMS of data. Args: data: Data to calculate RMS for. Returns: Tuple…, mock_meta_image(), fixture, test_build_header_to_few_values(), test_end_to_end(), test_get_session_data()
 
-### Community 183 - "._disconnected"
-Cohesion: 0.14
-Nodes (7): Sleep a little and reconnect, Reset connection after disconnect., If a new client connects, add it to list. Args: msg: XMPP message., Call every presence callback registered for a module, isolating failures. A…, Handle presence changes from already-connected modules., If a new client disconnects, remove it from list. Args: msg: XMPP message., If a new client disconnects, remove it from list. Args: jid: JID that got…
+### Community 183 - "run_cpu_bound"
+Cohesion: 0.29
+Nodes (8): Any, Runs an async callable to completion on a dedicated worker thread, off the…, run_cpu_bound(), _T, asyncio, test_run_cpu_bound_propagates_exception(), test_run_cpu_bound_returns_value(), test_run_cpu_bound_runs_on_different_thread()
 
 ### Community 184 - "Merit"
 Cohesion: 0.15
@@ -1199,9 +1181,9 @@ Nodes (15): AfterTimeMerit, BeforeTimeMerit, ConstantMerit, DataProvider, Follow
 Cohesion: 0.21
 Nodes (12): XMPP/ejabberd diagnostics recipe (doc), benchmark_state_throughput.py, check_ejabberd_notify.py, delete_pubsub_nodes.py, list_pubsub_nodes.py, Comparing shaper configs (rationale), show_module_info.py, scripts/xmpp/install-ejabberd.sh (+4 more)
 
-### Community 186 - "configdb.py"
-Cohesion: 0.21
-Nodes (13): Camera, CameraType, ConfigurationType, Enclosure, Instrument, InstrumentType, Mode, ModeType (+5 more)
+### Community 186 - "PyobsArchive"
+Cohesion: 0.27
+Nodes (5): Any, PyobsArchive, Connector class to running pyobs-archive instance., test_build_query_empty_when_nothing_given(), test_build_query_includes_all_given_params()
 
 ### Community 187 - "Plan: Make the pydantic config layer reject unknown keys (`extra="forbid"`)"
 Cohesion: 0.25
@@ -1216,8 +1198,8 @@ Cohesion: 0.12
 Nodes (16): 1. Make the stacked widget size to the current page, not the widest one, 2. Adopt a width convention for future coordinate-type pages, 3. `QFormLayout::setRowWrapPolicy()` on the individual form pages, 4. Resize-driven reparenting for the four-groupbox row, Capability-driven visibility is handled by toggling pre-built sections on/off, Coordinate-type selection is already a combobox, not tabs, Each coordinate-type page has a fixed, hand-built field set, Filter, Focus, and the offsets rows are structurally duplicated (+8 more)
 
 ### Community 190 - "PointingSeries"
-Cohesion: 0.20
-Nodes (6): PointingSeries, Any, SkyCoord, Module for running pointing series., Initialize a new pointing series. Args: grid: Grid to use for pointing series.…, Run a pointing series.
+Cohesion: 0.17
+Nodes (7): Modules for robotic mode. TODO: write doc, PointingSeries, Any, SkyCoord, Module for running pointing series., Initialize a new pointing series. Args: grid: Grid to use for pointing series.…, Run a pointing series.
 
 ### Community 191 - "GridNode"
 Cohesion: 0.09
@@ -1227,9 +1209,9 @@ Nodes (15): GridNode, Log the last yielded point, if any. Implementations typica
 Cohesion: 0.50
 Nodes (3): ARCSEC_PER_SEC, Any, Sets an absolute tracking rate on the sky, in arcsec/sec. Args: ra_rate: Rate…
 
-### Community 193 - "._set_optimal_focus"
-Cohesion: 0.12
-Nodes (13): FocusTimeoutError, Any, DataFrame, floating, NDArray, Initialize a focus model. Args: focuser: Name of focuser. weather: Name of…, Returns the optimal focus. Args: filter_name: If given, use this filter name…, Retrieve all required values for the model. Returns: Dictionary containing all… (+5 more)
+### Community 193 - "._residuals"
+Cohesion: 0.33
+Nodes (6): Any, DataFrame, floating, NDArray, Initialize a focus model. Args: focuser: Name of focuser. weather: Name of…, Fit method for model Args: x: Paramaters to evaluate. data: Full data set.…
 
 ### Community 194 - "What's New in pyobs 2.0 (doc)"
 Cohesion: 0.15
@@ -1240,8 +1222,8 @@ Cohesion: 0.18
 Nodes (11): Fifth investigation session (2026-07-28, same day) — found the specific mechanism: an un-re-armed passive socket, Fourth live run (2026-07-28, same day) — found the actual mechanism: stuck per-connection Recv-Q on ejabberd's side, Full incident timeline and what's been ruled out (2026-07-27), New scenario: reconnect-storm (2026-07-27, production incident follow-up), Reproduced live with real modules on iag50srv (2026-07-28) — root cause still open, but the incident is real and reproducible, Runbook executed against iag50srv itself (2026-07-28), Runbook for tomorrow: run `late-joiner` and `reconnect-storm` against both `iag50srv` and monet-south, Second live run (2026-07-28, same day) — likely root cause found: `mod_client_state` (CSI, XEP-0352) (+3 more)
 
 ### Community 196 - "SkyflatPriorities"
-Cohesion: 0.27
-Nodes (6): ArchiveSkyflatPriorities, Calculate flat priorities from an archive., Base class for sky flat priorities., SkyflatPriorities, ConstSkyflatPriorities, Constant flat priorities.
+Cohesion: 0.22
+Nodes (8): ArchiveSkyflatPriorities, Calculate flat priorities from an archive., Base class for sky flat priorities., SkyflatPriorities, ConstSkyflatPriorities, Constant flat priorities., Observer, Initializes a new scheduler for taking flat fields Args: functions: Flat field…
 
 ### Community 197 - "CatalogCircularMask"
 Cohesion: 0.18
@@ -1252,16 +1234,16 @@ Cohesion: 0.40
 Nodes (3): Any, Reset error of module, if any., Returns names of all methods the calling module is allowed to invoke on this…
 
 ### Community 199 - "test_imagewatcher.py"
-Cohesion: 0.33
-Nodes (15): make_fits_bytes(), make_read_write_ctx(), make_watcher(), asyncio, On write failure the file is re-queued and remove is NOT called., test_add_file_queues_filename(), test_add_file_respects_pattern(), test_add_file_skips_non_matching_pattern() (+7 more)
+Cohesion: 0.12
+Nodes (24): CurrentFile, ImageWatcher, Any, Add a file to the file queue. Args: filename (str): Local filename of new file., Can be overwritten by derived classes to do extra processing on files. All…, Can be overwritten by derived classes to do clean up after successful copying.…, Watch for new files and write them to all given destinations. Watches a path…, Create a new image watcher. Args: watchpath: Path to watch. destinations:… (+16 more)
 
 ### Community 200 - "test_backend_archives.py"
 Cohesion: 0.06
 Nodes (71): BackendTaskArchive, Any, ClientSession, Returns the task with the given ID. Returns: Task with given ID., Task archive based on pyobs-robotic-backend., Creates a new task archive. Args: url: URL of pyobs-robotic-backend. token:…, Opens the backend task archive., Closes the backend observation archive. (+63 more)
 
-### Community 201 - ".__call__"
-Cohesion: 0.38
-Nodes (5): ApertureMask, CircularAperture, Any, floating, NDArray
+### Community 201 - "test_dummyvideo.py"
+Cohesion: 0.47
+Nodes (9): make_dummyvideo(), asyncio, test_frame_task_sets_image_when_active(), test_frame_task_skips_image_when_inactive(), test_init_custom_fps_and_image_size(), test_init_defaults(), test_open_publishes_exposure_time_state(), test_set_exposure_time_updates_fps_and_publishes_state() (+1 more)
 
 ### Community 202 - "show_module_info.py"
 Cohesion: 0.25
@@ -1295,13 +1277,13 @@ Nodes (15): 1. Separate input and output on `Night`, unified as a single `output
 Cohesion: 0.22
 Nodes (10): Any, Init a new smoothing pipeline step. Args: sigma: Standard deviation for…, Smooth an image. Args: image: Image to smooth. Returns: Smoothed image., Gaussian smoothing of image data using SciPy’s ndimage.gaussian_filter. This…, Smooth, asyncio, test_call(), test_call_no_image_data() (+2 more)
 
-### Community 210 - "_DaoBackgroundRemover"
-Cohesion: 0.12
-Nodes (16): _DaoBackgroundRemover, Any, floating, NDArray, Any, Estimate and subtract the background from an image using a DAOPhot-style…, Init an image processor that removes background from image. Args: sigma: Sigma…, Remove background from image. Args: image: Image to remove background from.… (+8 more)
+### Community 210 - "RemoveBackground"
+Cohesion: 0.21
+Nodes (9): Any, Estimate and subtract the background from an image using a DAOPhot-style…, Init an image processor that removes background from image. Args: sigma: Sigma…, Remove background from image. Args: image: Image to remove background from.…, RemoveBackground, asyncio, test_call_const_background(), test_init() (+1 more)
 
 ### Community 211 - "DataCache"
 Cohesion: 0.10
-Nodes (14): Creates a new BaseWebcam. On the receiving end, a VFS root with a HTTPFile must…, DataCache, DataCacheEntry, Any, A single entry in the data cache., Delete entry in cache. Args: name: Name of entry to delete., Create a new entry for the data cache Args: name: Name of item data: Data for…, Update time for this item. (+6 more)
+Nodes (15): Any, Initializes file cache. Args: port: Port for HTTP server. cache_size: Size of…, DataCache, DataCacheEntry, Any, A single entry in the data cache., Delete entry in cache. Args: name: Name of entry to delete., Create a new entry for the data cache Args: name: Name of item data: Data for… (+7 more)
 
 ### Community 212 - "Plan: Widget plugin mechanism + `pyside6-deploy` packaging for `pyobs-gui`"
 Cohesion: 0.13
@@ -1311,9 +1293,9 @@ Nodes (14): Consequences, Considered options, Considered options, Deciding which
 Cohesion: 0.12
 Nodes (16): 1. `ObservationArchiveEvolution` — add prefetch + freeze (`observationarchiveevolution.py`), 2. Call prefetch + freeze — `ondemandscheduler.py`, `schedule()`, 3. Confirm zero cache misses before touching the executor, 4. Only after step 3 is clean: swap the executor (`_executor.py`), Consequences, Considered options, Decision, Existing coverage (+8 more)
 
-### Community 214 - "PySepStatsCalculator"
-Cohesion: 0.26
-Nodes (4): Any, floating, NDArray, PySepStatsCalculator
+### Community 214 - "TaskFinishedEvent"
+Cohesion: 0.25
+Nodes (6): Any, Event to be sent when a task has finished., Initializes a new task finished event. Args: name: Name of task that just…, TaskFinishedEvent, test_task_finished_properties(), test_task_finished_roundtrip()
 
 ### Community 215 - "Image (pyobs.images.processors.image) API doc"
 Cohesion: 0.18
@@ -1336,24 +1318,24 @@ Cohesion: 0.33
 Nodes (6): _discover_concrete_modules(), asyncio, parametrize, Parametrized check: every concrete Module publishes state for each stateful…, All concrete (non-abstract, non-internal) pyobs.modules.Module subclasses.…, test_module_publishes_all_stateful_interfaces()
 
 ### Community 220 - "WeatherStatus"
-Cohesion: 0.27
-Nodes (6): Any, setter, WeatherStatus, test_status_set(), test_status_set_non_good(), test_status_set_none_good()
+Cohesion: 0.14
+Nodes (9): Any, Returns FITS header for the current status of this module. Args: namespaces: If…, Initialize a new pyobs-weather connector. Args: url: URL to weather station…, Any, setter, WeatherStatus, test_status_set(), test_status_set_non_good() (+1 more)
 
 ### Community 221 - "graphify reference: query, path, explain"
 Cohesion: 0.33
 Nodes (5): For /graphify explain, For /graphify path, graphify reference: query, path, explain, Step 0 — Constrained query expansion (REQUIRED before traversal), Step 1 — Traversal
 
-### Community 222 - "._record_exception"
-Cohesion: 0.25
-Nodes (4): Exception, Records exception for severity tracking (see _register_exception) and fires any…, Whether exception should count as an instance of exc_type for severity-handler…, Execute a local method safely with type conversion All incoming variables in…
+### Community 222 - "_event_schema_to_xml"
+Cohesion: 0.29
+Nodes (7): _event_schema_to_xml(), _interface_schema_to_xml(), Map a Python type hint to a (wire_type_string, unit_string|None) pair., Build the <{ns}interface> disco#info schema element for one Interface subclass., Build the <{ns}event> disco#info schema element for one Event subclass., _wire_type(), Custom disco#info handler that adds <capability> elements for static module…
 
 ### Community 224 - ".retrieve_class_on_deserialization"
 Cohesion: 0.24
 Nodes (7): model_serializer, Any, model_validator, Self, Get the correct class for this model and run model_validate on that class with…, ValidationInfo, ValidatorFunctionWrapHandler
 
 ### Community 225 - ".__init__"
-Cohesion: 0.04
-Nodes (32): Any, Init new image processor. Args: on_error: How the pipeline should handle an…, Any, Init a new circle processor. Args: x: Center x coordinate. y: Center y…, Any, Init a new crosshair processor. Args: x: Center x coordinate. y: Center y…, Any, Init a new grayscale processor. Args: x: Center x coordinate. y: Center y… (+24 more)
+Cohesion: 0.05
+Nodes (27): Any, Init new image processor. Args: on_error: How the pipeline should handle an…, Any, Init a new circle processor. Args: x: Center x coordinate. y: Center y…, Any, Init a new crosshair processor. Args: x: Center x coordinate. y: Center y…, Any, Init a new grayscale processor. Args: x: Center x coordinate. y: Center y… (+19 more)
 
 ### Community 226 - ".move_heliographic_stonyhurst"
 Cohesion: 0.50
@@ -1408,16 +1390,16 @@ Cohesion: 0.33
 Nodes (5): Architecture, File Map, Plan: Advertise event send/subscribe role in disco#info, Problem, Tasks
 
 ### Community 239 - "reset_network"
-Cohesion: 0.67
-Nodes (3): fixture, Reset LocalNetwork singleton before each test., reset_network()
+Cohesion: 0.18
+Nodes (13): ConfigAppliedState, DummyConfig, DummyStructuredConfigModule, Any, asyncio, fixture, Tests for IStructuredConfig capabilities/state round-tripping through LocalComm., Reset LocalNetwork singleton before each test. (+5 more)
 
 ### Community 240 - "Module.startup() lifecycle helper"
 Cohesion: 0.50
 Nodes (4): Module.startup() lifecycle helper, ModuleState.STARTING, Rationale: delay send_presence() until READY to avoid capability-publish race, Gating RPC commands until module startup completes
 
-### Community 241 - "CreateFilename"
-Cohesion: 0.21
-Nodes (9): CreateFilename, Any, Add filename to image. Args: image: Image to add filename to. Returns: Image…, Format and set a filename for the image using a pattern, storing it in the…, Init an image processor that adds a filename to an image. Args: pattern:…, asyncio, test_call(), test_init_default() (+1 more)
+### Community 241 - ".image_handler"
+Cohesion: 0.29
+Nodes (4): Response, Handles access to / and returns HTML page. Args: request: Request to respond…, Handles GET access to /ping for testing connectivity. Args: request: Request to…, Handles access to /* and returns a specified image. Args: request: Request to…
 
 ### Community 242 - "Plan: Stop scheduler constraint/merit evaluation from blocking the event loop"
 Cohesion: 0.14
@@ -1463,14 +1445,6 @@ Nodes (8): Object.add_child_object(), create_object(), get_object(), Two-phase O
 Cohesion: 0.42
 Nodes (9): pyobs.modules.telescope (doc), BaseTelescope, DummyAltAzTelescope, DummyRaDecTelescope, DummySolarTelescope, Simulation recipe (doc), DummyCamera, pyobs_gui.GUI (+1 more)
 
-### Community 253 - "Future"
-Cohesion: 0.21
-Nodes (5): Run script. Raises: InterruptedError: If interrupted, Future, Any, Sets a new timeout for the method call. Cancels any existing timeout handle and…, Returns async timeout.
-
-### Community 254 - "PhotometryFocusSeries"
-Cohesion: 0.17
-Nodes (7): PhotometryFocusSeries, Any, Focus series based on source detection., Initialize a new projection focus series. Args: source_detection: Photometry to…, Analyse given image. Args: image: Image to analyse focus_value: Value to fit…, Returns a list of data points., Fit focus from analysed images Returns: Tuple of new focus and its error
-
 ### Community 255 - "graphify reference: add a URL and watch a folder"
 Cohesion: 0.50
 Nodes (3): For /graphify add, For --watch, graphify reference: add a URL and watch a folder
@@ -1487,9 +1461,9 @@ Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify refer
 Cohesion: 0.50
 Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
 
-### Community 259 - ".__call__"
-Cohesion: 0.29
-Nodes (5): Any, DataFrame, Initialize new CSV publisher. Args: filename: Name of file to log in., Publish the given results. Args: **kwargs: Results to publish., Return data that has so far been published.
+### Community 259 - ".set_offsets_radec"
+Cohesion: 0.50
+Nodes (3): Any, DEGREES, Move an RA/Dec offset. Args: dra: RA offset in degrees. ddec: Dec offset in…
 
 ### Community 260 - "TempFile"
 Cohesion: 0.24
@@ -1503,21 +1477,13 @@ Nodes (8): acquisition, fibercamera, fts, guiding, robotic, solar telescope, sun
 Cohesion: 0.32
 Nodes (8): Archive (image archive base), LocalArchive, PyobsArchive, ArchiveSkyflatPriorities, Archive, Image archives (pyobs.robotic.utils.archive) API doc, LocalArchive, PyobsArchive
 
-### Community 263 - "._register_exception"
-Cohesion: 0.29
-Nodes (5): Watch for repeated occurrences of exc_type -- optionally scoped to a specific…, Checks all handlers against all recorded exceptions and returns those whose…, ExceptionHandler, LoggedException, NamedTuple
-
 ### Community 264 - "Comm"
-Cohesion: 0.04
-Nodes (34): Comm responsibility: Discovery (clients_with_interface), Comm responsibility: Events (broadcast typed events), Comm, PresenceCallback, setter, Get a proxy to the given client. Args: client: Name of client. Returns: Proxy…, Fetch capabilities for a single interface and push them into the given proxy…, Called when a client disconnects. Args: event: Disconnect event. sender: Name… (+26 more)
-
-### Community 265 - "_PhotometryCalculator"
-Cohesion: 0.29
-Nodes (3): _PhotometryCalculator, Table, Abstract class for photometry calculators.
+Cohesion: 0.11
+Nodes (10): PresenceCallback, Get a proxy to the given client. Args: client: Name of client. Returns: Proxy…, Fetch capabilities for a single interface and push them into the given proxy…, Called when a client disconnects. Args: event: Disconnect event. sender: Name…, Returns list of interfaces for given client. Args: client: Name of client.…, Subscribe to state updates for a given module and interface. Delivers the…, Unsubscribe from state updates. Args: module: Name of remote module. interface:…, Subscribe to presence updates for a given module. Delivers the current value… (+2 more)
 
 ### Community 266 - "BaseVideo"
-Cohesion: 0.06
-Nodes (27): BaseVideo, LastImage, NextImage, Any, NamedTuple, NDArray, Response, Whether the server is started. (+19 more)
+Cohesion: 0.07
+Nodes (26): BaseVideo, calc_expose_timeout(), LastImage, NextImage, Any, NamedTuple, NDArray, Whether the server is started. (+18 more)
 
 ### Community 267 - "SMBFile"
 Cohesion: 0.22
@@ -1536,8 +1502,8 @@ Cohesion: 0.15
 Nodes (20): ConvertGridFrame, ConvertGridToSkyCoord, FromList, GridFilterValue, Convert (x, y) degree tuples to SkyCoord objects. Wraps a tuple-producing grid…, Transform SkyCoord points to a different frame., Select closest point from a list. Only select points if they are closer than a…, Filter points by numeric constraints on x and y. Accepts points as: - (x, y)… (+12 more)
 
 ### Community 272 - "DummyCamera"
-Cohesion: 0.04
-Nodes (60): Binning, BinningCapabilities, GainState, IImageFormat, ImageFormatCapabilities, ImageFormatState, Any, The module supports different image formats (e.g. INT16, FLOAT32), mainly used… (+52 more)
+Cohesion: 0.03
+Nodes (125): Binning, BinningCapabilities, BinningState, IBinning, Any, The camera supports binning, to be used together with…, Set the camera binning. Args: x: X binning. y: Y binning. Raises: ValueError:…, ICooling (+117 more)
 
 ### Community 273 - "Image.trim"
 Cohesion: 0.25
@@ -1555,9 +1521,9 @@ Nodes (7): AddMask, CatalogCircularMask, CircularMask, CreateFilename, Misc (pyo
 Cohesion: 0.29
 Nodes (7): CsvPicker, DynamicTarget, HelioprojectiveTarget, Picker, SiderealTarget, Target, PolymorphicBaseModel
 
-### Community 277 - ".get_sensor_value"
-Cohesion: 0.22
-Nodes (4): Any, Return value for given sensor. Args: station: Name of weather station to get…, Returns FITS header for the current status of this module. Args: namespaces: If…, Initialize a new pyobs-weather connector. Args: url: URL to weather station…
+### Community 277 - "WeatherSensors"
+Cohesion: 0.13
+Nodes (17): IStartStop, Any, The module can be started and stopped., IWeather, Any, The module acts as a weather station., Return value for given sensor. Args: station: Name of weather station to get…, WeatherSensorReading (+9 more)
 
 ### Community 278 - "RemoteError"
 Cohesion: 0.20
@@ -1567,9 +1533,9 @@ Nodes (7): ForbiddenError, The call itself didn't reach/return -- a transport fa
 Cohesion: 0.50
 Nodes (3): Any, SECONDS, Do a series of flat fields. Args: count: Number of images to take Returns:…
 
-### Community 281 - "test_memory_archives.py"
-Cohesion: 0.08
-Nodes (51): MemoryTaskArchive, Any, In-memory task archive for testing and simple deployments., Returns time when tasks last changed., Returns list of projects., Returns list of all tasks., Returns task with given ID, or None if not found., make_obs() (+43 more)
+### Community 281 - "ObservationList"
+Cohesion: 0.04
+Nodes (80): ObservationList, Any, Add the list of scheduled tasks to the schedule. Args: tasks: Scheduled tasks., LcoScheduleReader, Update list of requests. Args: force: Force update., Fetch schedule from portal. Returns: Dictionary with tasks. Raises: Timeout: If…, Fetch schedule from portal. Args: start_before: Task must start before this…, Returns the active scheduled task at the given time. Args: time: Time to return… (+72 more)
 
 ### Community 282 - ".move_heliocentric_polar"
 Cohesion: 0.50
@@ -1599,21 +1565,21 @@ Nodes (9): Baseline test pattern (define once, apply to every repo), Explicitly 
 Cohesion: 0.22
 Nodes (8): 1. `HttpFileCache` — token check + CORS + preflight, 2. `HttpFile` — send the token instead of Basic auth, 3. Tests, Consequences, Decision, Implementation, Plan: CORS + token auth for `HttpFileCache`, Problem
 
-### Community 290 - "TaskFinishedEvent"
-Cohesion: 0.10
-Nodes (13): Any, Event to be sent when a task has failed., Initializes a new task failed event. Args: name: Name of task that just…, TaskFailedEvent, Any, Event to be sent when a task has finished., Initializes a new task finished event. Args: name: Name of task that just…, TaskFinishedEvent (+5 more)
+### Community 290 - "TaskFailedEvent"
+Cohesion: 0.25
+Nodes (6): Any, Event to be sent when a task has failed., Initializes a new task failed event. Args: name: Name of task that just…, TaskFailedEvent, test_task_failed_properties(), test_task_failed_roundtrip()
 
-### Community 291 - ".grab_sequence"
-Cohesion: 0.33
-Nodes (4): Any, SECONDS, Start a sequence of `count` grabs. Returns immediately; progress is available…, Stop the sequence after the current grab. The grab currently in progress, if…
+### Community 291 - "IDataSequence"
+Cohesion: 0.29
+Nodes (6): IDataSequence, Any, SECONDS, The module can grab a counted sequence of data (images, spectra, ...)., Start a sequence of `count` grabs. Returns immediately; progress is available…, Stop the sequence after the current grab. The grab currently in progress, if…
 
 ### Community 292 - "Plan: `pyobs-gui` IAutoGuiding widget"
 Cohesion: 0.25
 Nodes (7): Known bug in the shipped widget (to fix alongside this change), Plan: `pyobs-gui` IAutoGuiding widget, Problem: pixel offsets aren't physical, and the per-image correction is discarded, Proposed pyobs-core change, Resolved from the original open questions, Shipped (pyobs-core, `develop`), Widget design (pyobs-gui)
 
-### Community 293 - "IStructuredConfig"
-Cohesion: 0.33
-Nodes (5): IStructuredConfig, Any, ConfigValue, The module accepts a whole structured (possibly nested) config object in one…, Apply a full structured config to this module. Args: config: Nested dict…
+### Community 293 - ".set_config"
+Cohesion: 0.50
+Nodes (3): Any, ConfigValue, Apply a full structured config to this module. Args: config: Nested dict…
 
 ### Community 295 - "Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)"
 Cohesion: 0.25
@@ -1623,9 +1589,9 @@ Nodes (7): Access used, Artifacts from this session, Investigation: pyobs-gui re
 Cohesion: 0.50
 Nodes (3): date, Observer, Returns the night for this time, i.e. the date of the start of the current…
 
-### Community 299 - "MotionStatusChangedEvent"
+### Community 299 - "LogEvent"
 Cohesion: 0.06
-Nodes (19): Any, JSON representation of event., String representation of event., Generic from_dict method for derived classes that don't need their own., Any, Any, Any, Any (+11 more)
+Nodes (15): Any, JSON representation of event., String representation of event., Generic from_dict method for derived classes that don't need their own., Any, Any, Any, LogEvent (+7 more)
 
 ### Community 300 - "ADR-0008: _safe_send keeps bounded retry unlike capability/subscribe fetches"
 Cohesion: 0.40
@@ -1663,21 +1629,21 @@ Nodes (7): GuidingStatisticsPixelOffset, Calculates RMS of data. Args: data: Dat
 Cohesion: 0.07
 Nodes (22): Architecture, File Map, Goal, Plan: `IDataSequence` — server-side counted data sequences (reconstructed), Tasks, Plan: `pyobs-gui` IAcquisition widget, Resolved from the original open questions, Shipped (pyobs-core, `develop`) (+14 more)
 
-### Community 309 - "test_scriptrunner.py"
-Cohesion: 0.29
-Nodes (7): A script failed while running -- e.g. a proxy/network failure reaching a module…, ScriptError, make_runner(), asyncio, _RaisingScript, test_run_lets_domain_exception_through_unwrapped(), test_run_wraps_untyped_exception_as_script_error()
+### Community 309 - "ScriptRunner"
+Cohesion: 0.14
+Nodes (15): calc_run_timeout(), Any, Calculates timeout for run()., Module for running a script., Initialize a new script runner. Args: script: Config for script to run., Run script. Raises: ScriptError: If the script failed (e.g. a proxy/network…, Abort current actions., ScriptRunner (+7 more)
 
-### Community 310 - "ModuleNameFilter"
-Cohesion: 0.20
-Nodes (5): Background thread for handling the logging., Send an event to other clients. Args: event (Event): Event to send, ModuleNameFilter, LogRecord, Logging filter that stamps the current module name onto every LogRecord.…
+### Community 311 - "Object"
+Cohesion: 0.08
+Nodes (33): PydanticBaseModel, Object, PrivateAttrMixin, :class:`~pyobs.object.Object` is the base for almost all classes in *pyobs*. It…, Base class for all objects in *pyobs*., Whether object has been opened., Can be overloaded to quit program., ConfigurationStatus (+25 more)
 
 ### Community 313 - "Target"
 Cohesion: 0.29
 Nodes (4): Target, Set the resolved target if not already set, e.g. when restoring from an…, The resolved target, or the static target if not dynamic., Target for this specific run: the observation's own record if known, otherwise…
 
 ### Community 315 - "flatfield/test_scheduler.py"
-Cohesion: 0.47
-Nodes (9): FlatFieldScheduler, Run the flat-field scheduler., make_scheduler_module(), asyncio, setup_flatfield_proxy(), test_abort_sets_event(), test_run_aborts_current_flat_field_when_requested(), test_run_raises_when_already_running() (+1 more)
+Cohesion: 0.24
+Nodes (13): FlatFieldScheduler, Run the flat-field scheduler., A single item in the flat scheduler, Initializes a new scheduler item Args: start: Start time in seconds end: End…, Nice string representation for item, SchedulerItem, make_scheduler_module(), asyncio (+5 more)
 
 ### Community 316 - "ModuleLocation dataclass (nested in ModuleCapabilities)"
 Cohesion: 0.50
@@ -1696,44 +1662,20 @@ Cohesion: 0.25
 Nodes (7): Any, Module, _disable_iers_auto_download(), InfluxLogConfig, Initializes a pyobs application. Exactly one of `config`/`module_factory` must…, Create a new GUI application., TypedDict
 
 ### Community 320 - "Kiosk"
-Cohesion: 0.15
+Cohesion: 0.10
 Nodes (8): Kiosk, Any, Response, Thread for taking images., A kiosk mode for a pyobs camera that takes images and published them via HTTP., Initializes file cache. Args: camera: Camera to use for kiosk mode. port: Port…, Handles access to /* and returns a specified image. Args: request: Request to…, Whether the server is started.
-
-### Community 321 - "test_dummyaltaztelescope.py"
-Cohesion: 0.70
-Nodes (4): make_dummyaltaztelescope(), asyncio, test_open_registers_offsets_altaz_event_and_publishes_initial_state(), test_set_offsets_altaz_sends_event_and_updates_state()
 
 ### Community 322 - "Photometry (pyobs.images.processors.photometry) API doc"
 Cohesion: 0.83
 Nodes (4): Photometry (pyobs.images.processors.photometry) API doc, Photometry, PhotUtilsPhotometry, SepPhotometry
 
-### Community 323 - "GuiApplication"
-Cohesion: 0.31
-Nodes (6): GuiApplication, Derived Application class that uses a Qt GUI. Allows for graceful shutdown in…, main(), Any, PyobsWinCLI, Class for initializing and running pyobs CLI.
-
 ### Community 324 - "_event_role"
 Cohesion: 0.39
 Nodes (7): _event_role(), Space-separated role(s) ("send", "subscribe", or both) for an event class, for…, Tests for XmppComm's disco#info event role tagging. See specs/plans/event-role-…, test_event_role_ignores_unrelated_events(), test_event_role_send_and_subscribe(), test_event_role_send_only(), test_event_role_subscribe_only()
 
-### Community 325 - "Any"
-Cohesion: 0.25
-Nodes (4): Any, Return the last received state for the given interface, or None., Return the capabilities for the given interface, or None., Return state immediately if available, otherwise wait for the first update.
-
-### Community 326 - "_dummytelescopebase.py"
-Cohesion: 0.04
-Nodes (52): FiltersCapabilities, FilterState, FocuserState, IFocuser, The module is a focusing device., AltAzOffsetState, IOffsetsRaDec, Any (+44 more)
-
-### Community 327 - ".__init__"
-Cohesion: 0.25
-Nodes (5): Any, Aborts the current exposure. Raises: ValueError: If exposure could not be…, Creates a new BaseCamera. Args: fits_headers: Additional FITS headers. flip:…, Any, Creates a new dummy cammera. Args: readout_time: Readout time in seconds. sim:…
-
-### Community 329 - "ConfigDB"
-Cohesion: 0.33
-Nodes (3): InstrumentLocation, ConfigDB, Creates a new LCO scheduler. Args: portal: Portal to use. configdb: ConfigDB to…
-
-### Community 330 - ".__init__"
-Cohesion: 0.29
-Nodes (4): Creates a comm module., Any, Creates a new dummy comm. Args: name: Name to report for this comm. Defaults to…, Execute a given method on a remote client. Args: client (str): ID of client.…
+### Community 326 - "FitsHeaderEntry"
+Cohesion: 0.03
+Nodes (56): Event, IWeather, IDome, The module controls a dome, i.e. a :class:`~pyobs.interfaces.IRoof` with a…, IFitsHeaderAfter, Any, The module provides some additional header entries for FITS headers after some…, Returns FITS header for the current status of this module. Args: namespaces: If… (+48 more)
 
 ### Community 331 - ".__init__"
 Cohesion: 0.33
@@ -1747,17 +1689,9 @@ Nodes (3): ModuleGui, Any, LogRecord
 Cohesion: 0.29
 Nodes (5): Any, Pipeline, ProgressCallback, Pre-pass: list (not download) OBJECT frames for every instrument/binning/filter…, Creates a Reduction object for reducing a given observation period. Args:…
 
-### Community 334 - ".set_exposure_time"
-Cohesion: 0.50
-Nodes (3): Any, SECONDS, Set the exposure time in seconds. Args: exposure_time: Exposure time in…
-
 ### Community 335 - ".set_offsets_altaz"
 Cohesion: 0.50
 Nodes (3): Any, DEGREES, Move an Alt/Az offset. Args: dalt: Altitude offset in degrees. daz: Azimuth…
-
-### Community 336 - ".set_gain"
-Cohesion: 0.40
-Nodes (3): Any, Set the camera gain. Args: gain: New camera gain. Raises: ValueError: If gain…, Set the camera offset. Args: offset: New camera offset. Raises: ValueError: If…
 
 ### Community 337 - ".abort"
 Cohesion: 0.40
@@ -1767,10 +1701,6 @@ Nodes (3): Any, Abort current actions., Sets the currently active fiber. Must be
 Cohesion: 0.50
 Nodes (3): Any, DEGREES, Sets the rotation angle to the given value in degrees. Raises: MoveError: If…
 
-### Community 339 - ".__init__"
-Cohesion: 0.40
-Nodes (3): Any, Abort current actions., Create a new dummy auto-focus. Args: wait_time: Time to wait between focus…
-
 ### Community 340 - "pyobs.modules.weather (doc)"
 Cohesion: 1.00
 Nodes (3): pyobs.modules.weather (doc), MockWeather, Weather (module)
@@ -1779,9 +1709,13 @@ Nodes (3): pyobs.modules.weather (doc), MockWeather, Weather (module)
 Cohesion: 0.40
 Nodes (3): Any, Any, Initialize a new scheduler. Args: twilight: astronomical or nautical
 
-### Community 343 - ".__init__"
-Cohesion: 0.40
-Nodes (4): Any, Pipeline, ProgressCallback, Args: archive: Archive to fetch raw and calibration frames from. pipeline:…
+### Community 344 - "Save"
+Cohesion: 0.19
+Nodes (10): Any, Save an image to the virtual file system and optionally broadcast a…, Init an image processor that broadcasts an image Args: filename: Filename to…, Initialize processor., Broadcast image. Args: image: Image to broadcast. Returns: Original image., Save, asyncio, test_call() (+2 more)
+
+### Community 347 - "IFilters"
+Cohesion: 0.07
+Nodes (25): IData, Any, Grabs an image and returns reference. Args: broadcast: Broadcast existence of…, The module can grab and return an image from whatever device., IFilters, Any, The module can change filters in a device., Set the current filter. Args: filter_name: Name of filter to set. Raises:… (+17 more)
 
 ### Community 351 - "README.md"
 Cohesion: 0.50
@@ -1795,13 +1729,17 @@ Nodes (3): restore_perms(), install-ejabberd.sh script, yq_is_correct_variant()
 Cohesion: 0.50
 Nodes (3): ADR-0002: XMPP stream-error conflict quits instead of reconnecting, XMPP stream-error condition 'conflict' (RFC 6120 §4.9.3), XmppComm._disconnected()
 
+### Community 355 - "_propagate_elements"
+Cohesion: 0.18
+Nodes (13): OrbitalElements, Any, Starts tracking a body defined by orbital elements. Args: elements: Orbital…, InvalidOrbitalElementsError, _perifocal_to_radec(), _propagate_elements(), Rotates a perifocal-plane position into heliocentric ecliptic coordinates, then…, Two-body Kepler propagation of orbital elements to (ra, dec) in degrees, ICRS.… (+5 more)
+
 ### Community 356 - "pyobs.modules.pointing (doc)"
 Cohesion: 1.00
 Nodes (3): pyobs.modules.pointing (doc), Acquisition (pointing module), BaseGuiding
 
-### Community 363 - "reset_network"
-Cohesion: 0.67
-Nodes (3): fixture, Reset LocalNetwork singleton before each test., reset_network()
+### Community 363 - "test_localcomm_state.py"
+Cohesion: 0.09
+Nodes (28): asyncio, fixture, Tests for LocalComm state, capabilities, and presence., set_presence stores and get_client_state retrieves., Default presence is READY with no error string., subscribe_presence fires callback immediately with the current presence state., subscribe_presence callback is called whenever presence changes., Reset LocalNetwork singleton before each test. (+20 more)
 
 ### Community 369 - "ejabberd 10x Shaper Benchmark Config"
 Cohesion: 0.67
@@ -1826,7 +1764,7 @@ Nodes (3): Exception handling across the RPC boundary (design doc), Issue #446 (
 ## Knowledge Gaps
 - **620 isolated node(s):** `Problem`, `Decision`, `Helper`, `Log point`, `Out of scope (follow-ups)` (+615 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **56 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **44 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -1837,11 +1775,11 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
 - **What is the exact relationship between `FocusError` and `FocusModel.set_optimal_focus`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `Time` connect `Time` to `BaseTelescope`, `BaseGuiding`, `TaskData`, `Module`, `Interface`, `Archive`, `SkyFlatsBasePointing`, `ImageProcessor`, `Grid`, `pyobs.py`, `filters.py`, `DummyCamera`, `ImageType`, `Scheduler`, `mixins/test_fitsheader.py`, `Event`, `.get_sensor_value`, `TimeDelta`, `test_schedulereader.py`, `test_flatfielder.py`, `test_memory_archives.py`, `test_lco_http.py`, `tests/test_events.py`, `GoodWeatherEvent`, `SiderealTarget`, `test_control.py`, `test_basetelescope.py`, `FrameInfo`, `Portal`, `utils/exceptions.py`, `LogEvent`, `._filter_data`, `ExpTimeEval`, `IPointingAltAz.py`, `TaskStartedEvent`, `ObservationList`, `fits.py`, `Scheduler`, `test_transitimaging.py`, `.night_obs`, `robotic/test_scheduler.py`, `test_schedulewriter.py`, `acquisition.py`, `Calibration`, `Publisher`, `flatfield/test_scheduler.py`, `Proxy`, `FilenameFormatter`, `test_yaml_archives.py`, `Project`, `FlatFielder`, `._set_optimal_focus`, `SolarElevationConstraint`, `Offsets`, `.now`, `_dummytelescopebase.py`, `test_backend_archives.py`, `SkyflatPriorities`, `VirtualFileSystem`, `test_proxy.py`, `test_acquisition.py`, `Weather`, `test_pyobs_archive.py`, `Object`, `InfluxHandler`, `test_coordinates.py`, `LocalArchive`, `Test Commlogging (comm)`, `ImagingScript`, `FocusModel`, `test_darkbias.py`?**
-  _High betweenness centrality (0.267) - this node is a cross-community bridge._
-- **Why does `Image` connect `Image` to `BaseGuiding`, `Archive`, `Interface`, `Comm`, `ImageProcessor`, `_PhotometryCalculator`, `BaseVideo`, `_ResponseImageWriter`, `DummyCamera`, `ImageType`, `mixins/test_fitsheader.py`, `Event`, `PipelineMixin`, `AstrometryDotNet`, `SkyOffsets`, `test_flatfielder.py`, `sourcedetection.py`, `SoftBin`, `AddMask`, `FrameInfo`, `utils/exceptions.py`, `._filter_data`, `fits.py`, `_SourceCatalog`, `.__call__`, `StarExpTimeEstimator`, `GuidingStatisticsPixelOffset`, `test_aperture_photometry.py`, `acquisition.py`, `Calibration`, `_SepAperturePhotometry`, `Any`, `FilenameFormatter`, `test_basevideo.py`, `test_yaml_archives.py`, `CatalogCircularMask`, `Offsets`, `test_acquisition.py`, `Smooth`, `_DaoBackgroundRemover`, `ProjectionFocusSeries`, `AperturePhotometry`, `Ring`, `VFSFile`, `DaophotSourceDetection`, `ProjectedOffsets`, `test_pyobs_archive.py`, `.__init__`, `FocusSeries`, `SepSourceDetection`, `test_autoguiding.py`, `LocalArchive`, `_PhotUtilAperturePhotometry`, `CreateFilename`, `PhotometryFocusSeries`, `._expose`, `ImageSourceFilter`?**
-  _High betweenness centrality (0.140) - this node is a cross-community bridge._
-- **Why does `Module` connect `Module` to `BaseTelescope`, `Time`, `Interface`, `ImageWatcher`, `test_presence.py`, `._register_exception`, `Comm`, `PyobsError`, `BaseVideo`, `BaseCamera`, `pyobs.py`, `XmppComm`, `test_camerasettings.py`, `.__init__`, `test_dummymode.py`, `test_kiosk.py`, `Scheduler`, `mixins/test_fitsheader.py`, `PipelineMixin`, `FlatFieldPointing`, `Any`, `utils/exceptions.py`, `LogEvent`, `_AbortableModule`, `Stellarium`, `IPointingAltAz.py`, `ObservationList`, `robotic/test_scheduler.py`, `StandAlone`, `RPC`, `WindowCapabilities`, `acquisition.py`, `format_filename`, `.close`, `Publisher`, `flatfield/test_scheduler.py`, `test_basevideo.py`, `PointingSeries`, `GridNode`, `FlatFielder`, `Project`, `Kiosk`, `benchmark_state_throughput.py`, `Telegram`, `MockWeather`, `test_acquisition.py`, `Weather`, `DataCache`, `test_exception_logging.py`, `Application`, `test_module_state_publishing.py`, `._record_exception`, `Object`, `make_proxy_cm`, `test_autoguiding.py`, `timeout`, `get_registered_interface`, `HttpFileCache`, `FocusModel`?**
-  _High betweenness centrality (0.082) - this node is a cross-community bridge._
+- **Why does `Time` connect `Time` to `_DummyTelescopeBase`, `BaseGuiding`, `RunningState`, `Interface`, `enums.py`, `ImageProcessor`, `BaseCamera`, `LcoObservationArchive`, `TimeDelta`, `Event`, `test_flatfielder.py`, `tests/test_events.py`, `test_lco_http.py`, `DummySolarTelescope`, `test_transit.py`, `Script`, `test_basetelescope.py`, `Portal`, `MotionStatus`, `CoolingState`, `IPointingAltAz.py`, `Observation`, `test_transitimaging.py`, `robotic/test_scheduler.py`, `test_schedulewriter.py`, `Calibration`, `.get_object`, `Proxy`, `FilenameFormatter`, `test_yaml_archives.py`, `LcoTaskArchive`, `FlatFielder`, `SolarElevationConstraint`, `Offsets`, `.now`, `test_proxy.py`, `SiderealTarget`, `Weather`, `test_scheduler_mastermind.py`, `test_pyobs_archive.py`, `LcoTask`, `InfluxHandler`, `test_coordinates.py`, `LocalArchive`, `CommLoggingHandler`, `NewImageEvent`, `ImagingScript`, `FocusModel`, `test_transit_mastermind.py`, `test_darkbias.py`, `TaskData`, `Pipeline`, `test_astroplanscheduler.py`, `SkyFlatsBasePointing`, `test_autofocus.py`, `Grid`, `pyobs.py`, `Scheduler`, `Archive`, `.__init__`, `._filter_data`, `ExpTimeEval`, `TaskStartedEvent`, `Scheduler`, `BrightestStarGuiding`, `.add_fits_headers`, `OffsetResult`, `PyobsArchive`, `SkyflatPriorities`, `test_backend_archives.py`, `.__init__`, `filters.py`, `DummyCamera`, `WeatherSensors`, `ObservationList`, `GoodWeatherEvent`, `.night_obs`, `Object`, `flatfield/test_scheduler.py`, `FitsHeaderEntry`, `IFilters`, `_propagate_elements`?**
+  _High betweenness centrality (0.262) - this node is a cross-community bridge._
+- **Why does `Image` connect `Image` to `BaseGuiding`, `Pipeline`, `BrightestStarOffsets`, `enums.py`, `ImageProcessor`, `BaseVideo`, `BaseCamera`, `.__init__`, `DummyCamera`, `_CalibrationCache`, `VirtualFileSystem`, `mixins/test_fitsheader.py`, `Event`, `PipelineMixin`, `AstrometryDotNet`, `datetime`, `test_flatfielder.py`, `FitsHeaderOffsets`, `SoftBin`, `AddMask`, `Archive`, `._filter_data`, `SkyOffsets`, `PillowHelper`, `BrightestStarGuiding`, `_DotNetRequest`, `StarExpTimeEstimator`, `.add_fits_headers`, `GuidingStatisticsPixelOffset`, `OffsetResult`, `Calibration`, `GuidingStatisticsSkyOffset`, `_SepAperturePhotometry`, `Any`, `PyobsArchive`, `FilenameFormatter`, `test_basevideo.py`, `CatalogCircularMask`, `Offsets`, `FitsHeaderEntry`, `ExposureTimeState`, `test_acquisition.py`, `Smooth`, `RemoveBackground`, `Ring`, `Save`, `_DaoBackgroundRemover`, `ProjectedOffsets`, `test_pyobs_archive.py`, `.__init__`, `FocusSeries`, `SepSourceDetection`, `test_autoguiding.py`, `LocalArchive`, `_PhotUtilAperturePhotometry`, `VFSFile`, `ImageSourceFilter`?**
+  _High betweenness centrality (0.150) - this node is a cross-community bridge._
+- **Why does `Module` connect `Module` to `_DummyTelescopeBase`, `BaseGuiding`, `Time`, `RunningState`, `Interface`, `test_presence.py`, `enums.py`, `Comm`, `PyobsError`, `XmppComm`, `BaseCamera`, `BaseVideo`, `pyobs.py`, `test_dummymode.py`, `test_kiosk.py`, `Scheduler`, `mixins/test_fitsheader.py`, `PipelineMixin`, `WeatherSensors`, `MotionStatus`, `.__init__`, `ModuleState`, `CoolingState`, `IPointingAltAz.py`, `Observation`, `Stellarium`, `robotic/test_scheduler.py`, `StandAlone`, `RPC`, `WindowCapabilities`, `ScriptRunner`, `Object`, `flatfield/test_scheduler.py`, `Proxy`, `test_basevideo.py`, `PointingSeries`, `GridNode`, `Kiosk`, `Telegram`, `FlatField`, `FitsHeaderEntry`, `test_imagewatcher.py`, `MockWeather`, `ExposureTimeState`, `test_acquisition.py`, `Weather`, `DataCache`, `xmppcomm.py`, `test_exception_logging.py`, `Application`, `IFilters`, `test_module_state_publishing.py`, `make_proxy_cm`, `test_autoguiding.py`, `MultiModule`, `NewImageEvent`, `HttpFileCache`, `FocusModel`?**
+  _High betweenness centrality (0.081) - this node is a cross-community bridge._
 - **Are the 167 inferred relationships involving `Time` (e.g. with `PyobsCLI` and `Proxy`) actually correct?**
   _`Time` has 167 INFERRED edges - model-reasoned connections that need verification._

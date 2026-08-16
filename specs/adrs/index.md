@@ -26,3 +26,5 @@ Short decision records for choices that had genuine considered-and-rejected alte
 - [0011-keycloak-identity-broker-for-shared-auth.md](0011-keycloak-identity-broker-for-shared-auth.md) —
   self-hosted Keycloak alongside odin as two parallel auth backends. *proposed* (Repos:
   pyobs-core, pyobs-archive, pyobs-robotic-backend)
+- [0012-event-delivery-explicit-pubsub-subscription-not-presence.md](0012-event-delivery-explicit-pubsub-subscription-not-presence.md) —
+  event delivery moves from presence auto-subscribe to explicit pubsub subscription. *proposed*

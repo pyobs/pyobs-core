@@ -379,9 +379,14 @@ class Application:
 
             # record the loaded pyobs package versions for comm-less consumers (e.g. web-admin
             # reading the log/journal); both construction paths have finished importing everything
-            # by this point
-            packages = loaded_pyobs_packages()
-            log.info("Loaded pyobs packages: %s", ", ".join(f"{k}={v}" for k, v in packages.items()))
+            # by this point. Guarded like the IERS priming above: metadata scanning can raise on
+            # any installed distribution with broken dist-info, and that's not worth aborting
+            # startup over.
+            try:
+                packages = loaded_pyobs_packages()
+                log.info("Loaded pyobs packages: %s", ", ".join(f"{k}={v}" for k, v in packages.items()))
+            except Exception:
+                log.warning("Could not determine loaded pyobs package versions, continuing anyway.", exc_info=True)
 
             await self._module.startup()
             log.info("Started successfully.")

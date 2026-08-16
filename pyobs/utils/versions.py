@@ -18,6 +18,13 @@ def loaded_pyobs_packages(sys_modules: Mapping[str, object] | None = None) -> di
     Returns:
         Distribution name -> version, sorted by name. A distribution whose version cannot be
         resolved (``PackageNotFoundError``) is skipped.
+
+    Note:
+        Editable installs (``pip install -e`` / ``uv pip install -e``, i.e. a dev checkout)
+        typically don't populate the file records that ``packages_distributions()`` needs to
+        derive its top-level-name -> distribution mapping, so a package installed that way is
+        silently omitted here. Not fixed since the only consumer (pyobsd/web-admin reading the
+        module's log/journal) only needs this in production, where installs are non-editable.
     """
 
     if sys_modules is None:

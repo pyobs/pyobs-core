@@ -1,6 +1,7 @@
 # Plan: Bound the FITS-header fetch so a dead peer can't stall the frame
 
-Status: proposed
+Status: implemented, closed (merged 2026-08-16, PR #765)
+Issue: pyobs-core#764
 
 ## Problem
 
@@ -29,8 +30,7 @@ sequential `await future` with `asyncio.wait(..., timeout=...)`:
 - Skip pending clients with a `timed out` warning, mirroring the existing `RemoteError` path.
 - `future.result()` on done tasks; `RemoteError` handling unchanged.
 
-New constructor kwarg `fits_header_timeout: float = 15.0` on `FitsHeaderMixin` (flows through
-`ImageFitsHeaderMixin`/`SpectrumFitsHeaderMixin` via `**kwargs`), stored as
+New constructor kwarg `fits_header_timeout: float = 15.0` on `FitsHeaderMixin`, stored as
 `_fitsheadermixin_header_timeout`. 15s is generous for live peers (they answer in ms) while keeping
 a dead peer from stalling the pipeline for ~120s.
 
@@ -46,3 +46,26 @@ a dead peer from stalling the pipeline for ~120s.
 
 No server or sibling-repo changes. Configs that don't set `fits_header_timeout` keep the default.
 Rollback is removing the kwarg and reverting `add_requested_fits_headers()`.
+
+## Post-merge fixes (review, 2026-08-16)
+
+Two bugs found and fixed on top of the original PR before merge:
+
+- **Empty `futures` crash.** `asyncio.wait()` raises `ValueError` on an empty iterable.
+  `request_fits_headers()` returns `{}` for any module with no comm, or no peer implementing
+  `IFitsHeaderBefore`/`IFitsHeaderAfter` — a case none of the original tests covered. Fixed by
+  skipping the `asyncio.wait` call when `futures` is empty.
+- **`fits_header_timeout` didn't reach `BaseCamera`/`BaseVideo`.** Contrary to this doc's original
+  claim, `ImageFitsHeaderMixin.__init__` does *not* get `**kwargs` from `BaseCamera`/`BaseVideo` —
+  both pass an explicit keyword list (unlike `basespectrograph.py`, which does forward `**kwargs`).
+  So a configured `fits_header_timeout` was silently dropped for exactly the module (`fli230`, a
+  `BaseCamera`) that motivated this plan. Fixed by adding an explicit `fits_header_timeout` param to
+  both and threading it through.
+
+Regression tests added for both, plus a `fits_header_timeout`-reaches-mixin guard for
+`BaseSpectrograph` (already correct, previously untested).
+
+Follow-up filed as pyobs-core#767: `add_requested_fits_headers()` only catches `exc.RemoteError`
+around each future's result; a peer whose response fails to deserialize for another reason still
+crashes the whole exposure rather than just being skipped. Pre-existing behavior, not a regression
+from this plan — out of scope here.

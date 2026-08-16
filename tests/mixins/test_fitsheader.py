@@ -170,6 +170,16 @@ async def test_add_requested_fits_headers_skips_empty_headers() -> None:
 
 
 @pytest.mark.asyncio
+async def test_add_requested_fits_headers_handles_empty_futures() -> None:
+    m = make_module()
+    image = make_image()
+
+    # should not raise (e.g. no comm, or no peer implements IFitsHeaderBefore/After)
+    await m.add_requested_fits_headers(image, {})
+    assert "FOO" not in image.header
+
+
+@pytest.mark.asyncio
 async def test_add_requested_fits_headers_times_out_dead_client() -> None:
     m = make_module(fits_header_timeout=0.05)
     image = make_image()

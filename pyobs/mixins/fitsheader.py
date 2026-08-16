@@ -107,11 +107,13 @@ class FitsHeaderMixin:
         # IQ (e.g. a laptop put to sleep without closing its client) would otherwise stall
         # the frame for the full XMPP IQ timeout (~120s) per dead peer. Give up on anything
         # still pending and proceed without its headers.
-        done, pending = await asyncio.wait(futures.values(), timeout=self._fitsheadermixin_header_timeout)
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
+        pending: set[Task[Any]] = set()
+        if futures:
+            _, pending = await asyncio.wait(futures.values(), timeout=self._fitsheadermixin_header_timeout)
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
 
         # get fits headers from other clients
         for client, future in futures.items():

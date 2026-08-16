@@ -76,13 +76,14 @@ class WeatherAwareMixin:
             # do we need to park?
             if motion_status not in [MotionStatus.PARKED, MotionStatus.PARKING]:
                 # error state?
-                if is_error_state and not self.__weatheraware_is_error_state:
-                    log.error("Telescope is in error mode, cannot park.")
+                if is_error_state:
+                    # only log once when entering error state, and never try to park
+                    # while it persists -- park() would just raise again every cycle
+                    if not self.__weatheraware_is_error_state:
+                        log.error("Telescope is in error mode, cannot park.")
                 else:
-                    # parking?
-                    if motion_status != MotionStatus.PARKED:
-                        log.warning("Weather is bad, shutting down.")
-                        await msi.park()
+                    log.warning("Weather is bad, shutting down.")
+                    await msi.park()
 
             # save error state
             self.__weatheraware_is_error_state = is_error_state

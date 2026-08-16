@@ -78,4 +78,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   real interest-based event filtering. **closed** (actioned as ADR 0012 below)
 - [2026-08-16-explicit-pubsub-event-subscriptions.md](2026-08-16-explicit-pubsub-event-subscriptions.md) —
   real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from
-  presence. **implemented (client-side); rollout pending**
+  presence. **implemented, closed** (merged 2026-08-16, PR #761); rollout to production sites
+  pending

@@ -74,3 +74,5 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-16-explicit-pubsub-event-subscriptions.md](2026-08-16-explicit-pubsub-event-subscriptions.md) —
   real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from
   presence. **proposed**
+- [2026-08-16-fits-header-fetch-timeout.md](2026-08-16-fits-header-fetch-timeout.md) — bound the
+  FITS-header fetch so a dead peer can't stall the frame. **proposed**

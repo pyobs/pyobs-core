@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock
 
@@ -166,6 +167,39 @@ async def test_add_requested_fits_headers_skips_empty_headers() -> None:
     await m.add_requested_fits_headers(image, {"client1": asyncio.ensure_future(fut())})
     # nothing added, no error
     assert set(image.header.keys()) == header_keys_before
+
+
+@pytest.mark.asyncio
+async def test_add_requested_fits_headers_times_out_dead_client() -> None:
+    m = make_module(fits_header_timeout=0.05)
+    image = make_image()
+
+    dead = asyncio.create_task(asyncio.Event().wait())  # never resolves
+
+    start = time.monotonic()
+    await m.add_requested_fits_headers(image, {"dead": dead})
+    elapsed = time.monotonic() - start
+
+    assert elapsed < 1.0
+    assert dead.cancelled()
+    assert "FOO" not in image.header
+
+
+@pytest.mark.asyncio
+async def test_add_requested_fits_headers_adds_live_and_skips_dead() -> None:
+    m = make_module(fits_header_timeout=0.05)
+    image = make_image()
+
+    async def live() -> dict:
+        return {"FOO": FitsHeaderEntry(42, "the answer")}
+
+    live_task = asyncio.ensure_future(live())
+    dead = asyncio.create_task(asyncio.Event().wait())  # never resolves
+
+    await m.add_requested_fits_headers(image, {"live": live_task, "dead": dead})
+
+    assert image.header["FOO"] == 42
+    assert dead.cancelled()
 
 
 # ── add_fits_headers (top-level orchestration) ──────────────────────────────

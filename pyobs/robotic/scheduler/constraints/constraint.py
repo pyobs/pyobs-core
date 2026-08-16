@@ -45,6 +45,7 @@ class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):
             except ValueError:
                 raise ValueError(f"Invalid constraint type: {config['type']}")
             config["class"] = f"pyobs.robotic.scheduler.constraints.{constraints[idx]}"
+            del config["type"]
         return obj.pyobs_model_validate(Constraint, config, by_alias=True)
 
     @staticmethod

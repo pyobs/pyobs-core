@@ -30,15 +30,14 @@ class Merit(PolymorphicBaseModel, metaclass=ABCMeta):
         elif "type" in config:
             from . import __all__ as constraints
 
-            if "." not in config["type"]:
-                constraints_lower = [c.lower() for c in constraints]
-                try:
-                    idx = constraints_lower.index(config["type"].lower() + "merit")
-                except ValueError:
-                    raise ValueError(f"Invalid merit type: {config['type']}")
+            constraints_lower = [c.lower() for c in constraints]
+            try:
+                idx = constraints_lower.index(config["type"].lower() + "merit")
+            except ValueError:
+                raise ValueError(f"Invalid merit type: {config['type']}")
 
-                config["class"] = f"pyobs.robotic.scheduler.merits.{constraints[idx]}"
-                del config["type"]
+            config["class"] = f"pyobs.robotic.scheduler.merits.{constraints[idx]}"
+            del config["type"]
 
             obj = Merit.model_validate(config, by_alias=True)
             if isinstance(obj, Merit):

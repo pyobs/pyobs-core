@@ -143,8 +143,35 @@ behavior that has been hidden by `extra="ignore"`.
       on each of the four rather than switching base classes — avoids pulling in
       `PrivateAttrMixin`/context-injection machinery none of them need.
 - [x] Run the full test suite; confirm only the enumerated tests were fixed, no new failures.
-      1460 passed, 25 skipped, 0 failed (`.venv/bin/pytest -m "not integration and not xmpp"`);
-      `ruff check` and `pyrefly check` both clean on all changed files.
+      1462 passed, 25 skipped, 0 failed (`.venv/bin/pytest -m "not integration and not xmpp"`);
+      `ruff check` clean on all changed files (`pyrefly check` clean in the main checkout; hit an
+      unrelated environment quirk resolving `pyobs` inside the git worktree used for this PR,
+      not a finding about the code).
+
+## PR review follow-up (github.com/pyobs/pyobs-core/pull/762, thusser)
+
+- **Fixed:** `Constraint.create()` (`pyobs/robotic/scheduler/constraints/constraint.py:47`) had the
+  exact same stale-`type` bug as `Merit.create` — derived `class` from `type` but never removed
+  `type`. `Constraint` is a `PolymorphicBaseModel`, so `extra="forbid"` now rejects it. No test
+  caught it because every existing test passes `Constraint` instances, not `type`-shorthand dicts
+  (the path `OnDemandScheduler(constraints=[{"type": "Airmass", ...}])` uses,
+  `ondemandscheduler.py:59`). Fixed the same way as `Merit.create`, added
+  `tests/robotic/scheduler/constraints/test_constraint.py` and
+  `tests/robotic/scheduler/merits/test_merit.py` covering the `type`-shorthand path for both.
+- **Fixed (minor):** `create_object`'s pydantic branch now passes `by_alias=True` to
+  `model_validate` (matching `Merit.create`/`Constraint.create`'s existing convention) and asserts
+  against positional `*args`, which `model_validate` can't accept.
+- **Fixed (minor):** removed `Merit.create`'s dead "dotted `type`" branch — it never set `class` in
+  the first place, so it was already broken before this PR; conditionally deleting `type` only
+  inside that branch would have left it half-fixed.
+- **Open, needs the user (not verifiable from the client side):** whether the new required
+  (no-default) fields on `LcoObservation`/`LcoSchedulableRequest` are actually always present on
+  every real portal response (e.g. a not-yet-run observation without `ipp_value`). Types were
+  inferred from `tests/robotic/storage/lco/conftest.py` fixtures only, as already flagged above.
+  Needs a check against the live self-hosted portal, or defaulting the less-certain fields, before
+  merge.
+- Rebased onto `origin/develop`'s actual tip (previously the PR's recorded base was two commits
+  stale, making the diff look like 14 files/3 commits instead of the true 12 files/2 commits).
 - [x] Add a regression test: a task YAML with a misplaced key (the `guiding_config` inside
       `instrument_configs` case) raises `ValidationError` at load. Requires the imaging-models fix.
       Added `tests/robotic/scripts/test_imaging.py::test_misplaced_guiding_config_inside_instrument_configs_raises`.

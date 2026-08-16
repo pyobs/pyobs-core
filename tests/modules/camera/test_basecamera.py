@@ -29,6 +29,13 @@ async def test_aborted_exposure_raises_aborted_error():
     await camera.close()
 
 
+def test_fits_header_timeout_reaches_mixin():
+    """BaseCamera must forward fits_header_timeout to ImageFitsHeaderMixin, not swallow it into
+    Module's catch-all **kwargs -- see issue #764 / PR #765."""
+    camera = DummyCamera(fits_header_timeout=1.0)
+    assert camera._fitsheadermixin_header_timeout == 1.0
+
+
 @pytest.mark.asyncio
 async def test_open_close():
     """Test basic open/close of BaseCamera."""

@@ -60,6 +60,7 @@ class BaseCamera(
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz",
         fits_namespaces: list[str] | None = None,
         meridian_flip_on: str | None = None,
+        fits_header_timeout: float = 15.0,
         **kwargs: Any,
     ):
         """Creates a new BaseCamera.
@@ -73,6 +74,7 @@ class BaseCamera(
             flip_y: Whether or not to flip the image along its second axis.
             filenames: Template for file naming.
             fits_namespaces: List of namespaces for FITS headers that this camera should request
+            fits_header_timeout: Maximum seconds to wait for a peer's FITS headers before skipping them.
         """
         Module.__init__(self, **kwargs)
         ImageFitsHeaderMixin.__init__(
@@ -82,6 +84,7 @@ class BaseCamera(
             centre=centre,
             rotation=rotation,
             filenames=filenames,
+            fits_header_timeout=fits_header_timeout,
         )
 
         # check

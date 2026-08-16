@@ -215,3 +215,14 @@ behavior that has been hidden by `extra="ignore"`.
       `instrument_configs` case) raises `ValidationError` at load. Requires the imaging-models fix.
       Added `tests/robotic/scripts/test_imaging.py::test_misplaced_guiding_config_inside_instrument_configs_raises`.
 - [x] Update this doc's `Status:` to `implemented` once landed.
+
+## Merged
+
+Squash-merged to `develop` as `e398117f` (#762). Also fixed, in the final round of review before
+merge: `create_object`'s pydantic branch now raises on a cfg/kwarg key collision instead of silently
+letting kwargs win, its positional-args guard is a real `raise` instead of an `assert` (stripped
+under `python -O`), the duplicated type-shorthand-to-`class` logic in `Merit.create`/
+`Constraint.create` was extracted into `resolve_polymorphic_type_shorthand`
+(`pyobs/utils/serialization.py`), and `retrieve_class_on_deserialization` now passes `by_alias=True`
+on polymorphic dispatch, matching `Merit.create`/`Constraint.create`/`create_object`'s convention
+(dormant today — no constraint/merit uses aliased fields yet). Closes #755.

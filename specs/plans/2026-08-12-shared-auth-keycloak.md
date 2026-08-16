@@ -21,7 +21,7 @@ admin config, not pyobs code) rather than integrated as a second, separately-val
 ## 1. `pyobs-auth` package (new repo) — done, released
 
 Implemented and released: [github.com/pyobs/pyobs-auth](https://github.com/pyobs/pyobs-auth)
-(public), `2.0.0.dev4` on PyPI.
+(public), `2.0.0.dev7` on PyPI (dev6 added the inactive-user gate, dev7 a styled error page).
 
 - [x] Scaffold repo (matches other pyobs packages — `do-python-release` conventions).
 - [x] OIDC discovery + token handling against Keycloak — authorization-code grant (+ PKCE) for
@@ -59,56 +59,60 @@ Implemented and released: [github.com/pyobs/pyobs-auth](https://github.com/pyobs
       robotic-backend have different local `User`/`Profile` schemas and pyobs-auth can't assume
       one. Each service still keys its own resolver on `claims["sub"]`, per the design doc.
 
-## 2. pyobs-archive — cutover, not dual-path — done, confirmed working end to end
+## 2. pyobs-archive — cutover, not dual-path — not landed
 
-Login (and logout) tested live against the real `pyobs` realm on `auth.monet.uni-goettingen.de`.
+Marked "not landed" 2026-08-16 after checking the repo: `develop` still ships
+`OAuth2Backend`/`BearerAuthentication` (`pyobs_archive/authentication/backends.py`) and the
+`OAUTH_CLIENT` setting, with no `pyobs-auth` dependency and no Keycloak code anywhere. The items
+below were written as done but aren't reflected in the repo.
 
-- [x] Added `pyobs-auth` dependency; wired `KeycloakAuthentication` into
+- [ ] Add `pyobs-auth` dependency; wire `KeycloakAuthentication` into
       `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']`. No `AUTHENTICATION_BACKENDS` entry for
-      Keycloak, unlike originally itemized here — the redirect-based OIDC flow doesn't fit that
-      shape (see design doc/pyobs-auth's own notes), it's handled by `pyobs_auth.views` instead.
-      `ModelBackend` (local Django username/password) stays the sole `AUTHENTICATION_BACKENDS`
-      entry and the default login on the login page — Keycloak is an additive option next to it,
-      not a replacement, confirmed as an explicit requirement partway through this work.
-- [x] User mapping: `pyobs_archive.authentication.keycloak.resolve_user`, mint-on-first-login,
+      Keycloak — the redirect-based OIDC flow doesn't fit that shape (see design doc/pyobs-auth's
+      own notes), it's handled by `pyobs_auth.views` instead. `ModelBackend` (local Django
+      username/password) stays the sole `AUTHENTICATION_BACKENDS` entry and the default login on
+      the login page — Keycloak is an additive option next to it, not a replacement.
+- [ ] User mapping: `pyobs_archive.authentication.keycloak.resolve_user`, mint-on-first-login,
       keyed on `Profile.keycloak_sub` (new field + migration), not username/email.
-- [x] Migration path for existing users: `resolve_user` links an existing `User` by email on
+- [ ] Migration path for existing users: `resolve_user` links an existing `User` by email on
       first Keycloak login rather than minting a duplicate — see design doc's realm/user-mapping
       decision. `Profile.access_token`/`refresh_token` columns (written by the old flow) left in
       place rather than dropped — dead but low-risk to leave vs. a destructive migration.
-- [x] Removed `OAuth2Backend`/`BearerAuthentication` (`pyobs_archive/authentication/backends.py`,
-      deleted) and the `OAUTH_CLIENT` setting — full cutover, no permanent second code path. Real
-      trade-off accepted by doing this now rather than after step 0: until observation-portal is
-      actually brokered behind Keycloak, users whose only credential was an LCO/observation-portal
-      account have no way in until they're otherwise provisioned in Keycloak.
-- [x] Env vars for Keycloak client config (`KEYCLOAK_SERVER_URL`, `_REALM`, `_CLIENT_ID`,
+- [ ] Remove `OAuth2Backend`/`BearerAuthentication` (`pyobs_archive/authentication/backends.py`)
+      and the `OAUTH_CLIENT` setting — full cutover, no permanent second code path. Real trade-off:
+      until observation-portal is actually brokered behind Keycloak, users whose only credential
+      was an LCO/observation-portal account have no way in until they're otherwise provisioned in
+      Keycloak.
+- [ ] Env vars for Keycloak client config (`KEYCLOAK_SERVER_URL`, `_REALM`, `_CLIENT_ID`,
       `_CLIENT_SECRET`, `_REDIRECT_URI`, `_POST_LOGOUT_REDIRECT_URI`), documented in `README.md`/
       `.env.example`. Leaving `KEYCLOAK_SERVER_URL` unset disables Keycloak entirely — the login
       page's "Log in with Keycloak" button only renders when it's actually configured (new
       `pyobs_archive.context_processors.keycloak`).
-- [x] Login template's "Log out" now posts to `pyobs_auth:logout` instead of Django's built-in
-      logout view, so it does the right thing (local-only vs. also ending the Keycloak SSO
-      session) regardless of how the session was established.
+- [ ] Login template's "Log out" posts to `pyobs_auth:logout` instead of Django's built-in logout
+      view, so it does the right thing (local-only vs. also ending the Keycloak SSO session)
+      regardless of how the session was established.
 
 ## 3. pyobs-robotic-backend — done
 
-- [x] Added `pyobs-auth` dependency. Blocked initially: pyobs-auth pinned `Django>=5.2,<6` on
-      PyPI, conflicting with robotic-backend's `django>=6.0.7` — fixed by widening the pin to
-      `<7` in pyobs-auth (full 36-test suite re-verified green against Django 6.1) and releasing
-      `2.0.0.dev5`.
+- [x] Added `pyobs-auth` dependency (now pinned `>=2.0.0.dev7`). Blocked initially: pyobs-auth
+      pinned `Django>=5.2,<6` on PyPI, conflicting with robotic-backend's `django>=6.0.7` — fixed
+      by widening the pin to `<7` in pyobs-auth (full 36-test suite re-verified green against
+      Django 6.1) and releasing `2.0.0.dev5`.
 - [x] Added `pyobs_auth.authentication.KeycloakAuthentication` to
       `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']` (`pyobs_robotic_backend/settings.py`),
       alongside the existing `TokenAuthentication`/`SessionAuthentication` — additive, existing
-      pyobs-core → robotic-backend token calls unaffected. `pyobs_auth` added to
-      `INSTALLED_APPS`; `PYOBS_AUTH` setting (`KEYCLOAK_SERVER_URL`/`_REALM`/`_CLIENT_ID`/
-      `_CLIENT_SECRET` env vars, unset disables it) documented in README.md/.env.example. No
-      browser-facing login flow wired (`pyobs_auth.urls`/views) — out of scope here, API
-      Bearer-token auth only.
+      pyobs-core → robotic-backend token calls unaffected. `pyobs_auth` added to `INSTALLED_APPS`;
+      `PYOBS_AUTH` setting (`KEYCLOAK_SERVER_URL`/`_REALM`/`_CLIENT_ID`/`_CLIENT_SECRET` env vars,
+      unset disables it) documented in README.md/.env.example. Browser SSO login was subsequently
+      added too (this started as API Bearer-token auth only): `pyobs_auth.urls` is included under
+      `accounts/keycloak/` and the login template renders a "Log in with Keycloak" button behind a
+      `keycloak_login_enabled` context processor.
 - [x] User mapping: new `pyobs_robotic_backend.authentication` app (robotic-backend had no
       `Profile`-equivalent) with a `KeycloakIdentity` model (`OneToOneField` to `User` +
       `keycloak_sub`, migration `0001_initial`) and a `resolve_user` `USER_RESOLVER`, mirroring
-      archive's `resolve_user` shape — matches an existing `User` by email on first Keycloak
-      login (no observation-portal-era accounts to link here, unlike archive), else mints one.
+      archive's planned `resolve_user` shape — matches an existing `User` by email (falling back
+      to username) on first Keycloak login, else mints one inactive (`is_active=False`, so a fresh
+      Keycloak login needs local activation before it can act).
 
 ## 4. Not in this plan
 

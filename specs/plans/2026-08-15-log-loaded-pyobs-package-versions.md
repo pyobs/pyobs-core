@@ -1,6 +1,6 @@
 # Plan: Log the loaded pyobs-* package versions at module startup
 
-Status: draft (design settled, implementation not started)
+Status: implemented
 
 ## Problem
 
@@ -101,9 +101,9 @@ split, so it's fine for the follow-up consumer too.
 
 ## Implementation checklist
 
-- [ ] Add `pyobs/utils/versions.py` with `loaded_pyobs_packages(sys_modules=None)`.
-- [ ] Log the line in `Application._main` before `startup()`.
-- [ ] Unit-test the helper: fake `sys_modules` containing `pyobs` and `pyobs_fli`, assert the
+- [x] Add `pyobs/utils/versions.py` with `loaded_pyobs_packages(sys_modules=None)`.
+- [x] Log the line in `Application._main` before `startup()`.
+- [x] Unit-test the helper: fake `sys_modules` containing `pyobs` and `pyobs_fli`, assert the
       filtered, sorted `{dist: version}` result and that non-`pyobs` modules are excluded.
-- [ ] Run the pyobs-core test suite (`.venv/bin/pytest`); confirm no regressions.
-- [ ] Update this doc's `Status:` to `implemented` once landed.
+- [x] Run the pyobs-core test suite (`.venv/bin/pytest`); confirm no regressions.
+- [x] Update this doc's `Status:` to `implemented` once landed.

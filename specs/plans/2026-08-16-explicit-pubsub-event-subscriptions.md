@@ -1,10 +1,11 @@
 # Plan: Explicit pubsub subscriptions for event delivery
 
-Status: implemented (client-side); rollout to production sites not yet started
+Status: implemented, closed (merged 2026-08-16, PR #761); rollout to production sites not yet
+started
 
 Client-side implementation validated against the live `tests/xmpp/docker-compose.yml` harness
-(`tests/integration/test_xmpp_event_subscriptions.py`, 4 new tests) plus the full existing XMPP
-integration suite (34/34 passing) — confirms no ejabberd config change is needed and that a peer
+(`tests/integration/test_xmpp_event_subscriptions.py`, 9 tests) plus the full existing XMPP
+integration suite (30/30 passing) — confirms no ejabberd config change is needed and that a peer
 with no registered handler never receives the wire message at all, not just "receives and drops."
 
 Decision record: `specs/adrs/0012-event-delivery-explicit-pubsub-subscription-not-presence.md`.
@@ -159,3 +160,26 @@ existing two.
    receiving.
 4. Rollback: roll back the pyobs-core release on that site's modules. Delivery reverts to the old
    PEP/presence path immediately (no ejabberd state to revert) — no data loss.
+
+## Post-merge fixes (review, 2026-08-16)
+
+Found and fixed on top of the original implementation before merge:
+
+- **`_got_online`/`_register_events` over-subscribed to peers that never publish the event.** Both
+  subscribed to every online peer's node for every event type a module handles, regardless of
+  whether that peer actually sends it — e.g. a camera's `BadWeatherEvent` handler would
+  retry-subscribe to `admin:BadWeatherEvent` forever, spamming "still failing to subscribe" on a
+  node that would never be created. Fixed by gating the subscribe loops on the peer's disco#info
+  `role="send"` advertisement (`_event_role`/`_get_disco_info`, already shipped for
+  `pyobs-web-client`'s benefit but previously unread by `pyobs-core` itself): `_get_interfaces`
+  now also parses the peer's `<event role="...">` schema elements into a `_peer_sent_events`
+  cache, and a subscribe is only attempted for `(peer, event_class)` pairs the peer actually
+  declares. Two new tests: a peer that never advertises `send` for an event type is never
+  subscribed to (confirmed this fails without the fix), and the flip side — a peer that declares
+  an event handler-less (send-only) still gets subscribed to and delivers normally.
+- The earlier local-event over-subscription and module-less `send_event` crash (see the PR's
+  review history) were fixed in the same round that produced the 4→7 test count; the fix above
+  brought it to 9.
+
+Also dropped an unrelated `graphify-out/` regen commit that had gotten mixed into the branch
+before merge (rebased out, not part of this plan's diff).

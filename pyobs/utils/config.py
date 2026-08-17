@@ -25,18 +25,36 @@ def pre_process_yaml(config: str) -> str:
     pattern = r"((\s*)?(-\s*)?\{include (\S*)( \S*)?\})"
     matches = re.findall(pattern, content)
     for match, indent, tick, filename, key in matches:
+        matches_anchor = reload_anchors(path + "/" + filename)
         with StringIO(pre_process_yaml(path + "/" + filename)) as f:
             include_full = yaml.safe_load(f)
             include_dict = include_parts(include_full, key)
-        include = yaml.dump(include_dict, default_flow_style=False, indent=2)
 
-        # ensure indentation level to be conserved
-        if tick != "":
-            include = tick + include
-        if indent != "":
-            indent_newline = indent + " " * len(tick)
-            include = indent + include.replace("\n", indent_newline)
-        matches_anchor = reload_anchors(path + "/" + filename)
+        # a whole-file include (no key selector) would otherwise leak any key whose sole purpose
+        # is holding an anchor for `<<: *anchor` use elsewhere (e.g. comm.shared.yaml's
+        # `comm_cfg: &comm`) as an unconsumed top-level key in the final config. Drop those here;
+        # `<<: *anchor` below still resolves correctly, since replace_aliases reads the anchor's
+        # value from the original included file, not from this (possibly trimmed) copy.
+        if not key.strip() and isinstance(include_dict, dict):
+            anchor_keywords = {keyword for keyword, _anchor in matches_anchor}
+            include_dict = {k: v for k, v in include_dict.items() if k not in anchor_keywords}
+
+        if isinstance(include_dict, dict) and not include_dict:
+            # everything in this whole-file include was anchor-holder keys (e.g. a
+            # comm.shared.yaml whose only top-level key is `comm_cfg: &comm`) -- nothing left to
+            # splice in. yaml.dump({}) is "{}\n", a flow-style node that isn't a valid sibling to
+            # the block-style mapping the rest of the file continues as, so drop the placeholder
+            # entirely instead of inserting an empty mapping.
+            include = ""
+        else:
+            include = yaml.dump(include_dict, default_flow_style=False, indent=2)
+
+            # ensure indentation level to be conserved
+            if tick != "":
+                include = tick + include
+            if indent != "":
+                indent_newline = indent + " " * len(tick)
+                include = indent + include.replace("\n", indent_newline)
         content = content.replace(match, include)
         content = replace_aliases(matches_anchor, path + "/" + filename, content)
 

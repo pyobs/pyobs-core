@@ -1,6 +1,7 @@
 # Plan: Surface unrecognized kwargs in `Object.__init__` instead of silently discarding them
 
-Status: investigated — findings and decision recorded 2026-08-15; implementation not started
+Status: `comm_cfg` anchor leak fixed at the source (2026-08-17, PR pending); `environment`/`database`
+question and `Object.__init__` enforcement (warn/raise) still open — see Decision
 
 Related: `specs/plans/night-archive-io-hardening.md` — where this was first flagged (a typo in a
 `Reduction`/`Night` YAML config silently does nothing instead of raising). That plan fixes the
@@ -105,6 +106,16 @@ anchor-holder key, key-selected include of the same key does not.
 This is a ~5-line change to one function in the include mechanism itself, not a new YAML loader —
 low enough risk to do directly rather than staging behind a warn+allowlist step in `Object.__init__`.
 
+**Implemented 2026-08-17.** One non-obvious wrinkle found while implementing: `comm.shared.yaml`'s
+*only* top-level key is `comm_cfg` (the anchor holder), so a whole-file include of it filters down to
+an **empty** `include_dict`. `yaml.dump({})` produces `"{}\n"`, a flow-style node — spliced into a
+document that continues as a block-style mapping below it (`comm:\n  <<: *comm\n  ...`), that isn't
+valid YAML (`ParserError: expected '<document start>', but found '<block mapping start>'`). Fixed by
+emitting an empty string instead of `"{}\n"` when the filtered `include_dict` is empty, so the
+placeholder is dropped entirely rather than replaced with an empty mapping. Verified end-to-end
+against a real fleet config (`pyobs-monet/config/central/imagedb.yaml`): `comm_cfg` no longer appears
+in the parsed result, `comm.class`/`comm.domain`/`comm.user` still resolve correctly via the alias.
+
 **`environment`/`database` (monet central configs) are a separate, still-open problem, not fixed by
 the above.** They aren't an anchor-holder pattern at all (no `&anchor` — see the open-question note
 below dated 2026-08-17): they're just top-level keys from a whole-file splice that nothing appears
@@ -143,9 +154,15 @@ kwargs disappears — but `environment`/`database` staying unresolved means a ha
       practice, and check whether any real YAML configs in this repo or known deployments rely on
       extra ignored keys (done — see findings above: 126 subclasses, `comm_cfg` anchor leak is real
       and documented)
-- [x] Decide raise vs. warn (see Decision: warn now, raise later after fixing the include leak)
-- [ ] Implement the warn check in `Object.__init__` (allowlisting `comm_cfg` and the monet
-      `environment`/`database` wrappers, or better, fixing the include mechanism to strip them)
-- [ ] Tests: a class with a typo'd kwarg warns; a class using legitimate multi-level `**kwargs`
-      passthrough still works; `comm_cfg` does not warn
-- [ ] Update this doc's `Status:` to `implemented` once landed
+- [x] Decide raise vs. warn (superseded 2026-08-17 — see Decision: fix the `comm_cfg` leak at its
+      source instead of allowlisting it in `Object.__init__`)
+- [x] Fix the `comm_cfg` anchor-holder leak at its source in `pre_process_yaml`
+      (`pyobs/utils/config.py`): whole-file includes (no key selector) now drop any key
+      `reload_anchors()` identifies as an anchor holder for that file before splicing, and an
+      empty resulting splice is dropped entirely rather than emitting `"{}\n"`. Regression tests
+      added in `tests/utils/test_config.py`; verified against a real `pyobs-monet` config.
+- [ ] `environment`/`database` (monet central configs) still unresolved — see the 2026-08-17
+      open-question note above; not fixed by the `comm_cfg` change and not safe to allowlist yet.
+- [ ] Decide and implement warn vs. raise for any remaining leftover kwargs at `Object.__init__`,
+      once the `environment`/`database` question is closed.
+- [ ] Update this doc's `Status:` to fully `implemented, closed` once the above lands.

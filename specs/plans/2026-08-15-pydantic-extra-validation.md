@@ -1,6 +1,6 @@
 # Plan: Make the pydantic config layer reject unknown keys (`extra="forbid"`)
 
-Status: implemented
+Status: implemented, closed
 
 Related: `specs/plans/2026-08-09-object-kwarg-validation.md` — the sibling plan for the *other*
 silent-drop layer (`Object.__init__` swallowing leftover `**kwargs`). This plan is the pydantic

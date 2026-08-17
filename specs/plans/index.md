@@ -50,6 +50,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   log loaded pyobs-* package versions at module startup. **implemented**
 - [2026-08-16-fits-header-fetch-timeout.md](2026-08-16-fits-header-fetch-timeout.md) — bound the
   FITS-header fetch so a dead peer can't stall the frame. **implemented, closed**
+- [2026-08-15-pydantic-extra-validation.md](2026-08-15-pydantic-extra-validation.md) — make the
+  pydantic config layer reject unknown keys. **implemented, closed** (merged as `e398117f`, #762;
+  closed #755)
 
 ## Not finished
 
@@ -71,8 +74,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented**
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
   Keycloak integration. **in progress** (Repos: pyobs-archive, pyobs-robotic-backend)
-- [2026-08-15-pydantic-extra-validation.md](2026-08-15-pydantic-extra-validation.md) — make the
-  pydantic config layer reject unknown keys. **draft**
 - [2026-08-16-logevent-double-delivery-fix-discussion.md](2026-08-16-logevent-double-delivery-fix-discussion.md) —
   discussion notes: drop `add_interest()` to fix `ms` double-delivery, plus whether/how to get
   real interest-based event filtering. **closed** (actioned as ADR 0012 below)

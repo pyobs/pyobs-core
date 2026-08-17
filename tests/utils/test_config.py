@@ -211,3 +211,44 @@ def test_pre_process_yaml_whole_file_include_does_not_leak_anchor_holder_key(tmp
         "comm_cfg leaked into the top-level config dict from a whole-file include -- "
         "see specs/plans/2026-08-09-object-kwarg-validation.md"
     )
+
+
+def test_pre_process_yaml_keyed_empty_dict_include_is_not_dropped(tmp_path) -> None:
+    """A keyed include that legitimately selects an empty mapping must still emit `{}`.
+
+    Regression test for a bug found in PR review: the whole-file "drop the placeholder" special
+    case (for when anchor-holder trimming empties a splice, see the test above) must not fire for
+    keyed includes too -- a keyed include of a value that is simply `{}` in the source file is
+    real, deliberate content, not an anchor-trimming leftover, and must not silently become `null`.
+    """
+    included = tmp_path / "inc.yaml"
+    included.write_text("somekey: {}\n")
+
+    main = tmp_path / "config.yaml"
+    main.write_text("outer:\n  {include inc.yaml somekey}\n")
+
+    result = pre_process_yaml(str(main))
+    parsed = yaml.safe_load(result)
+    assert parsed["outer"] == {}
+
+
+def test_pre_process_yaml_whole_file_include_keeps_top_level_key_matching_nested_anchor_name(
+    tmp_path,
+) -> None:
+    """A top-level key must not be dropped just because a nested key elsewhere shares its name.
+
+    Regression test for a bug found in PR review: `reload_anchors()` matches `keyword: &anchor` at
+    any nesting depth, not just top-level. The anchor-holder drop in `pre_process_yaml` must only
+    remove keys that are themselves top-level anchor holders -- not any top-level key whose name
+    happens to collide with an unrelated nested anchor holder's key name.
+    """
+    included = tmp_path / "inc.yaml"
+    included.write_text("type: Foo\ncamera:\n  type: &cam\n    model: X\n")
+
+    main = tmp_path / "config.yaml"
+    main.write_text("{include inc.yaml}\n")
+
+    result = pre_process_yaml(str(main))
+    parsed = yaml.safe_load(result)
+    assert parsed["type"] == "Foo"
+    assert parsed["camera"]["type"]["model"] == "X"

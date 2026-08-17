@@ -190,19 +190,14 @@ def test_pre_process_yaml_keyed_include_of_anchor_holder_is_kept(tmp_path) -> No
     assert parsed["direct"]["class"] == "pyobs.comm.xmpp.XmppComm"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="comm_cfg leak, tracked in specs/plans/2026-08-09-object-kwarg-validation.md; "
-    "remove this marker once pre_process_yaml drops anchor-holder keys from whole-file splices",
-)
 def test_pre_process_yaml_whole_file_include_does_not_leak_anchor_holder_key(tmp_path) -> None:
     """A whole-file include must not leave the anchor-holder key as a top-level leftover.
 
-    This is the documented `comm_cfg` bug from `specs/plans/2026-08-09-object-kwarg-validation.md`:
-    `{include comm.shared.yaml}` (no key selector) currently splices the *entire* file, including
-    `comm_cfg` itself, even though its only purpose is to be aliased via `<<: *comm` elsewhere.
-    `comm_cfg` then survives as an unconsumed top-level key that reaches `Object.__init__`'s
-    `**kwargs` and is silently dropped there.
+    Regression test for the `comm_cfg` leak documented in
+    `specs/plans/2026-08-09-object-kwarg-validation.md`: `{include comm.shared.yaml}` (no key
+    selector) used to splice the *entire* file, including `comm_cfg` itself, even though its only
+    purpose is to be aliased via `<<: *comm` elsewhere. `comm_cfg` then survived as an unconsumed
+    top-level key that reached `Object.__init__`'s `**kwargs` and was silently dropped there.
     """
     shared = tmp_path / "comm.shared.yaml"
     shared.write_text("comm_cfg: &comm\n  class: pyobs.comm.xmpp.XmppComm\n  domain: example.com\n")
@@ -216,3 +211,44 @@ def test_pre_process_yaml_whole_file_include_does_not_leak_anchor_holder_key(tmp
         "comm_cfg leaked into the top-level config dict from a whole-file include -- "
         "see specs/plans/2026-08-09-object-kwarg-validation.md"
     )
+
+
+def test_pre_process_yaml_keyed_empty_dict_include_is_not_dropped(tmp_path) -> None:
+    """A keyed include that legitimately selects an empty mapping must still emit `{}`.
+
+    Regression test for a bug found in PR review: the whole-file "drop the placeholder" special
+    case (for when anchor-holder trimming empties a splice, see the test above) must not fire for
+    keyed includes too -- a keyed include of a value that is simply `{}` in the source file is
+    real, deliberate content, not an anchor-trimming leftover, and must not silently become `null`.
+    """
+    included = tmp_path / "inc.yaml"
+    included.write_text("somekey: {}\n")
+
+    main = tmp_path / "config.yaml"
+    main.write_text("outer:\n  {include inc.yaml somekey}\n")
+
+    result = pre_process_yaml(str(main))
+    parsed = yaml.safe_load(result)
+    assert parsed["outer"] == {}
+
+
+def test_pre_process_yaml_whole_file_include_keeps_top_level_key_matching_nested_anchor_name(
+    tmp_path,
+) -> None:
+    """A top-level key must not be dropped just because a nested key elsewhere shares its name.
+
+    Regression test for a bug found in PR review: `reload_anchors()` matches `keyword: &anchor` at
+    any nesting depth, not just top-level. The anchor-holder drop in `pre_process_yaml` must only
+    remove keys that are themselves top-level anchor holders -- not any top-level key whose name
+    happens to collide with an unrelated nested anchor holder's key name.
+    """
+    included = tmp_path / "inc.yaml"
+    included.write_text("type: Foo\ncamera:\n  type: &cam\n    model: X\n")
+
+    main = tmp_path / "config.yaml"
+    main.write_text("{include inc.yaml}\n")
+
+    result = pre_process_yaml(str(main))
+    parsed = yaml.safe_load(result)
+    assert parsed["type"] == "Foo"
+    assert parsed["camera"]["type"]["model"] == "X"

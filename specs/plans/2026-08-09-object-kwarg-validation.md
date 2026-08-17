@@ -1,7 +1,8 @@
 # Plan: Surface unrecognized kwargs in `Object.__init__` instead of silently discarding them
 
-Status: `comm_cfg` anchor leak fixed at the source (2026-08-17, PR pending); `environment`/`database`
-question and `Object.__init__` enforcement (warn/raise) still open — see Decision
+Status: `comm_cfg` anchor leak fixed at the source, merged 2026-08-17 (PR #773, squash-merged as
+`a5646fb8`); `environment`/`database` question and `Object.__init__` enforcement (warn/raise) still
+open — see Decision
 
 Related: `specs/plans/night-archive-io-hardening.md` — where this was first flagged (a typo in a
 `Reduction`/`Night` YAML config silently does nothing instead of raising). That plan fixes the
@@ -116,6 +117,28 @@ placeholder is dropped entirely rather than replaced with an empty mapping. Veri
 against a real fleet config (`pyobs-monet/config/central/imagedb.yaml`): `comm_cfg` no longer appears
 in the parsed result, `comm.class`/`comm.domain`/`comm.user` still resolve correctly via the alias.
 
+**PR review (github.com/pyobs/pyobs-core/pull/773, thusser) found two silent-data-loss bugs in the
+first pass, both fixed before merge:**
+
+1. The empty-splice-drop above wasn't scoped to whole-file includes, so a *keyed* include that
+   legitimately selects an empty mapping (`{include file key}` where `key`'s value is `{}`) was
+   also silently turned into `null` instead of staying `{}`. Fixed by gating that branch on the
+   same `not key.strip()` (whole-file) condition as the anchor-drop itself.
+2. Anchor-holder detection reused `reload_anchors()`, whose regex matches `keyword: &anchor` at
+   *any* nesting depth, not just top-level. A top-level key could be wrongly dropped from a
+   whole-file include just because an unrelated *nested* key elsewhere in the same file happened to
+   share its name and carry an anchor. Fixed by adding `top_level_anchor_keywords()` — a
+   line-anchored (`^`, no leading whitespace) regex restricted to unindented keys — used only for
+   the drop decision; `reload_anchors()` itself is unchanged, since `replace_aliases()` still needs
+   to resolve anchors at any nesting depth.
+
+Both reproduced from the reviewer's examples before fixing, to confirm they were real; regression
+test added for each. Re-verified against all 803 YAML files across `pyobs-monet`, `pyobs-iagvt`, and
+`pyobs-iag50`: no `comm_cfg` leaks in any consuming config; the two files that still error
+(`pyobs-monet/config/south/monet/_update_imagedb.yaml`'s missing `database.shared.yaml`, and
+`pyobs-iag50/config/iag50cam/telescope.yaml`'s malformed `include _comm.yaml}` missing its opening
+brace) are pre-existing fleet-config bugs, unrelated to this change and unaffected by it either way.
+
 **`environment`/`database` (monet central configs) are a separate, still-open problem, not fixed by
 the above.** They aren't an anchor-holder pattern at all (no `&anchor` — see the open-question note
 below dated 2026-08-17): they're just top-level keys from a whole-file splice that nothing appears
@@ -157,10 +180,11 @@ kwargs disappears — but `environment`/`database` staying unresolved means a ha
 - [x] Decide raise vs. warn (superseded 2026-08-17 — see Decision: fix the `comm_cfg` leak at its
       source instead of allowlisting it in `Object.__init__`)
 - [x] Fix the `comm_cfg` anchor-holder leak at its source in `pre_process_yaml`
-      (`pyobs/utils/config.py`): whole-file includes (no key selector) now drop any key
-      `reload_anchors()` identifies as an anchor holder for that file before splicing, and an
-      empty resulting splice is dropped entirely rather than emitting `"{}\n"`. Regression tests
-      added in `tests/utils/test_config.py`; verified against a real `pyobs-monet` config.
+      (`pyobs/utils/config.py`): whole-file includes (no key selector) now drop any top-level key
+      that carries an anchor, and an empty resulting splice is dropped entirely rather than
+      emitting `"{}\n"`. Regression tests added in `tests/utils/test_config.py`; verified against a
+      real `pyobs-monet` config and, in review, against all 803 fleet configs across `pyobs-monet`/
+      `pyobs-iagvt`/`pyobs-iag50`. Merged 2026-08-17: PR #773, squash-merged as `a5646fb8`.
 - [ ] `environment`/`database` (monet central configs) still unresolved — see the 2026-08-17
       open-question note above; not fixed by the `comm_cfg` change and not safe to allowlist yet.
 - [ ] Decide and implement warn vs. raise for any remaining leftover kwargs at `Object.__init__`,

@@ -147,3 +147,72 @@ def test_pre_process_yaml_preserves_indentation(tmp_path) -> None:
     parsed = yaml.safe_load(result)
     assert parsed["outer"]["inner"]["x"] == 1
     assert parsed["outer"]["inner"]["y"] == 2
+
+
+# ── anchor/alias resolution (comm_cfg pattern) ──────────────────────────────────
+
+
+def test_pre_process_yaml_alias_resolves_to_anchor_value(tmp_path) -> None:
+    """`<<: *anchor` pulls in the anchor-holder's value from the included file.
+
+    This is the `comm.shared.yaml` pattern: a shared file defines `comm_cfg: &comm {...}`, and
+    consuming files write `comm:\n  <<: *comm\n  user: ...`. `replace_aliases` (config.py) is what
+    performs this substitution; until this test, it had no coverage at all.
+    """
+    shared = tmp_path / "comm.shared.yaml"
+    shared.write_text("comm_cfg: &comm\n  class: pyobs.comm.xmpp.XmppComm\n  domain: example.com\n")
+
+    main = tmp_path / "config.yaml"
+    main.write_text("{include comm.shared.yaml}\n\ncomm:\n  <<: *comm\n  user: imagedb\n")
+
+    result = pre_process_yaml(str(main))
+    parsed = yaml.safe_load(result)
+    assert parsed["comm"]["class"] == "pyobs.comm.xmpp.XmppComm"
+    assert parsed["comm"]["domain"] == "example.com"
+    assert parsed["comm"]["user"] == "imagedb"
+
+
+def test_pre_process_yaml_keyed_include_of_anchor_holder_is_kept(tmp_path) -> None:
+    """A key-selected include of the anchor-holder's own key must still return its value.
+
+    Only a whole-file `{include file}` (no key selector) is the accidental-leak shape; explicitly
+    selecting the anchor-holder's key is a deliberate direct use and must not be stripped by a future
+    fix that drops anchor-holder keys from whole-file splices.
+    """
+    shared = tmp_path / "comm.shared.yaml"
+    shared.write_text("comm_cfg: &comm\n  class: pyobs.comm.xmpp.XmppComm\n  domain: example.com\n")
+
+    main = tmp_path / "config.yaml"
+    main.write_text("direct:\n  {include comm.shared.yaml comm_cfg}\n")
+
+    result = pre_process_yaml(str(main))
+    parsed = yaml.safe_load(result)
+    assert parsed["direct"]["class"] == "pyobs.comm.xmpp.XmppComm"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="comm_cfg leak, tracked in specs/plans/2026-08-09-object-kwarg-validation.md; "
+    "remove this marker once pre_process_yaml drops anchor-holder keys from whole-file splices",
+)
+def test_pre_process_yaml_whole_file_include_does_not_leak_anchor_holder_key(tmp_path) -> None:
+    """A whole-file include must not leave the anchor-holder key as a top-level leftover.
+
+    This is the documented `comm_cfg` bug from `specs/plans/2026-08-09-object-kwarg-validation.md`:
+    `{include comm.shared.yaml}` (no key selector) currently splices the *entire* file, including
+    `comm_cfg` itself, even though its only purpose is to be aliased via `<<: *comm` elsewhere.
+    `comm_cfg` then survives as an unconsumed top-level key that reaches `Object.__init__`'s
+    `**kwargs` and is silently dropped there.
+    """
+    shared = tmp_path / "comm.shared.yaml"
+    shared.write_text("comm_cfg: &comm\n  class: pyobs.comm.xmpp.XmppComm\n  domain: example.com\n")
+
+    main = tmp_path / "config.yaml"
+    main.write_text("{include comm.shared.yaml}\n\ncomm:\n  <<: *comm\n  user: imagedb\n")
+
+    result = pre_process_yaml(str(main))
+    parsed = yaml.safe_load(result)
+    assert "comm_cfg" not in parsed, (
+        "comm_cfg leaked into the top-level config dict from a whole-file include -- "
+        "see specs/plans/2026-08-09-object-kwarg-validation.md"
+    )

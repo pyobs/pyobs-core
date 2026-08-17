@@ -81,31 +81,58 @@ unless the leak is fixed at its source first.
 
 ## Decision
 
-**Enforcement level: warn, not raise, for now.** The leftover-kwargs check at `Object.__init__` should
-`log.warning` the unrecognized keys rather than raise. Rationale: the config include/anchor mechanism
-currently leaks `comm_cfg` (documented) and, on monet, `environment`/`database` wrappers into every
-config; raising would break those deployments.
+**Superseded 2026-08-17: fix the `comm_cfg` leak at its source instead of allowlisting it.**
+Re-examined after `pyobs-core`'s own `pre_process_yaml` implementation
+(`pyobs/utils/config.py:9-98`) turned out to make this tractable, not just a "clean fix in theory."
+It isn't real YAML anchor/alias resolution — it's a bespoke text preprocessor: `{include file}` (no
+key selector) splices the *whole* included file's parsed-and-redumped dict in at the marker
+(`config.py:30`), and separately `reload_anchors()` regexes that same file's raw text for
+`keyword: &anchor` pairs (`config.py:39,65-77`), which `replace_aliases()` then uses to textually
+substitute every `<<: *anchor` elsewhere with a fresh dump of `dict_anchor[keyword]`
+(`config.py:80-98`). So the anchor-holder key's name is already known by `pre_process_yaml` at the
+exact point the leak happens — `reload_anchors()` returns `("comm_cfg", "comm")` directly.
 
-**The real fix is upstream of `Object.__init__`, not at it.** Two candidate places to stop the leak
-so `warn` can later become `raise` without breakage:
+**Fix:** in `pre_process_yaml`, for a whole-file `{include file}` (no key selector), drop `keyword`
+from `include_dict` before it's dumped into `include` and spliced into `content`, for every
+`keyword` that `reload_anchors(file)` reports. `comm_cfg` then never reaches the final config dict.
+`<<: *comm` still resolves correctly, since `replace_aliases` reads the anchor's value from the
+original included file, not from the (now-trimmed) spliced copy. Only apply the drop when the
+include has no key selector — a file that deliberately does `{include comm.shared.yaml comm_cfg}`
+to grab the anchor-holder's value directly must keep it; `include_parts()` already distinguishes
+this case (`config.py:47-62`). Add a regression test for both: whole-file include drops the
+anchor-holder key, key-selected include of the same key does not.
 
-1. `pre_process_yaml` / the include mechanism: strip a key that was introduced purely as an anchor
-   holder (a key whose only role is `key: &anchor` and whose value is consumed via `<<: *anchor`
-   elsewhere). Needs a heuristic — e.g. drop any top-level key that is never referenced as `*anchor`
-   and is a dict — or an explicit convention (e.g. keys named `*_cfg` are include-internal). This is
-   the clean fix but touches the config loader everyone depends on, so it needs care.
-2. `Object.__init__` (or `get_object`): warn on leftover kwargs, and treat `comm_cfg` (and any
-   future documented anchor-holder keys) as a known ignorable, so the warning is reserved for
-   genuinely unknown keys.
+This is a ~5-line change to one function in the include mechanism itself, not a new YAML loader —
+low enough risk to do directly rather than staging behind a warn+allowlist step in `Object.__init__`.
 
-The two are complementary: (2) ships now as a cheap warning with a small allowlist; (1) removes the
-allowlist entries at the source later, at which point (2)'s warning can be promoted to a `raise`.
+**`environment`/`database` (monet central configs) are a separate, still-open problem, not fixed by
+the above.** They aren't an anchor-holder pattern at all (no `&anchor` — see the open-question note
+below dated 2026-08-17): they're just top-level keys from a whole-file splice that nothing appears
+to consume, in configs whose own `class: pyobs.Application` key doesn't match how
+`Application.__init__` loads a config file. Until that's resolved, don't allowlist or assume they're
+dead weight.
+
+**Enforcement level at `Object.__init__` once `comm_cfg` is fixed at the source:** re-evaluate warn
+vs. raise then. With the anchor leak gone, the main known source of "legitimate but unconsumed"
+kwargs disappears — but `environment`/`database` staying unresolved means a hard `raise` fleet-wide
+(monet in particular) is still not safe to flip on until that question is closed.
 
 ## Open questions
 
 - Is `environment:`/`database:` in monet central configs actually dead weight, or do those configs
   build the `Environment`/`Database` objects some other way? (Investigation above found no consumer;
   confirm before relying on the allowlist/warn decision.)
+  - **2026-08-17 partial check, inconclusive:** several `pyobs-monet/config/central/*.yaml` files
+    that include `environment.shared.yaml`/`database.shared.yaml` (e.g. `imagedb.yaml`,
+    `joomla-proxy.yaml`) carry a top-level `class: pyobs.Application` key, which doesn't match how
+    `Application.__init__` (`pyobs-core/pyobs/application.py:230-263`) actually loads a config: it
+    reads `cfg["class"]` to pick the module class, then calls `get_object(cfg, Module)` on the
+    *whole* dict — so `cfg["class"]` would need to name a `Module` subclass, not `pyobs.Application`
+    itself, or `create_object` would try to build an `Application` and fail the `isinstance(obj,
+    Module)` check. Either these specific central configs are stale/unused (plausible — the fleet
+    has moved to `pyobs.Application` invoked as `pyobs <configfile>` from the CLI, not embedded as a
+    YAML key) or there's a second load path not found yet. Needs resolving before trusting the
+    dead-weight conclusion — don't allowlist `environment`/`database` off this evidence alone.
 - `comm_cfg` is the only anchor-holder key found across the fleet. Confirm no other shared file uses
   the same `key: &anchor` pattern (e.g. future `database.shared`/`environment.shared` variations) so
   the allowlist isn't silently incomplete.

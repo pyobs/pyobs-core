@@ -1,8 +1,11 @@
 # Plan: Surface unrecognized kwargs in `Object.__init__` instead of silently discarding them
 
 Status: `comm_cfg` anchor leak fixed at the source, merged 2026-08-17 (PR #773, squash-merged as
-`a5646fb8`); `environment`/`database` question and `Object.__init__` enforcement (warn/raise) still
-open — see Decision
+`a5646fb8`); `environment`/`database` confirmed gone 2026-08-18 (no longer a blocker); a full
+fleet-wide cleanup pass (2026-08-18) fixed every other confirmed dead/misplaced/typo'd kwarg found
+by re-running the investigation as a static check across `pyobs-monet`/`pyobs-iagvt`/`pyobs-iag50`/
+`pyobs-polaris` — see the new section below. `Object.__init__` warn/raise enforcement is the one
+remaining undecided item, and nothing found is blocking it anymore.
 
 Related: `specs/plans/night-archive-io-hardening.md` — where this was first flagged (a typo in a
 `Reduction`/`Night` YAML config silently does nothing instead of raising). That plan fixes the
@@ -139,17 +142,88 @@ test added for each. Re-verified against all 803 YAML files across `pyobs-monet`
 `pyobs-iag50/config/iag50cam/telescope.yaml`'s malformed `include _comm.yaml}` missing its opening
 brace) are pre-existing fleet-config bugs, unrelated to this change and unaffected by it either way.
 
-**`environment`/`database` (monet central configs) are a separate, still-open problem, not fixed by
-the above.** They aren't an anchor-holder pattern at all (no `&anchor` — see the open-question note
-below dated 2026-08-17): they're just top-level keys from a whole-file splice that nothing appears
-to consume, in configs whose own `class: pyobs.Application` key doesn't match how
-`Application.__init__` loads a config file. Until that's resolved, don't allowlist or assume they're
-dead weight.
+**`environment`/`database` (monet central configs) — resolved 2026-08-18: confirmed gone, no longer
+a blocker.** Consistent with the `class: pyobs.Application` mismatch noted below: the containing
+`pyobs-monet/config/central/*.yaml` files turned out to be pre-2.0-migration dead files entirely
+(confirmed independently while static-checking the fleet — every class they reference,
+`pyobs.Application`, `pyobs.auth.*`, `pyobs.database.Database`, `pyobs.modules.environment.Environment`,
+`pyobs.modules.imagedb.ImageDB`, `pyobs.modules.pipeline.Pipeline`, `pyobs.modules.proxy.HTTP2XMPP`,
+fails to import against current pyobs-core). Not touched (out of scope, being replaced rather than
+fixed), but no longer something a `raise` decision needs to account for.
 
-**Enforcement level at `Object.__init__` once `comm_cfg` is fixed at the source:** re-evaluate warn
-vs. raise then. With the anchor leak gone, the main known source of "legitimate but unconsumed"
-kwargs disappears — but `environment`/`database` staying unresolved means a hard `raise` fleet-wide
-(monet in particular) is still not safe to flip on until that question is closed.
+## Fleet-wide cleanup pass (2026-08-18)
+
+With `comm_cfg` fixed and `environment`/`database` resolved, re-ran the investigation as a static
+check to see what *else* `Object.__init__`'s `**kwargs` is silently swallowing fleet-wide, before
+deciding warn vs. raise. Method: for every class referenced anywhere in a config (recursively, any
+nesting depth), union every parameter name declared across its full `__init__` MRO chain, and flag
+any config key not in that union. Chose this over actually constructing every module (which the
+original plan's checklist implied) specifically to avoid running real driver `__init__` code against
+live telescope hardware/IPs (e.g. `BrotRaDecTelescope`'s configured `host:`) — `Object.__init__`
+separates construction from `open()`/connect by convention, but that can't be assumed for every
+third-party driver. Installed all 9 local sibling driver packages
+(`pyobs-monet`/`-iagvt`/`-brot`/`-iag50`/`-aravis`/`-asi`/`-sbig`/`-gemini`/`-fli`) editable, no-deps,
+to resolve classes for the check. Covered 815 real config files across `pyobs-monet`, `pyobs-iagvt`,
+`pyobs-iag50`, and `pyobs-polaris` (833 found, minus 2 pre-existing unrelated errors, minus 2 CMake
+build-log YAMLs the file glob picked up by accident).
+
+**Every genuinely dead/misplaced/typo'd key found was fixed, one at a time, each verified against
+source before touching config:**
+
+- `name:` (8 sites, `pyobs-polaris/fixtures/*.yaml` ×7, `pyobs-iag50/config/*/sbig6303e.yaml` ×2) —
+  confirmed dead by design: `Module.name` is a computed property reading `self.comm.name`
+  (`pyobs/modules/module.py:419`,`:154`), never a config key. Removed.
+  (`pyobs-polaris` `2cebf5d`, `pyobs-iag50` `0e9b518`)
+- `ImageWriter.root` (2 sites) — no such param, nothing pops it from kwargs. Removed.
+  (`pyobs-monet` `3441603`)
+- `AutoGuiding.guider:` nested object (2 sites) — superseded by the required `pipeline:` list
+  (`BasePointing.__init__`, `pyobs/modules/pointing/_base.py:23-27`, docstring: "MUST include a step
+  calculating offsets!"); both sites already had a correct `pipeline:` ending in a real offset step.
+  Removed. (`pyobs-monet` `bd11b37`)
+- `HttpFileCache.hostname` (5 sites across `pyobs-monet`/`pyobs-iagvt`/`pyobs-iag50`) — no such
+  param, no host-related code anywhere in the class. Removed.
+  (`pyobs-monet` `47e433f`, `pyobs-iagvt` `586fd11`, `pyobs-iag50` `c2209b6`)
+- `new_images_channel:` (7 sites, `pyobs-monet`) — grepped all of `pyobs-fli`, `pyobs-sbig`, and
+  `pyobs-monet`'s own driver code: zero references anywhere. Removed. (`pyobs-monet` `f978069`)
+- `HttpFile` `username:`/`password:` (1 site) — security-relevant: `HttpFile` only supports
+  token-based bearer auth, not Basic Auth; these looked like real credentials for a remote HTTPS
+  endpoint, silently never sent. Removed (confirmed with user the endpoint doesn't need them).
+  (`pyobs-monet` `1f7d121`)
+- `max_offsets` → `max_offset` typo (3 sites, `pyobs-monet`) — real param is singular
+  (`ApplyAltAzOffsets.__init__`); all three modules had been running with the class default (30
+  arcsec) instead of the configured 3600/3600/2. **Behavior fix, not just cleanup** — renamed to the
+  correct key so the intended values take effect; affected modules need a restart to pick it up.
+  (`pyobs-monet` `4c07a45`)
+- `twilight:` misplaced (1 site, `pyobs-iag50`) — real param is `AstroplanScheduler.twilight`
+  (nested `scheduler:` block), but sat one level too shallow, alongside the outer `Scheduler` class;
+  silently dropped there, so the module ran with the `"astronomical"` default instead of the
+  configured `"nautical"`. **Behavior fix** — moved to where it's read.
+  `LcoObservationArchive`'s `instrument:`/`instrument_type:` (same file) — docstring documents
+  `instrument` as a real param, but it's never declared or used anywhere in the class; confirmed
+  dead, removed alongside. (`pyobs-iag50` `13e1846`)
+- `FlatFielder.combine_binnings` (2 sites, `pyobs-iag50`) — one silently dropped (plain `Object`
+  subclass, confirmed dead); the other, under `SkyFlatsScript` (a pydantic model, `extra="forbid"`
+  since PR #762), was **actively failing pydantic validation** (`ValidationError: Extra inputs are
+  not permitted`) — `Mastermind` could not start with that config as it stood. Exactly the failure
+  mode this whole plan wants: loud, not silent. Removed both. (`pyobs-iag50` `797dcd9`)
+
+**One false positive caught before editing anything:** `pyobs_iagvt.modules.FiberCamera`'s
+`rotation_correction_coefficients` looked dead by signature inspection, but is actually consumed via
+a manual `kwargs` dict pop in the constructor body (`fibercamera.py:34-37`), not a named parameter —
+the static check's blind spot. Left untouched. Same caution applies to anything not yet
+individually verified below.
+
+**Explicitly not investigated/fixed, by choice, not oversight:**
+- `pyobs-monet/config/north/monet/robotic.yaml`'s `LcoTaskArchive`/`scripts:` findings (missing
+  required `instrument_type`, dead top-level `site`/`telescope`/`filters`/`camera`/`roof`/
+  `autoguider`, unclear `scripts:` dispatch wiring) — this specific config is being replaced by the
+  robotic backend (like `south/monet` already uses), not fixed, per explicit direction.
+- `pyobs_iag50.Pointing`'s 4 leftover keys — `pyobs-iag50` is pinned to `pyobs-core<2` (confirmed via
+  a real dependency-resolution conflict installing it), so its own code doesn't even import cleanly
+  against current pyobs-core; not reliable to evaluate until it's ported.
+- The ~45 classes whose imports failed during the static check (mostly missing third-party hardware
+  SDKs — `pybrotlib`, `zwoasi`, `serial`, `aioserial`, `pyftscontrol`, `matplotlib` — expected and
+  can't be tested off-hardware) remain unverified either way, not confirmed safe.
 
 ## Open questions
 

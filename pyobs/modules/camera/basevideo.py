@@ -133,6 +133,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._frame_num = 0
         self._image_type = ImageType.OBJECT
         self._image_request_lock = asyncio.Lock()
+        self._activation_lock = asyncio.Lock()
         self._image_requests: list[ImageRequest] = []
         self._next_image: NextImage | None = None
         self._last_image: LastImage | None = None
@@ -385,16 +386,18 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
     async def activate_camera(self) -> None:
         """Activate camera."""
         self._active_time = time.time()
-        if not self._active:
-            await self._activate_camera()
-        self._active = True
+        async with self._activation_lock:
+            if not self._active:
+                await self._activate_camera()
+            self._active = True
 
     async def deactivate_camera(self) -> None:
         """Deactivate camera."""
         self._active_time = 0
-        if self._active:
-            await self._deactivate_camera()
-        self._active = False
+        async with self._activation_lock:
+            if self._active:
+                await self._deactivate_camera()
+            self._active = False
 
     async def _activate_camera(self) -> None:
         """Can be overridden by derived class to implement inactivity sleep"""

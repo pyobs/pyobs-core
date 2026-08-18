@@ -221,9 +221,83 @@ individually verified below.
 - `pyobs_iag50.Pointing`'s 4 leftover keys — `pyobs-iag50` is pinned to `pyobs-core<2` (confirmed via
   a real dependency-resolution conflict installing it), so its own code doesn't even import cleanly
   against current pyobs-core; not reliable to evaluate until it's ported.
-- The ~45 classes whose imports failed during the static check (mostly missing third-party hardware
-  SDKs — `pybrotlib`, `zwoasi`, `serial`, `aioserial`, `pyftscontrol`, `matplotlib` — expected and
-  can't be tested off-hardware) remain unverified either way, not confirmed safe.
+- The ~45 classes whose imports failed during the static check — **followed up 2026-08-18, see the
+  next section.** Most turned out installable/checkable after all; a handful remain genuinely
+  unverified (missing hardware SDKs with no PyPI package, or repos not cloned locally).
+
+## Second pass: chasing down the 45 import failures (2026-08-18)
+
+Went through the ~45 classes whose imports failed during the fleet-wide static check one at a time,
+installing whatever PyPI dependencies were missing where possible (most turned out to be ordinary
+installable packages, not proprietary hardware SDKs as first assumed) and re-running the leftover-
+kwargs check against their real config sites once each class actually imported.
+
+**Real path/config fixes found and applied (not dead keys this time — genuinely broken references):**
+
+- `pyobs.modules.focus.EAFFocuser.EAFFocuser` doesn't exist in pyobs-core anymore — the driver moved
+  to its own repo, `pyobs-zwoeaf`, as `pyobs_zwoeaf.eaffocuser.EAFFocuser`. Constructor signature
+  unchanged (`device_number`, `max_steps`, `backlash`, `direction`, `sound`); confirmed a drop-in
+  path fix. `pyobs-monet/config/south/monti/focuser.yaml`. (`pyobs-monet` `1cc1f67`)
+- `pyobs.modules.telescope.DummyTelescope` was split into `Dummy{AltAz,RaDec,Solar}Telescope`
+  variants; `DummyRaDecTelescope` matches this fixture's own documented interfaces (implements
+  `IOffsetsRaDec`, not `IOffsetsAltAz` — matches a comment about that being a known gap). Verified:
+  resolves and constructs cleanly. `pyobs-polaris/fixtures/telescope.yaml`. (`pyobs-polaris` `94f1d96`)
+- `pyobs_gemini.gemini.GeminiFocuserRotator`'s config had the same dead `name:` pattern as the
+  original pass, just not caught then because `aioserial` wasn't installed in that run.
+  `pyobs-monet/config/south/piggyback/gemini.yaml`. (`pyobs-monet` `a5287f3`)
+- `pyobs-monet/config/south/frontend/fli230.yaml` had a 47-line dead block (a `modes:` mirror-
+  position table plus Zaber `port`/`speed`/`acceleration`/`system_led`) left over from before the
+  file's `class:` was swapped from the old `FrontendCameraSouth` (Zaber-driven mirror positioner,
+  now commented out) to the current `FliBonnShutter` (simple camera + shutter, no positioner).
+  Consistent with the broader south/frontend QHY/multi-mode retirement already visible in the
+  fleet's own git history. Verified zero leftover kwargs after removal. (`pyobs-monet` `5a97b28`)
+
+**Orphaned configs removed (class doesn't exist anywhere, deliberately retired, not renamed):**
+
+- `pyobs.modules.utils.AutonomousWarning` — deliberately removed from pyobs-core (`0eceb6ab`,
+  2026-07-14): found to have a real bug (played the wrong sound on state transitions) and retired
+  rather than fixed speculatively, since "audio-warning behavior for an observatory is not something
+  to guess at." No replacement. Removed `pyobs-iag50/config/iag50obs/warning.yaml`.
+  (`pyobs-iag50` `51cc096`)
+- `pyobs.modules.utils.Config` — removed from pyobs-core in **2020** (`8c395696`, "removed
+  possibility for network configs"); today's `Module` gets an `IConfig` capability directly instead.
+  Removed `pyobs-iag50/config/config.yaml`. (`pyobs-iag50` `29b904e`)
+- `pyobs_monet.scripts.UpdateImageDB` doesn't exist in pyobs-monet's current source at all — and the
+  `pyobs_monet.scripts` package itself can't even be imported right now (its `__init__.py` only
+  exports `LcoMorisotScript`/`LcoModeSelectorScript`, both broken on a pre-refactor
+  `pyobs.robotic.lco.*` import path that should be `pyobs.robotic.storage.lco.*`). Removed
+  `pyobs-monet/config/south/monet/_update_imagedb.yaml`. Did not fix the underlying broken imports in
+  `lco_morisot.py`/`lco_modeselection.py` — out of scope, real Python source not YAML config.
+  (`pyobs-monet` `65464c0`)
+- `pyobs_sbig.SbigDriver`/`SbigTracker` — removed from pyobs-sbig 5 years ago (`227b447`,
+  "simplified structure", Dec 2021); the shared-driver architecture was folded directly into
+  `SbigCamera`. `pyobs-iag50/config/iag50cam/sbig6303e_tracker.yaml` was the old pre-refactor
+  version of a camera that already has a current, working config elsewhere
+  (`iag50cam/sbig6303e.yaml`, already cleaned up in the first pass). Removed. (`pyobs-iag50` `994c2c7`)
+
+**Confirmed clean once importable (installed the missing PyPI dependency, re-ran the check, zero
+leftover kwargs found):** `pyobs_asi.AsiCoolCamera` (`zwoasi`), all 4 `pyobs_brot.*` classes
+(`pybrotlib`), `pyobs_monet.AutoFocusNight`/`Roof`/`morisot.FocusSeries3`/`morisot.SearchPattern2`/
+`flikepler_bonnshutter.FliKeplerBonnShutter` (`pyserial`, pulled in transitively), `pyobs_iagvt.
+modules.SolarTelescope`/`SunCamera`/`utils.diskoffset.DiskOffset` (`matplotlib` + its own transitive
+chain: `mpl-animators`, `qfitswidget`).
+
+**Confirmed unreferenced, nothing to check:** `pyobs_monet.frontendcamerasouth.FrontendCameraSouth`,
+`frontendcamerasouthfli.FrontendCameraSouth`, `frontendsouth.FrontendSouth`/`SharedFiber`/
+`SharedInstrumentMode` (needed `zaber_motion`, but none of them are referenced by any current
+config anymore — the one site that used to use one, `fli230.yaml`, already got its class swapped
+away, see above) and `pyobs_monet.MonetImageWatcher` (only referenced from the already-deleted
+`central/` cluster).
+
+**Explicitly skipped, by direction:** everything Monti-related (`pyobs.modules.telescope.Monti.Monti`
+and the associated `pyobs-monti` driver — real issues found, config params don't match the current
+`MontiTelescope`/`BaseTelescope` signatures at all, needs its own investigation later);
+`pyobs_pilar.PilarTelescope` (`pyobs-pilar` repo is archived); `pyobs_dashboard.*` (3 classes,
+`pyobs-dashboard-utils` repo not cloned locally, skipped rather than cloning it for this pass).
+
+**Still genuinely unverified:** `pyobs_gui.GUI` — kept needing more UI-only transitive dependencies
+(`qasync`, `qfitswidget`, `qtawesome`, ...) with no fleet-hardware relevance, stopped chasing it since
+it's not a hardware config concern for this plan.
 
 ## Open questions
 

@@ -227,23 +227,19 @@ individually verified below.
 
 ## Open questions
 
-- Is `environment:`/`database:` in monet central configs actually dead weight, or do those configs
-  build the `Environment`/`Database` objects some other way? (Investigation above found no consumer;
-  confirm before relying on the allowlist/warn decision.)
-  - **2026-08-17 partial check, inconclusive:** several `pyobs-monet/config/central/*.yaml` files
-    that include `environment.shared.yaml`/`database.shared.yaml` (e.g. `imagedb.yaml`,
-    `joomla-proxy.yaml`) carry a top-level `class: pyobs.Application` key, which doesn't match how
-    `Application.__init__` (`pyobs-core/pyobs/application.py:230-263`) actually loads a config: it
-    reads `cfg["class"]` to pick the module class, then calls `get_object(cfg, Module)` on the
-    *whole* dict — so `cfg["class"]` would need to name a `Module` subclass, not `pyobs.Application`
-    itself, or `create_object` would try to build an `Application` and fail the `isinstance(obj,
-    Module)` check. Either these specific central configs are stale/unused (plausible — the fleet
-    has moved to `pyobs.Application` invoked as `pyobs <configfile>` from the CLI, not embedded as a
-    YAML key) or there's a second load path not found yet. Needs resolving before trusting the
-    dead-weight conclusion — don't allowlist `environment`/`database` off this evidence alone.
-- `comm_cfg` is the only anchor-holder key found across the fleet. Confirm no other shared file uses
-  the same `key: &anchor` pattern (e.g. future `database.shared`/`environment.shared` variations) so
-  the allowlist isn't silently incomplete.
+- ~~Is `environment:`/`database:` in monet central configs actually dead weight?~~ **Resolved
+  2026-08-18: confirmed gone** — see Decision. The containing `pyobs-monet/config/central/*.yaml`
+  files are pre-2.0-migration dead files (every class they reference fails to import against current
+  pyobs-core), not touched (being replaced, not fixed), no longer a factor in the warn/raise call.
+- ~~Is `comm_cfg` the only anchor-holder key across the fleet?~~ **Resolved** — the 2026-08-18
+  fleet-wide static check covered all 815 real config files across `pyobs-monet`/`pyobs-iagvt`/
+  `pyobs-iag50`/`pyobs-polaris` and found zero other `*_cfg`-style anchor-holder leaks anywhere.
+- **New, 2026-08-18:** should `Object.__init__` warn or raise once implemented? Nothing found in the
+  fleet cleanup pass argues for `warn`-as-a-permanent-state anymore — every real leftover-kwarg
+  pattern found (dead keys, misplaced keys, a real typo) was fixable outright, not something that
+  needs a grace period. The only remaining unknowns are the ~45 classes that couldn't be
+  import-checked (see above) and any deployment outside this workspace's four local fleets (there may
+  be others not checked here). Still an open call, not yet made.
 
 ## Implementation checklist
 
@@ -259,8 +255,11 @@ individually verified below.
       emitting `"{}\n"`. Regression tests added in `tests/utils/test_config.py`; verified against a
       real `pyobs-monet` config and, in review, against all 803 fleet configs across `pyobs-monet`/
       `pyobs-iagvt`/`pyobs-iag50`. Merged 2026-08-17: PR #773, squash-merged as `a5646fb8`.
-- [ ] `environment`/`database` (monet central configs) still unresolved — see the 2026-08-17
-      open-question note above; not fixed by the `comm_cfg` change and not safe to allowlist yet.
-- [ ] Decide and implement warn vs. raise for any remaining leftover kwargs at `Object.__init__`,
-      once the `environment`/`database` question is closed.
+- [x] `environment`/`database` (monet central configs) — resolved 2026-08-18: confirmed gone, no
+      longer a blocker.
+- [x] Fleet-wide cleanup pass (2026-08-18): re-ran the investigation as a static check across all
+      four local fleets (815 real config files) and fixed every confirmed dead/misplaced/typo'd
+      kwarg found — see the new section above for the full list and commit references.
+- [ ] Decide and implement warn vs. raise for any remaining leftover kwargs at `Object.__init__`.
+      Nothing found is blocking this anymore — the only remaining item.
 - [ ] Update this doc's `Status:` to fully `implemented, closed` once the above lands.

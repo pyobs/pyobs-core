@@ -1,7 +1,8 @@
 # Plan: Make mixin `__init__` composition cooperative, then enforce unrecognized kwargs at `Object.__init__`
 
-Status: proposed (Repos: pyobs-core, pyobs-alpaca, pyobs-brot, pyobs-fli, pyobs-gemini, pyobs-iagvt,
-pyobs-monet, pyobs-monti, pyobs-sbig, pyobs-zwoeaf)
+Status: step 1/10 (`pyobs-core`) implemented, PR #776 open (not yet merged). (Repos: pyobs-core,
+pyobs-alpaca, pyobs-brot, pyobs-fli, pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti, pyobs-sbig,
+pyobs-zwoeaf)
 
 Related: `specs/plans/2026-08-09-object-kwarg-validation.md` — where this was discovered. That
 plan's last open item ("implement warn/raise enforcement at `Object.__init__`") is superseded by
@@ -123,10 +124,57 @@ knowledge)
   `object-kwarg-validation.md`'s fleet cleanup pass (`pilar` is archived; `dashboard-utils` wasn't
   cloned/investigated).
 
+## Step 1 (`pyobs-core`) — implemented, PR #776
+
+Converted all 14 production classes + 3 test doubles (the other 2 flagged test files,
+`test_pipeline_archive.py`/`test_pipeline_on_error.py`, turned out already-passing despite the old
+pattern — not touched). Reordered bases in `BaseRoof`, `BaseTelescope`, `DummyMode` (`Module` first).
+
+**Two extra fixes needed beyond the mechanical conversion, found via actually running things, not
+just reading code:**
+
+- `FitsHeaderMixin`'s cache-path attribute was computed eagerly at `__init__` time from
+  `module.name` — but `module.name` needs `Module` to have *finished* its own setup
+  (`self._device_name = self.comm.name`), and a cooperative chain can now reach a later mixin
+  *during* an earlier class's single `super().__init__()` call, before that class's own post-`super()`
+  code runs. Fixed by making the cache path a lazy property instead. This is a structurally different
+  problem than the fan-out one — it's not about *whether* a mixin's kwargs get claimed, it's about
+  *sequencing side effects* relative to a cooperative chain that now runs the entire rest of the MRO
+  atomically inside one `super()` call. Worth watching for in the remaining 9 repos: any mixin that
+  reads live `Module`/`Object` state (not just its own constructor kwargs) during `__init__`.
+- `PipelineMixin`'s `archive` default-injection (`_with_default_archive`) unconditionally injected
+  `archive` into every step's config if a pipeline-level default was set, relying on steps that
+  don't want it to silently drop it — exactly the pattern this whole effort removes. Fixed to check
+  the step's declared signature first (same shape later reused for `Scheduler`'s
+  `observation_archive`, see below).
+
+**Verified the double-init risk is actually closed, not just "tests still pass":** before the fix,
+`BaseCamera`-family classes were silently calling `ImageFitsHeaderMixin.__init__` *twice* per
+construction (once via the new cooperative chain, once via the class's own leftover explicit call) —
+harmless there only because the second call happened to run last with the correct values, overwriting
+the first's wrong ones. Counted actual call counts with a monkey-patched `__init__` to confirm exactly
+one call post-fix, not just correct final attribute values (see PR #776 description).
+
+**Real bugs found via a full fleet-config construction check** (not caught by the unit test suite at
+all — these code paths have no test coverage): `Scheduler` passed `auto_update=False` to
+`ObservationArchive`/`LcoObservationArchive` (never declared, silently dropped, zero effect for this
+class's entire history) and `observation_archive` to every `TaskScheduler` implementation (only
+`OnDemandScheduler` declares it). Both fixed in `pyobs-core`; the fleet YAML side of this
+(`BasePointing`'s docstring falsely promised `log_file`/`log_absolute`, actually only real on the
+nested `apply:` object) is fixed in companion commits to `pyobs-monet`/`pyobs-iag50` directly (not a
+PR — those repos push straight to `develop`, per this session's established pattern).
+
+**Confirms the approach works end-to-end**, not just in theory: full suite green (1490 passed),
+ruff/black/pyrefly clean, and 799 real fleet config files across 4 repos still construct (the 2 real
+bugs above were the only new failures, both fixed). Take this as evidence for the remaining 9 repos,
+not a guarantee — each one still needs its own order-dependency check and, ideally, its own
+construction check against real configs where fleet configs exist to check against.
+
 ## Implementation checklist
 
-- [ ] `pyobs-core`: convert the 14 production fan-out classes + 5 tests to cooperative `super()`
+- [x] `pyobs-core`: convert the 14 production fan-out classes + 5 tests to cooperative `super()`
       chains; full test suite green (`pytest -m "not integration and not xmpp" --extra full`).
+      PR #776 (open, not yet merged).
 - [ ] `pyobs-monet` (2 classes)
 - [ ] `pyobs-monti` (1 class)
 - [ ] `pyobs-alpaca` (3 classes)

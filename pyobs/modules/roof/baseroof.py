@@ -12,17 +12,14 @@ from pyobs.utils.enums import MotionStatus
 log = logging.getLogger(__name__)
 
 
-class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, Module, metaclass=ABCMeta):
+class BaseRoof(Module, WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, metaclass=ABCMeta):
     """Base class for roofs."""
 
     __module__ = "pyobs.modules.roof"
 
     def __init__(self, **kwargs: Any):
         """Initialize a new base roof."""
-        Module.__init__(self, **kwargs)
-
-        WeatherAwareMixin.__init__(self, **kwargs)
-        MotionStatusMixin.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
     async def open(self) -> None:
         """Open module."""

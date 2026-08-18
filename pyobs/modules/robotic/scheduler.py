@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import time
@@ -19,6 +20,7 @@ from pyobs.events import (
 from pyobs.interfaces import IRunnable, IRunning, IStartStop
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
+from pyobs.object import get_class_from_string
 from pyobs.robotic import (
     ObservationArchive,
     ObservationList,
@@ -30,6 +32,32 @@ from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
+
+
+def _scheduler_accepts_observation_archive(scheduler: dict[str, Any] | TaskScheduler) -> bool:
+    """Whether the configured scheduler class declares an `observation_archive` parameter.
+
+    Only `OnDemandScheduler` uses it; other TaskScheduler implementations (e.g.
+    AstroplanScheduler) don't declare it at all, so it must not be injected unconditionally --
+    that was silently absorbed by Object.__init__'s **kwargs before, with no effect.
+    """
+    if not isinstance(scheduler, dict) or "class" not in scheduler:
+        return False
+    try:
+        klass = get_class_from_string(scheduler["class"])
+    except Exception:
+        return False
+    for cls in klass.__mro__:
+        init = cls.__dict__.get("__init__")
+        if init is None:
+            continue
+        try:
+            sig = inspect.signature(init)
+        except (TypeError, ValueError):
+            continue
+        if "observation_archive" in sig.parameters:
+            return True
+    return False
 
 
 class Scheduler(Module, IStartStop, IRunnable):
@@ -68,8 +96,13 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # get scheduler
         self._task_archive = self.add_child_object(tasks, TaskArchive, on_tasks_changed=self._update_schedule)
-        self._schedule = self.add_child_object(schedule, ObservationArchive, auto_update=False)
-        self._scheduler = self.add_child_object(scheduler, TaskScheduler, observation_archive=self._schedule)
+        # auto_update was never declared by ObservationArchive/LcoObservationArchive -- silently
+        # dropped, no effect, for this class's entire history
+        self._schedule = self.add_child_object(schedule, ObservationArchive)
+        extra_scheduler_kwargs: dict[str, Any] = {}
+        if _scheduler_accepts_observation_archive(scheduler):
+            extra_scheduler_kwargs["observation_archive"] = self._schedule
+        self._scheduler = self.add_child_object(scheduler, TaskScheduler, **extra_scheduler_kwargs)
 
         # store
         self._running = True

@@ -103,11 +103,10 @@ code shape:
 - ~~`gui.py:72` UI freeze from calling `expose_single_frame()` on the Qt thread~~ — **retracted**
   for the same reason: the call returns almost immediately, so there's nothing to freeze on.
 
-What checking the header turned up instead. Fixed 2026-08-11 in commit `b62622a` on branch
-`feature/fix-exposure-abort`, but **not merged into `develop`/`main`** as of 2026-08-18 — the fixes
-below sit in open PR #59, which is now behind `develop` and needs a rebase + merge:
+What checking the header turned up instead. Fixed 2026-08-11 in commit `b62622a`, merged into
+`develop` via PR #59 (squash `8ef6c5b`, 2026-08-18) after a rebase:
 
-- [ ] **Abort was completely non-functional**, in both the module and the GUI, and this wasn't
+- [x] **Abort was completely non-functional**, in both the module and the GUI, and this wasn't
       caught by the first read-through:
       - `qhyccdcamera.py`'s `_abort_exposure()` had `self._driver.cancel_exposure()` commented
         out, and no such method existed on the driver at all — abort did literally nothing to the
@@ -124,11 +123,11 @@ below sit in open PR #59, which is now behind `develop` and needs a rebase + mer
         after a real cancel is unsupported per the SDK). `gui.py` now uses `self.abort_exposure`
         directly instead of a disconnected local `Event`, and calls `cancel_exposure()` +
         skips readout on abort, mirroring the module fix.
-- [ ] `qhyccddriver.pyx:82` — `CAM_HUMIDITY = CONTROL_ID.CAM_HUMIDITY` was missing the trailing
+- [x] `qhyccddriver.pyx:82` — `CAM_HUMIDITY = CONTROL_ID.CAM_HUMIDITY` was missing the trailing
       comma every other `Control` member has, so its `.value` was a bare int instead of a
       1-tuple, and every call site unconditionally does `.value[0]`. Latent (nothing currently
       calls it), but fixed — one-character change.
-- [ ] `gui.py` never called `device.close()` on exit — added a `closeEvent` override.
+- [x] `gui.py` never called `device.close()` on exit — added a `closeEvent` override.
 
 Still open, lower priority, not touched:
 

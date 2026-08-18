@@ -6,7 +6,9 @@ cleanup passes (2026-08-18) fixed every confirmed dead/misplaced/typo'd kwarg fo
 `pyobs-monet`/`pyobs-iagvt`/`pyobs-iag50`/`pyobs-polaris`, including chasing down the ~45 classes
 that couldn't be import-checked in the first pass. **A first attempt at implementing the raise in
 `Object.__init__` (2026-08-18) found a real architectural blocker — see "Raise attempt" below — and
-was reverted.** Not implemented; needs a design decision before trying again.
+was reverted.** The prerequisite fix now has its own plan:
+`specs/plans/2026-08-18-cooperative-mixin-init.md`. This plan closes once that one lands the actual
+`raise`.
 
 Related: `specs/plans/night-archive-io-hardening.md` — where this was first flagged (a typo in a
 `Reduction`/`Night` YAML config silently does nothing instead of raising). That plan fixes the
@@ -396,9 +398,10 @@ this at all) not yet made.
 - [x] Fleet-wide follow-up (2026-08-18): chased down the ~45 classes that failed to import in the
       first pass; found and fixed 4 more real path/config bugs plus 4 orphaned configs. See the
       "Second pass" section above for the full list and commit references.
-- [ ] Implement enforcement at `Object.__init__` — **attempted 2026-08-18, reverted.** The naive
+- [x] Implement enforcement at `Object.__init__` — **attempted 2026-08-18, reverted.** The naive
       `raise` breaks the mixin fan-out pattern used by `BaseTelescope` and others (59 test
-      failures); see "Raise attempt" section above. Needs a design decision (fix the fan-out
-      pattern, or check the full class-MRO signature union instead of `Object.__init__`-local
-      kwargs) before trying again.
-- [ ] Update this doc's `Status:` to fully `implemented, closed` once the above lands.
+      failures); see "Raise attempt" section above. Decision made: fix the fan-out pattern (not the
+      class-MRO signature-union alternative) — see `specs/plans/2026-08-18-cooperative-mixin-init.md`
+      for the full plan and reasoning. This item is now tracked there instead.
+- [ ] Update this doc's `Status:` to fully `implemented, closed` once
+      `2026-08-18-cooperative-mixin-init.md` lands its own `raise` rollout.

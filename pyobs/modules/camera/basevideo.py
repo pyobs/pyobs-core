@@ -175,6 +175,10 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         await self._site.start()
         self._is_listening = True
 
+        # declare that we send NewImageEvent, so peers (e.g. a GUI) actually subscribe to it --
+        # see basecamera.py's equivalent registration
+        await self.comm.register_event(NewImageEvent)
+
         # publish video URLs as capabilities
         await self.comm.set_capabilities(IVideo, VideoCapabilities(mjpeg=self._video_path, raw=self._raw_path))
 

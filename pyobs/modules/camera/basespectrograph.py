@@ -44,10 +44,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure
             filenames: Template for file naming.
             fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
-        Module.__init__(self, **kwargs)
-        SpectrumFitsHeaderMixin.__init__(
-            self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, filenames=filenames, **kwargs
-        )
+        super().__init__(fits_namespaces=fits_namespaces, fits_headers=fits_headers, filenames=filenames, **kwargs)
 
         # init camera
         self._exposure: ExposureInfo | None = None

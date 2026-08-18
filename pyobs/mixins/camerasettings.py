@@ -35,6 +35,8 @@ class CameraSettingsMixin:
         self.__camerasettings_filter = filter_name
         self.__camerasettings_binning = binning
 
+        super().__init__(**kwargs)
+
     async def _do_camera_settings(self, camera: Module | IData | IFilters | IBinning | IWindow) -> None:
         """Do camera settings for given camera."""
 

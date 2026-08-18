@@ -58,7 +58,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             broadcast: Whether to broadcast focus series images.
             final_image: Whether to take final image with optimal focus, which is always broadcasted.
         """
-        Module.__init__(self, **kwargs)
+        super().__init__(filters=filters, filter_name=filter_name, binning=binning, **kwargs)
 
         # store focuser and camera
         self._focuser = focuser
@@ -73,9 +73,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # create focus series
         self._series: FocusSeries = get_object(series, FocusSeries)
-
-        # init camera settings mixin
-        CameraSettingsMixin.__init__(self, filters=filters, filter_name=filter_name, binning=binning, **kwargs)
 
         # register exceptions
         if isinstance(camera, str):

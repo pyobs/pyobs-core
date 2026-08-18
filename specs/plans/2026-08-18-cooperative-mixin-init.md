@@ -180,6 +180,63 @@ Moved the single `super().__init__(*args, motion_status_interfaces=["IFocuser", 
 ruff/black/pyrefly clean, and the live `gemini.yaml` config constructs correctly with
 `fits_namespaces` and `motion_status_interfaces` both landing on the right attributes.
 
+## Step 4 (`pyobs-monet`) — implemented
+
+Both flagged classes are dead code (`FrontendCameraSouth` commented out in
+`config/south/frontend/fli230.yaml`; `FrontendSouth` unreferenced anywhere), so zero live risk
+either way. `FrontendCameraSouth`'s bases were reordered (`FliBonnShutter` first, was
+`MotionStatusMixin` first — `FliBonnShutter` is the only path to `Module`/`Object`).
+`FrontendSouth`'s bases were already correctly ordered (`Module` first). Both collapsed to a single
+`super().__init__(**kwargs)` call. Note: the old `FrontendCameraSouth` code called
+`MotionStatusMixin.__init__(self)` with **zero** kwargs, not even `**kwargs` — always defaulting
+`motion_status_interfaces` to `None`. The cooperative version just lets it flow through `**kwargs`
+naturally instead (in practice identical, since no caller has ever set it).
+
+No test suite exists for these modules (`pyobs-monet` has no `pytest`/`ruff`/`pyrefly` dev
+dependencies at all, unlike the driver repos) — verified instead by directly constructing both
+classes with representative kwargs and calling `motion_status()` on each, confirming
+`MotionStatusMixin.__init__` actually ran (would raise `AttributeError` otherwise, same failure
+mode found in `pyobs-fli`/`pyobs-gemini`'s review). `black --line-length 120` clean.
+
+## Step 5 (`pyobs-monti`) — implemented
+
+`MontiTelescope`'s bases were already correctly ordered (`BaseTelescope` first, `FitsNamespaceMixin`
+last), but its `__init__` still called both explicitly: `BaseTelescope.__init__(self, **kwargs,
+motion_status_interfaces=["ITelescope"])` first, then `FitsNamespaceMixin.__init__(self, **kwargs)`
+again at the end. Collapsed to a single `super().__init__(motion_status_interfaces=["ITelescope"],
+**kwargs)` call at the top, moved ahead of this class's own attribute setup (matches the
+`BaseTelescope` precedent). Verified: `black` clean; constructed directly (with a stub
+`_set_tracking_rate` and mocked serial I/O, see below) — `fits_namespaces` lands correctly and
+`motion_status()` returns `UNKNOWN` instead of raising.
+
+**A third, distinct failure mode found here, worth generalizing:** because `BaseTelescope` was
+already correctly ordered *before* `FitsNamespaceMixin` in the base list, `BaseTelescope`'s own
+(now-cooperative) `super()` chain — triggered by the *first* explicit call — already reached
+`FitsNamespaceMixin` correctly on its own. The *second*, redundant explicit
+`FitsNamespaceMixin.__init__(self, **kwargs)` call wasn't needed to reach the mixin at all; it was
+dead weight from the pre-cooperative world. Confirmed via a minimal repro
+(`Module.__init__(self, comm=None)` then `FitsNamespaceMixin.__init__(self, comm=None)`, i.e. only
+kwargs that are legitimately declared and fully consumed on the *first* call) that this redundant
+second call **still raises** `TypeError: object.__init__() takes exactly one argument` — because
+`**kwargs` unpacking at a call site never mutates the caller's dict, so the second call re-threads
+the *same already-consumed* kwargs to a chain that's now cooperative all the way to
+`object.__init__()`. This is a stricter trap than the sibling-leak pattern found in
+`pyobs-fli`/`pyobs-gemini`: it doesn't require a genuinely foreign kwarg at all, just *any* redundant
+second explicit call to a mixin whose `__init__` the first call's cooperative chain already reached.
+Live relevance: `pyobs-monti/config/telescope.yaml` sets only ordinary `BaseTelescope`-level kwargs
+(`fits_headers`, `comm`, no `fits_namespaces`) — under the *old* two-call code this construction
+would still have failed against a cooperative `pyobs-core`, for exactly this reason.
+
+Also found and worked around, not fixed (pre-existing, unrelated to this conversion):
+`pyobs-monti`'s `pyproject.toml` pins `pyobs-core==1.32.1` (the old 1.x line) while its actual source
+imports 2.x-era paths (`pyobs.modules.telescope.basetelescope.BaseTelescope`,
+`pyobs.mixins.FitsNamespaceMixin`) — confirms this repo's dependency metadata has been stale for a
+while, consistent with the "possibly already inactive" note from the original rollout plan. Verified
+against current `pyobs-core` (not `1.32.1`) with `--no-deps` to bypass the stale pin.
+`MontiTelescope` is also currently missing `_set_tracking_rate`, an abstract method `ITelescope` has
+since grown — unrelated to kwarg threading, not fixed here (out of scope), worked around in
+verification with a throwaway stub subclass.
+
 ## Non-goals
 
 - Not converting every explicit `ClassName.__init__(self, **kwargs)` call in these codebases — a
@@ -237,16 +294,23 @@ construction check against real configs where fleet configs exist to check again
 
 ## Implementation checklist
 
-- [x] `pyobs-core`: convert the 14 production fan-out classes + 5 tests to cooperative `super()`
+- [ ] `pyobs-core`: convert the 14 production fan-out classes + 5 tests to cooperative `super()`
       chains; full test suite green (`pytest -m "not integration and not xmpp" --extra full`).
-      PR #776 (open, not yet merged).
-- [x] `pyobs-fli` (2 classes) — pulled forward, live-breaking (see critical finding above); tests +
-      lint + real-config checks green, not yet committed/pushed/PR'd.
-- [x] `pyobs-gemini` (1 class) — pulled forward, live-breaking (see critical finding above); tests +
-      lint + real-config checks green, not yet committed/pushed/PR'd.
+      PR #776 (open, reviewed — one real regression found and fixed, see review thread — not yet
+      merged; merging this is what unblocks pyobs-fli #84 and pyobs-gemini #19 below).
+- [ ] `pyobs-fli` (2 classes) — pulled forward, live-breaking (see critical finding above); PR #84
+      open, reviewed, regression test added and independently re-verified by reviewer. Blocked on
+      pyobs-core #776 merging + bumping this repo's `pyobs-core` pin to a release containing it.
+- [ ] `pyobs-gemini` (1 class) — pulled forward, live-breaking (see critical finding above); PR #19
+      open, reviewed, regression test added. Same block as pyobs-fli: needs #776 merged + this
+      repo's `pyobs-core` pin bumped.
 - [ ] `pyobs-monet` (2 classes) — dead code (`FrontendCameraSouth`/`FrontendSouth` unreferenced),
-      zero urgency, not yet started.
-- [ ] `pyobs-monti` (1 class)
+      zero urgency; MR !54 (GitLab) open and reviewed — correct, blocked on pyobs-core #776 +
+      pyobs-fli #84 merging first (this class chain depends on `FliBonnShutter`/`FliCamera`).
+- [ ] `pyobs-monti` (1 class) — live (`config/telescope.yaml`); fixed, regression test added, MR !1
+      (GitLab, `gitlab.gwdg.de/monet/pyobs-monti`) open and reviewed — approved, blocked purely on
+      pyobs-core #776 merging first (same as pyobs-fli/pyobs-gemini). `_set_tracking_rate`
+      abstract-method gap and stale `pyobs-core==1.32.1` pin are pre-existing, out of scope here.
 - [ ] `pyobs-alpaca` (3 classes)
 - [ ] `pyobs-zwoeaf` (1 class)
 - [ ] `pyobs-iagvt` (2 classes) — `LDP`/`LED` are live but current configs don't trigger the bug;

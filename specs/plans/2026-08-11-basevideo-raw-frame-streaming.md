@@ -1,6 +1,6 @@
 # Plan: raw-frame streaming endpoint in `BaseVideo`
 
-Status: proposed
+Status: implemented, closed (merged 2026-08-16, PR #766)
 Design: `specs/design/basevideo-raw-frame-streaming.md`
 
 ## Context
@@ -12,34 +12,34 @@ on `BaseVideo`). Just the producer-side changes to `pyobs/modules/camera/basevid
 
 ## Todo
 
-- [ ] Fix the existing `video_handler` latency bug first, independently of the new endpoint:
+- [x] Fix the existing `video_handler` latency bug first, independently of the new endpoint:
       hardcoded local `interval = 1.0` (`basevideo.py:226`) ignores `self._interval` — decide
       whether to just use `self._interval` there, or keep MJPEG intentionally throttled separately
       from the new raw stream's rate (see next item).
-- [ ] Add `self._new_frame: asyncio.Event` (or similar name), set at the end of `_set_image()`
+- [x] Add `self._new_frame: asyncio.Event` (or similar name), set at the end of `_set_image()`
       (`basevideo.py:346-393`) on every call. Confirm this is cheap enough to leave unconditional
       (it should be — setting an `Event` with no waiters is trivial) rather than gating it behind
       whether a raw consumer is connected.
-- [ ] Rename `VideoCapabilities.video: str` -> `mjpeg: str | None = None` (`IVideo.py:10-11`) and
+- [x] Rename `VideoCapabilities.video: str` -> `mjpeg: str | None = None` (`IVideo.py:10-11`) and
       add `raw: str | None = None`. Breaking rename, no deprecation shim — fine, project is
       `2.0.0.dev`.
-- [ ] Collapse `live_view: bool = True` + `video_path: str = "/webcam/video.mjpg"`
+- [x] Collapse `live_view: bool = True` + `video_path: str = "/webcam/video.mjpg"`
       (`basevideo.py:79,86`) into a single `video_path: str | None = "/webcam/video.mjpg"`. Drop
       `live_view` entirely — it had no other use in the file. `_set_image()`'s
       `if self._live_view:` (`basevideo.py:368`) becomes `if self._video_path is not None:`.
       `open()`'s capability publish becomes `mjpeg=self._video_path` (fixes the existing bug: today
       it unconditionally advertises `video` even when `live_view=False` means no frame is ever
       emitted, `basevideo.py:170` vs. `:368-374`).
-- [ ] Register `/` and `/video.mjpg` only when `self._video_path is not None` (currently
+- [x] Register `/` and `/video.mjpg` only when `self._video_path is not None` (currently
       unconditional in `_app.add_routes(...)`) — matches the gating being added for the raw route
       below; `/ping` and `/{filename}` stay unconditional (unrelated to live view).
-- [ ] Add `raw_path: str | None = "/webcam/video.raw"` to the constructor (mirroring the collapsed
+- [x] Add `raw_path: str | None = "/webcam/video.raw"` to the constructor (mirroring the collapsed
       `video_path` param above) — a single knob, not a bool-plus-path. `None` disables both route
       registration and capability advertisement; a string enables both and is the value passed to
       `VideoCapabilities(raw=self._raw_path)`.
-- [ ] Register the new raw route, literal path `/video.raw` (mirrors `/video.mjpg`'s hardcoded
+- [x] Register the new raw route, literal path `/video.raw` (mirrors `/video.mjpg`'s hardcoded
       form), only when `self._raw_path is not None`.
-- [ ] Split `ImageFitsHeaderMixin.add_fits_headers()` (`fitsheader.py:117-134`): pull out the cheap,
+- [x] Split `ImageFitsHeaderMixin.add_fits_headers()` (`fitsheader.py:117-134`): pull out the cheap,
       local sub-step (static `fits_headers` dict + `_fitsheadermixin_add_fits_headers()`'s computed
       fields — MJD-OBS/LST/EQUINOX/DAY-OBS/location, no I/O) so it's callable without also running
       `_fitsheadermixin_add_framenum()` (VFS read+write per call). `grab_data()`'s FITS path keeps
@@ -47,7 +47,7 @@ on `BaseVideo`). Just the producer-side changes to `pyobs/modules/camera/basevid
       sub-step — see design doc §3 for why the VFS-backed framenum step can't run per frame at
       video rate, and why the raw stream doesn't need any frame-sequence number at all (dropped
       from the wire format, not replaced with an in-memory counter either).
-- [ ] Implement the new raw-stream handler:
+- [x] Implement the new raw-stream handler:
       - multipart response, same `multipart/x-mixed-replace` mechanism as `video_handler`
       - per-frame: JSON meta header built from the split-out cheap header sub-step above (FITS
         keywords — `NAXIS1`/`NAXIS2`/`BITPIX`/`DATE-OBS`/etc., whatever it produces, plus `DTYPE`
@@ -56,20 +56,22 @@ on `BaseVideo`). Just the producer-side changes to `pyobs/modules/camera/basevid
       - wait on `self._new_frame`, clear after each read — coalesces backpressure automatically,
         no explicit frame-drop bookkeeping needed
       - call `activate_camera()` on connect; keep updating `_active_time` for the duration of the
-        connection (every frame served, not just at connect)
+        connection, independent of frame arrival (a bounded `asyncio.wait_for` on `self._new_frame`
+        re-touches activity on timeout too, not just on frame arrival — otherwise a connected but
+        frame-less raw client, e.g. producer paused, could let the camera sleep out from under it)
       - clean up (deregister, let `_active_time` age out normally) on client disconnect
         (`aiohttp.client_exceptions.ClientConnectionResetError`, matching `video_handler`'s existing
         handling at `basevideo.py:248-251`)
-- [ ] Byte order: confirm outgoing arrays are serialized little-endian regardless of host order
+- [x] Byte order: confirm outgoing arrays are serialized little-endian regardless of host order
       (explicit dtype cast, not relying on `ndarray.tobytes()`'s native order).
-- [ ] Add a reconstruction helper (e.g. `Image` classmethod, name TBD) that builds a
+- [x] Add a reconstruction helper (e.g. `Image` classmethod, name TBD) that builds a
       `pyobs.images.Image` directly from `(ndarray, meta dict)` — decode via
       `numpy.dtype(meta["DTYPE"])`, build the `Header` from the FITS-named keys by direct
       assignment. Deliberately does **not** call `Image.from_bytes()`/go through actual FITS
       bytes, and does **not** touch `ImageFitsHeaderMixin`'s namespace-based cross-module enrichment
       — see design doc §3 for why. This is producer/wire-contract scope (`pyobs-core`), not a
       guiding consumer module.
-- [ ] Lower `sleep_time`'s default from 600s to **60s** (`basevideo.py`, param TBD exact location) —
+- [x] Lower `sleep_time`'s default from 600s to **60s** (`basevideo.py`, param TBD exact location) —
       a raw-only consumer session that dies previously left hardware streaming for up to 10 minutes
       with nothing consuming it. 60s is a starting point, not measured — flag in a code comment that
       it trades off against `_activate_camera()`/`_deactivate_camera()` cost (driver-specific,
@@ -98,3 +100,32 @@ on `BaseVideo`). Just the producer-side changes to `pyobs/modules/camera/basevid
 - A guiding-side consumer of the raw stream.
 - WebSocket alternative (see design doc's "Alternatives considered" — not pursuing unless the
   chosen approach proves insufficient).
+
+## Post-merge fixes (review, 2026-08-16)
+
+Three bugs found and fixed on top of the original PR before merge:
+
+- **`raw_handler` liveness.** `_active_time` was only re-touched on frame arrival, so a
+  connected-but-frame-less raw client (producer paused, exposure gap) could let the camera go back
+  to sleep out from under it, contradicting §5 of the design doc. Fixed by bounding the wait on
+  `self._new_frame` with `asyncio.wait_for(..., timeout=self._sleep_time / 2)` and re-touching
+  activity on timeout too, not just on frame arrival.
+- **`DATE-OBS` stamped at send time.** `_raw_frame()` computed it itself when the handler happened
+  to process the frame, drifting from true acquisition time under coalescing or scheduling delay.
+  Fixed by capturing it in `_set_image()` at acquisition time and carrying it through the new
+  `LastImage.date_obs` field.
+- **Missing trade-off comment on `sleep_time`.** The checklist above required flagging the
+  `_activate_camera()`/`_deactivate_camera()` cost trade-off in a code comment; it wasn't there.
+  Added next to `self._sleep_time = sleep_time`.
+
+One review finding was retracted after verification: iterating `astropy.io.fits.Header` for
+`COMMENT`/`HISTORY` cards yields the key once per card, but `header[key]` returns the same full
+`_HeaderCommentaryCards` list each time, so the meta-dict build in `_raw_frame()` doesn't lose data
+the way it first appeared to.
+
+Follow-up filed as pyobs-core#769: `_raw_frame()` redoes the per-frame header/JSON/byte-copy work
+once per connected raw client instead of once per frame and shared. Deferred — precomputing in
+`_set_image()` would cost something even with zero raw clients connected, conflicting with the
+design's "costs nothing when no raw client is connected" property (§1); the right fix is a lazy
+cache keyed by frame number, worth doing once multiple simultaneous raw consumers are a near-term
+reality, not needed for this PR's single-consumer case.

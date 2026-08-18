@@ -60,7 +60,6 @@ class XmppClient(slixmpp.ClientXMPP):
         self.register_plugin("xep_0045")  # Multi-User Chat
         self.register_plugin("xep_0060")  # PubSub
         self.register_plugin("xep_0115")  # Entity Capabilities
-        self.register_plugin("xep_0163")  # Personal Eventing Protocol
         self.register_plugin("xep_0199")  # XMPP Ping
 
         # enable keep alive pings

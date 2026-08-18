@@ -48,6 +48,11 @@ Implementation plans, checklist-style. Newest at the bottom.
   `Night` → `Reduction`, complete `LocalArchive` I/O. **implemented**
 - [2026-08-15-log-loaded-pyobs-package-versions.md](2026-08-15-log-loaded-pyobs-package-versions.md) —
   log loaded pyobs-* package versions at module startup. **implemented**
+- [2026-08-16-fits-header-fetch-timeout.md](2026-08-16-fits-header-fetch-timeout.md) — bound the
+  FITS-header fetch so a dead peer can't stall the frame. **implemented, closed**
+- [2026-08-15-pydantic-extra-validation.md](2026-08-15-pydantic-extra-validation.md) — make the
+  pydantic config layer reject unknown keys. **implemented, closed** (merged as `e398117f`, #762;
+  closed #755)
 
 ## Not finished
 
@@ -62,15 +67,17 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-09-object-kwarg-validation.md](2026-08-09-object-kwarg-validation.md) — surface
   unrecognized kwargs in `Object.__init__`. **investigated, not started**
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —
-  raw-frame streaming endpoint in `BaseVideo`. **proposed**
+  raw-frame streaming endpoint in `BaseVideo`. **implemented, closed**
 - [2026-08-11-camera-driver-gui-split.md](2026-08-11-camera-driver-gui-split.md) — driver/GUI split
   for all camera modules. **proposed** (Repos: qhyccd, fli, tis, asi, aravis, sbig, flipro, v4l)
 - [2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md](2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md) —
-  baseline tests + grouped Dependabot auto-merge for core-tier repos. **proposed**
+  baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented**
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
   Keycloak integration. **in progress** (Repos: pyobs-archive, pyobs-robotic-backend)
-- [2026-08-15-pydantic-extra-validation.md](2026-08-15-pydantic-extra-validation.md) — make the
-  pydantic config layer reject unknown keys. **draft**
+- [2026-08-16-logevent-double-delivery-fix-discussion.md](2026-08-16-logevent-double-delivery-fix-discussion.md) —
+  discussion notes: drop `add_interest()` to fix `ms` double-delivery, plus whether/how to get
+  real interest-based event filtering. **closed** (actioned as ADR 0012 below)
 - [2026-08-16-explicit-pubsub-event-subscriptions.md](2026-08-16-explicit-pubsub-event-subscriptions.md) —
   real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from
-  presence. **proposed**
+  presence. **implemented, closed** (merged 2026-08-16, PR #761); rollout to production sites
+  pending

@@ -133,6 +133,14 @@ def test_from_observation(schedulable_request: LcoSchedulableRequest) -> None:
         "end": "2026-01-01T00:30:00Z",
         "priority": 10,
         "state": "PENDING",
+        "created": "2026-01-01T00:00:00Z",
+        "modified": "2026-01-01T00:00:00Z",
+        "ipp_value": 1.0,
+        "name": "Test",
+        "observation_type": "NORMAL",
+        "proposal": "test",
+        "request_group_id": 1,
+        "submitter": "test",
     }
     obs = LcoObservation.model_validate(obs_json)
     task = LcoTask.from_observation(Object(), obs, {})

@@ -27,4 +27,5 @@ Short decision records for choices that had genuine considered-and-rejected alte
   self-hosted Keycloak alongside odin as two parallel auth backends. *proposed* (Repos:
   pyobs-core, pyobs-archive, pyobs-robotic-backend)
 - [0012-event-delivery-explicit-pubsub-subscription-not-presence.md](0012-event-delivery-explicit-pubsub-subscription-not-presence.md) —
-  event delivery moves from presence auto-subscribe to explicit pubsub subscription. *proposed*
+  event delivery moves from PEP presence auto-subscribe to explicit pubsub subscription.
+  *accepted*

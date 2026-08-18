@@ -25,18 +25,41 @@ def pre_process_yaml(config: str) -> str:
     pattern = r"((\s*)?(-\s*)?\{include (\S*)( \S*)?\})"
     matches = re.findall(pattern, content)
     for match, indent, tick, filename, key in matches:
+        matches_anchor = reload_anchors(path + "/" + filename)
         with StringIO(pre_process_yaml(path + "/" + filename)) as f:
             include_full = yaml.safe_load(f)
             include_dict = include_parts(include_full, key)
-        include = yaml.dump(include_dict, default_flow_style=False, indent=2)
 
-        # ensure indentation level to be conserved
-        if tick != "":
-            include = tick + include
-        if indent != "":
-            indent_newline = indent + " " * len(tick)
-            include = indent + include.replace("\n", indent_newline)
-        matches_anchor = reload_anchors(path + "/" + filename)
+        # a whole-file include (no key selector) would otherwise leak any key whose sole purpose
+        # is holding an anchor for `<<: *anchor` use elsewhere (e.g. comm.shared.yaml's
+        # `comm_cfg: &comm`) as an unconsumed top-level key in the final config. Drop those here;
+        # `<<: *anchor` below still resolves correctly, since replace_aliases reads the anchor's
+        # value from the original included file, not from this (possibly trimmed) copy.
+        # Only top-level, unindented anchor holders count -- reload_anchors() matches an anchor
+        # anywhere in the file regardless of nesting, so filtering by that directly would drop a
+        # top-level key whose name happens to collide with an unrelated nested anchor holder.
+        if not key.strip() and isinstance(include_dict, dict):
+            anchor_keywords = top_level_anchor_keywords(path + "/" + filename)
+            include_dict = {k: v for k, v in include_dict.items() if k not in anchor_keywords}
+
+        if not key.strip() and isinstance(include_dict, dict) and not include_dict:
+            # everything in this whole-file include was anchor-holder keys (e.g. a
+            # comm.shared.yaml whose only top-level key is `comm_cfg: &comm`) -- nothing left to
+            # splice in. yaml.dump({}) is "{}\n", a flow-style node that isn't a valid sibling to
+            # the block-style mapping the rest of the file continues as, so drop the placeholder
+            # entirely instead of inserting an empty mapping. Scoped to whole-file includes only --
+            # a keyed include that legitimately selects an empty mapping (`{include file key}`
+            # where `key`'s value is `{}`) must still emit `{}`, not be silently dropped.
+            include = ""
+        else:
+            include = yaml.dump(include_dict, default_flow_style=False, indent=2)
+
+            # ensure indentation level to be conserved
+            if tick != "":
+                include = tick + include
+            if indent != "":
+                indent_newline = indent + " " * len(tick)
+                include = indent + include.replace("\n", indent_newline)
         content = content.replace(match, include)
         content = replace_aliases(matches_anchor, path + "/" + filename, content)
 
@@ -60,6 +83,23 @@ def include_parts(include: dict[str, Any], keys: str) -> dict[str, Any]:
     for key in keys.split("."):
         include = include[key]
     return include
+
+
+def top_level_anchor_keywords(filename: str) -> set[str]:
+    """
+    Finds keys that hold an anchor ('&') at the top level (no leading whitespace) of the given
+    file -- used to decide which keys are safe to drop from a whole-file include, without
+    accidentally matching a nested key that happens to share its name with an unrelated anchor
+    holder elsewhere in the file (`reload_anchors` matches anchors at any nesting depth).
+    Args:
+        filename: name of the file to scan.
+    Returns:
+        keywords: set of top-level keys that carry an anchor.
+    """
+    pattern = r"^(\S*): &(?:\S*)"
+    with open(filename) as f:
+        content = f.read()
+    return set(re.findall(pattern, content, re.MULTILINE))
 
 
 def reload_anchors(filename: str) -> list[tuple[str, str]]:

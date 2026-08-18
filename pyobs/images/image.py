@@ -197,6 +197,32 @@ class Image:
             return cls._from_hdu_list(d)
 
     @classmethod
+    def from_ndarray(cls, data: npt.NDArray[Any], meta: dict[str, Any]) -> Image:
+        """Create an Image from a raw numpy array and a metadata dict.
+
+        This is the consumer side of BaseVideo's raw-frame wire format: the meta dict
+        carries FITS keywords (plus a DTYPE entry used to decode the raw bytes on the
+        wire) and is mapped straight onto a FITS header, bypassing FITS bytes entirely.
+
+        Args:
+            data: Numpy array of pixel data.
+            meta: Dictionary of metadata -- FITS keywords plus an optional DTYPE marker.
+
+        Returns:
+            New image.
+        """
+
+        # build header from the FITS-named keys, skipping the DTYPE marker
+        header = fits.Header()
+        for key, value in meta.items():
+            if key == "DTYPE":
+                continue
+            header[key] = value
+
+        # create image (also sets NAXIS1/NAXIS2 from the data shape)
+        return cls(data=data, header=header)
+
+    @classmethod
     def from_file(cls, filename: str) -> Image:
         """Create image from FITS file.
 

@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 import pyobs.utils.exceptions as exc
 from pyobs.interfaces import (
@@ -36,16 +36,22 @@ log = logging.getLogger(__name__)
 
 
 class AcquisitionConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool = True
     optional: bool = False
 
 
 class GuidingConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool = True
     optional: bool = False
 
 
 class InstrumentConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     exposure_time: float | ExposureTimeProvider = 0.0
     count: int = 1
     image_type: ImageType = ImageType.OBJECT
@@ -61,6 +67,8 @@ class InstrumentConfig(BaseModel):
 
 
 class Configuration(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     acquisition_config: AcquisitionConfig = Field(default_factory=AcquisitionConfig)
     guiding_config: GuidingConfig = Field(default_factory=GuidingConfig)
     instrument_configs: list[InstrumentConfig] = Field(default_factory=lambda: [InstrumentConfig()])

@@ -190,6 +190,7 @@ class XmppComm(Comm):
         self._online_clients: list[str] = []
         self._interface_cache: dict[str, asyncio.Future[list[type[Interface]]]] = {}
         self._interface_features: dict[str, list[str]] = {}
+        self._peer_sent_events: dict[str, set[tuple[str, int]]] = {}
         self._warned_version_mismatches: set[tuple[str, str]] = set()
         self._user = user
         self._password = password
@@ -240,6 +241,11 @@ class XmppComm(Comm):
         self._pubsub_service = f"pubsub.{self._domain}"
         self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
         self._client_states: dict[str, tuple[ModuleState, str]] = {}  # jid -> (state, error_string)
+
+        # pubsub for events -- desired (peer module name, event class) subscriptions. A key's
+        # presence drives _subscribe_event_with_retry's retry loop; removing it (unregister, or
+        # never re-added on a fresh connect) is what stops a still-retrying subscribe.
+        self._event_subscriptions: set[tuple[str, type[Event]]] = set()
         self._capabilities: dict[type, Any] = {}  # interface → Capabilities instance
         self._own_states: dict[type, Any] = {}  # interface → last published state for this module
         self._presence_callbacks: dict[str, list[Callable[[ModuleState, str], None]]] = {}
@@ -500,6 +506,14 @@ class XmppComm(Comm):
         # cache raw features for this JID, so a later version-mismatch can be diagnosed
         self._interface_features[jid] = features
 
+        # cache which event types this peer actually publishes (role="send" in the rich <event>
+        # schema elements from _get_disco_info) -- distinct from the plain urn:pyobs:event:
+        # feature list above, which covers subscribe-only registrations too and can't tell a
+        # publisher apart from a mere consumer. Used to gate event-node subscriptions so we don't
+        # retry forever against peers that will never publish to that node (see _got_online,
+        # _register_events).
+        self._peer_sent_events[jid] = self._parse_peer_sent_events(info)
+
         # keep only names whose remote-published version matches what this client expects --
         # a mismatch is treated the same as the interface not being there at all, rather than
         # silently using the local (possibly incompatible) class
@@ -521,6 +535,36 @@ class XmppComm(Comm):
 
         # finished
         return interface_names
+
+    @staticmethod
+    def _parse_peer_sent_events(info: Any) -> set[tuple[str, int]]:
+        """Extract (event class name, version) pairs a peer's disco#info marks role="send" for.
+
+        Reads the rich <{urn:pyobs:event:name:version}event role="..."> elements _get_disco_info
+        appends (see _event_role), not the plain urn:pyobs:event: feature list -- that list only
+        says the peer registered the event at all, sent or subscribe-only, and can't tell a
+        publisher apart from a mere consumer.
+        """
+        sent: set[tuple[str, int]] = set()
+        xml = getattr(info, "xml", None)
+        if xml is None:
+            return sent
+        ns_prefix = "urn:pyobs:event:"
+        for elem in xml:
+            tag = elem.tag
+            if not tag.startswith("{") or "}" not in tag:
+                continue
+            ns, _, local = tag[1:].partition("}")
+            if local != "event" or not ns.startswith(ns_prefix):
+                continue
+            if "send" not in elem.get("role", "").split():
+                continue
+            name = elem.get("name")
+            _, _, version_str = ns[len(ns_prefix) :].rpartition(":")
+            if not name or not version_str.isdigit():
+                continue
+            sent.add((name, int(version_str)))
+        return sent
 
     def _diagnose_missing_interface(self, client: str, obj_type: type[Any]) -> str | None:
         """Checks the disco#info features already cached for client for a version of obj_type
@@ -665,6 +709,27 @@ class XmppComm(Comm):
         if jid not in self._online_clients:
             self._online_clients.append(jid)
 
+        # subscribe to this peer's event nodes for every event type we currently handle -- a
+        # handler registered before this peer came online never got a chance to subscribe to it
+        # from _register_events, since it wasn't in self._online_clients yet.
+        # Skip local events (e.g. ModuleOpenedEvent/ModuleClosedEvent, registered by every
+        # module via module.py/comm.py) -- they're synthesized locally here and in
+        # _jid_got_offline, never published to a node, so subscribing would retry forever
+        # against something that will never exist. Also skip event classes whose last handler
+        # was already removed -- unregister_event() discards from _events_subscribed but leaves
+        # an empty list in _event_handlers. Also skip event types this peer doesn't actually
+        # publish (per its disco#info role="send" list, cached above by _get_interfaces) --
+        # otherwise every module subscribes to every peer for every event type it handles, e.g. a
+        # camera's BadWeatherEvent handler retry-subscribing to admin:BadWeatherEvent forever,
+        # since that node will never be created.
+        peer_sent_events = self._peer_sent_events.get(jid, set())
+        for ev, handlers in self._event_handlers.items():
+            if ev.local or not handlers:
+                continue
+            if (ev.__name__, ev.version) not in peer_sent_events:
+                continue
+            asyncio.create_task(self._subscribe_event_with_retry(module_name, ev))
+
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
 
@@ -777,11 +842,18 @@ class XmppComm(Comm):
         # set xml and send event
         stanza.xml = ET.fromstring(f'<event xmlns="pyobs:event">{body}</event>')
 
-        # send it
+        # publish to the shared pubsub service, same mechanism as state (see _set_state) --
+        # the node id encodes the publishing module, since notifications from this service
+        # arrive "from" the service itself, not from us (see _event_node/_handle_event).
+        # A module-less XmppComm (GUI, admin tool, observer) has no self._module -- fall back to
+        # the JID's own username, same identity peers would derive from our JID anyway.
+        publisher = self._module.name if self._module is not None else self.client.boundjid.user
+        node = self._event_node(publisher, event.__class__)
         await self._safe_send(
-            self.client.plugin["xep_0163"].publish,
-            stanza,
-            node=f"urn:pyobs:event:{event.__class__.__name__}:{event.version}",
+            self.client.plugin["xep_0060"].publish,
+            self._pubsub_service,
+            node,
+            payload=stanza,
             callback=functools.partial(self._send_event_callback, event=event),
         )
 
@@ -804,17 +876,81 @@ class XmppComm(Comm):
     ) -> None:
         # loop events
         for ev in events:
-            # register event at XMPP
+            # register event at XMPP (disco advertising only -- unrelated to delivery, used by
+            # e.g. pyobs-web-client to distinguish producers from consumers, see _event_role)
             self.client.plugin["xep_0030"].add_feature(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
 
-            # if we have a handler, we're also interested in receiving such events
+            # if we have a handler, subscribe to this event's node on every peer already online
+            # that actually publishes it (see _got_online for why this is gated). A peer coming
+            # online later is covered by _got_online subscribing to every event currently in
+            # self._event_handlers.
             if handler:
-                # add interest
-                self.client.plugin["xep_0163"].add_interest(f"urn:pyobs:event:{ev.__name__}:{ev.version}")
+                for peer_jid in list(self._online_clients):
+                    if (ev.__name__, ev.version) not in self._peer_sent_events.get(peer_jid, set()):
+                        continue
+                    peer_module = peer_jid[: peer_jid.index("@")]
+                    asyncio.create_task(self._subscribe_event_with_retry(peer_module, ev))
 
         # update caps and send presence
         await self._safe_send(self.client.plugin["xep_0115"].update_caps)
         self.client.send_presence()
+
+    async def _unregister_events(self, events: list[type[Event]]) -> None:
+        # unsubscribe goes to self._pubsub_service, not to the peer -- it doesn't depend on the
+        # peer being online, so this has to cover every (peer, ev) we're actually subscribed to,
+        # not just currently-online ones (a peer offline at unregister time would otherwise keep
+        # its server-side subscription, and we'd go on receiving that event's wire message)
+        for ev in events:
+            for peer_module, key_ev in list(self._event_subscriptions):
+                if key_ev is not ev:
+                    continue
+                self._event_subscriptions.discard((peer_module, ev))
+                node = self._event_node(peer_module, ev)
+                try:
+                    await self._safe_send(self.client.plugin["xep_0060"].unsubscribe, self._pubsub_service, node)
+                except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                    pass  # already gone server-side
+
+    @staticmethod
+    def _event_node(module: str, event_class: type[Event]) -> str:
+        return f"pyobs:event:{module}:{event_class.__name__}:{event_class.version}"
+
+    @staticmethod
+    def _event_node_module(node: str) -> str | None:
+        """Recover the publishing module's name from an event node id, since notifications from
+        the shared pubsub service arrive "from" the service itself, not from the publisher."""
+        parts = node.split(":")
+        if len(parts) == 5 and parts[0] == "pyobs" and parts[1] == "event":
+            return parts[2]
+        return None
+
+    async def _subscribe_event_with_retry(self, peer_module: str, event_class: type[Event]) -> None:
+        """Subscribe to a peer's event node, retrying until the node exists.
+
+        Mirrors _subscribe_with_retry (state). Runs as a background task; retries indefinitely
+        with capped backoff since the peer may not have published (and thus auto-created the
+        node) yet. Stops early if _unregister_events drops the (peer_module, event_class) key
+        in the meantime.
+        """
+        key = (peer_module, event_class)
+        if key in self._event_subscriptions:
+            return
+        self._event_subscriptions.add(key)
+        node = self._event_node(peer_module, event_class)
+        attempt = 0
+        while key in self._event_subscriptions:
+            try:
+                await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
+                return
+            except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                attempt += 1
+                if attempt == 30:
+                    log.warning(
+                        "Still failing to subscribe to event node %s after %d attempts, will keep retrying",
+                        node,
+                        attempt,
+                    )
+                await asyncio.sleep(_retry_delay(attempt))
 
     def _handle_event_sync(self, msg: Any) -> None:
         """Synchronous entry point for the MatchXMLMask Callback.
@@ -843,13 +979,16 @@ class XmppComm(Comm):
                         for callback in callbacks:
                             callback(state_obj)
         else:
-            asyncio.create_task(self._handle_event(msg))
+            asyncio.create_task(self._handle_event(msg, node))
 
-    async def _handle_event(self, msg: Any) -> None:
+    async def _handle_event(self, msg: Any, node: str) -> None:
         """Handles an event.
 
         Args:
             msg: Received XMPP message.
+            node: pubsub node id the event arrived on. Notifications from the shared pubsub
+                service come "from" that service, not from the publisher, so the publishing
+                module's name has to come from the node id (see _event_node) instead of msg["from"].
         """
 
         # get body, unescape it, parse it
@@ -863,8 +1002,13 @@ class XmppComm(Comm):
             # ignore this message
             return
 
-        # did we send this?
-        if msg["from"] == self.client.boundjid.bare:
+        from_module = self._event_node_module(node)
+        if from_module is None:
+            return
+
+        # did we send this? (we never subscribe to our own node, so this shouldn't happen, but
+        # stay defensive rather than assume)
+        if self._module is not None and from_module == self._module.name:
             return
 
         # create event and check timestamp
@@ -877,7 +1021,7 @@ class XmppComm(Comm):
             return
 
         # send it to module
-        self._send_event_to_module(event, msg["from"].username)
+        self._send_event_to_module(event, from_module)
 
     async def _safe_send(self, method: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any) -> Any:
         """Safely send an XMPP message.

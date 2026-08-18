@@ -1,6 +1,26 @@
 # Plan: Add baseline tests to core-tier repos, then enable grouped Dependabot auto-merge
 
-Status: proposed
+Status: implemented (merged 2026-08-16, PRs #31/#36/#29/#53/#79/#32/#16/#62/#68/#10/#16/#31/#18 across the 13 repos)
+
+Post-merge settings (2026-08-16): branch protection on `develop` with required status checks
+(`test`, `ruff`, `pyrefly`) and `allow_auto_merge: true` applied to all 13 repos. `pyobs-tis`
+was made public to unblock this (GitHub Free blocks branch protection and auto-merge on private
+repos).
+
+Remaining: making Dependabot actually enable auto-merge on its PRs. `allow_auto_merge: true` alone
+does not do it; the "Automatically enable auto-merge on Dependabot PRs" toggle has no REST API, so
+one of two follow-ups is needed:
+
+1. **Manual toggle (UI only).** Per repo, Settings → Code security and analysis → Dependabot →
+   "Automatically enable auto-merge on Dependabot PRs". Zero code, but has to be done by hand on
+   each of the 13 repos and is easy to forget on future repos.
+2. **Workflow (`dependabot-automerge.yml`).** A `pull_request` workflow that detects Dependabot PRs
+   and runs `gh pr merge --auto --merge`, filtering majors out via `dependabot/fetch-metadata`
+   `update-type`. Codified and versionable, but adds a workflow to every repo and depends on
+   `GITHUB_TOKEN` having `contents: write` + `pull-requests: write`.
+
+Option 2 is preferred for fleet consistency; option 1 is fine if the fleet stays small. Not yet
+chosen or applied.
 Issue: pyobs-core#752
 Repos: pyobs-alpaca, pyobs-aravis, pyobs-asi, pyobs-brot, pyobs-fli, pyobs-flipro, pyobs-gemini,
 pyobs-qhyccd, pyobs-sbig, pyobs-tis, pyobs-v4l, pyobs-zaber, pyobs-zwoeaf (see "Scope correction"
@@ -18,7 +38,7 @@ discrepancy rather than silently dropping them.
 same Cython/vendor-SDK shape as `pyobs-fli`/`pyobs-flipro`/`pyobs-sbig`. Added to Phase 3 (see
 below) rather than left as a gap.
 
-That leaves **12 repos**: the issue's 13 minus pyobs-andor/pyobs-tui, plus pyobs-qhyccd.
+That leaves **13 repos**: the issue's 14 minus pyobs-andor/pyobs-tui, plus pyobs-qhyccd.
 
 ## Why order matters
 

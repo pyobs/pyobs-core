@@ -25,7 +25,7 @@ class BaseModel(PydanticBaseModel, PrivateAttrMixin):
     _observer: Observer | None = PrivateAttr(default=None)
     _comm: Comm | None = PrivateAttr(default=None)
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     @model_validator(mode="after")
     def _inject_context_into_children(self, info: ValidationInfo) -> Self:
@@ -61,8 +61,36 @@ class PolymorphicBaseModel(BaseModel, metaclass=ABCMeta):  # type: ignore[misc]
             sub_cls_name = modified_value.pop("class", None)
             if sub_cls_name is not None:
                 klass = get_class_from_string(sub_cls_name)
-                return klass.model_validate(modified_value, context=info.context)
+                return klass.model_validate(modified_value, context=info.context, by_alias=True)
         return handler(value)
 
 
-__all__ = ["BaseModel", "PolymorphicBaseModel"]
+def resolve_polymorphic_type_shorthand(
+    config: dict[str, Any], available: list[str], module_prefix: str, type_suffix: str
+) -> None:
+    """Resolve a `type` shorthand key (e.g. `type: Airmass`) into an explicit `class` key that
+    `PolymorphicBaseModel.retrieve_class_on_deserialization` can use, in place. No-op if `config`
+    has no `type` key.
+
+    Args:
+        config: Config dict to resolve, mutated in place.
+        available: Class names to match `type` against (case-insensitively, with `type_suffix`
+            appended).
+        module_prefix: Dotted module path the matched class lives in.
+        type_suffix: Suffix appended to `type` before matching against `available`, e.g. "merit".
+
+    Raises:
+        ValueError: If `type` doesn't match any class in `available`.
+    """
+    if "type" not in config:
+        return
+    available_lower = [c.lower() for c in available]
+    try:
+        idx = available_lower.index(config["type"].lower() + type_suffix.lower())
+    except ValueError:
+        raise ValueError(f"Invalid {type_suffix.lower()} type: {config['type']}")
+    config["class"] = f"{module_prefix}.{available[idx]}"
+    del config["type"]
+
+
+__all__ = ["BaseModel", "PolymorphicBaseModel", "resolve_polymorphic_type_shorthand"]

@@ -31,6 +31,7 @@ def make_xmpp_comm() -> XmppComm:
     comm._domain = "localhost"
     comm._resource = "pyobs"
     comm._interface_features = {}
+    comm._peer_sent_events = {}
     comm._warned_version_mismatches = set()
     return comm
 

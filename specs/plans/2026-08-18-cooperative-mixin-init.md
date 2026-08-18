@@ -115,6 +115,71 @@ knowledge)
 10. **`pyobs-brot`** (1) — highest stakes: telescope/dome/roof control at multiple active sites
     (`monet` north+south, `iag50`) — last, most critical, most to lose if something's missed.
 
+## Critical finding (2026-08-18): PR #776's blast radius isn't scoped by rollout order
+
+The "safest repo first" ordering above assumes each repo's own risk is independent — that
+converting `pyobs-monet` before `pyobs-fli` only matters for `pyobs-monet`'s *own* classes. That's
+wrong. The moment `Object`/`Module`/`BaseCamera` in `pyobs-core` became cooperative (PR #776), any
+**unconverted** fan-out class *anywhere downstream* that threads a foreign (sibling-only) kwarg
+through the same `**kwargs` dict to one of those now-cooperative bases breaks — regardless of
+whether that repo's own conversion PR has landed yet. Order of the fan-out's own explicit calls
+doesn't matter either: every sibling call receives the *same* unfiltered dict, so whichever one
+reaches `Module`/`Object` first carries the foreign key all the way to `object.__init__()`, which
+raises. Confirmed with a minimal repro (`BaseCamera.__init__(self, **kwargs)` called before a
+`FliBaseMixin`-shaped stub that owns a `port` kwarg → `TypeError: object.__init__() takes exactly
+one argument`).
+
+Re-ran the original AST fan-out scan fresh (found the same 14 non-core classes as before, across
+`pyobs-alpaca`(3)/`pyobs-brot`(1)/`pyobs-fli`(2)/`pyobs-gemini`(1)/`pyobs-monet`(2)/`pyobs-monti`(1)/
+`pyobs-sbig`(1)/`pyobs-zwoeaf`(1)/`pyobs-iagvt`(2)) and cross-referenced every one against real
+configs in `pyobs-monet`, `pyobs-iagvt`, `pyobs-iag50`, `pyobs-polaris`. **8 of 14 are live** today:
+`FliFilterWheel`, `FliCamera`, `GeminiFocuserRotator`, `SbigFilterCamera`, `EAFFocuser`, `LDP`, `LED`
+(`FrontendCameraSouth` remains commented-out/dead, confirmed again). Of those 8, checking each
+live config's actual keys against which sibling declares them found **two that will concretely
+crash on the next `pyobs-core` bump, not just carry latent risk**:
+
+- `pyobs_fli.FliFilterWheel` at `pyobs-monet/config/{north/fli,south/frontend}/filterwheel.yaml` —
+  both set `dev_path`, a `FliBaseMixin`-only kwarg; `Module.__init__` (called first) leaks it to
+  `object.__init__()` before `FliBaseMixin.__init__` (called second) ever sees it.
+- `pyobs_gemini.GeminiFocuserRotator` at `pyobs-monet/config/south/piggyback/gemini.yaml` — sets
+  `fits_namespaces`, a `FitsNamespaceMixin`-only kwarg; same shape, `Module.__init__` at line 53 runs
+  long before `FitsNamespaceMixin.__init__` at line 114.
+
+The other 6 live classes' *current* configs happen not to set any sibling-only kwarg, so they
+won't break today, but carry the identical latent risk on the next config change.
+
+**Action taken:** pulled `pyobs-fli` and `pyobs-gemini` forward, ahead of their step 9/5 slots —
+see their sections below. Holding off on merging PR #776 until this is resolved was considered but
+not required, since `pyobs-core`'s `develop` doesn't auto-propagate to fleet installs; the real
+gate is "don't bump a live repo's `pyobs-core` pin past PR #776 until that repo's own fan-out
+classes are converted," which now applies to `pyobs-fli`/`pyobs-gemini` (done) and still applies to
+`pyobs-alpaca`/`pyobs-brot`/`pyobs-monti`/`pyobs-sbig`/`pyobs-zwoeaf`/`pyobs-iagvt` (not done yet;
+none of their *current* configs concretely break, but don't treat that as a guarantee — re-check
+before any of those repos' `pyobs-core` pin gets bumped past #776).
+
+## Step 2 (`pyobs-fli`) — implemented
+
+Reordered bases in `FliCamera` (`BaseCamera` first, was `FliBaseMixin` first) and `FliFilterWheel`
+(`Module` first, was `FliBaseMixin` first) — both need `Object`/`Module` to run before
+`FliBaseMixin.__init__`'s `self.add_background_task(...)` call. Added
+`super().__init__(**kwargs)` to the end of `FliBaseMixin.__init__` (it never forwarded before).
+Collapsed both classes' fan-out to a single `super().__init__(dev_type=..., **kwargs)` call
+(`FliFilterWheel` also threads `motion_status_interfaces=["IFilters"]`, a derived value like
+`BaseTelescope`'s `WaitForMotionMixin` case). Verified: 20/20 tests pass, ruff/black/pyrefly clean,
+and both previously-crashing live configs (`filterwheel.yaml` x2) plus `morisot.yaml` (`FliCamera`)
+and `pyobs-monet`'s `FliBonnShutter` (subclass of `FliCamera`, live at `fli230.yaml`) all construct
+correctly against the fixed `pyobs-core` branch.
+
+## Step 3 (`pyobs-gemini`) — implemented
+
+Reordered `GeminiFocuserRotator`'s bases to put `Module` first (was `FitsNamespaceMixin` first).
+Moved the single `super().__init__(*args, motion_status_interfaces=["IFocuser", "IRotation"],
+**kwargs)` call to the top of `__init__`, ahead of this class's own attribute setup (matches the
+`BaseTelescope` precedent from step 1) — removed the two now-redundant trailing
+`FitsNamespaceMixin.__init__`/`MotionStatusMixin.__init__` calls. Verified: 17/17 tests pass,
+ruff/black/pyrefly clean, and the live `gemini.yaml` config constructs correctly with
+`fits_namespaces` and `motion_status_interfaces` both landing on the right attributes.
+
 ## Non-goals
 
 - Not converting every explicit `ClassName.__init__(self, **kwargs)` call in these codebases — a
@@ -175,14 +240,19 @@ construction check against real configs where fleet configs exist to check again
 - [x] `pyobs-core`: convert the 14 production fan-out classes + 5 tests to cooperative `super()`
       chains; full test suite green (`pytest -m "not integration and not xmpp" --extra full`).
       PR #776 (open, not yet merged).
-- [ ] `pyobs-monet` (2 classes)
+- [x] `pyobs-fli` (2 classes) — pulled forward, live-breaking (see critical finding above); tests +
+      lint + real-config checks green, not yet committed/pushed/PR'd.
+- [x] `pyobs-gemini` (1 class) — pulled forward, live-breaking (see critical finding above); tests +
+      lint + real-config checks green, not yet committed/pushed/PR'd.
+- [ ] `pyobs-monet` (2 classes) — dead code (`FrontendCameraSouth`/`FrontendSouth` unreferenced),
+      zero urgency, not yet started.
 - [ ] `pyobs-monti` (1 class)
 - [ ] `pyobs-alpaca` (3 classes)
-- [ ] `pyobs-gemini` (1 class)
 - [ ] `pyobs-zwoeaf` (1 class)
-- [ ] `pyobs-iagvt` (2 classes)
-- [ ] `pyobs-sbig` (1 class)
-- [ ] `pyobs-fli` (2 classes)
+- [ ] `pyobs-iagvt` (2 classes) — `LDP`/`LED` are live but current configs don't trigger the bug;
+      re-check before this repo's `pyobs-core` pin moves past #776.
+- [ ] `pyobs-sbig` (1 class) — `SbigFilterCamera` is live but current configs don't trigger the bug;
+      re-check before this repo's `pyobs-core` pin moves past #776.
 - [ ] `pyobs-brot` (1 class)
 - [ ] Implement `if kwargs: raise TypeError(...)` in `Object.__init__` (`pyobs-core`), now that
       every consuming class threads kwargs cooperatively.

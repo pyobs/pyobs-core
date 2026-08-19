@@ -1,14 +1,20 @@
 # Plan: Make mixin `__init__` composition cooperative, then enforce unrecognized kwargs at `Object.__init__`
 
-Status: step 1/10 (`pyobs-core`) implemented, PR #776 open (not yet merged). (Repos: pyobs-core,
-pyobs-alpaca, pyobs-brot, pyobs-fli, pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti, pyobs-sbig,
-pyobs-zwoeaf)
+Status: implemented, closed 2026-08-19. All 10/10 repos merged; `pyobs-core` released as
+`v2.0.0.dev82` (PyPI), every downstream repo's pin bumped to depend on it and re-verified against
+the real release (`pyobs-monti` went through a full 1.x -> 2.x migration instead of a pin bump).
+The `Object.__init__` enforcement this plan was the prerequisite for landed separately as PR #782
+(wraps the existing `super().__init__(**kwargs)` call rather than a blind pre-emptive check — see
+that PR and `2026-08-09-object-kwarg-validation.md` for why). Remaining operational step (restarting
+live fleet modules to actually pick up the fix) is deliberately not part of this plan's closure —
+tracked as a standalone action, not code/doc work. (Repos: pyobs-core, pyobs-alpaca, pyobs-brot,
+pyobs-fli, pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti, pyobs-sbig, pyobs-zwoeaf)
 
 Related: `specs/plans/2026-08-09-object-kwarg-validation.md` — where this was discovered. That
-plan's last open item ("implement warn/raise enforcement at `Object.__init__`") is superseded by
+plan's last open item ("implement warn/raise enforcement at `Object.__init__`") was superseded by
 this plan: a first raise attempt found the mixin fan-out pattern below blocks it outright (59 test
-failures), documented in that plan's "Raise attempt (2026-08-18)" section. This plan does the
-prerequisite work; that plan's Status gets closed once this one lands the actual `raise`.
+failures), documented in that plan's "Raise attempt (2026-08-18)" section. This plan did the
+prerequisite work; that plan is now closed too, alongside PR #782.
 
 ## Problem
 
@@ -441,13 +447,16 @@ construction check against real configs where fleet configs exist to check again
       `v2.0.0.dev82` on PyPI; every downstream repo's `pyobs-core` pin bumped to depend on it and
       re-verified against the real release, except `pyobs-monti` which went through a full 1.x ->
       2.x migration instead of a pin bump (see above).
-- [ ] Implement `if kwargs: raise TypeError(...)` in `Object.__init__` (`pyobs-core`), now that
-      every consuming class threads kwargs cooperatively. Confirmed this is still additive, worth
-      doing: leftover kwargs already reach real `object.__init__()` and raise `TypeError`, but with
-      an unhelpful generic message (`object.__init__() takes exactly one argument`) that gives no
-      indication of which kwarg leaked or from where — this session repeatedly had to trace
-      multi-frame tracebacks by hand to diagnose exactly that. A purpose-built error naming the
-      class and the leftover kwargs would have saved real debugging time. Not yet implemented.
+- [x] Implement `if kwargs: raise TypeError(...)` in `Object.__init__` (`pyobs-core`), now that
+      every consuming class threads kwargs cooperatively. Leftover kwargs already reached real
+      `object.__init__()` and raised `TypeError`, but with an unhelpful generic message
+      (`object.__init__() takes exactly one argument`) that gave no indication of which kwarg
+      leaked or from where — this session repeatedly had to trace multi-frame tracebacks by hand to
+      diagnose exactly that. Not a blind pre-emptive check (`Object` still isn't always the
+      terminal class before real `object.__init__()`, e.g. `BaseRoof`'s MRO places
+      `WeatherAwareMixin`/`MotionStatusMixin` after `Object`) — wraps the existing
+      `super().__init__(**kwargs)` call and enriches the error only when it's genuinely
+      `object.__init__()`'s own generic one. PR #782, full suite 1504 passed.
 - [ ] Roll out / restart affected fleet modules; watch for anything this session's checks missed
       (the ~45-class import-failure bucket in `object-kwarg-validation.md` was never fully cleared
       — `pyobs_gui.GUI`, `pyobs-pilar`, `pyobs-dashboard-utils` remain genuinely unverified). Not

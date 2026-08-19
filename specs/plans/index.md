@@ -90,4 +90,7 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md](2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md) —
   baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented**
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
-  Keycloak integration. **in progress** (Repos: pyobs-archive, pyobs-robotic-backend)
+  Keycloak integration. **implemented, closed 2026-08-19** — `pyobs-auth` (`2.0.0.dev7`),
+  `pyobs-archive` cutover (`2.0.0.dev8`), and `pyobs-robotic-backend` all landed/released; live
+  Keycloak login + logout verified; observation-portal brokering (Section 0) tracked separately,
+  Keycloak admin/deployment config only (Repos: pyobs-archive, pyobs-robotic-backend)

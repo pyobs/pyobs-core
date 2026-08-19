@@ -60,6 +60,21 @@ def _retry_delay(attempt: int, cap: float = 30.0, base: float = 1.0) -> float:
     return random.uniform(0, min(cap, base * (2**attempt)))
 
 
+def _log_task_exception(task: asyncio.Task[Any]) -> None:
+    """Retrieve and log a background task's exception, if it failed.
+
+    Results of asyncio.create_task() that are never awaited or callback-ed have their
+    exceptions reported by the event loop's default handler as "Task exception was never
+    retrieved" -- a noisy ERROR traceback that carries no context. Retrieving the exception
+    here turns that into a normal log line with the task's failure attached.
+    """
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        log.error("Unhandled exception in XMPP event handler task", exc_info=exc)
+
+
 # anchored at both ends -- re.match alone doesn't anchor the end, so e.g. "user@domain/res/extra"
 # would otherwise still "match" as a valid prefix
 _JID_RE = re.compile(r"([\w_\-\.]+)@([\w_\-\.]+)/([\w_\-\.]+)$")
@@ -979,7 +994,12 @@ class XmppComm(Comm):
                         for callback in callbacks:
                             callback(state_obj)
         else:
-            asyncio.create_task(self._handle_event(msg, node))
+            # Non-state notifications are handled asynchronously. Attach a done-callback so the
+            # task's exception is retrieved: without it, a failure inside _handle_event is never
+            # retrieved and asyncio reports it as "Task exception was never retrieved" (see
+            # _handle_event for the payload-less notification case that used to trigger this).
+            task = asyncio.create_task(self._handle_event(msg, node))
+            task.add_done_callback(_log_task_exception)
 
     async def _handle_event(self, msg: Any, node: str) -> None:
         """Handles an event.
@@ -994,7 +1014,16 @@ class XmppComm(Comm):
         # get body, unescape it, parse it
         # State-node messages are handled synchronously in _handle_event_sync
         # before this async task runs. By the time we get here it's a pyobs event.
-        body = json.loads(xml.sax.saxutils.unescape(msg["pubsub_event"]["items"]["item"]["payload"].text))
+        # Not every notification carries an item with a payload: retract stanzas,
+        # node purges, and nodes with deliver_payloads off all arrive payload-less.
+        # The state-node path copes via _fetch_and_dispatch_state; for events there is
+        # nothing to refetch, so just drop the notification.
+        items = msg["pubsub_event"]["items"]
+        item = items["item"] if items is not None else None
+        payload = item["payload"] if item is not None else None
+        if payload is None or payload.text is None:
+            return
+        body = json.loads(xml.sax.saxutils.unescape(payload.text))
 
         # do we have a <delay> element?
         delay = msg.xml.findall("{urn:sleekxmpp:delay}delay")

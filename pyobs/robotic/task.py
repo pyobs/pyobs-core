@@ -150,6 +150,7 @@ class Project(BaseModel):
     name: str = ""
     priority: float | None = Field(ge=0.0, le=9999.0, default=1.0)
     users: list[str] = Field(default_factory=list)
+    public: bool = False  # ingest backend `public` flag; default keeps old backends valid
 
 
 __all__ = ["Task", "TaskData", "Project"]

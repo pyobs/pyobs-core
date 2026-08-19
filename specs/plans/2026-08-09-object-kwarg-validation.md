@@ -1,14 +1,22 @@
 # Plan: Surface unrecognized kwargs in `Object.__init__` instead of silently discarding them
 
-Status: `comm_cfg` anchor leak fixed at the source, merged 2026-08-17 (PR #773, squash-merged as
-`a5646fb8`); `environment`/`database` confirmed gone 2026-08-18 (no longer a blocker); two fleet
-cleanup passes (2026-08-18) fixed every confirmed dead/misplaced/typo'd kwarg found across
-`pyobs-monet`/`pyobs-iagvt`/`pyobs-iag50`/`pyobs-polaris`, including chasing down the ~45 classes
-that couldn't be import-checked in the first pass. **A first attempt at implementing the raise in
-`Object.__init__` (2026-08-18) found a real architectural blocker — see "Raise attempt" below — and
-was reverted.** The prerequisite fix now has its own plan:
-`specs/plans/2026-08-18-cooperative-mixin-init.md`. This plan closes once that one lands the actual
-`raise`.
+Status: implemented, closed 2026-08-19. `comm_cfg` anchor leak fixed at the source, merged
+2026-08-17 (PR #773, squash-merged as `a5646fb8`); `environment`/`database` confirmed gone
+2026-08-18 (no longer a blocker); two fleet cleanup passes (2026-08-18) fixed every confirmed
+dead/misplaced/typo'd kwarg found across `pyobs-monet`/`pyobs-iagvt`/`pyobs-iag50`/`pyobs-polaris`,
+including chasing down the ~45 classes that couldn't be import-checked in the first pass. **A first
+attempt at implementing the raise in `Object.__init__` (2026-08-18) found a real architectural
+blocker — see "Raise attempt" below — and was reverted.** The prerequisite fix
+(`specs/plans/2026-08-18-cooperative-mixin-init.md`, converting the fan-out mixin pattern to real
+cooperative `super()` chains across `pyobs-core` and nine downstream repos) landed and released as
+`pyobs-core` `v2.0.0.dev82` (2026-08-19). The final enforcement piece — PR #782, `pyobs-core`
+`feature/object-init-kwargs-typeerror` — landed as a targeted wrap around the existing
+`super().__init__(**kwargs)` call rather than the originally-attempted blind `if kwargs: raise` at
+the top of `Object.__init__`: even post-cooperative-chain, `Object` is not always the last class
+before real `object.__init__()` (e.g. `BaseRoof`'s MRO places `WeatherAwareMixin`/
+`MotionStatusMixin` after `Object`, confirmed empirically), so the check has to happen only if and
+when the whole downstream chain still fails to claim every kwarg, not pre-emptively at `Object`'s
+own level. See that PR's description for the full reasoning and test coverage.
 
 Related: `specs/plans/night-archive-io-hardening.md` — where this was first flagged (a typo in a
 `Reduction`/`Night` YAML config silently does nothing instead of raising). That plan fixes the
@@ -403,5 +411,11 @@ this at all) not yet made.
       failures); see "Raise attempt" section above. Decision made: fix the fan-out pattern (not the
       class-MRO signature-union alternative) — see `specs/plans/2026-08-18-cooperative-mixin-init.md`
       for the full plan and reasoning. This item is now tracked there instead.
-- [ ] Update this doc's `Status:` to fully `implemented, closed` once
-      `2026-08-18-cooperative-mixin-init.md` lands its own `raise` rollout.
+- [x] Implement the actual enforcement, now that `2026-08-18-cooperative-mixin-init.md`'s
+      cooperative-chain rollout has landed (`pyobs-core` `v2.0.0.dev82`): wraps
+      `Object.__init__`'s existing `super().__init__(**kwargs)` call and re-raises with a message
+      naming the class and the leftover kwargs, only when the underlying error is the real
+      `object.__init__()`'s generic one — not a blind pre-emptive check, since `Object` still isn't
+      always the terminal class in every subclass's MRO (see Status above). PR #782, full suite
+      1504 passed.
+- [x] Update this doc's `Status:` to `implemented, closed` — done above.

@@ -27,16 +27,13 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
             exposure_time: Initial exposure time in seconds.
             broadcast: Whether to broadcast new images.
         """
-        BaseGuiding.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         # store
         self._default_exposure_time = exposure_time
         self._exposure_time: float | None = None
         self._broadcast = broadcast
         self._source_detection = SepSourceDetection()
-
-        # init camera settings mixin
-        CameraSettingsMixin.__init__(self, **kwargs)
 
         # add thread func
         self.add_background_task(self._auto_guiding)

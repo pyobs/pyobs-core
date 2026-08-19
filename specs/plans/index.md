@@ -65,7 +65,8 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-08-logevent-double-delivery-investigation.md](2026-08-08-logevent-double-delivery-investigation.md) —
   pyobs-gui receives every LogEvent twice. **investigating, open** (Repos: pyobs-core, pyobs-monet)
 - [2026-08-09-object-kwarg-validation.md](2026-08-09-object-kwarg-validation.md) — surface
-  unrecognized kwargs in `Object.__init__`. **investigated, not started**
+  unrecognized kwargs in `Object.__init__`. **comm_cfg fix implemented, closed; fleet cleanup
+  done; raise attempt reverted, blocked on 2026-08-18-cooperative-mixin-init.md**
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —
   raw-frame streaming endpoint in `BaseVideo`. **implemented, closed**
 - [2026-08-11-camera-driver-gui-split.md](2026-08-11-camera-driver-gui-split.md) — driver/GUI split
@@ -81,3 +82,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from
   presence. **implemented, closed** (merged 2026-08-16, PR #761); rollout to production sites
   pending
+- [2026-08-18-cooperative-mixin-init.md](2026-08-18-cooperative-mixin-init.md) — convert mixin
+  `__init__` fan-out to cooperative `super()` chains across 10 repos, prerequisite for
+  `Object.__init__` raise enforcement. **proposed** (Repos: pyobs-core, pyobs-alpaca, pyobs-brot,
+  pyobs-fli, pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti, pyobs-sbig, pyobs-zwoeaf)

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import TYPE_CHECKING, Any
 
 from pyobs.images import Image, ImageProcessor
-from pyobs.object import Object
+from pyobs.object import Object, get_class_from_string
 from pyobs.utils.exceptions import ImageError
 
 if TYPE_CHECKING:
@@ -31,9 +32,10 @@ class PipelineMixin:
             archive: Default archive config/object for steps that accept one (e.g.
                 Calibration) and don't already specify their own -- lets a pipeline's
                 steps share the archive it was itself given, instead of repeating the
-                same archive config in every step that needs one. Steps that don't
-                declare an archive parameter just absorb and drop it via their own
-                **kwargs, the same as any other unrecognized Object kwarg.
+                same archive config in every step that needs one. Only injected into a
+                step's config if that step's class actually declares an `archive`
+                parameter (checked via signature inspection); steps that don't declare
+                one never receive it, rather than receiving-then-silently-dropping it.
         """
 
         # store
@@ -46,11 +48,38 @@ class PipelineMixin:
         else:
             raise ValueError("This class is no Object.")
 
+        super().__init__(**kwargs)
+
+    @staticmethod
+    def _accepts_archive(class_name: str) -> bool:
+        """Whether the given class declares an `archive` parameter anywhere in its `__init__` MRO."""
+        try:
+            klass = get_class_from_string(class_name)
+        except Exception:
+            return False
+        for cls in klass.__mro__:
+            init = cls.__dict__.get("__init__")
+            if init is None:
+                continue
+            try:
+                sig = inspect.signature(init)
+            except (TypeError, ValueError):
+                continue
+            if "archive" in sig.parameters:
+                return True
+        return False
+
     @staticmethod
     def _with_default_archive(
         step: dict[str, Any] | ImageProcessor, archive: dict[str, Any] | Archive | None
     ) -> dict[str, Any] | ImageProcessor:
-        if archive is not None and isinstance(step, dict) and "archive" not in step:
+        if (
+            archive is not None
+            and isinstance(step, dict)
+            and "archive" not in step
+            and "class" in step
+            and PipelineMixin._accepts_archive(step["class"])
+        ):
             return {**step, "archive": archive}
         return step
 

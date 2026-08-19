@@ -46,8 +46,6 @@ class FitsHeaderMixin:
                 them. A peer that never answers (e.g. a laptop put to sleep without closing its
                 client) would otherwise stall the frame for the full XMPP IQ timeout.
         """
-        module = cast(Module, self)
-
         # store
         self._fitsheadermixin_fits_namespaces = fits_namespaces
         self._fitsheadermixin_filename_pattern = filenames
@@ -58,9 +56,18 @@ class FitsHeaderMixin:
         self._fitsheadermixin_night_obs = night_obs
 
         # night exposure number
-        self._fitsheadermixin_cache = f"/pyobs/modules/{module.name}/cache.yaml"
         self._fitsheadermixin_enable_frame_number = frame_number
         self._fitsheadermixin_frame_number = 0
+
+        super().__init__(**kwargs)
+
+    @property
+    def _fitsheadermixin_cache(self) -> str:
+        # computed lazily (not cached at __init__ time) since it depends on module.name, which in
+        # turn depends on comm having been set up by Object.__init__ -- in a cooperative super()
+        # chain, this mixin's __init__ can run before Module has finished its own setup
+        module = cast(Module, self)
+        return f"/pyobs/modules/{module.name}/cache.yaml"
 
     async def request_fits_headers(self, before: bool = True) -> dict[str, Task[Any]]:
         """Request FITS headers from other modules.
@@ -309,7 +316,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
             rotation: Rotation east of north.
             filename: Filename pattern for FITS images.
         """
-        FitsHeaderMixin.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         # store
         self._fitsheadermixin_centre = centre

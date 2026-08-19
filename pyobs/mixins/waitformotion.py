@@ -42,6 +42,8 @@ class WaitForMotionMixin:
         )
         self.__wait_for_timeout = wait_for_timeout
 
+        super().__init__(**kwargs)
+
     async def _wait_for_motion(self, abort: Event) -> None:
         """Wait until all devices are in one of the given motion states.
 

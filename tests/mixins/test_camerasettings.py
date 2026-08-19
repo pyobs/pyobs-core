@@ -17,8 +17,7 @@ class SettingsModule(Module, CameraSettingsMixin):
     """Minimal concrete module for exercising CameraSettingsMixin in isolation."""
 
     def __init__(self, **kwargs) -> None:
-        Module.__init__(self, **kwargs)
-        CameraSettingsMixin.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
 
 def make_module(**kwargs) -> SettingsModule:

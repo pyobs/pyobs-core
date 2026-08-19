@@ -103,7 +103,8 @@ code shape:
 - ~~`gui.py:72` UI freeze from calling `expose_single_frame()` on the Qt thread~~ — **retracted**
   for the same reason: the call returns almost immediately, so there's nothing to freeze on.
 
-What checking the header turned up instead, fixed 2026-08-11:
+What checking the header turned up instead. Fixed 2026-08-11 in commit `b62622a`, merged into
+`develop` via PR #59 (squash `8ef6c5b`, 2026-08-18) after a rebase:
 
 - [x] **Abort was completely non-functional**, in both the module and the GUI, and this wasn't
       caught by the first read-through:

@@ -365,9 +365,23 @@ class Object(PrivateAttrMixin):
             super().__init__(**kwargs)
         except TypeError as e:
             if kwargs and "object.__init__() takes exactly one argument" in str(e):
+                # Object's own kwargs is only the leftover *before* consumption by whatever mixins
+                # come after it in the MRO (e.g. MotionStatusMixin claiming motion_status_interfaces)
+                # -- reporting it as-is would flag kwargs that were, in fact, legitimately consumed
+                # downstream. The precise set is the `kwargs` local of the deepest frame in this
+                # exception's traceback: that's the cooperative __init__ call that actually forwarded
+                # to the real object.__init__() and got rejected, so its own unconsumed kwargs is
+                # exactly what's left over.
+                leftover = kwargs
+                tb = e.__traceback__
+                while tb is not None:
+                    frame_kwargs = tb.tb_frame.f_locals.get("kwargs")
+                    if isinstance(frame_kwargs, dict):
+                        leftover = frame_kwargs
+                    tb = tb.tb_next
                 raise TypeError(
                     f"{type(self).__name__}() got unexpected keyword argument(s) "
-                    f"{sorted(kwargs)} that no class in its __init__ chain consumed."
+                    f"{sorted(leftover)} that no class in its __init__ chain consumed."
                 ) from e
             raise
 

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import aiohttp
 import pytest
 
+import pyobs.utils.http as httpmod
 from pyobs.utils.http import http_request_paginated, http_request_with_retries
 
 
@@ -161,3 +162,43 @@ async def test_paginated_only_passes_kwargs_to_first_request() -> None:
 
     session.request.assert_any_call("get", "http://example.com/api", params={"state": "pending"})
     session.request.assert_any_call("get", "http://example.com/api?page=2")
+
+
+@pytest.mark.asyncio
+async def test_paginated_stops_early_on_invalid_page_beyond_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A page shifting out of range mid-fetch (e.g. concurrent writes on a live dataset) stops
+    pagination with the results gathered so far, instead of failing the whole request."""
+    monkeypatch.setattr(httpmod, "http_request_with_retries", http_request_with_retries.__wrapped__)
+    page1 = make_response(200, {"results": [{"id": 1}], "next": "http://example.com/api?page=2"})
+    page2 = make_response(404, {"detail": "Invalid page."})
+    session = MagicMock()
+    session.request = MagicMock(side_effect=[page1, page2])
+
+    result = await http_request_paginated(session, "http://example.com/api")
+
+    assert result == [{"id": 1}]
+
+
+@pytest.mark.asyncio
+async def test_paginated_does_not_swallow_invalid_page_on_first_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An "Invalid page." 404 on the very first request is a real error (e.g. a bad page= param
+    passed in by the caller), not a mid-fetch race -- it must still raise."""
+    monkeypatch.setattr(httpmod, "http_request_with_retries", http_request_with_retries.__wrapped__)
+    response = make_response(404, {"detail": "Invalid page."})
+    session = make_session(response)
+
+    with pytest.raises(RuntimeError, match="HTTP 404"):
+        await http_request_paginated(session, "http://example.com/api")
+
+
+@pytest.mark.asyncio
+async def test_paginated_does_not_swallow_unrelated_404(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A 404 that isn't DRF's "Invalid page." shape (e.g. a wrong URL) must still raise."""
+    monkeypatch.setattr(httpmod, "http_request_with_retries", http_request_with_retries.__wrapped__)
+    page1 = make_response(200, {"results": [{"id": 1}], "next": "http://example.com/api?page=2"})
+    page2 = make_response(404, {"detail": "Not found."})
+    session = MagicMock()
+    session.request = MagicMock(side_effect=[page1, page2])
+
+    with pytest.raises(RuntimeError, match="HTTP 404"):
+        await http_request_paginated(session, "http://example.com/api")

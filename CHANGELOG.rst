@@ -1,5 +1,9 @@
 v2.0.0.dev78 (unreleased)
 *************************
+* ``Project`` gained a ``public`` flag (default ``False``), matching the field the robotic backend
+  (pyobs-robotic-backend#79) will start returning from ``GET /api/projects/``. Without it, the
+  strict ``Project`` model rejected the new key and ``BackendTaskArchive`` silently kept running on
+  stale or empty task/project data. Fixes #786.
 * ``BaseVideo`` gained a raw-frame streaming endpoint (``/video.raw``) alongside the existing MJPEG
   stream: a multipart, event-driven feed of a JSON FITS-keyed meta header plus raw little-endian
   frame bytes, with latest-frame-wins backpressure (a slow client drops stale frames instead of

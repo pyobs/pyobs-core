@@ -125,6 +125,8 @@ class FollowMixin:
         if not isinstance(self, self.__follow_mode):
             raise ValueError(f"This module is not of given mode {mode}.")
 
+        super().__init__(*args, **kwargs)
+
     @property
     def is_following(self) -> bool:
         """Returns True, if we're following another device."""

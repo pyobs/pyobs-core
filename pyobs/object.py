@@ -355,6 +355,11 @@ class Object(PrivateAttrMixin):
         # background tasks
         self._background_tasks: list[tuple[BackgroundTask, bool]] = []
 
+        # forward anything left to the next class in the MRO -- lets mixins listed after this
+        # one in a subclass's bases (e.g. WeatherAwareMixin, PipelineMixin) claim their own
+        # kwargs cooperatively, instead of Object silently absorbing them
+        super().__init__(**kwargs)
+
     def add_background_task(
         self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool = True, autostart: bool = True
     ) -> BackgroundTask:

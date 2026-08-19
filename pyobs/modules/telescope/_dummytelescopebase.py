@@ -94,8 +94,7 @@ class _DummyTelescopeBase(
             focal_length: Focal length in mm.
             wait_secs: Wait time between slew checks in seconds.
         """
-        BaseTelescope.__init__(self, **kwargs, motion_status_interfaces=["ITelescope", "IFocuser", "IFilters"])
-        FitsNamespaceMixin.__init__(self, **kwargs)
+        super().__init__(motion_status_interfaces=["ITelescope", "IFocuser", "IFilters"], **kwargs)
 
         # telescope state
         self._position = (

@@ -22,8 +22,7 @@ class FitsModule(Module, ImageFitsHeaderMixin):
     """Minimal concrete module for exercising ImageFitsHeaderMixin in isolation."""
 
     def __init__(self, **kwargs) -> None:
-        Module.__init__(self, **kwargs)
-        ImageFitsHeaderMixin.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
 
 DEFAULT_LOCATION = EarthLocation.from_geodetic(lon=20.81, lat=-32.38, height=1798.0)

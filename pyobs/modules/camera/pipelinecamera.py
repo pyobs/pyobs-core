@@ -20,9 +20,7 @@ class PipelineCamera(Module, ICamera, ImageFitsHeaderMixin, PipelineMixin):
 
     def __init__(self, **kwargs: Any):
         """Creates a new pipeline cammera."""
-        Module.__init__(self, **kwargs)
-        PipelineMixin.__init__(self, **kwargs)
-        ImageFitsHeaderMixin.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
     async def grab_data(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image and returns reference.

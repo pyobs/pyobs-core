@@ -221,7 +221,7 @@ def _ra_rate_on_sky(ra1_deg: float, ra2_deg: float, dec_deg: float, dt_seconds: 
 
 
 class BaseTelescope(
-    WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, Module, metaclass=ABCMeta
+    Module, WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, metaclass=ABCMeta
 ):
     """Base class for telescopes."""
 
@@ -241,7 +241,16 @@ class BaseTelescope(
             min_altitude: Minimal altitude for telescope.
             wait_for_dome: Name of dome module to wait for.
         """
-        Module.__init__(self, **kwargs)
+        # wait_for_dome is BaseTelescope's own param, but WaitForMotionMixin (further down the
+        # cooperative chain) needs it translated into its own wait_for_modules/wait_for_timeout/
+        # wait_for_states shape -- computed here and threaded through the single super() call,
+        # since WaitForMotionMixin has no way to see wait_for_dome itself.
+        super().__init__(
+            wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
+            wait_for_timeout=60000,
+            wait_for_states=[MotionStatus.POSITIONED, MotionStatus.TRACKING],
+            **kwargs,
+        )
 
         # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
@@ -264,16 +273,6 @@ class BaseTelescope(
         # add thread func
         self.add_background_task(self._celestial, True)
         self.add_background_task(self._track_refresh, True)
-
-        # init mixins
-        WeatherAwareMixin.__init__(self, **kwargs)
-        MotionStatusMixin.__init__(self, **kwargs)
-        WaitForMotionMixin.__init__(
-            self,
-            wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
-            wait_for_timeout=60000,
-            wait_for_states=[MotionStatus.POSITIONED, MotionStatus.TRACKING],
-        )
 
         # register exception
         self._register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)

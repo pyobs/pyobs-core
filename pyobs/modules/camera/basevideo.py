@@ -113,15 +113,14 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             sleep_time: Time in s with inactivity after which the camera should go to sleep.
             fits_header_timeout: Maximum seconds to wait for a peer's FITS headers before skipping them.
         """
-        Module.__init__(self, **kwargs)
-        ImageFitsHeaderMixin.__init__(
-            self,
+        super().__init__(
             fits_namespaces=fits_namespaces,
             fits_headers=fits_headers,
             centre=centre,
             rotation=rotation,
             filenames=filenames,
             fits_header_timeout=fits_header_timeout,
+            **kwargs,
         )
 
         # store

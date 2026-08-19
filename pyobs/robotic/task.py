@@ -149,6 +149,7 @@ class Project(BaseModel):
     code: str
     name: str = ""
     priority: float | None = Field(ge=0.0, le=9999.0, default=1.0)
+    users: list[str] = Field(default_factory=list)
 
 
 __all__ = ["Task", "TaskData", "Project"]

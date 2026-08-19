@@ -135,6 +135,15 @@ class FitsHeaderMixin:
             except exc.RemoteError as e:
                 log.warning("Could not fetch FITS headers from %s: %s.", client, str(e))
                 continue
+            except Exception as e:
+                # XmppComm.execute() only converts IqError/IqTimeout into RemoteError; anything
+                # else raised while making or deserializing the RPC call (e.g. a peer returning a
+                # malformed IFitsHeaderBefore/After response) escapes as a raw exception. That must
+                # not take down the whole exposure -- log and skip this peer's headers (#767).
+                log.warning(
+                    "Could not fetch FITS headers from %s: unexpected %s: %s.", client, type(e).__name__, str(e)
+                )
+                continue
 
             # add them to fits file
             if headers:

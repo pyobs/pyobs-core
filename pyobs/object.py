@@ -357,8 +357,19 @@ class Object(PrivateAttrMixin):
 
         # forward anything left to the next class in the MRO -- lets mixins listed after this
         # one in a subclass's bases (e.g. WeatherAwareMixin, PipelineMixin) claim their own
-        # kwargs cooperatively, instead of Object silently absorbing them
-        super().__init__(**kwargs)
+        # kwargs cooperatively, instead of Object silently absorbing them. If nothing further
+        # down the chain claims them either, this eventually raises inside the real
+        # object.__init__(), whose error message names neither the class nor the offending
+        # kwargs -- wrap it so a leftover-kwarg mistake is actually diagnosable.
+        try:
+            super().__init__(**kwargs)
+        except TypeError as e:
+            if kwargs and "object.__init__() takes exactly one argument" in str(e):
+                raise TypeError(
+                    f"{type(self).__name__}() got unexpected keyword argument(s) "
+                    f"{sorted(kwargs)} that no class in its __init__ chain consumed."
+                ) from e
+            raise
 
     def add_background_task(
         self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool = True, autostart: bool = True

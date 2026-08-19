@@ -62,3 +62,36 @@ def test_create_object_pydantic_rejects_positional_args():
 def test_create_object_pydantic_rejects_kwarg_config_collision():
     with pytest.raises(TypeError, match="name"):
         create_object({"class": "pyobs.robotic.task.Task", "name": "from_config"}, name="from_kwarg")
+
+
+def test_unrecognized_kwarg_raises_typeerror_naming_class_and_kwarg():
+    """Object.__init__'s cooperative super().__init__(**kwargs) call eventually reaches the real
+    object.__init__() if nothing in the chain claims a kwarg, but that raises a generic,
+    contextless TypeError. Object wraps it so the message actually names the class and kwarg."""
+    with pytest.raises(TypeError, match=r"Object\(\) got unexpected keyword argument\(s\) \['bogus_kwarg'\]"):
+        Object(bogus_kwarg="whatever")
+
+
+def test_unrecognized_kwarg_error_chains_original_typeerror():
+    with pytest.raises(TypeError) as exc_info:
+        Object(bogus_kwarg="whatever")
+    assert isinstance(exc_info.value.__cause__, TypeError)
+    assert "object.__init__() takes exactly one argument" in str(exc_info.value.__cause__)
+
+
+def test_mixin_after_object_in_mro_still_claims_its_own_kwargs():
+    """Regression guard for the wrapped super().__init__(**kwargs) call: a subclass with a mixin
+    listed after Object in its bases (e.g. BaseRoof(Module, WeatherAwareMixin, ...)) must still be
+    able to consume kwargs cooperatively -- the wrap must not turn Object into a premature
+    terminal point for the chain."""
+
+    class _AfterObjectMixin:
+        def __init__(self, mixin_only_kwarg: str | None = None, **kwargs):
+            self.mixin_only_kwarg = mixin_only_kwarg
+            super().__init__(**kwargs)
+
+    class _ObjectThenMixin(Object, _AfterObjectMixin):
+        pass
+
+    obj = _ObjectThenMixin(mixin_only_kwarg="claimed-downstream")
+    assert obj.mixin_only_kwarg == "claimed-downstream"

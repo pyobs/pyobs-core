@@ -2010,9 +2010,9 @@
     "semantic_hash": ""
   },
   "pyobs/utils/http.py": {
-    "mtime": 1785921924.30094,
-    "ast_hash": "ad3212f06323aa044e55c9505f5c59da",
-    "semantic_hash": "ad3212f06323aa044e55c9505f5c59da"
+    "mtime": 1787135957.5314097,
+    "ast_hash": "e600d1714bd8627b550331e46a67f9ed",
+    "semantic_hash": ""
   },
   "pyobs/utils/influxdb.py": {
     "mtime": 1783934216.408048,
@@ -2225,8 +2225,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1787123205.397914,
-    "ast_hash": "6d1982a7103f7798036bce8e27ac84ac",
+    "mtime": 1787134738.5487175,
+    "ast_hash": "865f5cf6ad6d2de45e9f978311e93cd6",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -3440,9 +3440,9 @@
     "semantic_hash": "02dd0e4e3120c51e2aa9406c98db380a"
   },
   "tests/utils/test_http.py": {
-    "mtime": 1785921924.30194,
-    "ast_hash": "3ca82964170c8dc033d75e57baf581b0",
-    "semantic_hash": "3ca82964170c8dc033d75e57baf581b0"
+    "mtime": 1787135957.5314097,
+    "ast_hash": "92190a570baabbebb1888abf78e543c6",
+    "semantic_hash": ""
   },
   "tests/utils/test_parallel.py": {
     "mtime": 1780903995.1442428,

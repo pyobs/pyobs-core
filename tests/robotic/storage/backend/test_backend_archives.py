@@ -115,6 +115,27 @@ async def test_task_get_projects_from_backend(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_task_get_projects_from_backend_accepts_public(mocker) -> None:
+    """Projects with the backend `public` flag ingest without a strict-model ValidationError."""
+    archive = make_task_archive()
+    mocker.patch(
+        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        AsyncMock(
+            return_value=[
+                {"code": "public", "name": "Public", "priority": 1.0, "public": True},
+                {"code": "private", "name": "Private", "priority": 1.0, "public": False},
+            ]
+        ),
+    )
+    result = await archive._get_projects()
+    assert len(result) == 2
+    assert result[0].code == "public"
+    assert result[0].public is True
+    assert result[1].code == "private"
+    assert result[1].public is False
+
+
+@pytest.mark.asyncio
 async def test_task_get_tasks_from_backend(mocker) -> None:
     archive = make_task_archive()
     mocker.patch(

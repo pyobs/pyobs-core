@@ -29,3 +29,7 @@ Short decision records for choices that had genuine considered-and-rejected alte
 - [0012-event-delivery-explicit-pubsub-subscription-not-presence.md](0012-event-delivery-explicit-pubsub-subscription-not-presence.md) —
   event delivery moves from PEP presence auto-subscribe to explicit pubsub subscription.
   *accepted*
+- [0013-renaming-pyobs-robotic-backend.md](0013-renaming-pyobs-robotic-backend.md) —
+  naming decision for the robotic-backend service; proposed name `pyobs-schedule`,
+  not yet settled (package/image/Keycloak client in lockstep). *proposed* (Repos:
+  pyobs-robotic-backend, pyobs-auth)

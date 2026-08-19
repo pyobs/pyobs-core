@@ -155,6 +155,21 @@ async def test_add_requested_fits_headers_skips_remote_error() -> None:
 
 
 @pytest.mark.asyncio
+async def test_add_requested_fits_headers_skips_generic_exception() -> None:
+    """A peer raising a non-RemoteError -- e.g. a malformed IFitsHeaderBefore/After response that
+    fails deserialization -- must be logged and skipped, not crash the whole exposure (#767)."""
+    m = make_module()
+    image = make_image()
+
+    async def fut() -> dict:
+        raise ValueError("malformed response")
+
+    # should not raise
+    await m.add_requested_fits_headers(image, {"client1": asyncio.ensure_future(fut())})
+    assert "FOO" not in image.header
+
+
+@pytest.mark.asyncio
 async def test_add_requested_fits_headers_skips_empty_headers() -> None:
     m = make_module()
     image = make_image()

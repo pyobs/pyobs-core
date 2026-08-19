@@ -3,10 +3,23 @@
 See `specs/design/shared-auth-keycloak.md` for the reasoning behind this plan. Tracks #748.
 Repos: pyobs-archive, pyobs-robotic-backend.
 
+Status: implemented, closed 2026-08-19. Sections 1-3 complete — `pyobs-auth` and both service
+cutovers are implemented and released (`pyobs-auth` `2.0.0.dev7`, `pyobs-archive` `2.0.0.dev8`,
+`pyobs-robotic-backend` released with the dependency). Live verification done 2026-08-19: browser
+Keycloak login and logout confirmed working end to end against the running Keycloak (PKCE redirect
+→ callback → token validation → user mapping → session, and logout ending the SSO session). Section
+0 remains open but is Keycloak admin/deployment config, not pyobs code — tracked separately (see
+#748), not part of this plan's closure.
+
 Keycloak is the single issuer for all services; observation-portal is brokered behind it (Keycloak
 admin config, not pyobs code) rather than integrated as a second, separately-validated provider.
 
 ## 0. observation-portal (Keycloak admin config + small observation-portal config change)
+
+The plan's only remaining open section as of 2026-08-19 — the Keycloak server, realm, and
+per-service clients are set up, but observation-portal is not yet brokered behind Keycloak. All
+three items below are Keycloak admin/deployment config, not pyobs code; tracked separately from
+this plan (see #748).
 
 - [ ] Enable OIDC on our observation-portal deployment: `OAUTH2_PROVIDER` settings
       `"OIDC_ENABLED": True`, `"OIDC_RSA_PRIVATE_KEY": <PEM>`, add `"openid"` to `SCOPES`; set
@@ -59,36 +72,38 @@ Implemented and released: [github.com/pyobs/pyobs-auth](https://github.com/pyobs
       robotic-backend have different local `User`/`Profile` schemas and pyobs-auth can't assume
       one. Each service still keys its own resolver on `claims["sub"]`, per the design doc.
 
-## 2. pyobs-archive — cutover, not dual-path — not landed
+## 2. pyobs-archive — cutover, not dual-path — landed
 
-Marked "not landed" 2026-08-16 after checking the repo: `develop` still ships
-`OAuth2Backend`/`BearerAuthentication` (`pyobs_archive/authentication/backends.py`) and the
-`OAUTH_CLIENT` setting, with no `pyobs-auth` dependency and no Keycloak code anywhere. The items
-below were written as done but aren't reflected in the repo.
+Landed 2026-08-18/19 and released as `v2.0.0.dev8` (commits `01eb06e` "Add Keycloak
+login/logout via pyobs-auth, remove LCO OAuth2 integration", `3e5bd3f` resolve_user fixes,
+`1a117df` settings-configured admin account + error-page bump, `2cbda4b` v2.0.0.dev8). Every item
+below re-verified against the repo 2026-08-19: `backends.py`/`OAuth2Backend`/`BearerAuthentication`
+and the `OAUTH_CLIENT` setting are gone (no references remain), `pyobs-auth>=2.0.0.dev7` is a
+dependency, `Profile.keycloak_sub` (migration 0006) and `resolve_user` are in place with tests.
 
-- [ ] Add `pyobs-auth` dependency; wire `KeycloakAuthentication` into
+- [x] Add `pyobs-auth` dependency; wire `KeycloakAuthentication` into
       `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']`. No `AUTHENTICATION_BACKENDS` entry for
       Keycloak — the redirect-based OIDC flow doesn't fit that shape (see design doc/pyobs-auth's
       own notes), it's handled by `pyobs_auth.views` instead. `ModelBackend` (local Django
       username/password) stays the sole `AUTHENTICATION_BACKENDS` entry and the default login on
       the login page — Keycloak is an additive option next to it, not a replacement.
-- [ ] User mapping: `pyobs_archive.authentication.keycloak.resolve_user`, mint-on-first-login,
+- [x] User mapping: `pyobs_archive.authentication.keycloak.resolve_user`, mint-on-first-login,
       keyed on `Profile.keycloak_sub` (new field + migration), not username/email.
-- [ ] Migration path for existing users: `resolve_user` links an existing `User` by email on
+- [x] Migration path for existing users: `resolve_user` links an existing `User` by email on
       first Keycloak login rather than minting a duplicate — see design doc's realm/user-mapping
       decision. `Profile.access_token`/`refresh_token` columns (written by the old flow) left in
       place rather than dropped — dead but low-risk to leave vs. a destructive migration.
-- [ ] Remove `OAuth2Backend`/`BearerAuthentication` (`pyobs_archive/authentication/backends.py`)
+- [x] Remove `OAuth2Backend`/`BearerAuthentication` (`pyobs_archive/authentication/backends.py`)
       and the `OAUTH_CLIENT` setting — full cutover, no permanent second code path. Real trade-off:
       until observation-portal is actually brokered behind Keycloak, users whose only credential
       was an LCO/observation-portal account have no way in until they're otherwise provisioned in
       Keycloak.
-- [ ] Env vars for Keycloak client config (`KEYCLOAK_SERVER_URL`, `_REALM`, `_CLIENT_ID`,
+- [x] Env vars for Keycloak client config (`KEYCLOAK_SERVER_URL`, `_REALM`, `_CLIENT_ID`,
       `_CLIENT_SECRET`, `_REDIRECT_URI`, `_POST_LOGOUT_REDIRECT_URI`), documented in `README.md`/
       `.env.example`. Leaving `KEYCLOAK_SERVER_URL` unset disables Keycloak entirely — the login
       page's "Log in with Keycloak" button only renders when it's actually configured (new
       `pyobs_archive.context_processors.keycloak`).
-- [ ] Login template's "Log out" posts to `pyobs_auth:logout` instead of Django's built-in logout
+- [x] Login template's "Log out" posts to `pyobs_auth:logout` instead of Django's built-in logout
       view, so it does the right thing (local-only vs. also ending the Keycloak SSO session)
       regardless of how the session was established.
 

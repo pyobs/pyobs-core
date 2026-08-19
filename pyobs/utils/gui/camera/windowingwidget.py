@@ -50,7 +50,7 @@ class WindowingWidget(QtWidgets.QGroupBox):
 
     @property
     def value_top(self) -> int:
-        return self.spin_left.value()
+        return self.spin_top.value()
 
     @property
     def value_width(self) -> int:

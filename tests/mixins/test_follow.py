@@ -17,8 +17,7 @@ from pyobs.modules import Module
 
 class _FollowingDevice(Module, FollowMixin, IPointingAltAz):
     def __init__(self, **kwargs: Any) -> None:
-        Module.__init__(self, **kwargs)
-        FollowMixin.__init__(self, mode=IPointingAltAz, **kwargs)
+        super().__init__(mode=IPointingAltAz, **kwargs)
 
     async def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
         pass

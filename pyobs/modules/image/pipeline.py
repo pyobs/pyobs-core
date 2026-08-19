@@ -29,8 +29,7 @@ class Pipeline(Module, PipelineMixin):
             sources: List of sources to process images from.
             interval: Interval in seconds for automatic run of pipeline.
         """
-        Module.__init__(self, **kwargs)
-        PipelineMixin.__init__(self, pipeline)
+        super().__init__(steps=pipeline, **kwargs)
 
         # only allow one option!
         if (sources is not None and interval is not None) or (sources is None and interval is None):

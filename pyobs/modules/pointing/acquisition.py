@@ -75,7 +75,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                      successful or not.
             broadcast: Whether to broadcast acquisition images.
         """
-        BasePointing.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         # store
         self._default_exposure_time = exposure_time
@@ -91,9 +91,6 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # init log file
         self._publisher = CsvPublisher(log_file) if log_file is not None else None
-
-        # init camera settings mixin
-        CameraSettingsMixin.__init__(self, **kwargs)
 
     async def open(self) -> None:
         """Open module"""

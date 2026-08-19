@@ -1,11 +1,14 @@
 # Plan: Surface unrecognized kwargs in `Object.__init__` instead of silently discarding them
 
 Status: `comm_cfg` anchor leak fixed at the source, merged 2026-08-17 (PR #773, squash-merged as
-`a5646fb8`); `environment`/`database` confirmed gone 2026-08-18 (no longer a blocker); a full
-fleet-wide cleanup pass (2026-08-18) fixed every other confirmed dead/misplaced/typo'd kwarg found
-by re-running the investigation as a static check across `pyobs-monet`/`pyobs-iagvt`/`pyobs-iag50`/
-`pyobs-polaris` — see the new section below. `Object.__init__` warn/raise enforcement is the one
-remaining undecided item, and nothing found is blocking it anymore.
+`a5646fb8`); `environment`/`database` confirmed gone 2026-08-18 (no longer a blocker); two fleet
+cleanup passes (2026-08-18) fixed every confirmed dead/misplaced/typo'd kwarg found across
+`pyobs-monet`/`pyobs-iagvt`/`pyobs-iag50`/`pyobs-polaris`, including chasing down the ~45 classes
+that couldn't be import-checked in the first pass. **A first attempt at implementing the raise in
+`Object.__init__` (2026-08-18) found a real architectural blocker — see "Raise attempt" below — and
+was reverted.** The prerequisite fix now has its own plan:
+`specs/plans/2026-08-18-cooperative-mixin-init.md`. This plan closes once that one lands the actual
+`raise`.
 
 Related: `specs/plans/night-archive-io-hardening.md` — where this was first flagged (a typo in a
 `Reduction`/`Night` YAML config silently does nothing instead of raising). That plan fixes the
@@ -299,6 +302,64 @@ and the associated `pyobs-monti` driver — real issues found, config params don
 (`qasync`, `qfitswidget`, `qtawesome`, ...) with no fleet-hardware relevance, stopped chasing it since
 it's not a hardware config concern for this plan.
 
+With both fleet passes done and the `environment`/`database` question resolved, the fleet-cleanup
+side of this plan is finished. The remaining item — `Object.__init__` enforcement — turned out to
+need a real design decision first; see below.
+
+## Raise attempt (2026-08-18) — reverted, real architectural blocker found
+
+Implemented the straightforward version: in `Object.__init__`, after the explicit `vfs`/`comm`/
+`timezone`/`location`/`observer` params are bound, `if kwargs: raise TypeError(...)` listing the
+leftover keys. Ran the full test suite (`pytest -m "not integration and not xmpp"`, `--extra full`).
+**59 of 1487 tests failed**, all in mixin-heavy classes (`BaseTelescope` and its subclasses, camera
+mixins, `WeatherAwareMixin`/`FollowMixin`/etc).
+
+**Root cause, confirmed by tracing `BaseTelescope.__init__`
+(`pyobs/modules/telescope/basetelescope.py:230-276`):** this codebase's mixin pattern is not a
+cooperative `super().__init__(**kwargs)` chain where each class consumes its own params and forwards
+the strict remainder. Instead, several classes **fan the same `**kwargs` dict out to multiple sibling
+mixins independently, each claiming its own subset**:
+
+```python
+Module.__init__(self, **kwargs)              # <- reaches Object.__init__ FIRST
+...
+WeatherAwareMixin.__init__(self, **kwargs)    # claims its own keys, e.g. max_age
+MotionStatusMixin.__init__(self, **kwargs)    # claims motion_status_interfaces
+WaitForMotionMixin.__init__(self, ...)
+```
+
+`Module.__init__(self, **kwargs)` runs *first*, while `motion_status_interfaces` (an internal keyword
+`_DummyTelescopeBase.__init__` passes down, not a user config typo) is still sitting unclaimed in
+`kwargs` — nothing has consumed it yet, since `MotionStatusMixin.__init__` hasn't had its turn.
+`Module.__init__` forwards that same dict on to `Object.__init__`, where it looks exactly like a
+leftover/unrecognized key, even though it's about to be legitimately consumed a few lines later in
+the *same* `BaseTelescope.__init__` call. A raise at `Object.__init__`-time is structurally too early
+for this pattern — it can't know a sibling mixin called *after* it will still claim the key. This
+isn't a one-off: `WeatherAwareMixin`, `WaitForMotionMixin`, and (going by the 59 failures spanning
+camera mixins, `FollowMixin`, etc.) likely several other mixin-heavy classes use the same fan-out
+shape.
+
+**This invalidates the plan's original premise** ("kwargs flow up through `super().__init__(**kwargs)`
+calls until something consumes each key," see "Why not fixed already" above) for this whole class of
+mixin-composed objects — it's true for simple single-inheritance chains, not for fan-out composition.
+
+**Two real paths forward, neither a quick fix:**
+
+1. **Fix the fan-out pattern itself** in every class that uses it, so kwargs really do get
+   progressively consumed before `Object.__init__` runs (e.g., route `Module.__init__` through
+   `super()` instead of an explicit direct call, or reorder so mixins claim their kwargs before the
+   `Module.__init__`/`Object.__init__` call). Real refactoring across multiple classes
+   (`BaseTelescope` and whatever else shares the pattern), not a config or `Object.__init__` change.
+2. **Move the check out of `Object.__init__` entirely.** Check a config's keys against the *union* of
+   every `__init__` signature across the whole target class's MRO, once, after the class is resolved
+   but before/independent of actual construction — i.e., the same static approach the two fleet
+   cleanup passes above already used successfully. Doesn't care when/whether a sibling mixin
+   "eventually" claims a key, since it looks at the whole class shape up front rather than a
+   snapshot mid-construction.
+
+Reverted the `Object.__init__` change; nothing merged. Decision on which path (or whether to do
+this at all) not yet made.
+
 ## Open questions
 
 - ~~Is `environment:`/`database:` in monet central configs actually dead weight?~~ **Resolved
@@ -334,6 +395,13 @@ it's not a hardware config concern for this plan.
 - [x] Fleet-wide cleanup pass (2026-08-18): re-ran the investigation as a static check across all
       four local fleets (815 real config files) and fixed every confirmed dead/misplaced/typo'd
       kwarg found — see the new section above for the full list and commit references.
-- [ ] Decide and implement warn vs. raise for any remaining leftover kwargs at `Object.__init__`.
-      Nothing found is blocking this anymore — the only remaining item.
-- [ ] Update this doc's `Status:` to fully `implemented, closed` once the above lands.
+- [x] Fleet-wide follow-up (2026-08-18): chased down the ~45 classes that failed to import in the
+      first pass; found and fixed 4 more real path/config bugs plus 4 orphaned configs. See the
+      "Second pass" section above for the full list and commit references.
+- [x] Implement enforcement at `Object.__init__` — **attempted 2026-08-18, reverted.** The naive
+      `raise` breaks the mixin fan-out pattern used by `BaseTelescope` and others (59 test
+      failures); see "Raise attempt" section above. Decision made: fix the fan-out pattern (not the
+      class-MRO signature-union alternative) — see `specs/plans/2026-08-18-cooperative-mixin-init.md`
+      for the full plan and reasoning. This item is now tracked there instead.
+- [ ] Update this doc's `Status:` to fully `implemented, closed` once
+      `2026-08-18-cooperative-mixin-init.md` lands its own `raise` rollout.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import time
@@ -19,6 +20,7 @@ from pyobs.events import (
 from pyobs.interfaces import IRunnable, IRunning, IStartStop
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
+from pyobs.object import get_class_from_string
 from pyobs.robotic import (
     ObservationArchive,
     ObservationList,
@@ -30,6 +32,38 @@ from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
+
+
+def _class_accepts_param(config: dict[str, Any] | Any, param_name: str) -> bool:
+    """Whether the class configured in `config` (a dict with a "class" key, or an already-built
+    object) declares `param_name` somewhere in its __init__ MRO.
+
+    Used to decide whether a kwarg can be injected into a child object's config -- injecting
+    unconditionally relies on the target silently absorbing it if unwanted, which no longer
+    happens now that Object.__init__ forwards leftover kwargs on to object.__init__().
+    """
+    if isinstance(config, dict):
+        if "class" not in config:
+            return False
+        try:
+            klass = get_class_from_string(config["class"])
+        except Exception:
+            return False
+    elif isinstance(config, type):
+        klass = config
+    else:
+        klass = type(config)
+    for cls in klass.__mro__:
+        init = cls.__dict__.get("__init__")
+        if init is None:
+            continue
+        try:
+            sig = inspect.signature(init)
+        except (TypeError, ValueError):
+            continue
+        if param_name in sig.parameters:
+            return True
+    return False
 
 
 class Scheduler(Module, IStartStop, IRunnable):
@@ -68,8 +102,18 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # get scheduler
         self._task_archive = self.add_child_object(tasks, TaskArchive, on_tasks_changed=self._update_schedule)
-        self._schedule = self.add_child_object(schedule, ObservationArchive, auto_update=False)
-        self._scheduler = self.add_child_object(scheduler, TaskScheduler, observation_archive=self._schedule)
+        # BackendObservationArchive declares auto_update and gates its own polling loop on it --
+        # since we already drive updates via on_tasks_changed above, that poller must stay off.
+        # Other ObservationArchive implementations (e.g. LcoObservationArchive) don't declare it at
+        # all, so it must not be injected unconditionally.
+        extra_schedule_kwargs: dict[str, Any] = {}
+        if _class_accepts_param(schedule, "auto_update"):
+            extra_schedule_kwargs["auto_update"] = False
+        self._schedule = self.add_child_object(schedule, ObservationArchive, **extra_schedule_kwargs)
+        extra_scheduler_kwargs: dict[str, Any] = {}
+        if _class_accepts_param(scheduler, "observation_archive"):
+            extra_scheduler_kwargs["observation_archive"] = self._schedule
+        self._scheduler = self.add_child_object(scheduler, TaskScheduler, **extra_scheduler_kwargs)
 
         # store
         self._running = True

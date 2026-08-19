@@ -14,15 +14,14 @@ from pyobs.utils.enums import MotionStatus
 log = logging.getLogger(__name__)
 
 
-class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
+class DummyMode(Module, MotionStatusMixin, IMode, IMotion):
     """A dummy module for mode switching."""
 
     __module__ = "pyobs.modules.utils"
 
     def __init__(self, **kwargs: Any):
         """Initialize a new dummy module."""
-        Module.__init__(self, **kwargs)
-        MotionStatusMixin.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         # modes
         self._mode_options = {

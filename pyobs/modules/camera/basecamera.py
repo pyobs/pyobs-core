@@ -76,15 +76,14 @@ class BaseCamera(
             fits_namespaces: List of namespaces for FITS headers that this camera should request
             fits_header_timeout: Maximum seconds to wait for a peer's FITS headers before skipping them.
         """
-        Module.__init__(self, **kwargs)
-        ImageFitsHeaderMixin.__init__(
-            self,
+        super().__init__(
             fits_namespaces=fits_namespaces,
             fits_headers=fits_headers,
             centre=centre,
             rotation=rotation,
             filenames=filenames,
             fits_header_timeout=fits_header_timeout,
+            **kwargs,
         )
 
         # check

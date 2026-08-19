@@ -98,3 +98,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   `pyobs-archive` cutover (`2.0.0.dev8`), and `pyobs-robotic-backend` all landed/released; live
   Keycloak login + logout verified; observation-portal brokering (Section 0) tracked separately,
   Keycloak admin/deployment config only (Repos: pyobs-archive, pyobs-robotic-backend)
+- [2026-08-19-archive-project-access-control.md](2026-08-19-archive-project-access-control.md) —
+  show only images the logged-in user has access to, keyed on projects from
+  `pyobs-robotic-backend`. **planned** (pyobs/pyobs-archive#42; depends on
+  pyobs/pyobs-robotic-backend#79) (Repos: pyobs-archive, pyobs-robotic-backend)

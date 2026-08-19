@@ -53,6 +53,19 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-15-pydantic-extra-validation.md](2026-08-15-pydantic-extra-validation.md) — make the
   pydantic config layer reject unknown keys. **implemented, closed** (merged as `e398117f`, #762;
   closed #755)
+- [2026-08-05-scheduler-archive-prefetch-for-process-isolation.md](2026-08-05-scheduler-archive-prefetch-for-process-isolation.md) —
+  split archive prefetch from CPU-bound merit evaluation. **steps 1-3 implemented 2026-08-06; step
+  4 (`ProcessPoolExecutor` swap) dropped 2026-08-15, stress test showed no GIL contention at 6x
+  scale — doc recommends marking closed**
+- [2026-08-09-object-kwarg-validation.md](2026-08-09-object-kwarg-validation.md) — surface
+  unrecognized kwargs in `Object.__init__`. **implemented, closed 2026-08-19** (comm_cfg leak fixed
+  at source, #773; fleet cleanup done; enforcement landed as #782, prerequisite was
+  2026-08-18-cooperative-mixin-init.md)
+- [2026-08-18-cooperative-mixin-init.md](2026-08-18-cooperative-mixin-init.md) — convert mixin
+  `__init__` fan-out to cooperative `super()` chains across 10 repos, prerequisite for
+  `Object.__init__` raise enforcement. **implemented, closed 2026-08-19**, all 10/10 repos merged,
+  `pyobs-core` released as `v2.0.0.dev82` (Repos: pyobs-core, pyobs-alpaca, pyobs-brot, pyobs-fli,
+  pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti, pyobs-sbig, pyobs-zwoeaf)
 
 ## Not finished
 
@@ -60,13 +73,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   widget plugin mechanism + `pyside6-deploy` packaging. **draft** (Repos: pyobs-gui)
 - [2026-07-29-gui-telescopewidget-layout.md](2026-07-29-gui-telescopewidget-layout.md) —
   `TelescopeWidget` width-floor investigation. **proposed** (Repos: pyobs-gui)
-- [2026-08-05-scheduler-archive-prefetch-for-process-isolation.md](2026-08-05-scheduler-archive-prefetch-for-process-isolation.md) —
-  split archive prefetch from CPU-bound merit evaluation. **steps 1-3 implemented**
 - [2026-08-08-logevent-double-delivery-investigation.md](2026-08-08-logevent-double-delivery-investigation.md) —
   pyobs-gui receives every LogEvent twice. **investigating, open** (Repos: pyobs-core, pyobs-monet)
-- [2026-08-09-object-kwarg-validation.md](2026-08-09-object-kwarg-validation.md) — surface
-  unrecognized kwargs in `Object.__init__`. **comm_cfg fix implemented, closed; fleet cleanup
-  done; raise attempt reverted, blocked on 2026-08-18-cooperative-mixin-init.md**
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —
   raw-frame streaming endpoint in `BaseVideo`. **implemented, closed**
 - [2026-08-11-camera-driver-gui-split.md](2026-08-11-camera-driver-gui-split.md) — driver/GUI split
@@ -82,7 +90,3 @@ Implementation plans, checklist-style. Newest at the bottom.
   real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from
   presence. **implemented, closed** (merged 2026-08-16, PR #761); rollout to production sites
   pending
-- [2026-08-18-cooperative-mixin-init.md](2026-08-18-cooperative-mixin-init.md) — convert mixin
-  `__init__` fan-out to cooperative `super()` chains across 10 repos, prerequisite for
-  `Object.__init__` raise enforcement. **proposed** (Repos: pyobs-core, pyobs-alpaca, pyobs-brot,
-  pyobs-fli, pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti, pyobs-sbig, pyobs-zwoeaf)

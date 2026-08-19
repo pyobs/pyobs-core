@@ -86,8 +86,21 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —
   raw-frame streaming endpoint in `BaseVideo`. **implemented, closed**
 - [2026-08-11-camera-driver-gui-split.md](2026-08-11-camera-driver-gui-split.md) — driver/GUI split
-  for all camera modules. **proposed** (Repos: qhyccd, fli, tis, asi, aravis, sbig, flipro, v4l)
+  for all camera modules. **implemented, closed 2026-08-19** — all 8 repos' findings fixed
+  (PRs #59/#66 qhyccd, #32 asi, #41 aravis, #71 sbig, #35 flipro, #19 v4l, #83 fli, #13 tis) and
+  the missing gui apps built (fli #85, tis #14); real-hardware verification of the two new gui
+  apps tracked separately (blocked on hardware access, no cameras available) (Repos: qhyccd, fli,
+  tis, asi, aravis, sbig, flipro, v4l)
 - [2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md](2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md) —
-  baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented**
+  baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented, closed
+  2026-08-19** — tests/CI/pyrefly + grouped dependabot + branch protection across 13 repos, and
+  the Dependabot auto-merge workflow (validated live on pyobs-alpaca#33). Closes #752
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
-  Keycloak integration. **in progress** (Repos: pyobs-archive, pyobs-robotic-backend)
+  Keycloak integration. **implemented, closed 2026-08-19** — `pyobs-auth` (`2.0.0.dev7`),
+  `pyobs-archive` cutover (`2.0.0.dev8`), and `pyobs-robotic-backend` all landed/released; live
+  Keycloak login + logout verified; observation-portal brokering (Section 0) tracked separately,
+  Keycloak admin/deployment config only (Repos: pyobs-archive, pyobs-robotic-backend)
+- [2026-08-19-archive-project-access-control.md](2026-08-19-archive-project-access-control.md) —
+  show only images the logged-in user has access to, keyed on projects from
+  `pyobs-robotic-backend`. **planned** (pyobs/pyobs-archive#42; depends on
+  pyobs/pyobs-robotic-backend#79) (Repos: pyobs-archive, pyobs-robotic-backend)

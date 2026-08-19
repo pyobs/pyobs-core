@@ -1,26 +1,26 @@
 # Plan: Add baseline tests to core-tier repos, then enable grouped Dependabot auto-merge
 
-Status: implemented (merged 2026-08-16, PRs #31/#36/#29/#53/#79/#32/#16/#62/#68/#10/#16/#31/#18 across the 13 repos)
+Status: implemented, closed 2026-08-19. All tasks done: baseline tests + CI + pyrefly + grouped dependabot (merged 2026-08-16, PRs #31/#36/#29/#53/#79/#32/#16/#62/#68/#10/#16/#31/#18 across the 13 repos), branch protection + allow_auto_merge (2026-08-16), and the Dependabot auto-merge workflow (2026-08-19, validated live on pyobs-alpaca#33). Closes #752.
 
 Post-merge settings (2026-08-16): branch protection on `develop` with required status checks
 (`test`, `ruff`, `pyrefly`) and `allow_auto_merge: true` applied to all 13 repos. `pyobs-tis`
 was made public to unblock this (GitHub Free blocks branch protection and auto-merge on private
 repos).
 
-Remaining: making Dependabot actually enable auto-merge on its PRs. `allow_auto_merge: true` alone
-does not do it; the "Automatically enable auto-merge on Dependabot PRs" toggle has no REST API, so
-one of two follow-ups is needed:
+Resolved 2026-08-19 — option 2 (workflow) chosen and applied to all 13 repos:
+`.github/workflows/dependabot-automerge.yml` added to each (commits "Enable Dependabot auto-merge
+for patch/minor updates", then "Gate auto-merge on the PR author, not the event actor"). It's a
+`pull_request` workflow that detects Dependabot PRs (gated on the **PR author**, not the event
+actor, so a human reopening/touching a Dependabot PR still arms it), filters majors out via
+`dependabot/fetch-metadata` `update-type`, and runs `gh pr merge --auto --merge` for patch/minor
+only; `GITHUB_TOKEN` is granted `contents: write` + `pull-requests: write` in the workflow file.
+Auto-merge then waits for the required checks (`test`/`ruff`/`pyrefly`) before merging.
 
-1. **Manual toggle (UI only).** Per repo, Settings → Code security and analysis → Dependabot →
-   "Automatically enable auto-merge on Dependabot PRs". Zero code, but has to be done by hand on
-   each of the 13 repos and is easy to forget on future repos.
-2. **Workflow (`dependabot-automerge.yml`).** A `pull_request` workflow that detects Dependabot PRs
-   and runs `gh pr merge --auto --merge`, filtering majors out via `dependabot/fetch-metadata`
-   `update-type`. Codified and versionable, but adds a workflow to every repo and depends on
-   `GITHUB_TOKEN` having `contents: write` + `pull-requests: write`.
+Validated end-to-end 2026-08-19 on pyobs-alpaca#33 (a Dependabot ruff 0.16.2→0.16.3 patch bump):
+the workflow ran and auto-merged the PR once CI was green.
 
-Option 2 is preferred for fleet consistency; option 1 is fine if the fleet stays small. Not yet
-chosen or applied.
+The alternative (option 1, manual UI toggle) was rejected — not versionable, easy to forget on
+future repos; option 2 keeps the fleet consistent and codified.
 Issue: pyobs-core#752
 Repos: pyobs-alpaca, pyobs-aravis, pyobs-asi, pyobs-brot, pyobs-fli, pyobs-flipro, pyobs-gemini,
 pyobs-qhyccd, pyobs-sbig, pyobs-tis, pyobs-v4l, pyobs-zaber, pyobs-zwoeaf (see "Scope correction"

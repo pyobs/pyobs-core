@@ -95,3 +95,24 @@ def test_mixin_after_object_in_mro_still_claims_its_own_kwargs():
 
     obj = _ObjectThenMixin(mixin_only_kwarg="claimed-downstream")
     assert obj.mixin_only_kwarg == "claimed-downstream"
+
+
+def test_unrecognized_kwarg_message_excludes_downstream_consumed_kwargs():
+    """Object's own kwargs is the leftover *before* consumption by mixins later in the MRO -- a
+    downstream mixin claiming its own kwarg alongside a genuine typo must not get reported as
+    unconsumed too, or the message actively misleads about which kwarg is the real problem."""
+
+    class _AfterObjectMixin:
+        def __init__(self, mixin_only_kwarg: str | None = None, **kwargs):
+            self.mixin_only_kwarg = mixin_only_kwarg
+            super().__init__(**kwargs)
+
+    class _ObjectThenMixin(Object, _AfterObjectMixin):
+        pass
+
+    with pytest.raises(TypeError) as exc_info:
+        _ObjectThenMixin(mixin_only_kwarg="legitimately-consumed", bogus_kwarg="typo")
+
+    message = str(exc_info.value)
+    assert "bogus_kwarg" in message
+    assert "mixin_only_kwarg" not in message

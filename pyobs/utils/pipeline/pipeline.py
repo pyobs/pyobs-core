@@ -36,8 +36,7 @@ class Pipeline(Object, PipelineMixin):
                 Calibration) and don't already specify their own. See
                 PipelineMixin.__init__.
         """
-        Object.__init__(self, **kwargs)
-        PipelineMixin.__init__(self, steps, archive=archive)
+        super().__init__(steps=steps, archive=archive, **kwargs)
 
     @staticmethod
     def _combine_calib_images(

@@ -8,9 +8,14 @@ from pyobs.comm import Comm
 from pyobs.events import GoodWeatherEvent, TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
 from pyobs.interfaces import IRunning
 from pyobs.modules.robotic import Scheduler
+from pyobs.modules.robotic.scheduler import _class_accepts_param
 from pyobs.robotic import ObservationArchive, Task, TaskArchive
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
 from pyobs.robotic.scheduler import TaskScheduler
+from pyobs.robotic.scheduler.astroplanscheduler import AstroplanScheduler
+from pyobs.robotic.scheduler.ondemandscheduler import OnDemandScheduler
+from pyobs.robotic.storage.backend.observationarchive import BackendObservationArchive
+from pyobs.robotic.storage.lco.observationarchive import LcoObservationArchive
 from pyobs.robotic.task import TaskData
 from pyobs.utils.time import Time
 
@@ -121,6 +126,63 @@ def test_init_defaults() -> None:
     assert scheduler._tasks == []
     assert scheduler._projects == []
     assert scheduler._safety_time == 300 * u.second
+
+
+# ── _class_accepts_param (kwarg-injection matrix) ────────────────────────────
+#
+# Pins which schedule/scheduler classes get which auto-injected kwarg -- injecting
+# unconditionally used to rely on the target silently absorbing an unwanted kwarg, which stopped
+# being true once Object.__init__ started forwarding leftovers to object.__init__(). Regression
+# coverage for the auto_update bug found in PR #776 review: dropping it unconditionally would have
+# re-enabled BackendObservationArchive's polling loop in two live fleets.
+
+
+@pytest.mark.parametrize(
+    "class_path,param_name,expected",
+    [
+        ("pyobs.robotic.storage.backend.observationarchive.BackendObservationArchive", "auto_update", True),
+        ("pyobs.robotic.storage.lco.observationarchive.LcoObservationArchive", "auto_update", False),
+        ("pyobs.robotic.scheduler.ondemandscheduler.OnDemandScheduler", "observation_archive", True),
+        ("pyobs.robotic.scheduler.astroplanscheduler.AstroplanScheduler", "observation_archive", False),
+    ],
+)
+def test_class_accepts_param_dict_config(class_path: str, param_name: str, expected: bool) -> None:
+    assert _class_accepts_param({"class": class_path}, param_name) is expected
+
+
+@pytest.mark.parametrize(
+    "klass,param_name,expected",
+    [
+        (BackendObservationArchive, "auto_update", True),
+        (LcoObservationArchive, "auto_update", False),
+        (OnDemandScheduler, "observation_archive", True),
+        (AstroplanScheduler, "observation_archive", False),
+    ],
+)
+def test_class_accepts_param_bare_class(klass: type, param_name: str, expected: bool) -> None:
+    assert _class_accepts_param(klass, param_name) is expected
+
+
+def test_class_accepts_param_dict_without_class_key_is_false() -> None:
+    assert _class_accepts_param({}, "auto_update") is False
+
+
+def test_class_accepts_param_unresolvable_class_path_is_false() -> None:
+    assert _class_accepts_param({"class": "not.a.real.module.Class"}, "auto_update") is False
+
+
+def test_init_injects_auto_update_false_for_backend_observation_archive() -> None:
+    # regression test for the bug found in PR #776 review: dropping auto_update=False
+    # unconditionally re-enabled this 5s polling loop in two live fleet configs
+    scheduler = make_scheduler(
+        schedule={
+            "class": "pyobs.robotic.storage.backend.observationarchive.BackendObservationArchive",
+            "url": "http://x",
+            "token": "t",
+        }
+    )
+    has_poller = any(bg._func.__name__ == "_check_for_changes" for bg, _ in scheduler._schedule._background_tasks)
+    assert has_poller is False
 
 
 # ── open ─────────────────────────────────────────────────────────────────────

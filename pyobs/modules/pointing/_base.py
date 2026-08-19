@@ -34,11 +34,8 @@ class BasePointing(Module, PipelineMixin, metaclass=ABCMeta):
             telescope: Telescope to use.
             pipeline: Pipeline steps to run on new image. MUST include a step calculating offsets!
             apply: Object that handles applying offsets to telescope.
-            log_file: Name of file to write log to.
-            log_absolute: Log absolute offsets instead of relative ones to last one.
         """
-        Module.__init__(self, **kwargs)
-        PipelineMixin.__init__(self, pipeline)
+        super().__init__(steps=pipeline, **kwargs)
 
         # store
         self._camera = camera

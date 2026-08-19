@@ -15,6 +15,7 @@ class FitsNamespaceMixin:
 
     def __init__(self, fits_namespaces: dict[str, list[str]] | None = None, **kwargs: Any):
         self.__namespaces = {} if fits_namespaces is None else fits_namespaces
+        super().__init__(**kwargs)
 
     def _filter_fits_namespace(
         self, hdr: dict[str, FitsHeaderEntry], sender: str, namespaces: list[str] | None = None, **kwargs: Any

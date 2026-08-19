@@ -26,6 +26,8 @@ class MotionStatusMixin:
         self.__motion_status = MotionStatus.UNKNOWN
         self.__motion_status_single = {i: MotionStatus.UNKNOWN for i in self.__motion_status_interfaces}
 
+        super().__init__(**kwargs)
+
     async def open(self) -> None:
         # subscribe to events
         if isinstance(self, Module) and self._comm:

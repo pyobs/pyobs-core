@@ -33,6 +33,8 @@ class WeatherAwareMixin:
         else:
             raise ValueError("This is not a module.")
 
+        super().__init__(**kwargs)
+
     async def open(self) -> None:
         """Open mixin."""
         # subscribe to events

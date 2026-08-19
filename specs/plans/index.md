@@ -92,7 +92,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   apps tracked separately (blocked on hardware access, no cameras available) (Repos: qhyccd, fli,
   tis, asi, aravis, sbig, flipro, v4l)
 - [2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md](2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md) —
-  baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented**
+  baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented, closed
+  2026-08-19** — tests/CI/pyrefly + grouped dependabot + branch protection across 13 repos, and
+  the Dependabot auto-merge workflow (validated live on pyobs-alpaca#33). Closes #752
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
   Keycloak integration. **implemented, closed 2026-08-19** — `pyobs-auth` (`2.0.0.dev7`),
   `pyobs-archive` cutover (`2.0.0.dev8`), and `pyobs-robotic-backend` all landed/released; live

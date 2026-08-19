@@ -237,6 +237,98 @@ against current `pyobs-core` (not `1.32.1`) with `--no-deps` to bypass the stale
 since grown — unrelated to kwarg threading, not fixed here (out of scope), worked around in
 verification with a throwaway stub subclass.
 
+## Step 6 (`pyobs-alpaca`) — implemented
+
+Three classes, all three separate fan-out shapes: `AlpacaDome(FollowMixin, BaseDome)` had the mixin
+listed *before* the base and both `__init__`s called explicitly (sibling-leak, plus what became a
+redundant-double-call once `pyobs-core`'s `FollowMixin` went cooperative); `AlpacaFocuser
+(MotionStatusMixin, ..., Module)` had `Module` listed *last*, called first, with
+`MotionStatusMixin.__init__(self)` called separately with no kwargs after (same sibling-leak shape as
+`pyobs-fli`); `AlpacaTelescope(BaseTelescope, FitsNamespaceMixin, ...)` had bases already correctly
+ordered but still made the `pyobs-monti`-style redundant second call. Reordered `AlpacaDome` to
+`(BaseDome, FollowMixin)` and `AlpacaFocuser` to `(Module, MotionStatusMixin, ...)`; collapsed all
+three to a single `super().__init__()` call.
+
+**A fourth, new failure mode found here:** all three classes construct a child `AlpacaDevice` via
+`self.add_child_object(AlpacaDevice, **kwargs)`, reusing the *same* `kwargs` dict passed to the
+module's own chain. `AlpacaDevice`-only kwargs (`server`, `port`, `device_type`, `device`, `version`,
+`alive_parameter`) aren't recognized anywhere in the `Module`/mixin chain, and — symmetrically —
+module/mixin-only kwargs (`fits_namespaces`, `motion_status_interfaces`) aren't recognized by
+`AlpacaDevice`. Both directions used to be silently absorbed; both now raise. Fixed by scoping each
+side's kwargs explicitly (`DEVICE_INIT_KWARGS`/`OBJECT_SHARED_KWARGS` constants in `device.py`). This
+is a distinct bug from the fan-out `__init__` pattern — it's about a *child object* sharing its
+parent's raw kwargs blob, not about sibling mixins in the same MRO — but it's the same root cause
+(`Object.__init__` no longer silently absorbing) and was blocking verification, so fixed in the same
+PR. Verified: new `tests/test_cooperative_init.py` constructs all three with representative kwargs
+and asserts mixin state landed; confirmed to fail with `TypeError` against the pre-fix code (via
+`git stash`) and pass post-fix. `AlpacaFocuser`/`AlpacaTelescope` are live outside this repo's own
+config directory (`pytel-dev/configs/alpaca-{focuser,telescope}.yaml`) — those configs currently use
+a stale `type:` key instead of `device_type:` (pre-existing config drift from an old rename,
+unrelated, not fixed). `AlpacaDome` has no config reference found anywhere in the fleet. PR #34.
+
+## Step 7 (`pyobs-zwoeaf`) — implemented
+
+`EAFFocuser(Module, MotionStatusMixin, IFocuser, ITemperatures)` — bases already correctly ordered,
+but called `Module.__init__(self, **kwargs)` then a separate `MotionStatusMixin.__init__(self)` with
+*no* kwargs. Collapsed to a single `super().__init__(**kwargs)` call. Unlike the other repos, this one
+doesn't currently crash: the redundant second call passes zero kwargs, so it just re-runs
+`MotionStatusMixin.__init__`'s idempotent body a second time rather than leaking anything to
+`object.__init__()` — confirmed by constructing with a representative kwarg (`location`) against both
+pre- and post-fix code. Still converted for consistency with the fleet-wide pattern and to remove the
+footgun (any future kwarg threaded through that second call would resurface as a crash). Live in
+`pyobs-monet/config/south/monti/focuser.yaml` (`comm`/`vfs` only). PR #21.
+
+## Step 8 (`pyobs-iagvt`) — implemented
+
+`LDP`/`LED` (identical shape): `class LDP(MotionStatusMixin, Module, IMode, IMotion)` — mixin listed
+*before* `Module`, called `Module.__init__(self, *args, **kwargs)` then a separate
+`MotionStatusMixin.__init__(self, **kwargs)` — classic sibling-leak, with real kwargs on the second
+call this time. Reordered both to `(Module, MotionStatusMixin, IMode, IMotion)`, collapsed to
+`super().__init__(*args, **kwargs)`. Live configs (`config/iagvtsrv/{ldp,led}.yaml`) only set `comm`,
+which is consumed by `Object` and doesn't crash — confirmed both pre- and post-fix with those exact
+kwargs. But any sibling-mixin kwarg (`motion_status_interfaces`) does crash pre-fix — confirmed via a
+constructed repro and used as the regression test (`tests/modules/test_ldp_led.py`), since it's the
+smallest kwarg that exercises the actual defect rather than a coincidentally-safe one. Full test
+suite not run (this repo depends on a private `pyftscontrol` git package and heavy optional deps not
+installed in the verification environment); `ruff`/`pyrefly` clean on touched files. MR !61
+(`gitlab.gwdg.de/iagvt/pyobs-iagvt`).
+
+## Step 9 (`pyobs-sbig`) — implemented
+
+`SbigFilterCamera(MotionStatusMixin, SbigCamera, IFilters)` — same sibling-leak shape as
+`pyobs-iagvt`: `SbigCamera.__init__(self, **kwargs)` then a separate
+`MotionStatusMixin.__init__(self, **kwargs, motion_status_interfaces=["IFilters"])`. Reordered to
+`(SbigCamera, MotionStatusMixin, IFilters)`, collapsed to a single call. Unlike `pyobs-iagvt`, this
+one turned out *not* reproducibly crashing: `SbigCamera`'s own chain (via `BaseCamera`) already
+consumes every kwarg the live configs set (`filter_wheel`, `filter_names`, `setpoint`, `fits_headers`,
+`comm`, `vfs`), and re-consumes them identically on the redundant second pass, so nothing leaks either
+before or after the fix — confirmed with the actual `pyobs-monet`/`pyobs-monti` SBIG8300 config
+kwargs. The only kwarg that would exercise the defect is `motion_status_interfaces` itself, and that
+collides directly (`got multiple values`) rather than leaking, both before and after, since it's
+hardcoded at the call site — not a fair regression case. No new regression test added for this reason
+(the existing suite already covers construction); fixed anyway to match the fleet-wide pattern. Live
+in `pyobs-monet`'s `south/piggyback`/`north/camera` SBIG8300 configs and `pyobs-monti/config/camera.yaml`.
+PR #72.
+
+## Step 10 (`pyobs-brot`) — implemented
+
+Resolves this plan's earlier open question about whether `pyobs-brot` is actually live: yes —
+`pyobs-monet/config/{north,south}/monet/telescope.yaml` (both `class: BrotAltAzTelescope`) and
+`south/monet/roof.yaml`. Three classes exist (`BrotDome`, `BrotRoof`, `BrotBaseTelescope` +
+subclasses `BrotRaDecTelescope`/`BrotAltAzTelescope`), but only `BrotBaseTelescope` has the fan-out
+shape — `BrotDome`/`BrotRoof` and the two telescope subclasses each have exactly one real base,
+called explicitly, which is fine (matches the `BaseDome`-in-`pyobs-core` precedent). `BrotBaseTelescope
+(BaseTelescope, ..., FitsNamespaceMixin)` — bases already correctly ordered, but called
+`BaseTelescope.__init__(self, **kwargs, motion_status_interfaces=[...], wait_for_dome=...)` then a
+separate `FitsNamespaceMixin.__init__(self, **kwargs)` — the `pyobs-monti`-style redundant-double-call.
+Collapsed to a single `super().__init__()` call.
+
+**This is a real, live crash, not just a latent one:** the deployed telescope configs set `location`,
+`timezone`, `comm`, `fits_headers`, and `temperatures`. Confirmed via `git stash` that constructing
+`BrotAltAzTelescope` with exactly those kwargs raises `TypeError: object.__init__() takes exactly one
+argument` against `pyobs-core`#776's cooperative chain on the pre-fix code, and succeeds post-fix.
+Regression test added mirroring the live config's kwargs. PR #56.
+
 ## Non-goals
 
 - Not converting every explicit `ClassName.__init__(self, **kwargs)` call in these codebases — a
@@ -311,13 +403,19 @@ construction check against real configs where fleet configs exist to check again
       (GitLab, `gitlab.gwdg.de/monet/pyobs-monti`) open and reviewed — approved, blocked purely on
       pyobs-core #776 merging first (same as pyobs-fli/pyobs-gemini). `_set_tracking_rate`
       abstract-method gap and stale `pyobs-core==1.32.1` pin are pre-existing, out of scope here.
-- [ ] `pyobs-alpaca` (3 classes)
-- [ ] `pyobs-zwoeaf` (1 class)
-- [ ] `pyobs-iagvt` (2 classes) — `LDP`/`LED` are live but current configs don't trigger the bug;
-      re-check before this repo's `pyobs-core` pin moves past #776.
-- [ ] `pyobs-sbig` (1 class) — `SbigFilterCamera` is live but current configs don't trigger the bug;
-      re-check before this repo's `pyobs-core` pin moves past #776.
-- [ ] `pyobs-brot` (1 class)
+- [ ] `pyobs-alpaca` (3 classes) — `AlpacaDome`/`AlpacaFocuser`/`AlpacaTelescope` fixed, plus a
+      related child-object kwarg-leak bug (see Step 6); regression test added. PR #34, open,
+      blocked on pyobs-core #776 merging first.
+- [ ] `pyobs-zwoeaf` (1 class) — `EAFFocuser` fixed; currently harmless (no crash reproduced) but
+      converted for consistency, see Step 7. PR #21, open, blocked on pyobs-core #776.
+- [ ] `pyobs-iagvt` (2 classes) — `LDP`/`LED` fixed; live configs don't trigger the bug but a
+      sibling-mixin kwarg does (see Step 8), regression test added. MR !61
+      (`gitlab.gwdg.de/iagvt/pyobs-iagvt`), open, blocked on pyobs-core #776.
+- [ ] `pyobs-sbig` (1 class) — `SbigFilterCamera` fixed; not reproducibly crashing (see Step 9),
+      converted for consistency. PR #72, open, blocked on pyobs-core #776.
+- [ ] `pyobs-brot` (1 class) — `BrotBaseTelescope` fixed; **live production crash**, confirmed via
+      the deployed telescope configs (see Step 10), regression test added. PR #56, open, blocked
+      on pyobs-core #776. Resolves this plan's earlier open question about `pyobs-brot`'s liveness.
 - [ ] Implement `if kwargs: raise TypeError(...)` in `Object.__init__` (`pyobs-core`), now that
       every consuming class threads kwargs cooperatively.
 - [ ] Roll out / restart affected fleet modules; watch for anything this session's checks missed

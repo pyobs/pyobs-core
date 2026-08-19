@@ -66,6 +66,14 @@ Implementation plans, checklist-style. Newest at the bottom.
   `Object.__init__` raise enforcement. **implemented, closed 2026-08-19**, all 10/10 repos merged,
   `pyobs-core` released as `v2.0.0.dev82` (Repos: pyobs-core, pyobs-alpaca, pyobs-brot, pyobs-fli,
   pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti, pyobs-sbig, pyobs-zwoeaf)
+- [2026-08-16-logevent-double-delivery-fix-discussion.md](2026-08-16-logevent-double-delivery-fix-discussion.md) —
+  discussion notes: drop `add_interest()` to fix `ms` double-delivery, plus whether/how to get
+  real interest-based event filtering. **closed** (actioned as ADR 0012 below)
+- [2026-08-16-explicit-pubsub-event-subscriptions.md](2026-08-16-explicit-pubsub-event-subscriptions.md) —
+  real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from
+  presence. **implemented, closed** (merged 2026-08-16, PR #761; 9 integration tests + full 30/30
+  XMPP suite passing). Rollout to production sites is a standalone operational step, not part of
+  this plan's closure.
 
 ## Not finished
 
@@ -83,10 +91,3 @@ Implementation plans, checklist-style. Newest at the bottom.
   baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented**
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
   Keycloak integration. **in progress** (Repos: pyobs-archive, pyobs-robotic-backend)
-- [2026-08-16-logevent-double-delivery-fix-discussion.md](2026-08-16-logevent-double-delivery-fix-discussion.md) —
-  discussion notes: drop `add_interest()` to fix `ms` double-delivery, plus whether/how to get
-  real interest-based event filtering. **closed** (actioned as ADR 0012 below)
-- [2026-08-16-explicit-pubsub-event-subscriptions.md](2026-08-16-explicit-pubsub-event-subscriptions.md) —
-  real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from
-  presence. **implemented, closed** (merged 2026-08-16, PR #761); rollout to production sites
-  pending

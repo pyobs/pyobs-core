@@ -391,33 +391,55 @@ construction check against real configs where fleet configs exist to check again
       PR #776 (open, reviewed — one real regression found and fixed, see review thread — not yet
       merged; merging this is what unblocks pyobs-fli #84 and pyobs-gemini #19 below).
 - [ ] `pyobs-fli` (2 classes) — pulled forward, live-breaking (see critical finding above); PR #84
-      open, reviewed, regression test added and independently re-verified by reviewer. Blocked on
-      pyobs-core #776 merging + bumping this repo's `pyobs-core` pin to a release containing it.
+      — reviewed and **approved**, regression test added and independently re-verified by
+      reviewer. Blocked on pyobs-core #776 merging + bumping this repo's `pyobs-core` pin to a
+      release containing it.
 - [ ] `pyobs-gemini` (1 class) — pulled forward, live-breaking (see critical finding above); PR #19
-      open, reviewed, regression test added. Same block as pyobs-fli: needs #776 merged + this
-      repo's `pyobs-core` pin bumped.
+      — reviewed and **approved**, regression test added. Same block as pyobs-fli: needs #776
+      merged + this repo's `pyobs-core` pin bumped.
 - [ ] `pyobs-monet` (2 classes) — dead code (`FrontendCameraSouth`/`FrontendSouth` unreferenced),
-      zero urgency; MR !54 (GitLab) open and reviewed — correct, blocked on pyobs-core #776 +
-      pyobs-fli #84 merging first (this class chain depends on `FliBonnShutter`/`FliCamera`).
+      zero urgency; MR !54 (GitLab) — reviewed and **approved** — correct, blocked on pyobs-core
+      #776 + pyobs-fli #84 merging first (this class chain depends on `FliBonnShutter`/`FliCamera`).
 - [ ] `pyobs-monti` (1 class) — live (`config/telescope.yaml`); fixed, regression test added, MR !1
-      (GitLab, `gitlab.gwdg.de/monet/pyobs-monti`) open and reviewed — approved, blocked purely on
+      (GitLab, `gitlab.gwdg.de/monet/pyobs-monti`) — reviewed and **approved**, blocked purely on
       pyobs-core #776 merging first (same as pyobs-fli/pyobs-gemini). `_set_tracking_rate`
       abstract-method gap and stale `pyobs-core==1.32.1` pin are pre-existing, out of scope here.
 - [ ] `pyobs-alpaca` (3 classes) — `AlpacaDome`/`AlpacaFocuser`/`AlpacaTelescope` fixed, plus a
-      related child-object kwarg-leak bug (see Step 6); regression test added. PR #34, open,
-      blocked on pyobs-core #776 merging first.
-- [ ] `pyobs-zwoeaf` (1 class) — `EAFFocuser` fixed; currently harmless (no crash reproduced) but
-      converted for consistency, see Step 7. PR #21, open, blocked on pyobs-core #776.
+      related child-object kwarg-leak bug (see Step 6); regression test added, plus a follow-up
+      test locking `DEVICE_INIT_KWARGS`/`OBJECT_SHARED_KWARGS` against the real constructor
+      signatures. PR #34 — reviewed and **approved**, blocked purely on pyobs-core #776 merging
+      first.
+- [ ] `pyobs-zwoeaf` (1 class) — `EAFFocuser` fixed; confirmed harmless even pre-fix (bases were
+      already correctly ordered, so the redundant second call was a genuine no-op, not a latent
+      crash — verified with the reviewer's suggested kwargs via `git stash`), converted for
+      consistency, see Step 7. PR #21 — reviewed and **approved**, blocked on pyobs-core #776.
 - [ ] `pyobs-iagvt` (2 classes) — `LDP`/`LED` fixed; live configs don't trigger the bug but a
-      sibling-mixin kwarg does (see Step 8), regression test added. MR !61
-      (`gitlab.gwdg.de/iagvt/pyobs-iagvt`), open, blocked on pyobs-core #776.
-- [ ] `pyobs-sbig` (1 class) — `SbigFilterCamera` fixed; not reproducibly crashing (see Step 9),
-      converted for consistency. PR #72, open, blocked on pyobs-core #776.
+      sibling-mixin kwarg does (see Step 8), regression test added (using `motion_status_interfaces:
+      ["IMotion"]`, matching what these classes actually implement). MR !61
+      (`gitlab.gwdg.de/iagvt/pyobs-iagvt`) — reviewed and **approved**, blocked on pyobs-core #776.
+- [ ] `pyobs-sbig` (1 class) — `SbigFilterCamera` fixed; not reproducibly crashing (see Step 9,
+      `motion_status_interfaces` is hardcoded at the call site so it collides rather than leaks),
+      converted for consistency; construction-locking test added. PR #72 — reviewed and
+      **approved**; base branch retargeted from `main` to `develop` mid-review since `main` didn't
+      yet have a prior unrelated PR (#71) merged, which was bundling unrelated diffs into this PR.
+      Blocked on pyobs-core #776.
 - [ ] `pyobs-brot` (1 class) — `BrotBaseTelescope` fixed; **live production crash**, confirmed via
-      the deployed telescope configs (see Step 10), regression test added. PR #56, open, blocked
-      on pyobs-core #776. Resolves this plan's earlier open question about `pyobs-brot`'s liveness.
+      the deployed telescope configs (see Step 10), regression test added. PR #56 — reviewed and
+      **approved**, blocked on pyobs-core #776. Resolves this plan's earlier open question about
+      `pyobs-brot`'s liveness. Reviewer flagged a separate, pre-existing bug in the same file
+      (`get_fits_header_before` missing the required `sender` arg, same issue as `pyobs-monti`) —
+      filed as [pyobs-brot#57](https://github.com/pyobs/pyobs-brot/issues/57), out of scope here.
+- [ ] **All nine downstream PRs/MRs above are reviewed and approved**, contingent on pyobs-core
+      #776 landing first — that's the sole remaining blocker for this whole rollout. Once #776
+      merges: merge `pyobs-fli`/`pyobs-gemini`/`pyobs-monti`/`pyobs-alpaca`/`pyobs-zwoeaf`/
+      `pyobs-iagvt`/`pyobs-sbig`/`pyobs-brot` (any order), then `pyobs-monet` (needs `pyobs-fli`
+      merged too), then bump each repo's `pyobs-core` pin to a release containing #776.
 - [ ] Implement `if kwargs: raise TypeError(...)` in `Object.__init__` (`pyobs-core`), now that
-      every consuming class threads kwargs cooperatively.
+      every consuming class threads kwargs cooperatively. Worth confirming this is still additive
+      work and not already covered: this session's testing repeatedly showed leftover kwargs
+      already reaching real `object.__init__()` and raising `TypeError` via `Object.__init__`'s
+      existing `super().__init__(**kwargs)` call (see PR #776's `object.py` change) — so this item
+      may now just be about a clearer, `pyobs`-specific error message rather than new enforcement.
 - [ ] Roll out / restart affected fleet modules; watch for anything this session's checks missed
       (the ~45-class import-failure bucket in `object-kwarg-validation.md` was never fully cleared
       — `pyobs_gui.GUI`, `pyobs-pilar`, `pyobs-dashboard-utils` remain genuinely unverified).

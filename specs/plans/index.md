@@ -86,7 +86,11 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —
   raw-frame streaming endpoint in `BaseVideo`. **implemented, closed**
 - [2026-08-11-camera-driver-gui-split.md](2026-08-11-camera-driver-gui-split.md) — driver/GUI split
-  for all camera modules. **proposed** (Repos: qhyccd, fli, tis, asi, aravis, sbig, flipro, v4l)
+  for all camera modules. **implemented, closed 2026-08-19** — all 8 repos' findings fixed
+  (PRs #59/#66 qhyccd, #32 asi, #41 aravis, #71 sbig, #35 flipro, #19 v4l, #83 fli, #13 tis) and
+  the missing gui apps built (fli #85, tis #14); real-hardware verification of the two new gui
+  apps tracked separately (blocked on hardware access, no cameras available) (Repos: qhyccd, fli,
+  tis, asi, aravis, sbig, flipro, v4l)
 - [2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md](2026-08-11-core-tier-test-baseline-and-dependabot-automerge.md) —
   baseline tests + grouped Dependabot auto-merge for core-tier repos. **implemented**
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +

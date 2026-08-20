@@ -32,6 +32,7 @@ class BackendObservationArchive(ObservationArchive):
         self._mode = mode
         self._aiohttp_session: aiohttp.ClientSession | None = None
         self._last_update: Time | None = None
+        self._last_marker: Time | None = None
         self._observations = ObservationList()
 
         if auto_update:
@@ -56,30 +57,41 @@ class BackendObservationArchive(ObservationArchive):
         return self._aiohttp_session
 
     async def _check_for_changes(self) -> None:
-        """Update schedule in background."""
+        """Update schedule in background, gated on the backend's update marker."""
 
         while True:
             try:
-                await self._update()
+                await self._poll()
             except Exception as e:
                 log.error("Failed to update observations from backend: %s", e)
             await asyncio.sleep(5)
 
+    async def _poll(self) -> None:
+        """Re-download the schedule when the backend's ``last_observation_update`` marker moved.
+
+        The marker is a DB-derived ``Max(updated_at)`` (pyobs-robotic-backend#84), truthful across
+        gunicorn workers, so it is a safe refresh gate; see ``BackendTaskArchive._poll``. The
+        content comparison in :meth:`_update` still decides whether to fire ``on_tasks_changed``.
+        """
+        last_update = await self.last_update_time()
+        if self._last_marker is None or last_update > self._last_marker:
+            await self._update()
+            self._last_marker = last_update
+
     async def _update(self) -> None:
         """Fetch the schedule from the backend and apply it if anything changed.
 
-        Re-fetches unconditionally on every poll instead of gating on the backend's
-        ``last_observation_update`` marker (per-process Django ``LocMemCache``, unreliable across
-        gunicorn workers -- see ``BackendTaskArchive``). Changes are detected by comparing full
-        observation contents via ``model_dump(use_task_id=True)``, keyed by observation ID so a
-        stable reordering of the same items is not mistaken for a change: the backend serializes
-        ``task`` as a plain FK ID, while cached copies get their ``task`` replaced by a full
-        ``Task`` when the mastermind calls ``fetch_task()``, so the ID normalization keeps both
-        sides comparable. The comparison includes ``state`` (``Observation.__eq__`` ignores it),
-        which matters for in-set transitions such as ``pending`` -> ``in_progress``; observations
-        leaving the fetched set -- e.g. ``window_expired``, which the server-side ``state``/
-        ``end_after`` filters drop -- are picked up as list shrinkage by the unconditional
-        refetch.
+        Called by :meth:`_poll` after the backend marker moved (or on the first poll). Changes are
+        detected by comparing full observation contents via ``model_dump(use_task_id=True)``,
+        keyed by observation ID so a stable reordering of the same items is not mistaken for a
+        change: the backend serializes ``task`` as a plain FK ID, while cached copies get their
+        ``task`` replaced by a full ``Task`` when the mastermind calls ``fetch_task()``, so the ID
+        normalization keeps both sides comparable. The comparison includes ``state``
+        (``Observation.__eq__`` ignores it), which matters for in-set transitions such as
+        ``pending`` -> ``in_progress``; observations leaving the fetched set -- e.g.
+        ``window_expired``, which the server-side ``state``/``end_after`` filters drop -- are
+        picked up as list shrinkage on the next marker-triggered refetch (the ``mark_window_expired``
+        sweep stamps ``updated_at``, so expiry moves the marker within one sweep interval).
         """
         observations = await self._get_schedule()
         if {o.id: o.model_dump(use_task_id=True) for o in observations} != {

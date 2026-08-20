@@ -28,6 +28,7 @@ class BackendTaskArchive(TaskArchive):
         self._token = token
         self._aiohttp_session: aiohttp.ClientSession | None = None
         self._last_update: Time | None = None
+        self._last_marker: Time | None = None
         self._projects: list[Project] = list()
         self._tasks: list[Task] = list()
 
@@ -53,26 +54,38 @@ class BackendTaskArchive(TaskArchive):
         return self._aiohttp_session
 
     async def _check_for_changes(self) -> None:
-        """Update tasks in background."""
+        """Update tasks in background, gated on the backend's update marker."""
         while True:
             try:
-                await self._update()
+                await self._poll()
             except Exception as e:
                 log.error("Failed to update tasks from backend: %s", e)
             await asyncio.sleep(5)
 
+    async def _poll(self) -> None:
+        """Re-download tasks/projects when the backend's ``last_task_update`` marker moved.
+
+        The marker is a DB-derived ``Max(updated_at)`` (pyobs-robotic-backend#84), truthful across
+        gunicorn workers, so it is a safe refresh gate. Without it the archive re-downloaded (and
+        re-compared) on every poll, and the content comparison misfired whenever runtime code
+        mutated a serialized task field (e.g. ``DynamicTarget.resolve()`` overwriting ``name``),
+        livelocking the scheduler. The content comparison in :meth:`_update` still decides whether
+        to fire ``on_tasks_changed``.
+        """
+        last_update = await self.last_update_time()
+        if self._last_marker is None or last_update > self._last_marker:
+            await self._update()
+            self._last_marker = last_update
+
     async def _update(self) -> None:
         """Fetch tasks/projects from the backend and apply them if anything changed.
 
-        Re-fetches unconditionally on every poll instead of gating on the backend's
-        ``last_task_update`` marker: that marker is computed from a per-process Django
-        ``LocMemCache`` and is unreliable across gunicorn workers, so gating on it let the
-        mastermind run stale tasks forever. Real changes are detected by comparing the downloaded
-        content against the cached copy. The comparison uses ``model_dump()`` rather than pydantic
-        ``==``, which also compares runtime attributes (e.g. ``Task._cant_run_reason`` set by
-        ``can_run()``) and would flag unchanged tasks as changed on every poll; it is keyed by ID
-        so that a stable reordering of the same items (e.g. an unordered backend queryset) is not
-        mistaken for a change.
+        Called by :meth:`_poll` after the backend marker moved (or on the first poll); applies the
+        download only when the content actually differs from the cached copy. The comparison uses
+        ``model_dump()`` rather than pydantic ``==``, which also compares runtime attributes (e.g.
+        ``Task._cant_run_reason`` set by ``can_run()``) and would flag unchanged tasks as changed
+        on every poll; it is keyed by ID so that a stable reordering of the same items (e.g. an
+        unordered backend queryset) is not mistaken for a change.
         """
         projects = await self._get_projects()
         tasks = await self._get_tasks()

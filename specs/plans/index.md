@@ -44,6 +44,12 @@ Implementation plans, checklist-style. Newest at the bottom.
   + token auth for `HttpFileCache`. **implemented, closed** (Repos: pyobs-core, pyobs-web-client)
 - [2026-08-08-pyobs-pipeline.md](2026-08-08-pyobs-pipeline.md) — pyobs-pipeline. **implemented**
   (Repos: pyobs-pipeline)
+- [2026-08-08-logevent-double-delivery-investigation.md](2026-08-08-logevent-double-delivery-investigation.md) —
+  pyobs-gui receives every LogEvent twice. **implemented, closed 2026-08-20** — the fix the
+  investigation called for (drop `add_interest()`) landed via PR #761 (explicit XEP-0060
+  subscriptions); open threads recorded in the doc: why `ms`'s accounts specifically double-
+  delivered, and rollout of #761 to production sites (operational) (Repos: pyobs-core,
+  pyobs-monet)
 - [2026-08-09-night-archive-io-hardening.md](2026-08-09-night-archive-io-hardening.md) — rename
   `Night` → `Reduction`, complete `LocalArchive` I/O. **implemented**
 - [2026-08-15-log-loaded-pyobs-package-versions.md](2026-08-15-log-loaded-pyobs-package-versions.md) —
@@ -74,6 +80,11 @@ Implementation plans, checklist-style. Newest at the bottom.
   presence. **implemented, closed** (merged 2026-08-16, PR #761; 9 integration tests + full 30/30
   XMPP suite passing). Rollout to production sites is a standalone operational step, not part of
   this plan's closure.
+- [2026-08-20-backend-archive-marker-loss.md](2026-08-20-backend-archive-marker-loss.md) —
+  stop gating backend-archive refreshes on the per-process `last_*_update` marker; re-fetch
+  every poll and detect changes by content. **implemented, closed 2026-08-20** (PR #790,
+  issue #789 closed; robotic-backend root cause fixed separately via #84, closing #83;
+  Repos: pyobs-core, pyobs-robotic-backend)
 
 ## Not finished
 
@@ -81,8 +92,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   widget plugin mechanism + `pyside6-deploy` packaging. **draft** (Repos: pyobs-gui)
 - [2026-07-29-gui-telescopewidget-layout.md](2026-07-29-gui-telescopewidget-layout.md) —
   `TelescopeWidget` width-floor investigation. **proposed** (Repos: pyobs-gui)
-- [2026-08-08-logevent-double-delivery-investigation.md](2026-08-08-logevent-double-delivery-investigation.md) —
-  pyobs-gui receives every LogEvent twice. **investigating, open** (Repos: pyobs-core, pyobs-monet)
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —
   raw-frame streaming endpoint in `BaseVideo`. **implemented, closed**
 - [2026-08-11-camera-driver-gui-split.md](2026-08-11-camera-driver-gui-split.md) — driver/GUI split

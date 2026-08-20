@@ -1,0 +1,73 @@
+# Fleet open items: open issues and plans across the pyobs fleet
+
+Status: standing snapshot — checked on 2026-08-20.
+
+Fleet-wide view of what's open across the pyobs project fleet (see
+`specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
+a source of truth:
+
+- **Open issues**: GitHub is authoritative — re-query with `gh issue list --repo pyobs/<repo>
+  --state open`.
+- **Open plans**: each repo's own `specs/plans/index.md` (or `specs/index.md` for repos that keep
+  their plans there) is authoritative; this doc links the docs and copies their one-line status.
+
+**Maintenance rule: update this file whenever you open/close an issue or change a plan's status —
+and remove closed items outright, never annotate them.** Only open items live here.
+
+Repos: the whole pyobs fleet.
+
+## Open issues (8, checked 2026-08-20)
+
+One row per issue — same layout for every repo.
+
+| Repo | # | Title | Notes |
+|---|---|---|---|
+| pyobs-core | [#791](https://github.com/pyobs/pyobs-core/issues/791) | PyobsArchive: add OBSNUM filter to `list_frames()`/`list_options()` | `_build_query()` emits no `OBSNUM`, though the archive API supports it |
+| pyobs-core | [#769](https://github.com/pyobs/pyobs-core/issues/769) | Dedupe per-frame header/JSON build in `BaseVideo` raw_handler | flagged in #766 review; N raw clients ⇒ N× header build/serialization/copy per frame |
+| pyobs-core | [#767](https://github.com/pyobs/pyobs-core/issues/767) | `FitsHeaderMixin` only catches `RemoteError` | a peer's malformed response (non-`IqError`/`IqTimeout`) crashes the whole exposure |
+| pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
+| pyobs-robotic-backend | [#81](https://github.com/pyobs/pyobs-robotic-backend/issues/81) | Full script builder for the task editor | *enhancement* |
+| pyobs-robotic-backend | [#82](https://github.com/pyobs/pyobs-robotic-backend/issues/82) | Connect to pyobs-archive to link observations to their data directly | *enhancement* |
+| pyobs-archive | [#42](https://github.com/pyobs/pyobs-archive/issues/42) | Show only images the logged-in user has access to | needs connection to pyobs-robotic-backend |
+| pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
+
+## Open plans
+
+### pyobs-core `specs/plans/`
+
+- [2026-07-27-gui-widget-plugins-and-packaging.md](../plans/2026-07-27-gui-widget-plugins-and-packaging.md) —
+  *draft* (pyobs-gui). Widget plugin mechanism + `pyside6-deploy` packaging; loading mechanism
+  decided + spiked, widget-selection mechanism still open.
+- [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
+  *proposed* (pyobs-gui). `TelescopeWidget` width-floor investigation with candidate fixes.
+
+### Design docs still *proposed*
+
+- [gui-standalone-binary.md](../design/gui-standalone-binary.md) — umbrella for the compiled
+  pyobs-gui binary; login pieces done, widget plugin/selection + real plugin smoke test still open.
+
+### Sibling repos
+
+One line per plan — same layout for every repo.
+
+- **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
+  ACL-aware Shell forms (*proposed*)
+- **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —
+  auxiliary interface widgets (attach-or-standalone) (*proposed*)
+- **pyobs-web-client** — [idatasequence](../../pyobs-web-client/specs/plans/idatasequence.md) —
+  `IDataSequence` support ("grab N images") (*proposed*)
+- **pyobs-web-client** — [rpc-fault-call-id](../../pyobs-web-client/specs/plans/rpc-fault-call-id.md) —
+  surface `call_id` on RPC faults (*proposed*)
+- **pyobs-web-client** — [struct-typed-command-params](../../pyobs-web-client/specs/plans/struct-typed-command-params.md) —
+  `struct<Name>`-typed command params (*blocked on upstream*)
+- **pyobs-web-client** — [telescope-page](../../pyobs-web-client/specs/plans/telescope-page.md) —
+  telescope page for `ITelescope` modules (*proposed*)
+- **pyobs-web-client** — [vfs-token-auth](../../pyobs-web-client/specs/plans/vfs-token-auth.md) —
+  VFS endpoint auth (Basic Auth → Bearer token) (*proposed*)
+
+## Open decisions
+
+- **ADR 0013** (rename pyobs-robotic-backend → `pyobs-schedule`) — *proposed*: `pyobs-schedule` is
+  the recommendation, pending team confirmation; the rename itself (repo/package/Docker
+  image/Keycloak client, in lockstep) has not been executed. See
+  [0013-renaming-pyobs-robotic-backend.md](../adrs/0013-renaming-pyobs-robotic-backend.md).

@@ -56,7 +56,7 @@ def make_task(constraints: list[Constraint] = []) -> Task:
 
 @pytest.mark.asyncio
 async def test_dynamic_target_resolves(observer: Observer, data: DataProvider, mock_vfs: MagicMock) -> None:
-    """DynamicTarget.resolve() picks a target and sets name."""
+    """DynamicTarget.resolve() picks a target without mutating its serialized state."""
     picker = CsvPicker.model_validate(
         {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"},
         context={"observer": observer, "vfs": mock_vfs},
@@ -66,10 +66,15 @@ async def test_dynamic_target_resolves(observer: Observer, data: DataProvider, m
     task = make_task()
 
     time = Time("2025-11-03T23:00:00", scale="utc")
+    dump_before = target.model_dump()
     await target.resolve(time, task, data)
 
     assert target._target is not None
-    assert target.name != "(dynamic)"
+    assert target.name == "(dynamic)"
+    # resolving must not leak the picked star into the serialized (declared-field) state:
+    # BackendTaskArchive compares model_dump() across polls, so mutating `name` here made
+    # every poll look like a change and livelocked the scheduler.
+    assert target.model_dump() == dump_before
 
 
 @pytest.mark.asyncio
@@ -166,8 +171,10 @@ async def test_csv_picker_caches_dataframe(observer: Observer, data: DataProvide
 
 
 @pytest.mark.asyncio
-async def test_dynamic_target_resolve_updates_name(observer: Observer, data: DataProvider, mock_vfs: MagicMock) -> None:
-    """After resolve(), target.name reflects the picked star."""
+async def test_dynamic_target_resolved_name_not_in_serialized_state(
+    observer: Observer, data: DataProvider, mock_vfs: MagicMock
+) -> None:
+    """The picked star is exposed via `_target`, not by mutating the declared `name` field."""
     picker = CsvPicker.model_validate(
         {"csv": "/test/stars.csv", "name_col": "HIP", "ra_col": "RAICRS", "dec_col": "DEICRS"},
         context={"observer": observer, "vfs": mock_vfs},
@@ -180,7 +187,9 @@ async def test_dynamic_target_resolve_updates_name(observer: Observer, data: Dat
     time = Time("2025-11-03T23:00:00", scale="utc")
     await target.resolve(time, task, data)
 
-    assert target.name in ["HIP001", "HIP002", "HIP003"]
+    assert target._target is not None
+    assert target._target.name in ["HIP001", "HIP002", "HIP003"]
+    assert target.name == "(dynamic)"
 
 
 @pytest.mark.asyncio

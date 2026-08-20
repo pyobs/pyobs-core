@@ -1,5 +1,13 @@
 v2.0.0.dev78 (unreleased)
 *************************
+* ``DynamicTarget.resolve()`` no longer overwrites its declared ``name`` field with the picked
+  star's name. That mutation leaked into ``Task.model_dump()`` (which serializes the static
+  target), so ``BackendTaskArchive``'s content comparison saw a "change" on every poll while the
+  scheduler resolved a dynamic target (e.g. the CSV-picker autofocus task) — the constant
+  ``on_tasks_changed`` kept ``_need_update`` set and every scheduler run aborted itself with
+  "Not using scheduler results, since update was requested", so no schedule was ever committed.
+  The picked star is still available via the resolved target (``_target``) and lands in the
+  scheduled observation; the serialized ``name`` stays ``"(dynamic)"``.
 * ``Task`` gained an ``updated_at`` field (``str | None``, default ``None``), matching the field
   pyobs-robotic-backend#84 started returning from ``GET /api/tasks/`` (DB-derived ``updated_at``
   on ``Task``). Without it, the strict ``Task`` model rejected the new key and

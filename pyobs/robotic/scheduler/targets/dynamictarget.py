@@ -26,7 +26,6 @@ class DynamicTarget(Target):
     async def resolve(self, time: Time, task: Task, data: DataProvider) -> Target | None:
         """Pick the best available target given current conditions. For static targets this will just be itself."""
         self._target = await self.picker(time, task, data)
-        self.name = self._target.name if self._target is not None else "None"
         return self._target
 
     def coordinates(self, time: Time) -> SkyCoord:

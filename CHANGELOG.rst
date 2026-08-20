@@ -34,7 +34,7 @@ v2.0.0.dev78 (unreleased)
   and detect real changes by comparing the downloaded content against the cached copy (full model
   dumps, including observation ``state``), firing ``on_tasks_changed`` only when content actually
   changed; ``last_changed()`` now reports the local time a change was last observed. Fixes #789.
-  (#795)
+  (#790)
 
 v2.0.0.dev77 (2026-08-16)
 *************************

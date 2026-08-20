@@ -333,7 +333,7 @@ async def test_obs_last_update_time(mocker) -> None:
     assert t.isot.startswith("2025-11-03")
 
 
-# ── change detection (#789: last_*_update markers are per-process, must not gate refresh) ────────
+# ── change detection: content comparison (#789/#790) + marker-gated polling (#84) ────────────────
 
 
 OBS_DICT = {"task": 1, "start": T0.isot, "end": T1.isot, "state": "pending"}
@@ -341,9 +341,9 @@ OBS_DICT = {"task": 1, "start": T0.isot, "end": T1.isot, "state": "pending"}
 
 @pytest.mark.asyncio
 async def test_task_update_not_gated_on_marker(mocker) -> None:
-    """Regression for #789: refresh must not consult last_update_time at all -- the backend marker
-    is computed from a per-process Django LocMemCache, so a stale/fallback value used to pin
-    _last_update and block every subsequent download."""
+    """`_update()` itself does not consult the marker -- the gate lives in `_poll()`, so a direct
+    download always applies. (The #789 failure mode -- the marker being per-process and stale --
+    is resolved by the backend computing it from the DB; see the `_poll` tests.)"""
     archive = make_task_archive()
     marker = mocker.patch.object(archive, "last_update_time", AsyncMock(return_value=T0))
     on_tasks_changed = AsyncMock()
@@ -589,3 +589,73 @@ async def test_obs_update_normalizes_task_id(mocker) -> None:
 
     assert archive._last_update is None  # nothing changed -> marker not touched
     assert archive._observations[0].task is not None
+
+
+# ── marker-gated polling (#84: last_*_update markers are DB-derived and truthful again) ───────────
+
+
+@pytest.mark.asyncio
+async def test_task_poll_downloads_on_first_poll(mocker) -> None:
+    """First poll: no cached marker -> download and remember the marker."""
+    archive = make_task_archive()
+    mocker.patch.object(archive, "last_update_time", AsyncMock(return_value=T1))
+    update = mocker.patch.object(archive, "_update", AsyncMock())
+    await archive._poll()
+    update.assert_awaited_once()
+    assert archive._last_marker == T1
+
+
+@pytest.mark.asyncio
+async def test_task_poll_skips_when_marker_unchanged(mocker) -> None:
+    """Marker did not move -> no download (no spurious re-download/comparison)."""
+    archive = make_task_archive()
+    archive._last_marker = T1
+    mocker.patch.object(archive, "last_update_time", AsyncMock(return_value=T1))
+    update = mocker.patch.object(archive, "_update", AsyncMock())
+    await archive._poll()
+    update.assert_not_awaited()
+    assert archive._last_marker == T1
+
+
+@pytest.mark.asyncio
+async def test_task_poll_downloads_when_marker_newer(mocker) -> None:
+    """Marker moved -> download and advance the cached marker."""
+    archive = make_task_archive()
+    archive._last_marker = T1
+    mocker.patch.object(archive, "last_update_time", AsyncMock(return_value=T2))
+    update = mocker.patch.object(archive, "_update", AsyncMock())
+    await archive._poll()
+    update.assert_awaited_once()
+    assert archive._last_marker == T2
+
+
+@pytest.mark.asyncio
+async def test_obs_poll_downloads_on_first_poll(mocker) -> None:
+    archive = make_obs_archive()
+    mocker.patch.object(archive, "last_update_time", AsyncMock(return_value=T1))
+    update = mocker.patch.object(archive, "_update", AsyncMock())
+    await archive._poll()
+    update.assert_awaited_once()
+    assert archive._last_marker == T1
+
+
+@pytest.mark.asyncio
+async def test_obs_poll_skips_when_marker_unchanged(mocker) -> None:
+    archive = make_obs_archive()
+    archive._last_marker = T1
+    mocker.patch.object(archive, "last_update_time", AsyncMock(return_value=T1))
+    update = mocker.patch.object(archive, "_update", AsyncMock())
+    await archive._poll()
+    update.assert_not_awaited()
+    assert archive._last_marker == T1
+
+
+@pytest.mark.asyncio
+async def test_obs_poll_downloads_when_marker_newer(mocker) -> None:
+    archive = make_obs_archive()
+    archive._last_marker = T1
+    mocker.patch.object(archive, "last_update_time", AsyncMock(return_value=T2))
+    update = mocker.patch.object(archive, "_update", AsyncMock())
+    await archive._poll()
+    update.assert_awaited_once()
+    assert archive._last_marker == T2

@@ -52,6 +52,19 @@ service"). The naming question is: what descriptive noun fits this service?
   `pyobs-web-admin`.
 * **`pyobs-planning`** — considered: easy to pronounce, but the service *stores* plans
   rather than doing the planning — a mismatch.
+* **`pyobs-portal`** — considered: the strongest rival to `pyobs-schedule`. Names the
+  service by its human-facing function: the Bootstrap frontend it ships (dashboard, task
+  create/edit with schema-driven forms, user/project admin panels) makes it a genuine
+  observation-management portal — functionally the counterpart of LCO's
+  `observation-portal`, which this deployment also runs (brokered through Keycloak). The
+  `pyobs-` prefix disambiguates rather than collides: it *pairs* with `observation-portal`
+  and states the architecture mapping in the name. Easy to pronounce, a plain literal
+  noun, passes the fleet convention. Loses only on naming axis: it names the function, not
+  the domain object the service owns; it foregrounds the UI while the service's primary
+  consumers are machines (the scheduler via `BackendTaskArchive`/`BackendObservationArchive`,
+  and pyobs-task-editor); and "the portal" stays ambiguous in conversation in a deployment
+  running both. If the team prefers the function-axis name, this is the pick; the
+  recommendation below stays `pyobs-schedule`.
 * **`pyobs-schedule`** — recommended (proposed): names the domain object the service owns —
   the *schedule*: tasks to be observed plus the observation history. It complements the
   core scheduler instead of colliding with it (scheduler computes, schedule

@@ -70,13 +70,15 @@ class BackendTaskArchive(TaskArchive):
         mastermind run stale tasks forever. Real changes are detected by comparing the downloaded
         content against the cached copy. The comparison uses ``model_dump()`` rather than pydantic
         ``==``, which also compares runtime attributes (e.g. ``Task._cant_run_reason`` set by
-        ``can_run()``) and would flag unchanged tasks as changed on every poll.
+        ``can_run()``) and would flag unchanged tasks as changed on every poll; it is keyed by ID
+        so that a stable reordering of the same items (e.g. an unordered backend queryset) is not
+        mistaken for a change.
         """
         projects = await self._get_projects()
         tasks = await self._get_tasks()
-        if [p.model_dump() for p in projects] != [p.model_dump() for p in self._projects] or [
-            t.model_dump() for t in tasks
-        ] != [t.model_dump() for t in self._tasks]:
+        if {p.code: p.model_dump() for p in projects} != {p.code: p.model_dump() for p in self._projects} or {
+            t.id: t.model_dump() for t in tasks
+        } != {t.id: t.model_dump() for t in self._tasks}:
             self._projects = projects
             self._tasks = tasks
             self._last_update = Time.now()
@@ -91,12 +93,12 @@ class BackendTaskArchive(TaskArchive):
 
     async def _get_projects(self) -> list[Project]:
         """Fetch projects from backend."""
-        projects = await http_request_paginated(self._session, urljoin(self._url, "/api/projects/"))
+        projects = await http_request_paginated(self._session, urljoin(self._url, "/api/projects/"), strict=True)
         return [self.pyobs_model_validate(Project, project) for project in projects]
 
     async def _get_tasks(self) -> list[Task]:
         """Fetch tasks from backend."""
-        tasks = await http_request_paginated(self._session, urljoin(self._url, "/api/tasks/"))
+        tasks = await http_request_paginated(self._session, urljoin(self._url, "/api/tasks/"), strict=True)
         return [self.pyobs_model_validate(Task, task) for task in tasks]
 
     async def last_changed(self) -> Time | None:

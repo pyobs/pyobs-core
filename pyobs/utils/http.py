@@ -46,13 +46,20 @@ async def http_request_with_retries(
 
 
 async def http_request_paginated(
-    session: aiohttp.ClientSession, url: str, method: str = "get", expected_status: int = 200, **kwargs: Any
+    session: aiohttp.ClientSession,
+    url: str,
+    method: str = "get",
+    expected_status: int = 200,
+    strict: bool = False,
+    **kwargs: Any,
 ) -> list[dict[str, Any]]:
     """Fetches all pages of a DRF-style paginated list endpoint and returns the combined results.
 
     If a page beyond the first becomes invalid mid-fetch (DRF's "Invalid page." 404, which can
     happen when concurrent writes shift page boundaries on a live-growing dataset), pagination
-    stops early with whatever was already fetched instead of failing the whole request.
+    stops early with whatever was already fetched instead of failing the whole request. With
+    ``strict=True`` that truncation is raised as an error instead, so callers that treat the
+    result as authoritative (e.g. replacing a cached list) never apply a partial result silently.
     """
     results: list[dict[str, Any]] = []
     next_url: str | None = url
@@ -69,6 +76,13 @@ async def http_request_paginated(
                 and isinstance(e.body, dict)
                 and e.body.get("detail") == "Invalid page."
             ):
+                if strict:
+                    log.warning(
+                        "Pagination page became invalid mid-fetch, raising instead of returning a "
+                        "truncated result of %d item(s).",
+                        len(results),
+                    )
+                    raise
                 log.warning("Pagination page became invalid mid-fetch, stopping early with %d result(s).", len(results))
                 break
             raise

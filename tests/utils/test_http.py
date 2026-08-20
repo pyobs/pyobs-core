@@ -180,6 +180,20 @@ async def test_paginated_stops_early_on_invalid_page_beyond_first(monkeypatch: p
 
 
 @pytest.mark.asyncio
+async def test_paginated_strict_raises_on_invalid_page_beyond_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With strict=True a truncated result is an error, so callers that replace a cached list with
+    the fetched content never apply a partial result as if it were authoritative."""
+    monkeypatch.setattr(httpmod, "http_request_with_retries", http_request_with_retries.__wrapped__)
+    page1 = make_response(200, {"results": [{"id": 1}], "next": "http://example.com/api?page=2"})
+    page2 = make_response(404, {"detail": "Invalid page."})
+    session = MagicMock()
+    session.request = MagicMock(side_effect=[page1, page2])
+
+    with pytest.raises(RuntimeError, match="HTTP 404"):
+        await http_request_paginated(session, "http://example.com/api", strict=True)
+
+
+@pytest.mark.asyncio
 async def test_paginated_does_not_swallow_invalid_page_on_first_request(monkeypatch: pytest.MonkeyPatch) -> None:
     """An "Invalid page." 404 on the very first request is a real error (e.g. a bad page= param
     passed in by the caller), not a mid-fetch race -- it must still raise."""

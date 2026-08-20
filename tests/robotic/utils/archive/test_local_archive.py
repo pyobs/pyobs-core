@@ -28,6 +28,7 @@ def make_frame_headers(
     site: str = "siteA",
     telescope: str = "tel1",
     rlevel: int = 91,
+    obsnum: str = "42",
 ) -> dict[str, object]:
     return {
         "DATE-OBS": date_obs,
@@ -40,6 +41,7 @@ def make_frame_headers(
         "SITEID": site,
         "TELID": telescope,
         "RLEVEL": rlevel,
+        "OBSNUM": obsnum,
     }
 
 
@@ -164,6 +166,18 @@ async def test_list_frames_filters_by_night(tmp_path: Path) -> None:
     frames = await archive.list_frames(night="2024-01-02")
 
     assert len(frames) == 1
+
+
+@pytest.mark.asyncio
+async def test_list_frames_filters_by_obsnum(tmp_path: Path) -> None:
+    write_fits(tmp_path / "a.fits", **make_frame_headers(obsnum="42"))
+    write_fits(tmp_path / "b.fits", **make_frame_headers(obsnum="43"))
+    archive = LocalArchive(root=str(tmp_path))
+
+    frames = await archive.list_frames(obsnum="43")
+
+    assert len(frames) == 1
+    assert frames[0].filename == str(tmp_path / "b.fits")
 
 
 @pytest.mark.asyncio

@@ -76,7 +76,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   this plan's closure.
 - [2026-08-20-backend-archive-marker-loss.md](2026-08-20-backend-archive-marker-loss.md) —
   stop gating backend-archive refreshes on the per-process `last_*_update` marker; re-fetch
-  every poll and detect changes by content. **implemented, closed** (merged 2026-08-20, PR #795;
+  every poll and detect changes by content. **implemented** (PR #790;
   Repos: pyobs-core, pyobs-robotic-backend)
 
 ## Not finished

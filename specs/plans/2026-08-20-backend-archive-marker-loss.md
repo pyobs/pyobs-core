@@ -80,10 +80,10 @@ Same shape:
 
 ### Out of scope (pyobs-robotic-backend)
 
-The root-cause fixes on the backend side (shared Redis cache, or an `updated_at` column to
-compute the markers from the DB; bumping markers in the celery bulk paths) live in the sibling
-repo and are not part of this PR. With this change the mastermind no longer depends on any of
-them for correctness.
+The root-cause fixes on the backend side (DB-derived `updated_at` markers instead of the
+per-process cache, stamping `updated_at` in the celery bulk paths) live in the sibling repo and
+are not part of this PR — tracked as pyobs-robotic-backend#83. With this change the mastermind no
+longer depends on any of them for correctness.
 
 ## Testing
 

@@ -95,6 +95,7 @@ def test_build_query_includes_all_given_params() -> None:
         binning="1x1",
         filter_name="clear",
         rlevel=91,
+        obsnum="42",
     )
 
     assert params["night"] == "2024-01-01"
@@ -105,6 +106,7 @@ def test_build_query_includes_all_given_params() -> None:
     assert params["binning"] == "1x1"
     assert params["FILTER"] == "clear"
     assert params["RLEVEL"] == 91
+    assert params["OBSNUM"] == "42"
     assert params["start"] == "2024-01-01T00:00:00.000"
     assert params["end"] == "2024-01-02T00:00:00.000"
 
@@ -135,6 +137,16 @@ async def test_list_options_raises_on_non_200(mocker) -> None:
         await archive.list_options()
 
 
+@pytest.mark.asyncio
+async def test_list_options_passes_obsnum_to_query(mocker) -> None:
+    archive = make_archive()
+    mock_get = mocker.patch("aiohttp.ClientSession.get", return_value=MockResponse(json={}))
+
+    await archive.list_options(obsnum="42")
+
+    assert mock_get.call_args.kwargs["params"]["OBSNUM"] == "42"
+
+
 # ── list_frames ──────────────────────────────────────────────────────────────
 
 
@@ -160,6 +172,17 @@ async def test_list_frames_paginates_across_multiple_pages(mocker) -> None:
     frames = await archive.list_frames()
 
     assert [f.id for f in frames] == [1, 2]
+
+
+@pytest.mark.asyncio
+async def test_list_frames_passes_obsnum_to_query(mocker) -> None:
+    archive = make_archive()
+    response = MockResponse(json={"results": [make_frame_dict(id=1)], "count": 1})
+    mock_get = mocker.patch("aiohttp.ClientSession.get", return_value=response)
+
+    await archive.list_frames(obsnum="42")
+
+    assert mock_get.call_args.kwargs["params"]["OBSNUM"] == "42"
 
 
 @pytest.mark.asyncio

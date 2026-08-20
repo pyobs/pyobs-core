@@ -24,7 +24,9 @@ Short decision records for choices that had genuine considered-and-rejected alte
 - [0010-pyobs-gui-stays-on-qtwidgets-not-qml.md](0010-pyobs-gui-stays-on-qtwidgets-not-qml.md) —
   pyobs-gui stays on QtWidgets, not QML. *accepted* (Repos: pyobs-gui)
 - [0011-keycloak-identity-broker-for-shared-auth.md](0011-keycloak-identity-broker-for-shared-auth.md) —
-  self-hosted Keycloak alongside odin as two parallel auth backends. *proposed* (Repos:
+  self-hosted Keycloak alongside odin as two parallel auth backends. *superseded 2026-08-19* — the
+  design/plan went the other way: observation-portal is brokered *through* Keycloak and archive's
+  direct OAuth2 integration was removed (`specs/design/shared-auth-keycloak.md`) (Repos:
   pyobs-core, pyobs-archive, pyobs-robotic-backend)
 - [0012-event-delivery-explicit-pubsub-subscription-not-presence.md](0012-event-delivery-explicit-pubsub-subscription-not-presence.md) —
   event delivery moves from PEP presence auto-subscribe to explicit pubsub subscription.

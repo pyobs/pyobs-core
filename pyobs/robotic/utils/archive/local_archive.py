@@ -48,6 +48,7 @@ class LocalArchive(Archive):
                 "site",
                 "telescope",
                 "rlevel",
+                "obsnum",
             ]
         }
         for filename in filenames:
@@ -61,6 +62,7 @@ class LocalArchive(Archive):
             columns["site"].append(hdr["SITEID"] if "SITEID" in hdr else None)
             columns["telescope"].append(hdr["TELID"] if "TELID" in hdr else None)
             columns["rlevel"].append(hdr["RLEVEL"] if "RLEVEL" in hdr else None)
+            columns["obsnum"].append(str(hdr["OBSNUM"]) if "OBSNUM" in hdr else None)
         columns["filename"] = filenames
         self._data = pd.DataFrame(columns)
 
@@ -76,6 +78,7 @@ class LocalArchive(Archive):
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
+        obsnum: str | None = None,
     ) -> pd.DataFrame:
         data = self._data
         if start is not None:
@@ -98,6 +101,8 @@ class LocalArchive(Archive):
             data = data[data["filter"] == filter_name]
         if rlevel is not None:
             data = data[data["rlevel"] == rlevel]
+        if obsnum is not None:
+            data = data[data["obsnum"] == obsnum]
         return data
 
     async def list_options(
@@ -112,9 +117,10 @@ class LocalArchive(Archive):
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
+        obsnum: str | None = None,
     ) -> dict[str, list[Any]]:
         data = self._filter_data(
-            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel
+            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel, obsnum=obsnum
         )
         return {
             "binnings": list(data["binning"].unique()),
@@ -137,9 +143,10 @@ class LocalArchive(Archive):
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
+        obsnum: str | None = None,
     ) -> list[FrameInfo]:
         data = self._filter_data(
-            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel
+            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel, obsnum=obsnum
         )
         infos: list[FrameInfo] = []
         for _, row in data.iterrows():

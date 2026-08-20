@@ -1,6 +1,12 @@
 # Shared authentication across pyobs web projects via Keycloak
 
-Status: proposed
+Status: implemented — the plan (`specs/plans/2026-08-12-shared-auth-keycloak.md`) was closed
+2026-08-19: `pyobs-auth` released (`2.0.0.dev7`), pyobs-archive cutover landed (`2.0.0.dev8`,
+commit `01eb06e` removed `OAuth2Backend`/`BearerAuthentication`/`OAUTH_CLIENT`; `Profile.keycloak_sub`
+user mapping), pyobs-robotic-backend wired in (`KeycloakAuthentication`, `KeycloakIdentity` model);
+browser login/logout verified end to end against the running Keycloak. Section 0 of the plan
+(observation-portal brokering in the Keycloak admin console) remains open but is admin/deployment
+config, tracked in #748, not pyobs code.
 Repos: pyobs-archive, pyobs-robotic-backend
 
 ## Problem

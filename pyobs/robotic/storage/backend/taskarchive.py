@@ -56,17 +56,35 @@ class BackendTaskArchive(TaskArchive):
         """Update tasks in background."""
         while True:
             try:
-                last_update = await self.last_update_time()
-                if self._last_update is None or self._last_update < last_update:
-                    self._projects = await self._get_projects()
-                    self._tasks = await self._get_tasks()
-                    log.info("Downloaded new tasks/projects.")
-                    self._last_update = last_update
-                    if self._on_tasks_changed is not None:
-                        await self._on_tasks_changed()
+                await self._update()
             except Exception as e:
                 log.error("Failed to update tasks from backend: %s", e)
             await asyncio.sleep(5)
+
+    async def _update(self) -> None:
+        """Fetch tasks/projects from the backend and apply them if anything changed.
+
+        Re-fetches unconditionally on every poll instead of gating on the backend's
+        ``last_task_update`` marker: that marker is computed from a per-process Django
+        ``LocMemCache`` and is unreliable across gunicorn workers, so gating on it let the
+        mastermind run stale tasks forever. Real changes are detected by comparing the downloaded
+        content against the cached copy. The comparison uses ``model_dump()`` rather than pydantic
+        ``==``, which also compares runtime attributes (e.g. ``Task._cant_run_reason`` set by
+        ``can_run()``) and would flag unchanged tasks as changed on every poll; it is keyed by ID
+        so that a stable reordering of the same items (e.g. an unordered backend queryset) is not
+        mistaken for a change.
+        """
+        projects = await self._get_projects()
+        tasks = await self._get_tasks()
+        if {p.code: p.model_dump() for p in projects} != {p.code: p.model_dump() for p in self._projects} or {
+            t.id: t.model_dump() for t in tasks
+        } != {t.id: t.model_dump() for t in self._tasks}:
+            self._projects = projects
+            self._tasks = tasks
+            self._last_update = Time.now()
+            log.info("Downloaded new tasks/projects.")
+            if self._on_tasks_changed is not None:
+                await self._on_tasks_changed()
 
     async def last_update_time(self) -> Time:
         """Fetches last schedule update time."""
@@ -75,16 +93,20 @@ class BackendTaskArchive(TaskArchive):
 
     async def _get_projects(self) -> list[Project]:
         """Fetch projects from backend."""
-        projects = await http_request_paginated(self._session, urljoin(self._url, "/api/projects/"))
+        projects = await http_request_paginated(self._session, urljoin(self._url, "/api/projects/"), strict=True)
         return [self.pyobs_model_validate(Project, project) for project in projects]
 
     async def _get_tasks(self) -> list[Task]:
         """Fetch tasks from backend."""
-        tasks = await http_request_paginated(self._session, urljoin(self._url, "/api/tasks/"))
+        tasks = await http_request_paginated(self._session, urljoin(self._url, "/api/tasks/"), strict=True)
         return [self.pyobs_model_validate(Task, task) for task in tasks]
 
     async def last_changed(self) -> Time | None:
-        """Returns time when last time any tasks changed."""
+        """Returns time when last time any tasks changed (as observed by this archive).
+
+        This is the local time at which the last content change was detected by the polling loop,
+        not the backend's marker timestamp -- the marker is per-process and unreliable.
+        """
         return self._last_update
 
     async def get_projects(self) -> list[Project]:

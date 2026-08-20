@@ -68,10 +68,11 @@ class PyobsArchive(Archive):
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
+        obsnum: str | None = None,
     ) -> dict[str, list[Any]]:
         url = urllib.parse.urljoin(self.url, "frames/aggregate/")
         params = self._build_query(
-            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel
+            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel, obsnum=obsnum
         )
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
@@ -91,10 +92,11 @@ class PyobsArchive(Archive):
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
+        obsnum: str | None = None,
     ) -> list[FrameInfo]:
         url = urllib.parse.urljoin(self.url, "frames/")
         params = self._build_query(
-            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel
+            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel, obsnum=obsnum
         )
         frames: list[FrameInfo] = []
         params["offset"] = 0
@@ -123,6 +125,7 @@ class PyobsArchive(Archive):
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
+        obsnum: str | None = None,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {}
         if start is not None:
@@ -145,6 +148,8 @@ class PyobsArchive(Archive):
             params["FILTER"] = filter_name
         if rlevel is not None:
             params["RLEVEL"] = rlevel
+        if obsnum is not None:
+            params["OBSNUM"] = obsnum
         return params
 
     async def download_frames(self, infos: list[FrameInfo]) -> list[Image]:

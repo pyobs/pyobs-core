@@ -60,22 +60,38 @@ class BackendObservationArchive(ObservationArchive):
 
         while True:
             try:
-                last_update = await self.last_update_time()
-                if self._last_update is None or self._last_update < last_update:
-                    self._observations = await self._get_schedule()
-                    sorted_obs = sorted(
-                        filter(lambda o: o.state == ObservationState.PENDING, self._observations),
-                        key=lambda o: o.start,
-                    )
-                    if len(sorted_obs) == 0:
-                        log.info("Downloaded new schedule.")
-                    else:
-                        obs = sorted_obs[0]
-                        log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
-                    self._last_update = last_update
+                await self._update()
             except Exception as e:
                 log.error("Failed to update observations from backend: %s", e)
             await asyncio.sleep(5)
+
+    async def _update(self) -> None:
+        """Fetch the schedule from the backend and apply it if anything changed.
+
+        Re-fetches unconditionally on every poll instead of gating on the backend's
+        ``last_observation_update`` marker (per-process Django ``LocMemCache``, unreliable across
+        gunicorn workers -- see ``BackendTaskArchive``). Changes are detected by comparing full
+        observation contents via ``model_dump(use_task_id=True)``: the backend serializes ``task``
+        as a plain FK ID, while cached copies get their ``task`` replaced by a full ``Task`` when
+        the mastermind calls ``fetch_task()``, so the ID normalization keeps both sides
+        comparable. The comparison must include ``state`` -- ``Observation.__eq__`` ignores it, so
+        a naive list-equality check would miss e.g. window-expired or in-progress transitions.
+        """
+        observations = await self._get_schedule()
+        if [o.model_dump(use_task_id=True) for o in observations] != [
+            o.model_dump(use_task_id=True) for o in self._observations
+        ]:
+            self._observations = observations
+            self._last_update = Time.now()
+            sorted_obs = sorted(
+                filter(lambda o: o.state == ObservationState.PENDING, self._observations),
+                key=lambda o: o.start,
+            )
+            if len(sorted_obs) == 0:
+                log.info("Downloaded new schedule.")
+            else:
+                obs = sorted_obs[0]
+                log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
 
     async def last_update_time(self) -> Time:
         """Fetches last schedule update time."""

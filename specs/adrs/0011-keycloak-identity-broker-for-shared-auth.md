@@ -1,6 +1,12 @@
 # Use a self-hosted Keycloak alongside odin, as two parallel auth backends
 
-status: proposed
+status: superseded 2026-08-19 — this ADR's decision was **not** what shipped. The later
+design/plan (`specs/design/shared-auth-keycloak.md`, `specs/plans/2026-08-12-shared-auth-keycloak.md`)
+reversed it: "odin" was recognized as our own `observation-portal` deployment (miscast here as an
+external LCO dependency), and it is **brokered through Keycloak** rather than run in parallel —
+pyobs-archive's direct OAuth2 integration was removed outright (archive commit `01eb06e`,
+2026-08-12) and Keycloak is the single issuer. Kept as the historical record of the
+considered-and-rejected parallel-backends option.
 
 date: 2026-08-10
 

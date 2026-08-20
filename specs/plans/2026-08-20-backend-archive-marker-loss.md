@@ -1,6 +1,7 @@
 # Plan: Stop gating backend-archive refreshes on the `last_*_update` marker
 
-Status: implemented (PR #790, open)
+Status: implemented, closed 2026-08-20 (PR #790, issue #789 closed; robotic-backend root cause
+fixed separately via #84, closing #83)
 Repos: pyobs-core, pyobs-robotic-backend
 Issue: pyobs-core#789
 

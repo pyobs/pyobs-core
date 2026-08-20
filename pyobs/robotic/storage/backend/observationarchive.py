@@ -60,22 +60,42 @@ class BackendObservationArchive(ObservationArchive):
 
         while True:
             try:
-                last_update = await self.last_update_time()
-                if self._last_update is None or self._last_update < last_update:
-                    self._observations = await self._get_schedule()
-                    sorted_obs = sorted(
-                        filter(lambda o: o.state == ObservationState.PENDING, self._observations),
-                        key=lambda o: o.start,
-                    )
-                    if len(sorted_obs) == 0:
-                        log.info("Downloaded new schedule.")
-                    else:
-                        obs = sorted_obs[0]
-                        log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
-                    self._last_update = last_update
+                await self._update()
             except Exception as e:
                 log.error("Failed to update observations from backend: %s", e)
             await asyncio.sleep(5)
+
+    async def _update(self) -> None:
+        """Fetch the schedule from the backend and apply it if anything changed.
+
+        Re-fetches unconditionally on every poll instead of gating on the backend's
+        ``last_observation_update`` marker (per-process Django ``LocMemCache``, unreliable across
+        gunicorn workers -- see ``BackendTaskArchive``). Changes are detected by comparing full
+        observation contents via ``model_dump(use_task_id=True)``, keyed by observation ID so a
+        stable reordering of the same items is not mistaken for a change: the backend serializes
+        ``task`` as a plain FK ID, while cached copies get their ``task`` replaced by a full
+        ``Task`` when the mastermind calls ``fetch_task()``, so the ID normalization keeps both
+        sides comparable. The comparison includes ``state`` (``Observation.__eq__`` ignores it),
+        which matters for in-set transitions such as ``pending`` -> ``in_progress``; observations
+        leaving the fetched set -- e.g. ``window_expired``, which the server-side ``state``/
+        ``end_after`` filters drop -- are picked up as list shrinkage by the unconditional
+        refetch.
+        """
+        observations = await self._get_schedule()
+        if {o.id: o.model_dump(use_task_id=True) for o in observations} != {
+            o.id: o.model_dump(use_task_id=True) for o in self._observations
+        }:
+            self._observations = observations
+            self._last_update = Time.now()
+            sorted_obs = sorted(
+                filter(lambda o: o.state == ObservationState.PENDING, self._observations),
+                key=lambda o: o.start,
+            )
+            if len(sorted_obs) == 0:
+                log.info("Downloaded new schedule.")
+            else:
+                obs = sorted_obs[0]
+                log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
 
     async def last_update_time(self) -> Time:
         """Fetches last schedule update time."""
@@ -229,7 +249,7 @@ class BackendObservationArchive(ObservationArchive):
             params["end_before"] = end_before.isot
         if end_after is not None:
             params["end_after"] = end_after.isot
-        observations = await http_request_paginated(self._session, url, params=params)
+        observations = await http_request_paginated(self._session, url, params=params, strict=True)
         return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
 

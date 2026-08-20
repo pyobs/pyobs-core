@@ -1,5 +1,12 @@
 v2.0.0.dev78 (unreleased)
 *************************
+* ``BackendTaskArchive`` and ``BackendObservationArchive`` gate their 5s refresh on the backend's
+  ``last_task_update``/``last_observation_update`` marker again. The marker is now a DB-derived
+  ``Max(updated_at)`` (pyobs-robotic-backend#84) that is truthful across gunicorn workers, so the
+  archives no longer re-download (and re-compare) on every poll — the per-poll content comparison
+  was fragile and misfired whenever runtime code mutated a serialized field (see the
+  ``DynamicTarget.resolve()`` fix below), livelocking the scheduler. The content comparison is
+  kept as the ``on_tasks_changed`` trigger, so no-op marker bumps never fire a scheduler run.
 * ``DynamicTarget.resolve()`` no longer overwrites its declared ``name`` field with the picked
   star's name. That mutation leaked into ``Task.model_dump()`` (which serializes the static
   target), so ``BackendTaskArchive``'s content comparison saw a "change" on every poll while the

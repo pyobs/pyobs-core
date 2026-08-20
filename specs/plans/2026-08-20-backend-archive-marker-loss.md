@@ -54,6 +54,13 @@ changes; treat a missing/older marker as 'refresh anyway'").
   `Task._cant_run_reason` from `can_run()`), so a task that has merely *run* would look
   different from a freshly downloaded one on every poll. `model_dump()` serializes only declared
   fields, so it is stable. (Verified against the installed pydantic.)
+- The comparison is keyed by ID (`project.code` / `task.id`), so the same items returned in a
+  different order (an unordered backend queryset would emit `UnorderedObjectListWarning`) are not
+  mistaken for a change.
+- Fetches use `http_request_paginated(..., strict=True)`: the util's mid-fetch "Invalid page."
+  404 tolerance (added to survive concurrent writes on live datasets) would otherwise return a
+  **truncated** list, which reads as "changed" and would silently replace the cache with partial
+  data — now an error instead, logged by the loop and retried on the next poll.
 - `_last_update` is never initialized from the backend marker anymore, so the `1970-01-01`
   fallback can't pin the archive. `last_update_time()` stays as a public method (the endpoint
   still exists; the robotic-backend side may fix the marker later) but is no longer used for
@@ -66,14 +73,21 @@ changes; treat a missing/older marker as 'refresh anyway'").
 Same shape:
 
 - `_update()` fetches the schedule (`get_observations(end_after=now, state=pending|in_progress)`)
-  and compares full observation contents via `model_dump(use_task_id=True)`.
+  and compares full observation contents via `model_dump(use_task_id=True)`, keyed by
+  observation ID (order-insensitive).
 - `use_task_id=True` matters twice: the backend serializes `task` as a plain FK ID, while the
   cached copies get their `task` replaced by a full `Task` when the mastermind calls
   `fetch_task()` — the flag normalizes both sides to the task ID.
-- Comparison must cover **all fields including `state`**: `Observation.__eq__` compares only
-  `task.id`/`start`/`end` (ignoring `state`), so a naive list-equality check would miss
-  `window_expired` / `in_progress` transitions — the exact symptom of the bug. Comparing
-  `model_dump()` output catches them.
+- Comparison covers **all fields including `state`**: `Observation.__eq__` compares only
+  `task.id`/`start`/`end` (ignoring `state`), so a naive list-equality check would miss in-set
+  transitions such as `pending` -> `in_progress` (both are inside the fetched `state` filter).
+  The *window-expired* symptom from the issue is handled differently: the backend's server-side
+  `state` + `end_after=now` filters drop the expired observation from the response entirely, and
+  the unconditional refetch applies that list shrinkage — which is what stops the mastermind
+  treating a window-expired observation as runnable.
+- `get_observations()` fetches with `strict=True` pagination (same truncated-list guard as the
+  task archive; it also protects the scheduler's `ObservationArchiveEvolution` prefetch, which
+  reads observation history through this method).
 - Spurious "changed" detections (e.g. an `obsnum` the backend doesn't persist) are harmless:
   they cause a re-download and a log line, never a missed change. The dangerous direction —
   missing a real change — is what this fix eliminates.
@@ -87,19 +101,25 @@ longer depends on any of them for correctness.
 
 ## Testing
 
-`tests/robotic/storage/backend/test_backend_archives.py`:
+`tests/robotic/storage/backend/test_backend_archives.py` and `tests/utils/test_http.py`:
 
 - `_update()` re-downloads and applies changes **even when the backend marker is stale/unchanged**
   (the regression: previously a pinned `_last_update` skipped the download). Mock
   `last_update_time()` to return a fixed old timestamp; assert `_get_projects`/`_get_tasks`
   were called and the cache + `_on_tasks_changed` fired.
-- `_update()` does **not** fire `_on_tasks_changed` when content is unchanged (idempotent poll).
+- `_update()` does **not** fire `_on_tasks_changed` when content is unchanged (idempotent poll),
+  and does not treat a stable reordering of the same items as a change (order-insensitive,
+  ID-keyed comparison — both archives).
 - `_update()` fires `_on_tasks_changed` when a task's content changed (e.g. `active` flipped)
   even though its identity is the same.
-- Observation archive: `_update()` detects a pure **state** change (pending → window_expired)
-  despite `Observation.__eq__` ignoring state.
+- Observation archive: `_update()` detects an in-set **state** transition (pending →
+  in_progress) despite `Observation.__eq__` ignoring state, and applies **list shrinkage** when
+  an observation disappears from the fetched set (the production path for window-expiry, where
+  the server-side filters drop the observation).
 - Observation archive: `_update()` does not spam "changed" when the cached observations had
   `fetch_task()` applied (task normalized to ID) — pins the `use_task_id` comparison.
+- `http_request_paginated(strict=True)` raises on mid-fetch "Invalid page." truncation, and the
+  archives pass `strict=True` on every paginated fetch (asserted in the fetch tests).
 - Existing `last_update_time()` tests stay (method is kept).
 - `ruff` + `pyrefly` on touched files.
 

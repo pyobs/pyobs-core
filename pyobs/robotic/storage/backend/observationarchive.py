@@ -71,16 +71,20 @@ class BackendObservationArchive(ObservationArchive):
         Re-fetches unconditionally on every poll instead of gating on the backend's
         ``last_observation_update`` marker (per-process Django ``LocMemCache``, unreliable across
         gunicorn workers -- see ``BackendTaskArchive``). Changes are detected by comparing full
-        observation contents via ``model_dump(use_task_id=True)``: the backend serializes ``task``
-        as a plain FK ID, while cached copies get their ``task`` replaced by a full ``Task`` when
-        the mastermind calls ``fetch_task()``, so the ID normalization keeps both sides
-        comparable. The comparison must include ``state`` -- ``Observation.__eq__`` ignores it, so
-        a naive list-equality check would miss e.g. window-expired or in-progress transitions.
+        observation contents via ``model_dump(use_task_id=True)``, keyed by observation ID so a
+        stable reordering of the same items is not mistaken for a change: the backend serializes
+        ``task`` as a plain FK ID, while cached copies get their ``task`` replaced by a full
+        ``Task`` when the mastermind calls ``fetch_task()``, so the ID normalization keeps both
+        sides comparable. The comparison includes ``state`` (``Observation.__eq__`` ignores it),
+        which matters for in-set transitions such as ``pending`` -> ``in_progress``; observations
+        leaving the fetched set -- e.g. ``window_expired``, which the server-side ``state``/
+        ``end_after`` filters drop -- are picked up as list shrinkage by the unconditional
+        refetch.
         """
         observations = await self._get_schedule()
-        if [o.model_dump(use_task_id=True) for o in observations] != [
-            o.model_dump(use_task_id=True) for o in self._observations
-        ]:
+        if {o.id: o.model_dump(use_task_id=True) for o in observations} != {
+            o.id: o.model_dump(use_task_id=True) for o in self._observations
+        }:
             self._observations = observations
             self._last_update = Time.now()
             sorted_obs = sorted(
@@ -245,7 +249,7 @@ class BackendObservationArchive(ObservationArchive):
             params["end_before"] = end_before.isot
         if end_after is not None:
             params["end_after"] = end_after.isot
-        observations = await http_request_paginated(self._session, url, params=params)
+        observations = await http_request_paginated(self._session, url, params=params, strict=True)
         return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
 

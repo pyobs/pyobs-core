@@ -105,25 +105,28 @@ async def test_task_last_update_time(mocker) -> None:
 @pytest.mark.asyncio
 async def test_task_get_projects_from_backend(mocker) -> None:
     archive = make_task_archive()
-    mocker.patch(
+    mock = mocker.patch(
         "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
         AsyncMock(return_value=[{"code": "test", "name": "Test", "priority": 1.0}]),
     )
     result = await archive._get_projects()
     assert len(result) == 1
     assert result[0].code == "test"
+    # truncated pagination must be an error, never a silently partial list applied to the cache
+    assert mock.call_args[1]["strict"] is True
 
 
 @pytest.mark.asyncio
 async def test_task_get_tasks_from_backend(mocker) -> None:
     archive = make_task_archive()
-    mocker.patch(
+    mock = mocker.patch(
         "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
         AsyncMock(return_value=[{"id": 1, "name": "t1", "duration": 300}]),
     )
     result = await archive._get_tasks()
     assert len(result) == 1
     assert result[0].name == "t1"
+    assert mock.call_args[1]["strict"] is True
 
 
 # ── BackendObservationArchive ─────────────────────────────────────────────────
@@ -280,6 +283,8 @@ async def test_obs_get_observations_builds_params(mocker) -> None:
     assert params["state"] == ObservationState.PENDING
     assert "start_after" in params
     assert "end_before" in params
+    # truncated pagination must be an error, never a silently partial list applied to the cache
+    assert mock_request.call_args[1]["strict"] is True
 
 
 @pytest.mark.asyncio
@@ -447,18 +452,19 @@ async def test_obs_update_no_change_keeps_cache(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_obs_update_detects_state_change(mocker) -> None:
-    """Regression for #789: a pure state transition (e.g. window_expired) must be picked up, even
-    though Observation.__eq__ ignores state -- comparison covers the full dumped content."""
+async def test_obs_update_detects_state_transition_in_fetched_set(mocker) -> None:
+    """An in-set state transition (pending -> in_progress, both within the backend's
+    state=pending,in_progress filter) must be picked up even though Observation.__eq__ ignores
+    state -- the comparison covers the full dumped content."""
     # sanity: plain __eq__ misses the state change entirely (same task id/start/end)
     pending = Observation(task=make_task(), start=T0, end=T1, state=ObservationState.PENDING)
-    expired = Observation(task=make_task(), start=T0, end=T1, state=ObservationState.WINDOW_EXPIRED)
-    assert pending == expired
+    in_progress = Observation(task=make_task(), start=T0, end=T1, state=ObservationState.IN_PROGRESS)
+    assert pending == in_progress
 
     archive = make_obs_archive()
     mocker.patch(
         "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
-        AsyncMock(side_effect=[[OBS_DICT], [dict(OBS_DICT, state="window_expired")]]),
+        AsyncMock(side_effect=[[OBS_DICT], [dict(OBS_DICT, state="in_progress")]]),
     )
 
     await archive._update()
@@ -466,7 +472,69 @@ async def test_obs_update_detects_state_change(mocker) -> None:
 
     await archive._update()
 
-    assert archive._observations[0].state == ObservationState.WINDOW_EXPIRED
+    assert archive._observations[0].state == ObservationState.IN_PROGRESS
+
+
+@pytest.mark.asyncio
+async def test_obs_update_applies_shrinkage_when_observation_disappears(mocker) -> None:
+    """The production path for the window_expired symptom from #789: the backend's server-side
+    state=pending,in_progress and end_after=now filters drop the expired observation from the
+    response, and the unconditional refetch must apply that shrinkage -- otherwise the mastermind
+    keeps treating the window-expired observation as runnable."""
+    archive = make_obs_archive()
+    mocker.patch(
+        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        AsyncMock(side_effect=[[OBS_DICT], []]),
+    )
+
+    await archive._update()
+    assert len(archive._observations) == 1
+
+    await archive._update()
+
+    assert len(archive._observations) == 0
+
+
+@pytest.mark.asyncio
+async def test_task_update_order_insensitive(mocker) -> None:
+    """The same items in a different order (e.g. an unordered backend queryset) must not be
+    reported as a change -- the comparison is keyed by ID."""
+    archive = make_task_archive()
+    on_tasks_changed = AsyncMock()
+    archive._on_tasks_changed = on_tasks_changed
+    projects = [{"code": "a", "name": "A", "priority": 1.0}, {"code": "b", "name": "B", "priority": 1.0}]
+    tasks = [{"id": 1, "name": "t1", "duration": 300}, {"id": 2, "name": "t2", "duration": 300}]
+    mocker.patch(
+        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        AsyncMock(side_effect=[projects, tasks, list(reversed(projects)), list(reversed(tasks))]),
+    )
+
+    await archive._update()
+    assert on_tasks_changed.await_count == 1
+
+    await archive._update()
+
+    assert on_tasks_changed.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_obs_update_order_insensitive(mocker) -> None:
+    """The same observations in a different order must not be reported as a change."""
+    archive = make_obs_archive()
+    obs_a = {"id": "obs-a", "task": 1, "start": T0.isot, "end": T1.isot, "state": "pending"}
+    obs_b = {"id": "obs-b", "task": 1, "start": T1.isot, "end": T2.isot, "state": "pending"}
+    mocker.patch(
+        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        AsyncMock(side_effect=[[obs_a, obs_b], [obs_b, obs_a]]),
+    )
+
+    await archive._update()
+    assert archive._last_update is not None
+    cached = archive._observations
+
+    await archive._update()
+
+    assert archive._observations is cached  # reordering is not a change
 
 
 @pytest.mark.asyncio

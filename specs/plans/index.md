@@ -74,6 +74,10 @@ Implementation plans, checklist-style. Newest at the bottom.
   presence. **implemented, closed** (merged 2026-08-16, PR #761; 9 integration tests + full 30/30
   XMPP suite passing). Rollout to production sites is a standalone operational step, not part of
   this plan's closure.
+- [2026-08-20-backend-archive-marker-loss.md](2026-08-20-backend-archive-marker-loss.md) —
+  stop gating backend-archive refreshes on the per-process `last_*_update` marker; re-fetch
+  every poll and detect changes by content. **implemented, closed** (merged 2026-08-20, PR #795;
+  Repos: pyobs-core, pyobs-robotic-backend)
 
 ## Not finished
 

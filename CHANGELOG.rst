@@ -25,6 +25,16 @@ v2.0.0.dev78 (unreleased)
   ``ImageFitsHeaderMixin.__init__`` instead of forwarding ``**kwargs``, silently dropping a
   configured ``fits_header_timeout`` for exactly the modules (e.g. ``fli230``) that motivated this
   fix. Fixes #764. (#765, #768)
+* ``BackendTaskArchive`` and ``BackendObservationArchive`` no longer gate their 5s refresh loop on
+  the robotic-backend's ``last_task_update``/``last_observation_update`` marker. That marker is
+  computed from a per-process Django ``LocMemCache`` and is unreliable across gunicorn workers, so
+  a stale or missing marker pinned the archive's ``_last_update`` and the mastermind kept running
+  stale tasks/schedules (edited task parameters, deactivated tasks, newly scheduled observations,
+  window-expired observations) forever. Both archives now re-fetch unconditionally on every poll
+  and detect real changes by comparing the downloaded content against the cached copy (full model
+  dumps, including observation ``state``), firing ``on_tasks_changed`` only when content actually
+  changed; ``last_changed()`` now reports the local time a change was last observed. Fixes #789.
+  (#795)
 
 v2.0.0.dev77 (2026-08-16)
 *************************

@@ -1,10 +1,13 @@
 # Investigation: pyobs-gui receives every LogEvent twice (SAAO/monet production)
 
-Status: root mechanism confirmed 2026-08-16 (point 15), directly from production debug logs — no
-longer inferred. One PEP publish triggers two independent `ejabberd_sm:route_message` sends to the
-same subscriber session: one bare-JID-addressed (implicit, roster-presence-based), one
-resource-addressed (explicit, `add_interest()`-based). Fix path is clear (Next steps #4): drop
-`add_interest()` in `xmppcomm.py:813`, pending one caveat check.
+Status: implemented, closed 2026-08-20 — the fix this investigation called for landed via PR
+#761 (merged 2026-08-16): `add_interest()` was dropped from `XmppComm._register_events()`
+(`xmppcomm.py:813`) and replaced with explicit XEP-0060 node subscriptions, eliminating the
+resource-addressed second `ejabberd_sm:route_message` send that caused the duplication. Root
+mechanism was confirmed 2026-08-16 (point 15), directly from production debug logs — no longer
+inferred. Two threads remain recorded below, neither blocking this closure: why `ms`'s real
+accounts specifically double-delivered (points 16-18: seven+ local repros never reproduced it),
+and rollout of #761 to production sites (a standalone operational step).
 
 **But the bug is not universal** (point 16): a live test against the sibling `iagvtsrv` production
 server — same ejabberd version, same shared-roster provisioning, real `both` roster state — showed

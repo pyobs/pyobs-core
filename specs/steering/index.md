@@ -15,3 +15,5 @@ warrants it, not for speculative content.
   internal projects.
 - [fleet-tooling-consistency.md](fleet-tooling-consistency.md) — shared lint/type-check/Dependabot
   tooling baseline for GitHub-hosted core/connected projects.
+- [fleet-open-items.md](fleet-open-items.md) — standing snapshot of open issues and plans across
+  the fleet; update it (and remove closed items) whenever fleet-relevant status changes.

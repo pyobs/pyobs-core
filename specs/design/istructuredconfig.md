@@ -1,7 +1,16 @@
 # `IStructuredConfig`: bulk structured config for pyobs modules
 
-Status: proposed, not yet implemented in this repo. Consumer repo: `pyobs-iagvt`
-(siderostat driver). Originally its own standalone `IStructuredConfig-spec.md` before
+Status: implemented — pyobs-core landed `pyobs/interfaces/IStructuredConfig.py` and
+`pyobs/utils/config_schema.py` (commits `374fb358`/`a07fb3f0`, 2026-07-10; tests in
+`tests/utils/test_config_schema.py` and `tests/comm/local/test_istructuredconfig.py`), registered
+in `pyobs/interfaces/__init__.py`. The consumer that adopted it is pyobs-iagvt's **`FTS` module**
+(`pyobs_iagvt/modules/fts.py`, `class FTS(BaseSpectrograph, IAbortable, IStructuredConfig)`, driven
+by `pyobs_iagvt/widgets/ftswidget.py` and `scripts/ftsobservationscript.py`) — not the siderostat
+driver named below. Two evolutions vs. this doc, both additive: `config_schema.py` also gained
+`pydantic_to_schema()` (the FTS config is a pydantic model, not a dataclass — `FTS` uses
+`pydantic_to_schema(FTSConfig)` for its capabilities), and `IConfig`'s `ConfigValue` was left flat
+with the recursive alias living in `IStructuredConfig` (this doc's preferred option).
+Originally its own standalone `IStructuredConfig-spec.md` before
 being folded into `DEVELOPMENT.md`; restored here as its own design doc. `IConfig` is
 unaffected and stays as the per-field config mechanism — the two are meant to coexist.
 

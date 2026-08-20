@@ -18,7 +18,8 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [image_trim.md](image_trim.md) — unify the three TRIMSEC implementations into `Image.trim()`.
   *implemented, closed* (#342)
 - [istructuredconfig.md](istructuredconfig.md) — `IStructuredConfig` bulk structured config.
-  *proposed* (consumer: pyobs-iagvt)
+  *implemented* (pyobs-core `IStructuredConfig.py` + `config_schema.py`, 2026-07-10; consumer:
+  pyobs-iagvt's FTS module — see doc status for the pydantic/consumer evolutions)
 - [module_observer_location.md](module_observer_location.md) — module observer-location
   capabilities. *implemented, closed*
 - [obsnum_fits_header.md](obsnum_fits_header.md) — `OBSNUM` per-night observation counter in FITS
@@ -28,4 +29,5 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [rpc_gating_on_startup.md](rpc_gating_on_startup.md) — gating RPC commands until module startup
   completes. *implemented, closed* (#673)
 - [shared-auth-keycloak.md](shared-auth-keycloak.md) — shared auth across pyobs web projects via
-  Keycloak. *proposed* (Repos: pyobs-archive, pyobs-robotic-backend)
+  Keycloak. *implemented* (plan `2026-08-12-shared-auth-keycloak.md` closed 2026-08-19;
+  Repos: pyobs-archive, pyobs-robotic-backend)

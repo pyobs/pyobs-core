@@ -150,6 +150,20 @@ async def test_task_get_tasks_from_backend(mocker) -> None:
     assert mock.call_args[1]["strict"] is True
 
 
+@pytest.mark.asyncio
+async def test_task_get_tasks_from_backend_accepts_updated_at(mocker) -> None:
+    """Tasks with the backend `updated_at` field (pyobs-robotic-backend#84) ingest without a
+    strict-model ValidationError, and the value round-trips."""
+    archive = make_task_archive()
+    mocker.patch(
+        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        AsyncMock(return_value=[{"id": 1, "name": "t1", "duration": 300, "updated_at": "2026-08-20T17:59:29.526066Z"}]),
+    )
+    result = await archive._get_tasks()
+    assert len(result) == 1
+    assert result[0].updated_at == "2026-08-20T17:59:29.526066Z"
+
+
 # ── BackendObservationArchive ─────────────────────────────────────────────────
 
 

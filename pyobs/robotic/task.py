@@ -45,6 +45,10 @@ class Task(PolymorphicBaseModel):
     static_target: Target | None = Field(default=None, alias="target")
     script: dict[str, Any] = Field(default_factory=dict)
     active: bool = True
+    updated_at: str | None = None
+    """Last-modification timestamp as emitted by pyobs-robotic-backend (DB-derived ``updated_at``,
+    added in pyobs-robotic-backend#84). Carried for round-trip fidelity so the strict ``Task``
+    model (``extra="forbid"``) accepts the field the backend now sends; not used by pyobs itself."""
 
     _resolved_target: Target | None = PrivateAttr(default=None)
     _cant_run_reason: str | None = None

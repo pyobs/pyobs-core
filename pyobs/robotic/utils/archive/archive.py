@@ -42,6 +42,7 @@ class Archive(PolymorphicBaseModel, metaclass=ABCMeta):
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
+        obsnum: str | None = None,
     ) -> dict[str, list[Any]]: ...
 
     @abstractmethod
@@ -57,6 +58,7 @@ class Archive(PolymorphicBaseModel, metaclass=ABCMeta):
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
+        obsnum: str | None = None,
     ) -> list[FrameInfo]: ...
 
     @abstractmethod

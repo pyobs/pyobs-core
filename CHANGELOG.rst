@@ -39,6 +39,11 @@ v2.0.0.dev78 (unreleased)
   dumps, including observation ``state``), firing ``on_tasks_changed`` only when content actually
   changed; ``last_changed()`` now reports the local time a change was last observed. Fixes #789.
   (#790)
+* ``PyobsArchive`` and ``LocalArchive`` gained an ``obsnum`` filter on ``list_frames()`` and
+  ``list_options()``: ``PyobsArchive`` now emits the ``OBSNUM`` query parameter (exact match on
+  ``Frame.OBSNUM``), and ``LocalArchive`` filters its local index on the ``OBSNUM`` FITS header, so
+  observations can be matched to their archived frames via ``list_frames(obsnum=...)``. Needed by
+  pyobs-robotic-backend#82. (#791)
 
 v2.0.0.dev77 (2026-08-16)
 *************************

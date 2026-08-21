@@ -1,6 +1,6 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — checked on 2026-08-20.
+Status: standing snapshot — checked on 2026-08-21.
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -16,13 +16,12 @@ and remove closed items outright, never annotate them.** Only open items live he
 
 Repos: the whole pyobs fleet.
 
-## Open issues (8, checked 2026-08-20)
+## Open issues (7, checked 2026-08-21)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#791](https://github.com/pyobs/pyobs-core/issues/791) | PyobsArchive: add OBSNUM filter to `list_frames()`/`list_options()` | `_build_query()` emits no `OBSNUM`, though the archive API supports it |
 | pyobs-core | [#769](https://github.com/pyobs/pyobs-core/issues/769) | Dedupe per-frame header/JSON build in `BaseVideo` raw_handler | flagged in #766 review; N raw clients ⇒ N× header build/serialization/copy per frame |
 | pyobs-core | [#767](https://github.com/pyobs/pyobs-core/issues/767) | `FitsHeaderMixin` only catches `RemoteError` | a peer's malformed response (non-`IqError`/`IqTimeout`) crashes the whole exposure |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
@@ -40,6 +39,12 @@ One row per issue — same layout for every repo.
   decided + spiked, widget-selection mechanism still open.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *proposed* (pyobs-gui). `TelescopeWidget` width-floor investigation with candidate fixes.
+- [2026-08-19-archive-project-access-control.md](../plans/2026-08-19-archive-project-access-control.md) —
+  *planned* (pyobs-archive, pyobs-robotic-backend). Show only frames the logged-in user has
+  access to; core/pipeline angle of pyobs-archive#42 (mastermind writes `PROJECT` FITS keyword).
+- [2026-08-20-imagewatcher-event-loop-blocking.md](../plans/2026-08-20-imagewatcher-event-loop-blocking.md) —
+  *proposed* (pyobs-monet). Stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from
+  blocking the event loop (MONET South incident, 2026-08-20).
 
 ### Design docs still *proposed*
 
@@ -50,6 +55,19 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
+- **pyobs-archive** — [2026-08-20-archive-project-access-control](../../pyobs-archive/specs/plans/2026-08-20-archive-project-access-control.md) —
+  project-based access control for frames, archive side of pyobs-archive#42 (*planned*)
+- **pyobs-robotic-backend** — [2026-08-20-connect-pyobs-archive](../../pyobs-robotic-backend/specs/plans/2026-08-20-connect-pyobs-archive.md) —
+  observations → archived-frame links, backend side of #82 (*planned*; on PR #85, not yet on
+  `develop`)
+- **pyobs-robotic-backend** — [2026-08-20-script-builder](../../pyobs-robotic-backend/specs/plans/2026-08-20-script-builder.md) —
+  full schema-driven script builder for the task editor, #81 (*planned*; on PR #85, not yet on
+  `develop`)
+- **pyobs-weather** — [2026-08-18-modernize-frontend](../../pyobs-weather/specs/plans/2026-08-18-modernize-frontend.md) —
+  replace the Django+jQuery+Chart.js frontend with Vue 3 + Vite + TypeScript, rework plots (*in
+  progress* — Vue app + Overview/Sensors pages shipped, live-backend e2e verification pending, #25)
+- **pyobs-web-admin** — [2026-08-19-browser-notifications-for-log-warnings](../../pyobs-web-admin/specs/plans/2026-08-19-browser-notifications-for-log-warnings.md) —
+  browser notifications for log warnings/errors (*planned*, #44)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
 - **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —

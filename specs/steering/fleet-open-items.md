@@ -63,11 +63,6 @@ One line per plan — same layout for every repo.
 - **pyobs-robotic-backend** — [2026-08-20-script-builder](../../pyobs-robotic-backend/specs/plans/2026-08-20-script-builder.md) —
   full schema-driven script builder for the task editor, #81 (*planned*; on PR #85, not yet on
   `develop`)
-- **pyobs-weather** — [2026-08-18-modernize-frontend](../../pyobs-weather/specs/plans/2026-08-18-modernize-frontend.md) —
-  replace the Django+jQuery+Chart.js frontend with Vue 3 + Vite + TypeScript, rework plots (*in
-  progress* — Vue app + Overview/Sensors pages shipped, live-backend e2e verification pending, #25)
-- **pyobs-web-admin** — [2026-08-19-browser-notifications-for-log-warnings](../../pyobs-web-admin/specs/plans/2026-08-19-browser-notifications-for-log-warnings.md) —
-  browser notifications for log warnings/errors (*planned*, #44)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
 - **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —

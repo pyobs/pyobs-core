@@ -524,9 +524,42 @@ class BaseCamera(
         is_top = max(top, img_top)
         is_bottom = min(top + height, img_top + img_height)
 
-        # for simplicity we allow prescan/overscan only in one dimension
-        if (left < is_left or left + width > is_right) and (top < is_top or top + height > is_bottom):
-            log.warning("BIASSEC/TRIMSEC can only be calculated with a prescan/overscan on one axis only.")
+        # prescan/overscan exists only where the window extends beyond the visible frame
+        x_ovs = img_left < left or img_left + img_width > left + width
+        y_ovs = img_top < top or img_top + img_height > top + height
+
+        # window extends beyond the visible frame on both axes: the simple calculation
+        # below only supports prescan/overscan on one axis
+        if x_ovs and y_ovs:
+            log.warning(
+                "Cannot compute BIASSEC/TRIMSEC: window %dx%d at %d,%d has prescan/overscan on both axes "
+                "(only one axis is supported).",
+                img_width,
+                img_height,
+                img_left,
+                img_top,
+            )
+            return
+
+        # window lies fully inside the visible frame: there is no prescan/overscan at all
+        if (
+            not x_ovs
+            and not y_ovs
+            and (
+                img_left > left
+                or img_left + img_width < left + width
+                or img_top > top
+                or img_top + img_height < top + height
+            )
+        ):
+            log.info(
+                "No BIASSEC/TRIMSEC: window %dx%d at %d,%d lies fully inside the visible frame "
+                "(no prescan/overscan).",
+                img_width,
+                img_height,
+                img_left,
+                img_top,
+            )
             return
 
         # comments

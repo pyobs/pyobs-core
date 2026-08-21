@@ -489,7 +489,7 @@ class FlatFielder(Object):
 
             # log and return
             if frac > self._allowed_offset_frac:
-                log.warning("Deviation from target count (%.1f%%) is larger than allowed, retrying last image...", frac)
+                log.info("Deviation from target count (%.1f%%) is larger than allowed, retrying last image...", frac)
                 return False
             else:
                 log.info("Calculated new exposure time to be %.2fs.", self._exptime)

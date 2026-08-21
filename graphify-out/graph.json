@@ -264,7 +264,7 @@
       "label": "Open decisions",
       "file_type": "document",
       "source_file": "specs/steering/fleet-open-items.md",
-      "source_location": "L86",
+      "source_location": "L81",
       "_origin": "ast",
       "id": "specs_steering_fleet_open_items_open_decisions",
       "community": 313,
@@ -108106,7 +108106,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "specs/steering/fleet-open-items.md",
-      "source_location": "L91",
+      "source_location": "L86",
       "weight": 1.0,
       "_origin": "ast",
       "source": "specs_steering_fleet_open_items",
@@ -108183,7 +108183,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "specs/steering/fleet-open-items.md",
-      "source_location": "L86",
+      "source_location": "L81",
       "weight": 1.0,
       "_origin": "ast",
       "source": "specs_steering_fleet_open_items_fleet_open_items_open_issues_and_plans_across_the_pyobs_fleet",
@@ -358650,5 +358650,5 @@
       "source_file": "specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md"
     }
   ],
-  "built_at_commit": "6566276482c062b1cd73f57c39c26f11a35fb94f"
+  "built_at_commit": "640c1ce8d4a16c33cd4744b26deffdcc77aa6d5d"
 }

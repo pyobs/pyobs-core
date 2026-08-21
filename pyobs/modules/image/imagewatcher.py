@@ -29,6 +29,12 @@ class ImageWatcher(Module):
 
     Watches a path for new files and stores them in all given destinations. Only if all operations were successful,
     the file is deleted.
+
+    New files are not processed immediately, but only after a wait time (``wait_time``) has passed since they were
+    detected. This is mainly to make sure the file is fully written before it is read: while the inotify watcher
+    only reports files after they have been closed for writing (``CLOSE_WRITE``), the polling watcher and the
+    initial scan in ``open()`` can see a file while its write is still in progress. The same wait time is also
+    used to delay re-processing of files whose destination copy failed (see ``_worker``).
     """
 
     __module__ = "pyobs.modules.image"
@@ -50,7 +56,9 @@ class ImageWatcher(Module):
             destinations: Filename patterns for destinations.
             poll: If True, watchpath is polled instead of watched by inotify.
             poll_interval: Interval for polling in seconds, if poll is True.
-            wait_time: Time in seconds between adding file to list and processing it.
+            wait_time: Time in seconds between adding a file to the list and processing it. Gives a file that is
+                still being written time to finish (relevant for poll mode and the initial scan) and spaces out
+                re-queued files after failed destination copies.
         """
         Module.__init__(self, **kwargs)
 

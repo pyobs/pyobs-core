@@ -116,3 +116,6 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-20-imagewatcher-event-loop-blocking.md](2026-08-20-imagewatcher-event-loop-blocking.md) —
   stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from blocking the event loop.
   **proposed** (MONET South incident, 2026-08-20)
+- [2026-08-21-basevideo-http-token-auth.md](2026-08-21-basevideo-http-token-auth.md) —
+  shared-token auth + browser login page for `BaseVideo`'s HTTP endpoints (design:
+  `specs/design/basevideo-http-auth.md`). **proposed** (Repos: pyobs-core, pyobs-gui)

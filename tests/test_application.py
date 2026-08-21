@@ -87,6 +87,23 @@ async def test_init_config_path_warns_on_real_comm_name_mismatch(tmp_path, caplo
     app._loop.close()
 
 
+@pytest.mark.asyncio
+async def test_init_config_path_logs_module_creation_failure(tmp_path, caplog) -> None:
+    """A config key that no class in the module's __init__ chain consumes must still raise
+    (the module cannot start), but the failure has to be recorded through logging first: an
+    uncaught traceback only reaches stderr, which is /dev/null for daemonized modules started
+    with --pid-file (pyobsd / pyobs-web-admin), so it would vanish from every log."""
+    config = tmp_path / "bad_module.yaml"
+    config.write_text("class: pyobs.modules.Module\nfilename: /cache/{FNAME}\n")
+
+    with pytest.raises(TypeError, match="unexpected keyword argument.*filename"):
+        Application(config=str(config))
+
+    assert "Could not create module Module" in caplog.text
+    # the traceback itself is attached to the record (what the file/journald handler writes)
+    assert any(r.exc_info is not None for r in caplog.records)
+
+
 # ── module_factory path ──────────────────────────────────────────────────────
 
 

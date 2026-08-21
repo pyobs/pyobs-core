@@ -84,7 +84,7 @@ class WeatherAwareMixin:
                     if not self.__weatheraware_is_error_state:
                         log.error("Telescope is in error mode, cannot park.")
                 else:
-                    log.warning("Weather is bad, shutting down.")
+                    log.info("Weather is bad, shutting down.")
                     await msi.park()
 
             # save error state

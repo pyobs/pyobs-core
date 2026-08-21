@@ -45,11 +45,20 @@ One row per issue — same layout for every repo.
 - [2026-08-20-imagewatcher-event-loop-blocking.md](../plans/2026-08-20-imagewatcher-event-loop-blocking.md) —
   *proposed* (pyobs-monet). Stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from
   blocking the event loop (MONET South incident, 2026-08-20).
+- [2026-08-21-basevideo-http-token-auth.md](../plans/2026-08-21-basevideo-http-token-auth.md) —
+  *proposed* (pyobs-core, pyobs-gui). Shared-token auth + browser login page for `BaseVideo`'s
+  HTTP endpoints (design: `specs/design/basevideo-http-auth.md`).
+- [2026-08-21-keycloak-idp-hint-login.md](../plans/2026-08-21-keycloak-idp-hint-login.md) —
+  *proposed* (pyobs-auth, pyobs-archive, pyobs-robotic-backend, pyobs-web-admin). One-click IdP
+  login via `kc_idp_hint` (dual login buttons).
 
 ### Design docs still *proposed*
 
 - [gui-standalone-binary.md](../design/gui-standalone-binary.md) — umbrella for the compiled
   pyobs-gui binary; login pieces done, widget plugin/selection + real plugin smoke test still open.
+- [basevideo-http-auth.md](../design/basevideo-http-auth.md) — shared-token auth with a browser
+  login page for `BaseVideo`'s HTTP endpoints (pyobs-core, pyobs-gui); implementation tracked in
+  plan `2026-08-21-basevideo-http-token-auth.md`.
 
 ### Sibling repos
 

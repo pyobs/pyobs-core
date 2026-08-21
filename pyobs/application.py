@@ -260,7 +260,16 @@ class Application:
                 # stem-mismatch check below. Give it the config file's own stem instead.
                 cfg = {**cfg, "comm": {"class": f"{DummyComm.__module__}.{DummyComm.__name__}", "name": config_stem}}
             log.info("Creating module from class %s...", klass.__name__)
-            self._module = get_object(cfg, Module)
+            try:
+                self._module = get_object(cfg, Module)
+            except Exception:
+                # The module-creation failure (bad kwargs, broken __init__ chain, ...) is
+                # otherwise only visible as an uncaught traceback on stderr -- which is
+                # /dev/null for daemonized modules (--pid-file, as started by pyobsd /
+                # pyobs-web-admin), so it silently vanishes from all logs. Record it through
+                # the configured handlers (file/journald) before propagating.
+                log.exception("Could not create module %s from config %s.", klass.__name__, config)
+                raise
 
             # a config file whose stem doesn't match its own module's name silently splits
             # PYOBS_MODULE log tagging in two: logging that falls through both execute()

@@ -1,5 +1,11 @@
 v2.0.0.dev78 (unreleased)
 *************************
+* ``Application`` now logs module-creation failures (unconsumed config keys, broken ``__init__``
+  chains, ...) at ERROR level with the full traceback before re-raising, so they land in the
+  configured log file / journald instead of only on stderr -- which is ``/dev/null`` for
+  daemonized modules (``--pid-file``, as started by pyobsd / pyobs-web-admin). Such a failure
+  previously vanished from all logs: the log simply stopped after the last INFO line and the
+  module just showed as stopped.
 * ``BackendTaskArchive`` and ``BackendObservationArchive`` gate their 5s refresh on the backend's
   ``last_task_update``/``last_observation_update`` marker again. The marker is now a DB-derived
   ``Max(updated_at)`` (pyobs-robotic-backend#84) that is truthful across gunicorn workers, so the

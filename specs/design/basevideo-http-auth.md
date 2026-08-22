@@ -53,14 +53,26 @@ set:
 
 ### 1. Where the check runs
 
-A `_check_auth(request)` helper — the same contract as `HttpFileCache._check_auth`
-(`httpfilecache.py:82-93`), extended to also accept a valid cookie — called at the top of
-`web_handler`, `video_handler`, `raw_handler`, and `image_handler`. On failure it raises
-`web.HTTPUnauthorized`, except `web_handler`, which raises `web.HTTPSeeOther("/login")`:
-a browser user landing on `/` is taken to the form instead of shown an error. Machine
-clients never GET `/` — they hit the stream/data endpoints, which get a clean `401` just
-like `HttpFileCache` (and `VideoWidget`'s stream parser then simply shows nothing, which
-is the same failure mode as an unreachable camera).
+A `_check_auth(request)` helper — the exact same contract as `HttpFileCache._check_auth`
+(`httpfilecache.py:82-93`): no-op when `self._token is None`, otherwise raises
+`web.HTTPUnauthorized` unless a valid Bearer header or a valid session cookie is present.
+It always raises the same exception type, regardless of caller — it does not know which
+handler called it.
+
+`video_handler`, `raw_handler`, and `image_handler` call it directly at the top and let
+the `HTTPUnauthorized` propagate: a clean `401`, just like `HttpFileCache` (and
+`VideoWidget`'s stream parser then simply shows nothing, which is the same failure mode
+as an unreachable camera). `web_handler` is the one exception: a browser landing on `/`
+should be taken to the login form, not shown a bare 401. It wraps the call itself:
+
+```python
+try:
+    self._check_auth(request)
+except web.HTTPUnauthorized:
+    raise web.HTTPSeeOther("/login")
+```
+
+Machine clients never GET `/`, so this translation never affects them.
 
 Placement matters twice in the streaming handlers:
 

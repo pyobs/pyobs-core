@@ -1,6 +1,7 @@
 # `BaseVideo`: shared-token auth with a browser login page
 
-Status: proposed
+Status: implemented (see `specs/plans/2026-08-21-basevideo-http-token-auth.md` for the landing
+checklist)
 
 Repos: pyobs-core (this doc, implementation), pyobs-gui (consumer change)
 

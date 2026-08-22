@@ -76,3 +76,13 @@ async def test_download_without_token_sends_no_auth_header() -> None:
 
     _, get_kwargs = session.get.call_args
     assert get_kwargs["headers"] == {}
+
+
+def test_headers_property_returns_configured_headers() -> None:
+    f = HttpFile("test.txt", "r", download="http://localhost:37075/test.txt", token="secret")
+    assert f.headers == {"Authorization": "Bearer secret"}
+
+
+def test_headers_property_empty_without_token() -> None:
+    f = HttpFile("test.txt", "r", download="http://localhost:37075/test.txt")
+    assert f.headers == {}

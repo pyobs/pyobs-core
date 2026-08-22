@@ -34,7 +34,8 @@ config, not pyobs design. No Keycloak admin changes needed.
 
 - [ ] `pyobs_auth/settings.py`: add `idp_hint: str | None = None` to `KeycloakSettings`; read it in
       `get_settings()` from `raw.get("IDP_HINT")`. (The human-readable label for the button is a
-      per-service template concern, so it deliberately does **not** live here — see section 2.)
+      per-service config concern surfaced by the template, so it deliberately does **not** live
+      here — see section 2.)
 - [ ] `pyobs_auth/client.py`: `KeycloakClient.start_authorization(*, idp_hint: str | None = None,
       redirect_uri=None)` — add `"kc_idp_hint": idp_hint` to the params dict when truthy. Backward
       compatible: new optional kwarg, existing callers unaffected.
@@ -53,6 +54,9 @@ config, not pyobs design. No Keycloak admin changes needed.
       - `tests/test_views.py`: login view with a configured hint redirects to a URL containing
         `kc_idp_hint`; `?idp_hint=` suppresses it (no `kc_idp_hint` in the redirect URL); `next` is
         still honored on both.
+      - Use `override_settings(PYOBS_AUTH={..., "IDP_HINT": ...})` per test rather than editing the
+        shared `tests/django_settings.py` dict (which has no `IDP_HINT`), so the "absent → settings
+        default" and "present-but-empty → no hint" cases stay independently testable.
 - [ ] `README.md`: document `IDP_HINT` in the `PYOBS_AUTH` example and the `?idp_hint=` override on
       the login view.
 - [ ] Release the next dev version (currently `2.0.0.dev7`; bump per `do-python-release`
@@ -73,13 +77,19 @@ same `registration/login.html` + `keycloak_login_enabled` context-processor patt
 - [ ] Context processor: alongside `keycloak_login_enabled`, expose `keycloak_idp_hint` and
       `keycloak_idp_label` read from `settings.PYOBS_AUTH` (`pyobs_archive/context_processors.py`,
       `pyobs_robotic_backend/frontend/context_processors.py`,
-      `pyobs_web_admin/modules/context_processors.py`).
+      `pyobs_web_admin/modules/context_processors.py`). In archive/robotic-backend these go in the
+      dedicated `keycloak()` processor; in web-admin `keycloak_login_enabled` is one key of the
+      `sidebar_modules()` processor (`modules/context_processors.py:64`), so the new keys go into
+      that same return dict (or extract a dedicated processor for symmetry).
 - [ ] `templates/registration/login.html`: three states, all preserving `next` on every link
       (`pyobs_auth:login` is the generic entry; the IdP button keeps pointing at it, since the hint
-      is a server-side default — no per-service Keycloak URL construction needed):
+      is a server-side default — no per-service Keycloak URL construction needed). The hinted
+      branch is additionally gated on `keycloak_login_enabled`, so an operator setting `IDP_HINT`
+      without `SERVER_URL` (Keycloak disabled) degrades to no Keycloak buttons at all rather than
+      rendering links that would 500:
 
       ```html
-      {% if keycloak_idp_hint %}
+      {% if keycloak_idp_hint and keycloak_login_enabled %}
       <a href="{% url 'pyobs_auth:login' %}?next={{ next|urlencode }}" class="btn ...">
           Log in with {{ keycloak_idp_label|default:"Keycloak" }}</a>
       <a href="{% url 'pyobs_auth:login' %}?idp_hint=&next={{ next|urlencode }}" class="btn ...">
@@ -94,9 +104,10 @@ same `registration/login.html` + `keycloak_login_enabled` context-processor patt
       of the two, and keep the local-account one outline. The existing local username/password
       "Sign in" form stays as-is (Keycloak remains additive next to it, per the 2026-08-12 plan).
       While touching each template, also add `|urlencode` to that existing single-button
-      `?next={{ next }}` line (currently unescaped in all three: `pyobs_archive/templates/registration/login.html:53`,
-      `pyobs_robotic_backend/pyobs_robotic_backend/frontend/templates/registration/login.html:51`,
-      `pyobs_web_admin/templates/registration/login.html:51`) — a pre-existing issue, not caused by
+      `?next={{ next }}` line (currently unescaped in all three:
+      `templates/registration/login.html:53` (archive),
+      `pyobs_robotic_backend/frontend/templates/registration/login.html:53`,
+      `templates/registration/login.html:53` (web-admin)) — a pre-existing issue, not caused by
       this change, but worth fixing now that the file's already open rather than propagating it into
       the two new links as well.
 - [ ] Docs: `.env.example` (archive: add `KEYCLOAK_IDP_HINT`/`KEYCLOAK_IDP_LABEL` next to the
@@ -135,3 +146,9 @@ same `registration/login.html` + `keycloak_login_enabled` context-processor patt
 - Keycloak login-theme changes (auto-redirect, hiding the local form) — rejected in favor of the
   per-request hint, which keeps the fallback.
 - Direct OIDC against GWDG, bypassing Keycloak — rejected in ADR 0011.
+- Sanitizing `next` beyond the `|urlencode` template fix — pre-existing and out of scope:
+  pyobs-auth's `LoginView`→`CallbackView` round-trip stores and redirects to the raw GET `next`
+  without a host check (open-redirect-ish on the Keycloak path), and robotic-backend/web-admin's
+  custom login views redirect POST `next` unsanitized (archive's is sanitized by Django's built-in
+  `LoginView`). Not caused by this change, but acknowledged here since it adds more URLs that carry
+  `next`.

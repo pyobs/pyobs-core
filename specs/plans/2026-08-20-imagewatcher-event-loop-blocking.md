@@ -7,14 +7,14 @@ Issues: found via live incident diagnosis on MONET South (`(imagewatcher) module
 
 ## Problem
 
-`ImageWatcher._worker` (`pyobs/modules/image/imagewatcher.py:149-223`) processes every watched
+`ImageWatcher._worker` (`pyobs/modules/image/imagewatcher.py:157-231`) processes every watched
 file with several synchronous, never-yielding operations running directly on the module's single
 event loop:
 
-1. **`fits.HDUList.fromstring(data)`** (`imagewatcher.py:171`) — a synchronous, CPU-bound astropy
+1. **`fits.HDUList.fromstring(data)`** (`imagewatcher.py:179`) — a synchronous, CPU-bound astropy
    parse of the entire FITS file, once per file. This is the same class of bug documented for the
-   scheduler (`specs/plans/scheduler-event-loop-blocking.md`): `async def` code doing real
-   synchronous work on the loop.
+   scheduler (`specs/plans/2026-08-03-scheduler-event-loop-blocking.md`): `async def` code doing
+   real synchronous work on the loop.
 2. **`LocalFile.read` / `LocalFile.write` / `LocalFile.close` / `LocalFile.remove`**
    (`pyobs/vfs/localfile.py:48-63, 131-150`) — declared `async def` but execute plain blocking
    syscalls (`fd.read()`, `fd.write()`, `os.remove`) with no executor. The watch-path half of this
@@ -116,9 +116,10 @@ async def close(self) -> None:
         await loop.run_in_executor(None, self.fd.close)
 ```
 
-Same treatment for the class-level sync methods: `remove` (`os.remove`), `exists`
-(`os.path.exists`), and `find` (`os.walk` — potentially slow on large trees). Extract the sync
-bodies into module-level helpers so the executor call stays a plain function.
+Same treatment for the class-level sync methods: `remove` (`os.remove`) and `find` (`os.walk` —
+potentially slow on large trees) need their bodies extracted into module-level helpers so the
+executor call stays a plain function. `exists` is a single `os.path.exists` call and can go
+straight into `run_in_executor(None, os.path.exists, full_path)` — no helper needed.
 
 **Concurrency safety:** each `LocalFile` instance is created per `open_file()` call and used by
 exactly one coroutine inside a single `async with` block, so per-instance `fd` calls are strictly
@@ -126,12 +127,52 @@ sequential — no locking needed, no shared-state hazard. The default executor's
 each call is short-lived and independent. This matches the documented invariant for the scheduler's
 dedicated executor: no shared mutable cache here, so the shared pool is fine.
 
-**Residual (documented, not fixed):** `LocalFile.__init__` still opens the file synchronously
-(`open()`, `os.makedirs`, `localfile.py:38-46`). That's milliseconds on local disk; making the
-constructor async would break `VirtualFileSystem.open_file`'s sync signature — a breaking VFS API
-change not worth it for this plan.
+### 3. Stop `LocalFile.__init__` opening the file synchronously — `pyobs/vfs/localfile.py`
 
-### 3. (step 0, diagnostic) Confirm the culprit and measure before/after
+`LocalFile.__init__` (`localfile.py:38-46`) does `os.path.exists`, `os.makedirs`, and `open()`
+synchronously, and `VirtualFileSystem.open_file` (`pyobs/vfs/vfs.py:69-92`) is a plain sync method
+that constructs `LocalFile` directly — there is no `await` point before the fd is opened. This is
+exactly the risk the Problem section raises for a network-mounted watch path, and offloading
+`read`/`write`/`remove` (step 2) does nothing for it: the open itself can still stall the loop.
+
+The fix doesn't need to touch `open_file`'s sync signature. `VFSFile.__aenter__`
+(`pyobs/vfs/file.py:20-21`) already exists and currently just returns `self` — move the actual
+open off `__init__` and into an overridden `__aenter__` on `LocalFile`, routed through the
+executor:
+
+```python
+def __init__(self, name: str, mode: str = "r", root: str | None = None, mkdir: bool = True, **kwargs: Any):
+    if root is None:
+        raise ValueError("No root directory given.")
+    if name.startswith("/") or ".." in name:
+        raise ValueError("Only files within root directory are allowed.")
+    self.filename = name
+    self._full_path = os.path.join(root, name)
+    self._mode = mode
+    self._mkdir = mkdir
+    self.fd: IO[Any] | None = None
+
+async def __aenter__(self) -> "LocalFile":
+    loop = asyncio.get_running_loop()
+    self.fd = await loop.run_in_executor(None, _open_sync, self._full_path, self._mode, self._mkdir)
+    return self
+```
+
+with the mkdir-check-and-open body extracted into a module-level `_open_sync(full_path, mode,
+mkdir)` helper: raise `ValueError` when `mkdir` is disabled and the directory is missing,
+otherwise `os.makedirs` then `open`, returning the fd.
+
+This is safe everywhere in the codebase today: every call site — `imagewatcher.py:172,204`,
+`vfs.py:106-242`, and both `tests/vfs/test_localfile.py` test blocks — already does
+`async with self.vfs.open_file(...) as fd:` and never touches the object between construction and
+entry, so nothing observes the open moving one step later. Path validation
+(`name.startswith("/")`/`".."`) stays in `__init__` and still raises synchronously at construction
+time, matching `test_invalid_path`'s current behavior; `FileNotFoundError` and the
+mkdir-disabled `ValueError` now raise from `__aenter__` instead, still within the same `async with`
+statement `test_file_not_found` and `test_create_dir` assert against, so both keep passing
+unchanged.
+
+### 4. (step 0, diagnostic) Confirm the culprit and measure before/after
 
 Before deploying the fix, capture ground truth during a stall at the site, per ADR 0009's guidance
 (`loop.set_debug(True)` / `slow_callback_duration`, or a `py-spy dump` armed on a stall). The
@@ -163,6 +204,11 @@ correct regardless, but the measurement is what closes the incident properly.
   instance's `fd` with a fake whose `write`/`read` sleeps (deterministic, no reliance on disk
   speed), assert a concurrent heartbeat keeps ticking while `await f.write(...)` / `await f.read()`
   run. Guards the `LocalFile` half directly.
+- `tests/vfs/test_localfile.py`: same heartbeat shape for step 3 — monkeypatch the module-level
+  `open` (or `_open_sync`) to sleep before returning the fd, assert a concurrent heartbeat keeps
+  ticking during `async with LocalFile(...) as f:`. Also re-run the existing `test_file_not_found`,
+  `test_invalid_path`, `test_write_file`, `test_create_dir` unchanged — they must keep passing
+  as-is per the call-site analysis above.
 - Full suite for the touched areas: `pytest tests/modules/image/ tests/vfs/`; `pyrefly` on
   `imagewatcher.py` and `localfile.py` ([[feedback_use_pyrefly_not_mypy]]).
 
@@ -181,10 +227,11 @@ correct regardless, but the measurement is what closes the incident properly.
   follow-up's caveat). numpy array work inside `fromstring` releases the GIL, so most of the
   parse is contention-free; the loop stays responsive either way, which is the goal. Process
   isolation is explicitly not pursued here (the worker needs live VFS/comm).
-- **Residual:** `LocalFile.__init__`'s sync `open()`/`mkdir` stays on the loop (fast on local
-  disk; async constructor would break the VFS API). Also `process_extra`/`cleanup_extra` subclass
-  hooks run on the loop — worth a docstring note that these must not block (subclass contract,
-  not enforced here).
+- **Good:** step 3 also closes the network-mounted-watch-path gap the Problem section raises for
+  option 1 — `LocalFile.__init__`'s `open()`/`makedirs` no longer runs on the loop, via the
+  existing `__aenter__` hook rather than a breaking VFS API change.
+- **Residual:** `process_extra`/`cleanup_extra` subclass hooks run on the loop — worth a docstring
+  note that these must not block (subclass contract, not enforced here).
 - **Out of scope, flagged for follow-up:** archive upload latency and queue backlog. The
   `aiohttp` upload is already async and never freezes the loop; if the backlog becomes the
   operational problem (slow archive, 2–10 s/file), the follow-up is bounded concurrency in the
@@ -197,8 +244,10 @@ correct regardless, but the measurement is what closes the incident properly.
 - [ ] `imagewatcher.py`: offload `fits.HDUList.fromstring(data)` via `asyncio.to_thread` in
       `_worker`
 - [ ] `localfile.py`: route `read`, `write`, `close` bodies through `run_in_executor`
-- [ ] `localfile.py`: route `remove`, `exists`, `find` through `run_in_executor` (sync bodies
-      extracted as module-level helpers)
+- [ ] `localfile.py`: route `remove`, `exists`, `find` through `run_in_executor` (`remove`/`find`
+      bodies extracted as module-level helpers; `exists` calls `os.path.exists` directly)
+- [ ] `localfile.py`: move `open()`/`makedirs` out of `__init__` into an overridden `__aenter__`,
+      routed through `run_in_executor` via a `_open_sync` helper
 - [ ] Docstring note on `ImageWatcher.process_extra`/`cleanup_extra`: subclass hooks run on the
       event loop and must not block
 - [ ] New heartbeat-style tests in `tests/modules/image/test_imagewatcher.py` and

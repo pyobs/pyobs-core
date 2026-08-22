@@ -7,13 +7,53 @@ from typing import IO, Any
 from .file import VFSFile
 
 
+def _open_sync(full_path: str, mode: str, mkdir: bool) -> IO[Any]:
+    """Open a local file, creating parent directories first if needed.
+
+    Runs on an executor thread off the event loop. Raises ``ValueError`` when ``mkdir`` is
+    disabled and the parent directory does not exist.
+    """
+    path = os.path.dirname(full_path)
+    if not os.path.exists(path):
+        if mkdir:
+            os.makedirs(path)
+        else:
+            raise ValueError("Cannot write into sub-directory with disabled mkdir option.")
+    return open(full_path, mode)
+
+
+def _find_sync(full_path: str, pattern: str) -> list[str]:
+    """Walk ``full_path`` and return the paths of files matching ``pattern``, relative to it."""
+    files = []
+    for cur, dirnames, filenames in os.walk(full_path):
+        for filename in fnmatch.filter(filenames, pattern):
+            files += [os.path.relpath(os.path.join(cur, filename), full_path)]
+    return files
+
+
+def _remove_sync(full_path: str) -> bool:
+    """Remove the file at ``full_path``; return False if it does not exist or is a directory."""
+    try:
+        os.remove(full_path)
+        return True
+    except (FileNotFoundError, IsADirectoryError):
+        return False
+
+
 class LocalFile(VFSFile):
-    """Wraps a local file with the virtual file system."""
+    """Wraps a local file with the virtual file system.
+
+    All potentially blocking I/O (open/read/write/close/remove/find/exists) runs on the default
+    executor, keeping the event loop responsive even on slow (e.g. network-mounted) paths.
+    """
 
     __module__ = "pyobs.vfs"
 
     def __init__(self, name: str, mode: str = "r", root: str | None = None, mkdir: bool = True, **kwargs: Any):
-        """Open a local file.
+        """Create a new local file.
+
+        Only validates the path here; the file itself is opened in ``__aenter__`` off the event
+        loop, so construction stays cheap and never blocks.
 
         Args:
             name: Name of file.
@@ -32,27 +72,27 @@ class LocalFile(VFSFile):
 
         # build filename
         self.filename = name
-        full_path = os.path.join(root, name)
+        self._full_path = os.path.join(root, name)
+        self._mode = mode
+        self._mkdir = mkdir
+        self.fd: IO[Any] | None = None
 
-        # need to create directory?
-        path = os.path.dirname(full_path)
-        if not os.path.exists(path):
-            if mkdir:
-                os.makedirs(path)
-            else:
-                raise ValueError("Cannot write into sub-directory with disabled mkdir option.")
-
-        # file object
-        self.fd: IO[Any] = open(full_path, mode)
+    async def __aenter__(self) -> "LocalFile":
+        """Open the file on an executor thread, keeping the event loop responsive."""
+        loop = asyncio.get_running_loop()
+        self.fd = await loop.run_in_executor(None, _open_sync, self._full_path, self._mode, self._mkdir)
+        return self
 
     async def close(self) -> None:
         if self.fd:
-            self.fd.close()
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.fd.close)
 
     async def read(self, n: int = -1) -> str | bytes:
         if self.fd is None:
             raise OSError
-        buf = self.fd.read(n)
+        loop = asyncio.get_running_loop()
+        buf = await loop.run_in_executor(None, self.fd.read, n)
         if not isinstance(buf, str) and not isinstance(buf, bytes):
             raise OSError
         return buf
@@ -60,7 +100,8 @@ class LocalFile(VFSFile):
     async def write(self, s: str | bytes) -> None:
         if self.fd is None:
             raise OSError
-        self.fd.write(s)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.fd.write, s)
 
     @staticmethod
     async def local_path(path: str, **kwargs: Any) -> str:
@@ -120,12 +161,9 @@ class LocalFile(VFSFile):
         # build full path
         full_path = os.path.join(root, path)
 
-        # loop directories
-        files = []
-        for cur, dirnames, filenames in os.walk(full_path):
-            for filename in fnmatch.filter(filenames, pattern):
-                files += [os.path.relpath(os.path.join(cur, filename), full_path)]
-        return files
+        # walk directories off the event loop
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _find_sync, full_path, pattern)
 
     @staticmethod
     async def remove(path: str, *args: Any, **kwargs: Any) -> bool:
@@ -141,13 +179,10 @@ class LocalFile(VFSFile):
         # get root from kwargs
         root = kwargs["root"]
 
-        # build full path and remove
+        # build full path and remove off the event loop
         full_path = os.path.join(root, path)
-        try:
-            os.remove(full_path)
-            return True
-        except (FileNotFoundError, IsADirectoryError):
-            return False
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _remove_sync, full_path)
 
     @classmethod
     async def exists(cls, path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:
@@ -164,8 +199,9 @@ class LocalFile(VFSFile):
         # build full path
         full_path = os.path.join(root, path)
 
-        # check
-        return os.path.exists(full_path)
+        # check off the event loop
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, os.path.exists, full_path)
 
 
 __all__ = ["LocalFile"]

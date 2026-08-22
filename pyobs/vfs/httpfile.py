@@ -78,6 +78,11 @@ class HttpFile(BufferedFile):
             raise ValueError("No download URL given.")
         return urljoin(self._download_path, self.filename)
 
+    @property
+    def headers(self) -> dict[str, str]:
+        """Headers sent with GET/POST requests, e.g. "Authorization: Bearer <token>"."""
+        return self._headers
+
     async def _download(self) -> None:
         """For read access, download the file into a local buffer.
 

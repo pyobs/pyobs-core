@@ -44,10 +44,13 @@ page + cookie for the `<img>`-based index page to keep working.
         max_age=lifetime, path="/", httponly=True, samesite="Lax")` + `303 See Other
         → /`. Failure: `401` (optional small `asyncio.sleep` delay against brute force).
       - `logout_handler` — GET: `del_cookie(name, path="/")` + `303 → /login`.
-- [ ] Call `_check_auth(request)` at the top of `web_handler` (`:199`),
-      `video_handler` (`:221`), `raw_handler` (`:267`), and `image_handler` (`:362`).
-      `web_handler` failure raises `web.HTTPSeeOther("/login")`; the other three raise
-      `web.HTTPUnauthorized()`.
+- [ ] Call `_check_auth(request)` at the top of `video_handler` (`:221`), `raw_handler`
+      (`:267`), and `image_handler` (`:362`), letting its `HTTPUnauthorized` propagate
+      unchanged. `web_handler` (`:199`) is the exception: it wraps the call in
+      `try/except web.HTTPUnauthorized: raise web.HTTPSeeOther("/login")` so a browser
+      landing on `/` reaches the login form instead of a bare 401 — `_check_auth` itself
+      always raises the same exception regardless of caller, it has no per-handler
+      behavior.
 - [ ] Confirm ordering in the streaming handlers: auth check runs before
       `response.prepare(request)` (`:234`, `:283`) and before `activate_camera()` in
       `raw_handler` (`:278`) — an unauthenticated request must not wake the camera.
@@ -80,8 +83,9 @@ Existing unit style: direct handler invocation, mocked
 - [ ] `token=None` (default): `/login`/`/logout` not registered; all handlers accept
       unauthenticated requests — existing tests unchanged.
 - [ ] `token` set: `_route_paths` includes `/login`; `/` unauthenticated → `303` to
-      `/login`; `/video.mjpg`, `/video.raw`, `/{filename}` unauthenticated → `401`;
-      `/ping` → `200`.
+      `/login` (not a bare `401` — confirms `web_handler`'s `HTTPUnauthorized` →
+      `HTTPSeeOther` translation); `/video.mjpg`, `/video.raw`, `/{filename}`
+      unauthenticated → `401`; `/ping` → `200`.
 - [ ] Bearer header: correct `Authorization: Bearer <token>` → `200`; wrong token →
       `401`.
 - [ ] Login POST: correct token → response carries `Set-Cookie` + `303`; wrong token →

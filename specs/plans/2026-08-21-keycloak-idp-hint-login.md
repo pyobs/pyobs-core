@@ -80,12 +80,12 @@ same `registration/login.html` + `keycloak_login_enabled` context-processor patt
 
       ```html
       {% if keycloak_idp_hint %}
-      <a href="{% url 'pyobs_auth:login' %}?next={{ next }}" class="btn ...">
+      <a href="{% url 'pyobs_auth:login' %}?next={{ next|urlencode }}" class="btn ...">
           Log in with {{ keycloak_idp_label|default:"Keycloak" }}</a>
-      <a href="{% url 'pyobs_auth:login' %}?idp_hint=&next={{ next }}" class="btn ...">
+      <a href="{% url 'pyobs_auth:login' %}?idp_hint=&next={{ next|urlencode }}" class="btn ...">
           Log in with local Keycloak account</a>
       {% elif keycloak_login_enabled %}
-      <a href="{% url 'pyobs_auth:login' %}?next={{ next }}" class="btn ...">
+      <a href="{% url 'pyobs_auth:login' %}?next={{ next|urlencode }}" class="btn ...">
           Log in with Keycloak</a>
       {% endif %}
       ```
@@ -93,6 +93,12 @@ same `registration/login.html` + `keycloak_login_enabled` context-processor patt
       Styling is per-service cosmetic; suggestion: make the IdP button the visually primary option
       of the two, and keep the local-account one outline. The existing local username/password
       "Sign in" form stays as-is (Keycloak remains additive next to it, per the 2026-08-12 plan).
+      While touching each template, also add `|urlencode` to that existing single-button
+      `?next={{ next }}` line (currently unescaped in all three: `pyobs_archive/templates/registration/login.html:53`,
+      `pyobs_robotic_backend/pyobs_robotic_backend/frontend/templates/registration/login.html:51`,
+      `pyobs_web_admin/templates/registration/login.html:51`) — a pre-existing issue, not caused by
+      this change, but worth fixing now that the file's already open rather than propagating it into
+      the two new links as well.
 - [ ] Docs: `.env.example` (archive: add `KEYCLOAK_IDP_HINT`/`KEYCLOAK_IDP_LABEL` next to the
       existing `KEYCLOAK_*` block; robotic-backend/web-admin: wherever their `PYOBS_AUTH` is
       documented) and README login-section mention.

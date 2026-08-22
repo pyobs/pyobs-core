@@ -176,7 +176,7 @@ class ImageWatcher(Module):
                 try:
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", fits.verify.VerifyWarning)
-                        fits_file = fits.HDUList.fromstring(data)
+                        fits_file = await asyncio.to_thread(fits.HDUList.fromstring, data)
                 except Exception:
                     fits_file = None
 
@@ -234,6 +234,10 @@ class ImageWatcher(Module):
         """Can be overwritten by derived classes to do extra processing on files.
         All information are stored in self.current_file and can be checked against the given filename.
 
+        Note:
+            This hook runs on the module's event loop and must not block: no CPU-heavy or
+            synchronous I/O here. Offload such work to a thread, e.g. with ``asyncio.to_thread``.
+
         Args:
             filename: Input name of original file.
 
@@ -245,6 +249,10 @@ class ImageWatcher(Module):
     async def cleanup_extra(self, filename: str) -> None:
         """Can be overwritten by derived classes to do clean up after successful copying.
         All information are stored in self.current_file and can be checked against the given filename.
+
+        Note:
+            This hook runs on the module's event loop and must not block: no CPU-heavy or
+            synchronous I/O here. Offload such work to a thread, e.g. with ``asyncio.to_thread``.
 
         Args:
             filename: Input name of original file.

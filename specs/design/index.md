@@ -4,7 +4,7 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 (`status: implemented`), not deleted.
 
 - [basevideo-http-auth.md](basevideo-http-auth.md) — shared-token auth + browser login
-  page for `BaseVideo`'s HTTP endpoints. *proposed* (Repos: pyobs-core, pyobs-gui)
+  page for `BaseVideo`'s HTTP endpoints. *implemented* (Repos: pyobs-core, pyobs-gui)
 - [basevideo-raw-frame-streaming.md](basevideo-raw-frame-streaming.md) — `BaseVideo` raw-frame
   streaming endpoint alongside the existing MJPEG live view. *implemented*
 - [exception_handling.md](exception_handling.md) — exception handling across the RPC boundary.

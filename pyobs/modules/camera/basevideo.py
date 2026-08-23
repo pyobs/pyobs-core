@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import hmac
 import io
 import json
 import logging
@@ -39,6 +41,12 @@ INDEX_HTML = """
 
 """
 
+# session cookie for browser login (see _check_auth); only used when a token is configured
+_COOKIE_NAME = "pyobs_video_session"
+_COOKIE_LIFETIME = 24 * 60 * 60  # 24 h, in seconds
+# delay on a wrong login password, to slow brute force (compare is constant-time either way)
+_LOGIN_FAILURE_SLEEP = 1.0
+
 
 async def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for grabe_image()."""
@@ -71,7 +79,14 @@ class LastImage(NamedTuple):
 
 
 class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
-    """Base class for all webcam modules."""
+    """Base class for all webcam modules.
+
+    The built-in HTTP server serves the MJPEG live view, the raw frame stream and cached FITS
+    images. Set the ``token`` parameter to protect all of them: machine clients send
+    ``Authorization: Bearer <token>`` (as :class:`pyobs.vfs.HttpFile` does), browsers log in once
+    at ``/login`` and get an HMAC-signed session cookie that rides the same-origin ``<img>``
+    requests. Without a token (the default), no auth is enforced.
+    """
 
     __module__ = "pyobs.modules.camera"
 
@@ -90,6 +105,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         flip: bool = False,
         sleep_time: int = 60,
         fits_header_timeout: float = 15.0,
+        token: str | None = None,
         **kwargs: Any,
     ):
         """Creates a new BaseWebcam.
@@ -112,6 +128,8 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             flip: Whether to flip around Y axis.
             sleep_time: Time in s with inactivity after which the camera should go to sleep.
             fits_header_timeout: Maximum seconds to wait for a peer's FITS headers before skipping them.
+            token: Shared secret required in the "Authorization: Bearer <token>" header (or a
+                login-page cookie) for stream and data access. If None (default), no auth is enforced.
         """
         super().__init__(
             fits_namespaces=fits_namespaces,
@@ -153,12 +171,23 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._cache = DataCache(cache_size)
 
         # define web server
+        self._token = token
+        # serializes /login attempts so _LOGIN_FAILURE_SLEEP actually caps the guess rate;
+        # without it, concurrent connections each sleep independently and the rate scales
+        # with concurrency instead of being capped
+        self._login_lock = asyncio.Lock()
         self._app = web.Application()
         routes = [web.get("/ping", self.ping_handler), web.get("/{filename}", self.image_handler)]
         if self._video_path is not None:
             routes += [web.get("/", self.web_handler), web.get("/video.mjpg", self.video_handler)]
         if self._raw_path is not None:
             routes.append(web.get("/video.raw", self.raw_handler))
+        if self._token is not None:
+            routes += [
+                web.get("/login", self.login_handler),
+                web.post("/login", self.login_post_handler),
+                web.get("/logout", self.logout_handler),
+            ]
         self._app.add_routes(routes)
         self._runner = web.AppRunner(self._app)
         self._site: web.TCPSite | None = None
@@ -196,6 +225,165 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         """Whether the server is started."""
         return self._is_listening
 
+    def _sign(self, expiry: int) -> str:
+        """HMAC-SHA256 of ``expiry``, keyed with the configured token, as a hex digest.
+
+        Shared by _make_session_value (signs) and _check_cookie (verifies), so the two can't
+        drift apart on hash algo/encoding.
+
+        Args:
+            expiry: Session expiry timestamp being signed.
+
+        Returns:
+            Hex-encoded HMAC signature.
+        """
+        token = self._token
+        if token is None:
+            raise ValueError("Cannot sign a session without a configured token.")
+        return hmac.new(token.encode(), str(expiry).encode(), hashlib.sha256).hexdigest()
+
+    def _make_session_value(self) -> str:
+        """Build the value for the login session cookie.
+
+        Stateless and HMAC-signed -- the cookie does not contain the token itself:
+
+        ``value = "{expiry_ts}.{hex}"`` where ``hex = HMAC-SHA256(key=token, msg=str(expiry_ts))``
+
+        Returns:
+            Cookie value.
+        """
+        expiry = int(time.time()) + _COOKIE_LIFETIME
+        return f"{expiry}.{self._sign(expiry)}"
+
+    def _check_bearer(self, request: web.Request) -> bool:
+        """Whether the request carries the token as "Authorization: Bearer <token>".
+
+        Only called (via _check_auth) once a token is configured.
+
+        Args:
+            request: Request to check.
+
+        Returns:
+            True if the header matches the configured token.
+        """
+        prefix = "Bearer "
+        header = request.headers.get("Authorization", "")
+        if not header.startswith(prefix):
+            return False
+        return hmac.compare_digest(header[len(prefix) :], self._token or "")
+
+    def _check_cookie(self, request: web.Request) -> bool:
+        """Whether the request carries a valid, unexpired session cookie.
+
+        Only called (via _check_auth) once a token is configured.
+
+        Args:
+            request: Request to check.
+
+        Returns:
+            True if the cookie's HMAC signature verifies and it has not expired.
+        """
+        value = request.cookies.get(_COOKIE_NAME)
+        if value is None:
+            return False
+        try:
+            expiry_str, signature = value.rsplit(".", 1)
+            expiry = int(expiry_str)
+        except ValueError:
+            return False
+        if expiry < time.time():
+            return False
+        return hmac.compare_digest(signature, self._sign(expiry))
+
+    def _check_auth(self, request: web.Request) -> None:
+        """Raises HTTPUnauthorized if a token is configured and the request doesn't carry it.
+
+        Accepts either a valid "Authorization: Bearer <token>" header or a valid session cookie.
+        No-op when no token is configured. Same contract as HttpFileCache._check_auth: the
+        exception type is identical regardless of which handler called it.
+
+        Args:
+            request: Request to check.
+        """
+        if self._token is None:
+            return
+        if not (self._check_bearer(request) or self._check_cookie(request)):
+            raise web.HTTPUnauthorized()
+
+    async def login_handler(self, request: web.Request) -> web.Response:
+        """Handles GET access to /login and returns the login form.
+
+        Served unauthenticated: this is the bootstrap a browser needs, since it cannot attach an
+        "Authorization" header to an <img> request. Only registered when a token is configured.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response containing the login form.
+        """
+        html = """<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+  </head>
+  <body>
+    <form method="post" action="/login">
+      <label>Password: <input type="password" name="token" autofocus></label>
+      <button type="submit">Login</button>
+    </form>
+  </body>
+</html>
+"""
+        return web.Response(text=html, content_type="text/html")
+
+    async def login_post_handler(self, request: web.Request) -> web.Response:
+        """Handles POST access to /login, verifying the password and issuing the session cookie.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            303 redirect to / on success, 401 on wrong password.
+        """
+        token = self._token
+        if token is None:
+            # login routes are only registered when a token is configured -- defensive
+            raise web.HTTPUnauthorized()
+        data = await request.post()
+        password = str(data.get("token", ""))
+        async with self._login_lock:
+            # serialized: caps the guess rate at 1/_LOGIN_FAILURE_SLEEP regardless of how many
+            # connections attempt concurrently
+            if not hmac.compare_digest(password, token):
+                # the compare above is constant-time; this sleep additionally slows brute force
+                await asyncio.sleep(_LOGIN_FAILURE_SLEEP)
+                raise web.HTTPUnauthorized()
+        response = web.HTTPSeeOther("/")
+        response.set_cookie(
+            _COOKIE_NAME,
+            self._make_session_value(),
+            max_age=_COOKIE_LIFETIME,
+            path="/",
+            httponly=True,
+            samesite="Lax",
+        )
+        return response
+
+    async def logout_handler(self, request: web.Request) -> web.Response:
+        """Handles GET access to /logout and clears the session cookie.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            303 redirect to /login.
+        """
+        response = web.HTTPSeeOther("/login")
+        response.del_cookie(_COOKIE_NAME, path="/")
+        return response
+
     async def web_handler(self, request: web.Request) -> web.Response:
         """Handles access to / and returns HTML page.
 
@@ -205,6 +393,11 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         Returns:
             Response containing web page.
         """
+        # a browser landing on / should be taken to the login form, not shown a bare 401
+        try:
+            self._check_auth(request)
+        except web.HTTPUnauthorized:
+            raise web.HTTPSeeOther("/login")
         return web.Response(text=INDEX_HTML, content_type="text/html")
 
     async def ping_handler(self, request: web.Request) -> web.Response:
@@ -227,6 +420,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         Returns:
             Response containing video stream.
         """
+        self._check_auth(request)
 
         # create response
         response = web.StreamResponse()
@@ -273,6 +467,8 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         Returns:
             Response containing raw frame stream.
         """
+        # auth first: an unauthenticated request must not wake the camera
+        self._check_auth(request)
 
         # activate camera
         await self.activate_camera()
@@ -368,6 +564,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         Returns:
             Response containing image.
         """
+        self._check_auth(request)
 
         # get filename
         filename = request.match_info["filename"]

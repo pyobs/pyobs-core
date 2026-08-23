@@ -116,3 +116,10 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-20-imagewatcher-event-loop-blocking.md](2026-08-20-imagewatcher-event-loop-blocking.md) —
   stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from blocking the event loop.
   **proposed** (MONET South incident, 2026-08-20)
+- [2026-08-21-basevideo-http-token-auth.md](2026-08-21-basevideo-http-token-auth.md) —
+  shared-token auth + browser login page for `BaseVideo`'s HTTP endpoints (design:
+  `specs/design/basevideo-http-auth.md`). **implemented, closed** (Repos: pyobs-core, pyobs-gui)
+- [2026-08-21-keycloak-idp-hint-login.md](2026-08-21-keycloak-idp-hint-login.md) — one-click IdP
+  login via `kc_idp_hint`: `IDP_HINT` support in pyobs-auth + dual login buttons (hinted IdP vs.
+  local Keycloak account) in the services' login pages. **proposed** (Repos: pyobs-auth,
+  pyobs-archive, pyobs-robotic-backend, pyobs-web-admin)

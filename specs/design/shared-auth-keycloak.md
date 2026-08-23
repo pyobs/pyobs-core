@@ -7,7 +7,16 @@ user mapping), pyobs-robotic-backend wired in (`KeycloakAuthentication`, `Keyclo
 browser login/logout verified end to end against the running Keycloak. Section 0 of the plan
 (observation-portal brokering in the Keycloak admin console) remains open but is admin/deployment
 config, tracked in #748, not pyobs code.
-Repos: pyobs-archive, pyobs-robotic-backend
+
+Follow-up (2026-08-21, plan `specs/plans/2026-08-21-keycloak-idp-hint-login.md`): one-click IdP
+login via Keycloak's `kc_idp_hint` authorization-endpoint parameter — when present, Keycloak skips
+its login/IdP-selection page and redirects straight to that identity provider (unknown aliases fall
+back to the normal login page). The services' login pages render a dual-button pattern when a hint
+is configured: "Log in with `<hinted IdP>`" (default, via `IDP_HINT`) and "Log in with local
+Keycloak account" (via a present-but-empty `?idp_hint=`), keeping the local-account path reachable.
+The alias and button label are per-deployment `PYOBS_AUTH` config (`IDP_HINT`/`IDP_LABEL`) — an
+instance of this design's "upstream wiring is operational config" principle.
+Repos: pyobs-auth, pyobs-archive, pyobs-robotic-backend, pyobs-web-admin
 
 ## Problem
 

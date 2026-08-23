@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
@@ -23,6 +24,26 @@ from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
+
+
+def _format_ra(ra_deg: float) -> str:
+    """Format an RA in degrees as sexagesimal HH:MM:SS.sss.
+
+    Deliberately avoids astropy's Angle.to_string(): its vectorized do_format ufunc path emits a
+    RuntimeWarning on numpy 2.x, which application.py promotes to an error -- see pyobs-gui commit
+    04d39d6 for the same issue and fix.
+    """
+    h, rem = divmod(ra_deg / 15.0, 1)
+    m, rem = divmod(rem * 60, 1)
+    return f"{int(h):02d}:{int(m):02d}:{rem * 60:06.3f}"
+
+
+def _format_dec(dec_deg: float) -> str:
+    """Format a Dec in degrees as sexagesimal +DD:MM:SS.sss. See _format_ra for why to_string() is avoided."""
+    sign = "+" if dec_deg >= 0 else "-"
+    d, rem = divmod(abs(dec_deg), 1)
+    m, rem = divmod(rem * 60, 1)
+    return f"{sign}{int(d):02d}:{int(m):02d}:{rem * 60:06.3f}"
 
 
 class BaseTelescope(
@@ -113,6 +134,12 @@ class BaseTelescope(
         if not isinstance(self, IPointingRaDec):
             raise NotImplementedError
 
+        # reject non-finite coordinates outright -- otherwise NaN/inf silently passes the
+        # altitude check below (NaN comparisons are always False) and only surfaces later as an
+        # opaque RuntimeWarning-turned-error out of the sexagesimal formatting
+        if not (math.isfinite(ra) and math.isfinite(dec)):
+            raise ValueError(f"RA/Dec must be finite, got ra={ra}, dec={dec}.")
+
         # do nothing, if initializing, parking or parked
         if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
@@ -135,9 +162,9 @@ class BaseTelescope(
             await self._change_motion_status(MotionStatus.SLEWING)
             log.info(
                 "Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
-                ra_dec.ra.to_string(sep=":", unit=u.hour, pad=True),
+                _format_ra(ra),
                 ra,
-                ra_dec.dec.to_string(sep=":", unit=u.deg, pad=True),
+                _format_dec(dec),
                 dec,
             )
             await self.comm.send_event(MoveRaDecEvent(ra=ra, dec=dec))
@@ -185,6 +212,10 @@ class BaseTelescope(
         # no Alt/Az telescope?
         if not isinstance(self, IPointingAltAz):
             raise NotImplementedError
+
+        # reject non-finite coordinates outright -- see move_radec for why
+        if not (math.isfinite(alt) and math.isfinite(az)):
+            raise ValueError(f"Alt/Az must be finite, got alt={alt}, az={az}.")
 
         # do nothing, if initializing, parking or parked
         if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
@@ -256,10 +287,16 @@ class BaseTelescope(
             hdr["TEL-ZD"] = (90.0 - hdr["TEL-ALT"][0], "Telescope zenith distance [degrees]")
             hdr["AIRMASS"] = (float(coords_alt_az.secz.value), "Airmass of observation start")
 
-        # convert to sexagesimal
-        if coords_ra_dec is not None:
-            hdr["RA"] = (str(coords_ra_dec.ra.to_string(sep=":", unit=u.hour, pad=True)), "Right ascension of object")
-            hdr["DEC"] = (str(coords_ra_dec.dec.to_string(sep=":", unit=u.deg, pad=True)), "Declination of object")
+        # convert to sexagesimal -- get_radec() can return NaN for an uninitialized telescope, and
+        # unlike to_string() the manual formatters below raise on a non-finite value rather than
+        # just warning, so skip them instead of emitting bogus headers
+        if (
+            coords_ra_dec is not None
+            and math.isfinite(coords_ra_dec.ra.degree)
+            and math.isfinite(coords_ra_dec.dec.degree)
+        ):
+            hdr["RA"] = (_format_ra(float(coords_ra_dec.ra.degree)), "Right ascension of object")
+            hdr["DEC"] = (_format_dec(float(coords_ra_dec.dec.degree)), "Declination of object")
 
         # site location
         if self._observer is not None:

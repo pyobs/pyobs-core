@@ -11,6 +11,7 @@ import pytest
 from astropy.io import fits
 
 from pyobs.comm.dummy import DummyComm
+from pyobs.modules.image import imagewatcher as imagewatcher_module
 from pyobs.modules.image.imagewatcher import ImageWatcher
 from pyobs.vfs import VirtualFileSystem
 
@@ -194,6 +195,57 @@ async def test_worker_requeues_on_write_failure(caplog) -> None:
 
     watcher._vfs.remove.assert_not_called()
     assert "skipping for now" in caplog.text
+
+
+# ── event-loop responsiveness during file processing ─────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_worker_fits_parse_does_not_block_event_loop(monkeypatch) -> None:
+    """A slow FITS parse must not freeze the loop: offloaded, a heartbeat keeps ticking."""
+    watcher = make_watcher(destinations=["/dest"], wait_time=0)
+    data = b"raw data"
+    read_ctx, write_ctx = make_read_write_ctx(data)
+
+    def open_side_effect(filename, mode):
+        return read_ctx if mode == "rb" else write_ctx
+
+    watcher._vfs.open_file = MagicMock(side_effect=open_side_effect)
+
+    # the file is fully processed once remove (the last step) is reached
+    removed = asyncio.Event()
+    watcher._vfs.remove = AsyncMock(side_effect=lambda path: removed.set())
+
+    # simulate a slow, CPU-heavy FITS parse
+    def slow_fromstring(_data: bytes):
+        time.sleep(0.2)
+        return None
+
+    monkeypatch.setattr(imagewatcher_module.fits.HDUList, "fromstring", staticmethod(slow_fromstring))
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    worker = asyncio.create_task(watcher._worker())
+
+    heartbeats = 0
+
+    async def heartbeat() -> None:
+        nonlocal heartbeats
+        while not removed.is_set():
+            await asyncio.sleep(0.01)
+            heartbeats += 1
+
+    try:
+        await asyncio.wait_for(heartbeat(), timeout=5)
+    finally:
+        worker.cancel()
+        try:
+            await worker
+        except (asyncio.CancelledError, Exception):
+            pass
+
+    # ~0.2s of parse at a 10ms heartbeat cadence: the loop should have kept ticking throughout
+    # if (and only if) the parse was actually offloaded onto a worker thread.
+    assert heartbeats >= 5
 
 
 # ── process_extra / cleanup_extra ─────────────────────────────────────────────

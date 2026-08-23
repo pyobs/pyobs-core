@@ -94,6 +94,11 @@ Implementation plans, checklist-style. Newest at the bottom.
 
 ## Not finished
 
+- [2026-08-23-iag50-pyobs-core-2x-migration.md](2026-08-23-iag50-pyobs-core-2x-migration.md) —
+  pyobs-iag50's `2.0.0.dev2` version bump was premature (still pinned/locked to pyobs-core 1.x);
+  real migration work — grid-API rewrite, `self.proxy()` context-manager change, missing-await
+  fixes. **in progress** — `1.x` branch cut, `develop` reset to `2.0.0.dev0`, code fixes not yet
+  done, three open questions need Tim's input (Repos: pyobs-iag50)
 - [2026-07-27-gui-widget-plugins-and-packaging.md](2026-07-27-gui-widget-plugins-and-packaging.md) —
   widget plugin mechanism + `pyside6-deploy` packaging. **draft** (Repos: pyobs-gui)
 - [2026-07-29-gui-telescopewidget-layout.md](2026-07-29-gui-telescopewidget-layout.md) —

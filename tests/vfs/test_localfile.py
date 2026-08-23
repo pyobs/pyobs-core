@@ -1,5 +1,6 @@
 import asyncio
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -161,3 +162,38 @@ async def test_async_enter_does_not_block_event_loop(monkeypatch, tmp_path: Path
 
     assert heartbeats >= 5
     assert tmp_path.joinpath("test.txt").read_text() == "This is a test"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_opens_creating_same_new_dir(monkeypatch, tmp_path: Path) -> None:
+    """Concurrent opens racing to create the same not-yet-existing sub-directory must not raise.
+
+    __aenter__ moved directory creation onto executor threads, so the exists()/makedirs()
+    check-then-act in _open_sync races for real between threads. A barrier deterministically
+    forces every thread past the exists() check before any calls makedirs(), guaranteeing the
+    race window is hit; regression test for the resulting FileExistsError.
+    """
+    root = str(tmp_path)
+    n = 4
+    target_dir = os.path.join(root, "newdir")
+    barrier = threading.Barrier(n)
+    real_exists = os.path.exists
+
+    def widened_exists(path: str) -> bool:
+        result = real_exists(path)
+        # only synchronize on the exists() checks we're racing; ignore unrelated calls made
+        # concurrently elsewhere in the process (e.g. by asyncio/pytest internals)
+        if not result and path == target_dir:
+            barrier.wait(timeout=5)
+        return result
+
+    monkeypatch.setattr(os.path, "exists", widened_exists)
+
+    async def open_write_close(i: int) -> None:
+        async with LocalFile(f"newdir/file{i}.txt", "w", root=root) as f:
+            await f.write("data")
+
+    await asyncio.gather(*(open_write_close(i) for i in range(n)))
+
+    for i in range(n):
+        assert tmp_path.joinpath("newdir", f"file{i}.txt").read_text() == "data"

@@ -16,7 +16,9 @@ def _open_sync(full_path: str, mode: str, mkdir: bool) -> IO[Any]:
     path = os.path.dirname(full_path)
     if not os.path.exists(path):
         if mkdir:
-            os.makedirs(path)
+            # exist_ok: this runs on an executor thread, so concurrent opens into the same new
+            # sibling directory can race between the exists() check and makedirs() here.
+            os.makedirs(path, exist_ok=True)
         else:
             raise ValueError("Cannot write into sub-directory with disabled mkdir option.")
     return open(full_path, mode)
@@ -90,7 +92,7 @@ class LocalFile(VFSFile):
 
     async def read(self, n: int = -1) -> str | bytes:
         if self.fd is None:
-            raise OSError
+            raise OSError("LocalFile is not open; use 'async with' to open it before reading.")
         loop = asyncio.get_running_loop()
         buf = await loop.run_in_executor(None, self.fd.read, n)
         if not isinstance(buf, str) and not isinstance(buf, bytes):
@@ -99,7 +101,7 @@ class LocalFile(VFSFile):
 
     async def write(self, s: str | bytes) -> None:
         if self.fd is None:
-            raise OSError
+            raise OSError("LocalFile is not open; use 'async with' to open it before writing.")
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self.fd.write, s)
 

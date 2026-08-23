@@ -1,6 +1,11 @@
 # Plan: shared-token auth + browser login for `BaseVideo`
 
-Status: proposed
+Status: implemented, closed. Verified against code 2026-08-21: `token` param, HMAC-signed
+session cookie, `/login`/`/logout` routes, and `_check_auth` in
+`pyobs/modules/camera/basevideo.py`; `headers` property in `pyobs/vfs/httpfile.py`; covered by
+`tests/modules/camera/test_basevideo.py` and `tests/vfs/test_httpfile.py`. The pyobs-gui half
+(`pyobs_gui/videowidget.py` + `tests/test_videowidget.py`) lands in its own PR on
+`pyobs/pyobs-gui` — both PRs must merge together (see Consequences).
 
 Design: `specs/design/basevideo-http-auth.md`
 
@@ -23,20 +28,20 @@ page + cookie for the `<img>`-based index page to keep working.
 
 ### pyobs-core — `pyobs/modules/camera/basevideo.py`
 
-- [ ] Add `token: str | None = None` to `__init__` (`basevideo.py:78-94`), store
+- [x] Add `token: str | None = None` to `__init__` (`basevideo.py:78-94`), store
       `self._token`. Docstring entry mirroring `HttpFileCache`'s: "Shared secret required
       in the `Authorization: Bearer <token>` header (or a login-page cookie) for stream
       and data access. If `None` (default), no auth is enforced."
-- [ ] Add cookie constants (name e.g. `pyobs_video_session`, lifetime 24 h) and helpers:
+- [x] Add cookie constants (name e.g. `pyobs_video_session`, lifetime 24 h) and helpers:
       `_make_session_value() -> str` (expiry + HMAC-SHA256 over `str(expiry)` keyed with
       the token), `_check_bearer(request) -> bool`, `_check_cookie(request) -> bool`,
       `_check_auth(request)` (raises `HTTPUnauthorized` unless either passes; no-op when
       `self._token is None`). Constant-time compares via `hmac.compare_digest`
       everywhere — same as `HttpFileCache._check_auth` (`httpfilecache.py:82-93`).
-- [ ] Register `/login` (GET + POST) and `/logout` (GET) routes **only when
+- [x] Register `/login` (GET + POST) and `/logout` (GET) routes **only when
       `self._token is not None`**, alongside the existing conditional registration of
       `/video.mjpg`/`/video.raw` (`basevideo.py:158-161`).
-- [ ] Implement the three handlers:
+- [x] Implement the three handlers:
       - `login_handler` — GET: minimal HTML form (one password input, POST to `/login`),
         served unauthenticated.
       - `login_post_handler` — POST: `await request.post()`, compare form field with
@@ -44,32 +49,32 @@ page + cookie for the `<img>`-based index page to keep working.
         max_age=lifetime, path="/", httponly=True, samesite="Lax")` + `303 See Other
         → /`. Failure: `401` (optional small `asyncio.sleep` delay against brute force).
       - `logout_handler` — GET: `del_cookie(name, path="/")` + `303 → /login`.
-- [ ] Call `_check_auth(request)` at the top of `video_handler` (`:221`), `raw_handler`
+- [x] Call `_check_auth(request)` at the top of `video_handler` (`:221`), `raw_handler`
       (`:267`), and `image_handler` (`:362`), letting its `HTTPUnauthorized` propagate
       unchanged. `web_handler` (`:199`) is the exception: it wraps the call in
       `try/except web.HTTPUnauthorized: raise web.HTTPSeeOther("/login")` so a browser
       landing on `/` reaches the login form instead of a bare 401 — `_check_auth` itself
       always raises the same exception regardless of caller, it has no per-handler
       behavior.
-- [ ] Confirm ordering in the streaming handlers: auth check runs before
+- [x] Confirm ordering in the streaming handlers: auth check runs before
       `response.prepare(request)` (`:234`, `:283`) and before `activate_camera()` in
       `raw_handler` (`:278`) — an unauthenticated request must not wake the camera.
-- [ ] `INDEX_HTML` (`:28-40`) unchanged — the cookie rides the same-origin `<img>`
+- [x] `INDEX_HTML` (`:28-40`) unchanged — the cookie rides the same-origin `<img>`
       request automatically.
-- [ ] Update the class docstring (webcam VFS note) with a sentence on token/login.
+- [x] Update the class docstring (webcam VFS note) with a sentence on token/login.
 
 ### pyobs-core — `pyobs/vfs/httpfile.py`
 
-- [ ] Add a public read-only `headers` property returning `self._headers` (`:50`), so
+- [x] Add a public read-only `headers` property returning `self._headers` (`:50`), so
       pyobs-gui doesn't reach into the private attribute. (No behavior change; existing
       callers unaffected.)
 
 ### pyobs-gui — `pyobs_gui/videowidget.py`
 
-- [ ] In `_init`, after the `HttpFile` type check (`:140`), store
+- [x] In `_init`, after the `HttpFile` type check (`:140`), store
       `self._auth_header = video_file.headers.get("Authorization")` (None when the VFS
       root configures no token).
-- [ ] In `_showEvent`, append `Authorization: <value>\r\n` to the raw-socket GET when
+- [x] In `_showEvent`, append `Authorization: <value>\r\n` to the raw-socket GET when
       `self._auth_header` is set (`:206-208`). When unset, bytes written are unchanged.
 
 ## Testing
@@ -80,27 +85,27 @@ Existing unit style: direct handler invocation, mocked
 `pyobs.modules.camera.basevideo.web.StreamResponse`, `_route_paths()` helper
 (`test_basevideo.py:509`). No aiohttp TestClient in the repo — keep it that way.
 
-- [ ] `token=None` (default): `/login`/`/logout` not registered; all handlers accept
+- [x] `token=None` (default): `/login`/`/logout` not registered; all handlers accept
       unauthenticated requests — existing tests unchanged.
-- [ ] `token` set: `_route_paths` includes `/login`; `/` unauthenticated → `303` to
+- [x] `token` set: `_route_paths` includes `/login`; `/` unauthenticated → `303` to
       `/login` (not a bare `401` — confirms `web_handler`'s `HTTPUnauthorized` →
       `HTTPSeeOther` translation); `/video.mjpg`, `/video.raw`, `/{filename}`
       unauthenticated → `401`; `/ping` → `200`.
-- [ ] Bearer header: correct `Authorization: Bearer <token>` → `200`; wrong token →
+- [x] Bearer header: correct `Authorization: Bearer <token>` → `200`; wrong token →
       `401`.
-- [ ] Login POST: correct token → response carries `Set-Cookie` + `303`; wrong token →
+- [x] Login POST: correct token → response carries `Set-Cookie` + `303`; wrong token →
       `401`.
-- [ ] Cookie: valid cookie → `200` on `/` and stream endpoints; tampered cookie →
+- [x] Cookie: valid cookie → `200` on `/` and stream endpoints; tampered cookie →
       `401`; expired cookie (expiry in the past) → `401`; after `/logout` → `401`.
-- [ ] `raw_handler` with a bad/missing credential raises `401` **without** calling
+- [x] `raw_handler` with a bad/missing credential raises `401` **without** calling
       `activate_camera()` (mock it, assert not called).
-- [ ] Streaming handlers: `401` raised before `StreamResponse.prepare()` is reached.
+- [x] Streaming handlers: `401` raised before `StreamResponse.prepare()` is reached.
 
 ### pyobs-gui — `tests/test_videowidget.py`
 
-- [ ] With an `HttpFile` carrying a token, the bytes written to the (mocked) socket
+- [x] With an `HttpFile` carrying a token, the bytes written to the (mocked) socket
       include `Authorization: Bearer <token>`.
-- [ ] Without a token, the written GET bytes are unchanged from today.
+- [x] Without a token, the written GET bytes are unchanged from today.
 
 ## Explicitly out of scope
 

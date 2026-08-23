@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import json
+import time
 from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pytest
+from aiohttp import web
 
 from pyobs.comm import Comm
 from pyobs.events import NewImageEvent
 from pyobs.interfaces import IImageType, IVideo
 from pyobs.modules import Module
-from pyobs.modules.camera.basevideo import BaseVideo, ImageRequest, LastImage, NextImage
+from pyobs.modules.camera.basevideo import _COOKIE_NAME, BaseVideo, ImageRequest, LastImage, NextImage
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ImageType
 
@@ -21,9 +25,15 @@ def make_basevideo(**kwargs) -> BaseVideo:
     return BaseVideo(comm=comm, **kwargs)
 
 
-def make_request(filename: str | None = None) -> MagicMock:
+def make_request(
+    filename: str | None = None,
+    headers: dict[str, str] | None = None,
+    cookies: dict[str, str] | None = None,
+) -> MagicMock:
     request = MagicMock()
     request.match_info = {} if filename is None else {"filename": filename}
+    request.headers = headers or {}
+    request.cookies = cookies or {}
     return request
 
 
@@ -141,8 +151,6 @@ async def test_image_handler_returns_cached_data() -> None:
 
 @pytest.mark.asyncio
 async def test_image_handler_404_when_missing() -> None:
-    from aiohttp import web
-
     bv = make_basevideo()
     with pytest.raises(web.HTTPNotFound):
         await bv.image_handler(make_request("missing.fits"))
@@ -640,3 +648,343 @@ async def test_raw_handler_touches_activity_without_new_frame(mocker) -> None:
     assert activate_calls >= 2
     assert response.write.await_count == 1
     assert bv.camera_active is True
+
+
+# ── token auth ─────────────────────────────────────────────────────────────
+
+
+def _session_value(token: str, expiry: int | None = None) -> str:
+    """Build a valid session-cookie value for the given token (mirror of BaseVideo._make_session_value)."""
+    expiry = int(time.time()) + 24 * 60 * 60 if expiry is None else expiry
+    signature = hmac.new(token.encode(), str(expiry).encode(), hashlib.sha256).hexdigest()
+    return f"{expiry}.{signature}"
+
+
+# route registration gating
+
+
+def test_token_param_stored() -> None:
+    bv = make_basevideo(token="secret")
+    assert bv._token == "secret"
+
+
+def test_login_routes_not_registered_without_token() -> None:
+    bv = make_basevideo()
+    paths = _route_paths(bv)
+    assert "/login" not in paths
+    assert "/logout" not in paths
+
+
+def test_login_routes_registered_with_token() -> None:
+    bv = make_basevideo(token="secret")
+    paths = _route_paths(bv)
+    assert "/login" in paths
+    assert "/logout" in paths
+
+
+# _check_auth
+
+
+def test_check_auth_noop_without_token() -> None:
+    bv = make_basevideo()
+    bv._check_auth(make_request())  # must not raise
+
+
+def test_check_auth_raises_without_credentials() -> None:
+    bv = make_basevideo(token="secret")
+    with pytest.raises(web.HTTPUnauthorized):
+        bv._check_auth(make_request())
+
+
+def test_check_auth_accepts_bearer_and_cookie() -> None:
+    bv = make_basevideo(token="secret")
+    bv._check_auth(make_request(headers={"Authorization": "Bearer secret"}))  # must not raise
+    bv._check_auth(make_request(cookies={_COOKIE_NAME: _session_value("secret")}))  # must not raise
+
+
+def test_make_session_value_roundtrips_through_check_cookie() -> None:
+    bv = make_basevideo(token="secret")
+    assert bv._check_cookie(make_request(cookies={_COOKIE_NAME: bv._make_session_value()})) is True
+
+
+# web_handler: unauthenticated browser gets a redirect to the login page, not a bare 401
+
+
+@pytest.mark.asyncio
+async def test_web_handler_redirects_to_login_when_unauthenticated() -> None:
+    bv = make_basevideo(token="secret")
+    with pytest.raises(web.HTTPSeeOther) as exc:
+        await bv.web_handler(make_request())
+    assert exc.value.location == "/login"
+
+
+@pytest.mark.asyncio
+async def test_web_handler_accepts_valid_bearer() -> None:
+    bv = make_basevideo(token="secret")
+    response = await bv.web_handler(make_request(headers={"Authorization": "Bearer secret"}))
+    assert response.status == 200
+    assert response.content_type == "text/html"
+
+
+@pytest.mark.asyncio
+async def test_web_handler_accepts_valid_cookie() -> None:
+    bv = make_basevideo(token="secret")
+    response = await bv.web_handler(make_request(cookies={_COOKIE_NAME: _session_value("secret")}))
+    assert response.status == 200
+
+
+# streaming handlers: 401 raised before StreamResponse.prepare() is reached
+
+
+@pytest.mark.asyncio
+async def test_video_handler_401_without_auth_before_prepare(mocker) -> None:
+    bv = make_basevideo(token="secret")
+    response = MagicMock()
+    response.prepare = AsyncMock()
+    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.video_handler(make_request())
+
+    response.prepare.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_video_handler_401_with_bad_token_before_prepare(mocker) -> None:
+    bv = make_basevideo(token="secret")
+    response = MagicMock()
+    response.prepare = AsyncMock()
+    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.video_handler(make_request(headers={"Authorization": "Bearer wrong"}))
+
+    response.prepare.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_video_handler_accepts_valid_bearer(mocker) -> None:
+    from aiohttp.client_exceptions import ClientConnectionResetError
+
+    bv = make_basevideo(token="secret")
+    response = MagicMock()
+    response.prepare = AsyncMock()
+    response.write = AsyncMock(side_effect=ClientConnectionResetError())
+    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+    bv.image_jpeg = AsyncMock(return_value=(1, b"jpeg-bytes"))
+
+    await bv.video_handler(make_request(headers={"Authorization": "Bearer secret"}))
+
+    # auth passed: the stream was prepared and one frame written before the client reset
+    response.prepare.assert_awaited_once()
+    assert response.write.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_video_handler_accepts_valid_cookie(mocker) -> None:
+    from aiohttp.client_exceptions import ClientConnectionResetError
+
+    bv = make_basevideo(token="secret")
+    response = MagicMock()
+    response.prepare = AsyncMock()
+    response.write = AsyncMock(side_effect=ClientConnectionResetError())
+    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+    bv.image_jpeg = AsyncMock(return_value=(1, b"jpeg-bytes"))
+
+    await bv.video_handler(make_request(cookies={_COOKIE_NAME: _session_value("secret")}))
+
+    response.prepare.assert_awaited_once()
+    assert response.write.await_count == 1
+
+
+# raw_handler: unauthenticated requests must not wake the camera
+
+
+@pytest.mark.asyncio
+async def test_raw_handler_401_without_auth_does_not_activate_camera() -> None:
+    bv = make_basevideo(token="secret")
+    bv.activate_camera = AsyncMock()
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.raw_handler(make_request())
+
+    bv.activate_camera.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_raw_handler_401_with_bad_token_does_not_activate_camera() -> None:
+    bv = make_basevideo(token="secret")
+    bv.activate_camera = AsyncMock()
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.raw_handler(make_request(headers={"Authorization": "Bearer wrong"}))
+
+    bv.activate_camera.assert_not_awaited()
+
+
+# image_handler
+
+
+@pytest.mark.asyncio
+async def test_image_handler_401_without_auth() -> None:
+    bv = make_basevideo(token="secret")
+    bv._cache["test.fits"] = b"fits-bytes"
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.image_handler(make_request("test.fits"))
+
+
+@pytest.mark.asyncio
+async def test_image_handler_401_with_wrong_token() -> None:
+    bv = make_basevideo(token="secret")
+    bv._cache["test.fits"] = b"fits-bytes"
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.image_handler(make_request("test.fits", headers={"Authorization": "Bearer wrong"}))
+
+
+@pytest.mark.asyncio
+async def test_image_handler_accepts_valid_bearer() -> None:
+    bv = make_basevideo(token="secret")
+    bv._cache["test.fits"] = b"fits-bytes"
+
+    response = await bv.image_handler(make_request("test.fits", headers={"Authorization": "Bearer secret"}))
+
+    assert response.status == 200
+    assert response.body == b"fits-bytes"
+
+
+@pytest.mark.asyncio
+async def test_image_handler_accepts_valid_cookie() -> None:
+    bv = make_basevideo(token="secret")
+    bv._cache["test.fits"] = b"fits-bytes"
+
+    response = await bv.image_handler(make_request("test.fits", cookies={_COOKIE_NAME: _session_value("secret")}))
+
+    assert response.status == 200
+    assert response.body == b"fits-bytes"
+
+
+# cookies: tampering, expiry, cross-token signature
+
+
+@pytest.mark.asyncio
+async def test_cookie_rejects_tampered_signature() -> None:
+    bv = make_basevideo(token="secret")
+    bv._cache["test.fits"] = b"fits-bytes"
+    value = _session_value("secret")
+    tampered = value[:-1] + ("0" if value[-1] != "0" else "1")
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.image_handler(make_request("test.fits", cookies={_COOKIE_NAME: tampered}))
+
+
+@pytest.mark.asyncio
+async def test_cookie_rejects_expired_value() -> None:
+    bv = make_basevideo(token="secret")
+    bv._cache["test.fits"] = b"fits-bytes"
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.image_handler(
+            make_request("test.fits", cookies={_COOKIE_NAME: _session_value("secret", expiry=int(time.time()) - 3600)})
+        )
+
+
+@pytest.mark.asyncio
+async def test_cookie_rejects_value_signed_with_other_token() -> None:
+    bv = make_basevideo(token="secret")
+    bv._cache["test.fits"] = b"fits-bytes"
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.image_handler(make_request("test.fits", cookies={_COOKIE_NAME: _session_value("other-token")}))
+
+
+# login / logout
+
+
+@pytest.mark.asyncio
+async def test_login_handler_serves_form_without_authentication() -> None:
+    bv = make_basevideo(token="secret")
+
+    # no Authorization header, no session cookie -- must still succeed, since this is the
+    # bootstrap page an unauthenticated browser needs before it can obtain a session
+    response = await bv.login_handler(make_request())
+
+    assert response.status == 200
+    assert response.content_type == "text/html"
+    assert "form" in response.text
+    assert 'action="/login"' in response.text
+
+
+@pytest.mark.asyncio
+async def test_login_post_correct_token_sets_cookie_and_redirects() -> None:
+    bv = make_basevideo(token="secret")
+    request = make_request()
+    request.post = AsyncMock(return_value={"token": "secret"})
+
+    response = await bv.login_post_handler(request)
+
+    assert response.status == 303
+    assert response.headers["Location"] == "/"
+    cookie = response._cookies[_COOKIE_NAME]
+    assert cookie["max-age"] == str(24 * 60 * 60)
+    assert cookie["path"] == "/"
+    assert cookie["httponly"] is True
+    assert cookie["samesite"] == "Lax"
+
+
+@pytest.mark.asyncio
+async def test_login_post_wrong_token_returns_401(mocker) -> None:
+    bv = make_basevideo(token="secret")
+    request = make_request()
+    request.post = AsyncMock(return_value={"token": "wrong"})
+    mocker.patch("pyobs.modules.camera.basevideo.asyncio.sleep", AsyncMock())
+
+    with pytest.raises(web.HTTPUnauthorized):
+        await bv.login_post_handler(request)
+
+
+@pytest.mark.asyncio
+async def test_login_post_serializes_concurrent_failed_attempts(mocker) -> None:
+    # regression test: concurrent failed attempts must be serialized through the sleep, so the
+    # guess rate is capped regardless of concurrency -- not each sleeping independently in parallel
+    mocker.patch("pyobs.modules.camera.basevideo._LOGIN_FAILURE_SLEEP", 0.05)
+    bv = make_basevideo(token="secret")
+
+    def make_wrong_request():
+        request = make_request()
+        request.post = AsyncMock(return_value={"token": "wrong"})
+        return request
+
+    start = time.monotonic()
+    results = await asyncio.gather(
+        bv.login_post_handler(make_wrong_request()),
+        bv.login_post_handler(make_wrong_request()),
+        return_exceptions=True,
+    )
+    elapsed = time.monotonic() - start
+
+    assert all(isinstance(r, web.HTTPUnauthorized) for r in results)
+    assert elapsed >= 0.09  # ~2x the sleep; would be ~0.05s if the two ran in parallel
+
+
+@pytest.mark.asyncio
+async def test_logout_clears_cookie_and_redirects_to_login() -> None:
+    bv = make_basevideo(token="secret")
+
+    response = await bv.logout_handler(make_request())
+
+    assert response.status == 303
+    assert response.headers["Location"] == "/login"
+    cookie = response._cookies[_COOKIE_NAME]
+    assert cookie["max-age"] == "0"
+
+
+# ping stays open
+
+
+@pytest.mark.asyncio
+async def test_ping_handler_stays_open_with_token() -> None:
+    bv = make_basevideo(token="secret")
+    response = await bv.ping_handler(make_request())
+    assert response.status == 200

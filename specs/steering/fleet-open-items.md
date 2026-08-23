@@ -61,7 +61,10 @@ One line per plan — same layout for every repo.
   project-based access control for frames, archive side of pyobs-archive#42 (*planned*)
 - **pyobs-robotic-backend** — [2026-08-20-connect-pyobs-archive](../../pyobs-robotic-backend/specs/plans/2026-08-20-connect-pyobs-archive.md) —
   observations → archived-frame links, backend side of #82 (*planned*; on PR #85, not yet on
-  `develop`)
+  `develop`). Its stated blocker, pyobs-core#791 (`PyobsArchive` `OBSNUM` filter), is already
+  closed and released (`pyobs-core` `2.0.0.dev87`+, PR #792) — robotic-backend's pin is still
+  `pyobs-core>=2.0.0.dev71` / lockfile resolves to `dev72`, so section 1 is just a version bump
+  away, not new upstream work.
 - **pyobs-robotic-backend** — [2026-08-20-script-builder](../../pyobs-robotic-backend/specs/plans/2026-08-20-script-builder.md) —
   full schema-driven script builder for the task editor, #81 (*planned*; on PR #85, not yet on
   `develop`)

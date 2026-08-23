@@ -19,8 +19,6 @@ log = logging.getLogger(__name__)
 class LocalArchive(Archive):
     """Connector class to a local image archive."""
 
-    __module__ = "pyobs.utils.archive"
-
     root: str
 
     _root_path: Path = PrivateAttr()

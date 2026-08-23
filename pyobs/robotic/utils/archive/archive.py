@@ -25,8 +25,6 @@ class FrameInfo:
 class Archive(PolymorphicBaseModel, metaclass=ABCMeta):
     """Base class for image archives."""
 
-    __module__ = "pyobs.utils.archive"
-
     model_config = {"arbitrary_types_allowed": True}
 
     @abstractmethod

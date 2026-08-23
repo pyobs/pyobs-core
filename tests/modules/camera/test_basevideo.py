@@ -903,6 +903,20 @@ async def test_cookie_rejects_value_signed_with_other_token() -> None:
 
 
 @pytest.mark.asyncio
+async def test_login_handler_serves_form_without_authentication() -> None:
+    bv = make_basevideo(token="secret")
+
+    # no Authorization header, no session cookie -- must still succeed, since this is the
+    # bootstrap page an unauthenticated browser needs before it can obtain a session
+    response = await bv.login_handler(make_request())
+
+    assert response.status == 200
+    assert response.content_type == "text/html"
+    assert "form" in response.text
+    assert 'action="/login"' in response.text
+
+
+@pytest.mark.asyncio
 async def test_login_post_correct_token_sets_cookie_and_redirects() -> None:
     bv = make_basevideo(token="secret")
     request = make_request()
@@ -928,6 +942,30 @@ async def test_login_post_wrong_token_returns_401(mocker) -> None:
 
     with pytest.raises(web.HTTPUnauthorized):
         await bv.login_post_handler(request)
+
+
+@pytest.mark.asyncio
+async def test_login_post_serializes_concurrent_failed_attempts(mocker) -> None:
+    # regression test: concurrent failed attempts must be serialized through the sleep, so the
+    # guess rate is capped regardless of concurrency -- not each sleeping independently in parallel
+    mocker.patch("pyobs.modules.camera.basevideo._LOGIN_FAILURE_SLEEP", 0.05)
+    bv = make_basevideo(token="secret")
+
+    def make_wrong_request():
+        request = make_request()
+        request.post = AsyncMock(return_value={"token": "wrong"})
+        return request
+
+    start = time.monotonic()
+    results = await asyncio.gather(
+        bv.login_post_handler(make_wrong_request()),
+        bv.login_post_handler(make_wrong_request()),
+        return_exceptions=True,
+    )
+    elapsed = time.monotonic() - start
+
+    assert all(isinstance(r, web.HTTPUnauthorized) for r in results)
+    assert elapsed >= 0.09  # ~2x the sleep; would be ~0.05s if the two ran in parallel
 
 
 @pytest.mark.asyncio

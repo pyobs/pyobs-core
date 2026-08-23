@@ -80,8 +80,11 @@ class HttpFile(BufferedFile):
 
     @property
     def headers(self) -> dict[str, str]:
-        """Headers sent with GET/POST requests, e.g. "Authorization: Bearer <token>"."""
-        return self._headers
+        """Headers sent with GET/POST requests, e.g. "Authorization: Bearer <token>".
+
+        Returns a copy; mutating it does not affect this instance's headers.
+        """
+        return dict(self._headers)
 
     async def _download(self) -> None:
         """For read access, download the file into a local buffer.

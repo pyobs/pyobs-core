@@ -172,6 +172,10 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # define web server
         self._token = token
+        # serializes /login attempts so _LOGIN_FAILURE_SLEEP actually caps the guess rate;
+        # without it, concurrent connections each sleep independently and the rate scales
+        # with concurrency instead of being capped
+        self._login_lock = asyncio.Lock()
         self._app = web.Application()
         routes = [web.get("/ping", self.ping_handler), web.get("/{filename}", self.image_handler)]
         if self._video_path is not None:
@@ -221,6 +225,23 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         """Whether the server is started."""
         return self._is_listening
 
+    def _sign(self, expiry: int) -> str:
+        """HMAC-SHA256 of ``expiry``, keyed with the configured token, as a hex digest.
+
+        Shared by _make_session_value (signs) and _check_cookie (verifies), so the two can't
+        drift apart on hash algo/encoding.
+
+        Args:
+            expiry: Session expiry timestamp being signed.
+
+        Returns:
+            Hex-encoded HMAC signature.
+        """
+        token = self._token
+        if token is None:
+            raise ValueError("Cannot sign a session without a configured token.")
+        return hmac.new(token.encode(), str(expiry).encode(), hashlib.sha256).hexdigest()
+
     def _make_session_value(self) -> str:
         """Build the value for the login session cookie.
 
@@ -231,14 +252,13 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         Returns:
             Cookie value.
         """
-        token = self._token
-        assert token is not None  # only called from login_post_handler, registered only with a token
         expiry = int(time.time()) + _COOKIE_LIFETIME
-        signature = hmac.new(token.encode(), str(expiry).encode(), hashlib.sha256).hexdigest()
-        return f"{expiry}.{signature}"
+        return f"{expiry}.{self._sign(expiry)}"
 
     def _check_bearer(self, request: web.Request) -> bool:
         """Whether the request carries the token as "Authorization: Bearer <token>".
+
+        Only called (via _check_auth) once a token is configured.
 
         Args:
             request: Request to check.
@@ -246,16 +266,16 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         Returns:
             True if the header matches the configured token.
         """
-        if self._token is None:
-            return True
         prefix = "Bearer "
         header = request.headers.get("Authorization", "")
         if not header.startswith(prefix):
             return False
-        return hmac.compare_digest(header[len(prefix) :], self._token)
+        return hmac.compare_digest(header[len(prefix) :], self._token or "")
 
     def _check_cookie(self, request: web.Request) -> bool:
         """Whether the request carries a valid, unexpired session cookie.
+
+        Only called (via _check_auth) once a token is configured.
 
         Args:
             request: Request to check.
@@ -263,8 +283,6 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         Returns:
             True if the cookie's HMAC signature verifies and it has not expired.
         """
-        if self._token is None:
-            return True
         value = request.cookies.get(_COOKIE_NAME)
         if value is None:
             return False
@@ -275,8 +293,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             return False
         if expiry < time.time():
             return False
-        expected = hmac.new(self._token.encode(), str(expiry).encode(), hashlib.sha256).hexdigest()
-        return hmac.compare_digest(signature, expected)
+        return hmac.compare_digest(signature, self._sign(expiry))
 
     def _check_auth(self, request: web.Request) -> None:
         """Raises HTTPUnauthorized if a token is configured and the request doesn't carry it.
@@ -336,10 +353,13 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             raise web.HTTPUnauthorized()
         data = await request.post()
         password = str(data.get("token", ""))
-        if not hmac.compare_digest(password, token):
-            # the compare above is constant-time; this sleep additionally slows brute force
-            await asyncio.sleep(_LOGIN_FAILURE_SLEEP)
-            raise web.HTTPUnauthorized()
+        async with self._login_lock:
+            # serialized: caps the guess rate at 1/_LOGIN_FAILURE_SLEEP regardless of how many
+            # connections attempt concurrently
+            if not hmac.compare_digest(password, token):
+                # the compare above is constant-time; this sleep additionally slows brute force
+                await asyncio.sleep(_LOGIN_FAILURE_SLEEP)
+                raise web.HTTPUnauthorized()
         response = web.HTTPSeeOther("/")
         response.set_cookie(
             _COOKIE_NAME,

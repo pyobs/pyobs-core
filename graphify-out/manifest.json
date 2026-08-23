@@ -1030,8 +1030,8 @@
     "semantic_hash": ""
   },
   "pyobs/modules/camera/basevideo.py": {
-    "mtime": 1787297882.287706,
-    "ast_hash": "0faa09050151b0d1b4dcbe4e47183384",
+    "mtime": 1787485068.4495914,
+    "ast_hash": "ef2335e0e08b3ee017a75b54d902a8bd",
     "semantic_hash": ""
   },
   "pyobs/modules/camera/dummycamera.py": {
@@ -1100,8 +1100,8 @@
     "semantic_hash": "d644e76218ea3b7d8ae316de468318af"
   },
   "pyobs/modules/image/imagewatcher.py": {
-    "mtime": 1787289545.5443316,
-    "ast_hash": "8858800a6eb2630a9fa6380ebbe9fece",
+    "mtime": 1787487062.5464294,
+    "ast_hash": "4e1837023de99fad0c4cf070f8a746b4",
     "semantic_hash": ""
   },
   "pyobs/modules/image/imagewriter.py": {
@@ -1245,8 +1245,8 @@
     "semantic_hash": ""
   },
   "pyobs/modules/telescope/basetelescope.py": {
-    "mtime": 1787113381.6396532,
-    "ast_hash": "d8242194b53381d560ccdd66c9a3281b",
+    "mtime": 1787487959.8202662,
+    "ast_hash": "ed0183968c8ef1263510506b65e47de8",
     "semantic_hash": ""
   },
   "pyobs/modules/telescope/dummyaltaztelescope.py": {
@@ -2185,14 +2185,14 @@
     "semantic_hash": "2d2a4a712e70b92e834d4f1f325807cc"
   },
   "pyobs/vfs/httpfile.py": {
-    "mtime": 1785869604.3282142,
-    "ast_hash": "1a97d2dabd6b94b1433e843cfd0a4d0f",
-    "semantic_hash": "1a97d2dabd6b94b1433e843cfd0a4d0f"
+    "mtime": 1787485068.4505916,
+    "ast_hash": "d0b25ba063807125f93142840700a47b",
+    "semantic_hash": ""
   },
   "pyobs/vfs/localfile.py": {
-    "mtime": 1782030067.1981087,
-    "ast_hash": "b08eb2f557a425b523642dd14be5e5b3",
-    "semantic_hash": "b08eb2f557a425b523642dd14be5e5b3"
+    "mtime": 1787487062.5474296,
+    "ast_hash": "4ee7f6839cd7394aae1388cde2d19dbd",
+    "semantic_hash": ""
   },
   "pyobs/vfs/memfile.py": {
     "mtime": 1784225633.620774,
@@ -2225,8 +2225,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1787297978.403613,
-    "ast_hash": "478ffcc05067d3303c65821d73fa1420",
+    "mtime": 1787485091.7208962,
+    "ast_hash": "929345754f5ddcb6c8865ac1bf301ac4",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -2780,8 +2780,8 @@
     "semantic_hash": ""
   },
   "tests/modules/camera/test_basevideo.py": {
-    "mtime": 1786910269.145736,
-    "ast_hash": "97cd75dec8faa562b6b450b1de1b7c7b",
+    "mtime": 1787485068.4545915,
+    "ast_hash": "3b9a90911ad9aff881c0036c7f991f2b",
     "semantic_hash": ""
   },
   "tests/modules/camera/test_dummyvideo.py": {
@@ -2840,9 +2840,9 @@
     "semantic_hash": "807397c53bf0b8908f0b514dbd278c0e"
   },
   "tests/modules/image/test_imagewatcher.py": {
-    "mtime": 1784225633.6287742,
-    "ast_hash": "ecdc3f109aae72d5cb72ce5580b90917",
-    "semantic_hash": "ecdc3f109aae72d5cb72ce5580b90917"
+    "mtime": 1787487062.5474296,
+    "ast_hash": "b7cad1195d5ce1c3983bf7cb3d51b00e",
+    "semantic_hash": ""
   },
   "tests/modules/image/test_imagewriter.py": {
     "mtime": 1784225633.6287742,
@@ -3470,14 +3470,14 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "tests/vfs/test_httpfile.py": {
-    "mtime": 1785869652.5448585,
-    "ast_hash": "ee710869dfa172109438bd39871734b5",
-    "semantic_hash": "ee710869dfa172109438bd39871734b5"
+    "mtime": 1787485068.4545915,
+    "ast_hash": "d00ae7b1030e30a3ce65503250b85e78",
+    "semantic_hash": ""
   },
   "tests/vfs/test_localfile.py": {
-    "mtime": 1772898126.5249102,
-    "ast_hash": "7b3ad93c8111c4747749edf30e095213",
-    "semantic_hash": "7b3ad93c8111c4747749edf30e095213"
+    "mtime": 1787487062.5474296,
+    "ast_hash": "6d5ec60cf7e502fd082fb52d97c5d5b0",
+    "semantic_hash": ""
   },
   "tests/vfs/test_memfile.py": {
     "mtime": 1772898126.5249102,
@@ -4145,8 +4145,8 @@
     "semantic_hash": ""
   },
   "specs/design/shared-auth-keycloak.md": {
-    "mtime": 1787241769.8563879,
-    "ast_hash": "82578fe275e3bcdc6c9a547f4ee5851a",
+    "mtime": 1787484038.1310802,
+    "ast_hash": "9860b111fed1f6461c15899999c253d3",
     "semantic_hash": ""
   },
   "specs/plans/2026-07-19-exception-handling.md": {
@@ -4340,13 +4340,13 @@
     "semantic_hash": ""
   },
   "specs/design/index.md": {
-    "mtime": 1787241769.8563879,
-    "ast_hash": "796e608391838c8d9813aa04654a936d",
+    "mtime": 1787485068.4535916,
+    "ast_hash": "0e12c5658893ecbca0c3d559eb8e2969",
     "semantic_hash": ""
   },
   "specs/plans/index.md": {
-    "mtime": 1787253892.906176,
-    "ast_hash": "72845b844d63feb1d54540e672579eb7",
+    "mtime": 1787487116.2361238,
+    "ast_hash": "d72e792f41aa9956bf32695b4b3e4e0f",
     "semantic_hash": ""
   },
   "specs/steering/index.md": {
@@ -4450,68 +4450,648 @@
     "semantic_hash": ""
   },
   "specs/steering/fleet-open-items.md": {
-    "mtime": 1787290425.6521661,
-    "ast_hash": "92c73abe96e1c6f4c987583dfc001723",
+    "mtime": 1787488082.6445367,
+    "ast_hash": "bda33246e757165ae98b8034fb63d3dc",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md": {
+    "mtime": 1787487062.5474296,
+    "ast_hash": "e57eea460fd56d0b7d58d131c309e4be",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/bin/mypyuic5": {
+    "mtime": 1787397823.8507497,
+    "ast_hash": "1cd76fa9080b8370dbeae187b1547240",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/docs/source/conf.py": {
+    "mtime": 1787397823.851797,
+    "ast_hash": "b434217e5e90ed14a80518046ca588c6",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/__init__.py": {
+    "mtime": 1787397823.851797,
+    "ast_hash": "4e272f28fd23102bbff43154ea994c6e",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/__main__.py": {
+    "mtime": 1787397823.8528068,
+    "ast_hash": "c05439577ec644866a0bc871f9fe648f",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/_nuitka_astropy_patch.py": {
+    "mtime": 1787397823.8528068,
+    "ast_hash": "a80cc13d1485f7c99e3007c4b19be4a2",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/accounts.py": {
+    "mtime": 1787397823.8528068,
+    "ast_hash": "40e71fb6b753c408f21077ca68da14c5",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/acquisitionwidget.py": {
+    "mtime": 1787397823.8528068,
+    "ast_hash": "aece9eb5bb1d1ecf57f6e82dd4b6ea3d",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/autofocuswidget.py": {
+    "mtime": 1787397823.8528068,
+    "ast_hash": "cd5c0d05bbaf160fdde60c63b6454cf7",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/autoguidingwidget.py": {
+    "mtime": 1787397823.8528068,
+    "ast_hash": "9ca91d4b0fb609a6cde91a4bfbdcf636",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/base.py": {
+    "mtime": 1787397823.8537498,
+    "ast_hash": "f0540f0ffbb6c6b3ac7f5c03638c0d32",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/camerawidget.py": {
+    "mtime": 1787397823.8537498,
+    "ast_hash": "f5066321643645661e30f87baeba0b18",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/commandinputwidget.py": {
+    "mtime": 1787397823.8537498,
+    "ast_hash": "60ce629b83388757e98bc792b4f98a95",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/compassmovewidget.py": {
+    "mtime": 1787397823.8537498,
+    "ast_hash": "a864033b62eff244d62701afd40972be",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/coolingwidget.py": {
+    "mtime": 1787397823.8537498,
+    "ast_hash": "f9424e3805dc13988df045a5c4d6a011",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/datadisplaywidget.py": {
+    "mtime": 1787397823.8537498,
+    "ast_hash": "af925f26a733dad0d6158a5d468840fb",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/eventswidget.py": {
+    "mtime": 1787397823.85475,
+    "ast_hash": "81500ed05b786cef101e776bc96d866b",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/filterwidget.py": {
+    "mtime": 1787397823.85475,
+    "ast_hash": "35f6f25411f641e4442cf32e7917199c",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/fitsheaderswidget.py": {
+    "mtime": 1787397823.85475,
+    "ast_hash": "e431628bcac2003a19adbb1c2c60684c",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/focuswidget.py": {
+    "mtime": 1787397823.85475,
+    "ast_hash": "8b7b6abd2213723df412af999869e472",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/gui.py": {
+    "mtime": 1787397823.85475,
+    "ast_hash": "bd9d1809a8f7670ec9914c22d103b5ed",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/login.py": {
+    "mtime": 1787397823.85475,
+    "ast_hash": "83dc332ddf5a118ab3393f7055681fa7",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/loginwindow.py": {
+    "mtime": 1787397823.85475,
+    "ast_hash": "80725a82216e1699323273a014739448",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/logmodel.py": {
+    "mtime": 1787397823.8557498,
+    "ast_hash": "e7befe62f7aaf1b48bcc3be53d3a4ad8",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/mainwindow.py": {
+    "mtime": 1787397823.8557498,
+    "ast_hash": "a14d422417ea6c4de14d05db3c2a80e6",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/modewidget.py": {
+    "mtime": 1787397823.8557498,
+    "ast_hash": "602f2e785b30c2d98a2c81d7d9ae8b56",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/modifiedmixin.py": {
+    "mtime": 1787397823.8557498,
+    "ast_hash": "db0ad2346799b231b0ef4584ec751a68",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/modulegui.py": {
+    "mtime": 1787397823.8557498,
+    "ast_hash": "cdd6a71e675ad88f045a9733ddc002dc",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/__init__.py": {
+    "mtime": 1787397823.8567498,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/acquisitionwidget_ui.py": {
+    "mtime": 1787397823.8573053,
+    "ast_hash": "72ead7d242f2f6f76f134f8de3bab1b0",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/autofocuswidget_ui.py": {
+    "mtime": 1787397823.8573053,
+    "ast_hash": "8fe192b9fef5d2e11e084b11b3148c29",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/autoguidingwidget_ui.py": {
+    "mtime": 1787397823.8573053,
+    "ast_hash": "d5344e8f27912fb27bbc3155e0fd36b7",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/camerawidget_ui.py": {
+    "mtime": 1787397823.85775,
+    "ast_hash": "43d9abb5d9449564bf0e7e5491789658",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/compassmoveplugin.py": {
+    "mtime": 1787397823.85775,
+    "ast_hash": "0a9fd6d20ad95718ada43d360dc5db3f",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/compassmovewidget.py": {
+    "mtime": 1787397823.85775,
+    "ast_hash": "dabbcd2ebde289dc4e0dbb54732f9a7a",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/compassmovewidget_ui.py": {
+    "mtime": 1787397823.8587499,
+    "ast_hash": "b1856b13acb96b3ed056253b06d6f6e5",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/compile.sh": {
+    "mtime": 1787397823.8587499,
+    "ast_hash": "e6444b7cdc06b5654677378357fe06bd",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/coolingwidget_ui.py": {
+    "mtime": 1787397823.8587499,
+    "ast_hash": "b36a6957c82902cfe8d01b085f5a30d1",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/datadisplayplugin.py": {
+    "mtime": 1787397823.8587499,
+    "ast_hash": "79f6582682c08d67f126700eeca6ee52",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/datadisplaywidget_ui.py": {
+    "mtime": 1787397823.8587499,
+    "ast_hash": "d2f87a35002e3417d154cf90a848a6c8",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/designer.sh": {
+    "mtime": 1787397823.8587499,
+    "ast_hash": "e735d1ff1b18e6245bd4b84add417fdd",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/eventswidget_ui.py": {
+    "mtime": 1787397823.85975,
+    "ast_hash": "9003118d19a721e8afd316d26ed6c033",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/filterwidget_ui.py": {
+    "mtime": 1787397823.85975,
+    "ast_hash": "9e21413a66a029edbffe703e8b64591b",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/fitsheaderswidget_ui.py": {
+    "mtime": 1787397823.85975,
+    "ast_hash": "40a409d2a187a7edaa846d9c2a3651c9",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/focuswidget_ui.py": {
+    "mtime": 1787397823.85975,
+    "ast_hash": "b15c49307357e49d68bd847b298d4ebe",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/mainwindow_ui.py": {
+    "mtime": 1787397823.85975,
+    "ast_hash": "7c846783fdf7f9197ff7fe850e2f5748",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/modewidget_ui.py": {
+    "mtime": 1787397823.85975,
+    "ast_hash": "453c43885b1c6bda2e7a2bd397d2bbbb",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources_rc.py": {
+    "mtime": 1787397823.86175,
+    "ast_hash": "740a45291189bcc55a01772a146d5857",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/roofwidget_ui.py": {
+    "mtime": 1787397823.86175,
+    "ast_hash": "5b2a88679e8d6ce6c3358d76df7fbd01",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/shellwidget_ui.py": {
+    "mtime": 1787397823.86275,
+    "ast_hash": "61267dd9fcaa4718886afa971c6bb4b0",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/spectrographwidget_ui.py": {
+    "mtime": 1787397823.86275,
+    "ast_hash": "9376e47b05474778e32fbc6bfa952721",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/telescopewidget_ui.py": {
+    "mtime": 1787397823.86375,
+    "ast_hash": "58f2be6ce145d6fcfc6f351a214b4061",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/temperaturesplotwidget_ui.py": {
+    "mtime": 1787397823.86375,
+    "ast_hash": "90d963e7e2d39a2c282153d0e0f5f135",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/temperatureswidget_ui.py": {
+    "mtime": 1787397823.86375,
+    "ast_hash": "6ac4545189edd02a5854f10e9d285435",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/videowidget_ui.py": {
+    "mtime": 1787397823.86375,
+    "ast_hash": "9428b27f8fc950c55ab7f74cf48a8a99",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/weatherwidget_ui.py": {
+    "mtime": 1787397823.86475,
+    "ast_hash": "afb53550bc2f6648680b22fb3527831d",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/roofwidget.py": {
+    "mtime": 1787397823.86475,
+    "ast_hash": "75195c59f67d802e2a68f897ac72064d",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/shellwidget.py": {
+    "mtime": 1787397823.86475,
+    "ast_hash": "2e34e6c3ec87cd2fc164495f6c6e0034",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/spectrographwidget.py": {
+    "mtime": 1787397823.86475,
+    "ast_hash": "f6a4e9a9c906a16f7923c604c38dfae2",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/statuswidget.py": {
+    "mtime": 1787397823.86475,
+    "ast_hash": "585e44583438aaecfd1b6596639c4742",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/telescopewidget.py": {
+    "mtime": 1787397823.86575,
+    "ast_hash": "b283d82b4e5b72673987bf99d7b03bc8",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/temperaturesplotwidget.py": {
+    "mtime": 1787397823.86575,
+    "ast_hash": "257da667080a3810d75a375a759c5897",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/temperatureswidget.py": {
+    "mtime": 1787397823.86575,
+    "ast_hash": "999b28bf738808e549c2dd270eaebf9d",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/utils.py": {
+    "mtime": 1787397823.86575,
+    "ast_hash": "1a226d7a924538c9d1fe02a885445c36",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/videowidget.py": {
+    "mtime": 1787398069.1488047,
+    "ast_hash": "7890f00ff5f620f6e546fb1934c536d6",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/watchedlabel.py": {
+    "mtime": 1787397823.86575,
+    "ast_hash": "33237305e226a705edbbcf64a0f4251b",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/weatherwidget.py": {
+    "mtime": 1787397823.86575,
+    "ast_hash": "424ed02c0de90d99e8e9c812e5b2f68c",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyproject.toml": {
+    "mtime": 1787397823.86575,
+    "ast_hash": "86653f856730b0f1962e9a61290e6cfc",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/spike_standalone/main.py": {
+    "mtime": 1787397823.86775,
+    "ast_hash": "09296cb808bb95105319cee6da53d4b0",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/tests/__init__.py": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/tests/conftest.py": {
+    "mtime": 1787397823.8690972,
+    "ast_hash": "a5a431bfc10a8ac6317185ecbfb98db1",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/tests/test_accounts.py": {
+    "mtime": 1787397823.8690972,
+    "ast_hash": "70f0a11b2b523e245e5e2a93865d8c09",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/tests/test_camerawidget.py": {
+    "mtime": 1787397823.8690972,
+    "ast_hash": "03ec13e74c6046c5bb06b1b40d1ebe07",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/tests/test_loginwindow.py": {
+    "mtime": 1787397823.8690972,
+    "ast_hash": "809ccf7558ff08e0fe2800168b3378e9",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/tests/test_videowidget.py": {
+    "mtime": 1787398129.8656192,
+    "ast_hash": "f00cf6c732a03fe3b5e1ce49f84d5270",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/.claude/skills/verify/SKILL.md": {
+    "mtime": 1787397823.8498695,
+    "ast_hash": "36fc3095219e9204e62eced37a1c9ff6",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/.github/dependabot.yml": {
+    "mtime": 1787397823.8498695,
+    "ast_hash": "37245ad6a317f25110434ee669ee173c",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/.github/workflows/pypi.yml": {
+    "mtime": 1787397823.850471,
+    "ast_hash": "f6ed13726ea0d343a04ce71fde4595c1",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/.github/workflows/pyrefly.yml": {
+    "mtime": 1787397823.850623,
+    "ast_hash": "eb76db598c2b5dadc42ea9447b0678c0",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/.github/workflows/ruff.yml": {
+    "mtime": 1787397823.850623,
+    "ast_hash": "70825c53b0426505f9db83204b441c9a",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/.pre-commit-config.yaml": {
+    "mtime": 1787397823.850623,
+    "ast_hash": "64cbb168da23b67d0f3720aef0ca96fe",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/.readthedocs.yml": {
+    "mtime": 1787397823.850623,
+    "ast_hash": "8ffe31ad896d67709f7f210dfcedc7c2",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/CHANGELOG.rst": {
+    "mtime": 1787397823.850623,
+    "ast_hash": "f69ca728b76d582a3494dc6b23e70d5d",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/README.md": {
+    "mtime": 1787397823.8507497,
+    "ast_hash": "7ec6a1ad84aca90f9b0b314fa51a9e94",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/docs/requirements.txt": {
+    "mtime": 1787397823.8515973,
+    "ast_hash": "afc1ebe0873db41ba58b496c69007261",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/docs/source/index.rst": {
+    "mtime": 1787397823.851797,
+    "ast_hash": "6e8939cd3644243aa4407d493c3c78a2",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/specs/2026-08-20-gui-remote-call-error-handling.md": {
+    "mtime": 1787397823.86675,
+    "ast_hash": "e07456f1236d9a04f7191ade9f2e15aa",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/specs/2026-08-21-gui-widget-startup-responsiveness.md": {
+    "mtime": 1787397823.8675036,
+    "ast_hash": "1be8b2190575e5123717846c52d2e5eb",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/specs/index.md": {
+    "mtime": 1787397823.8675036,
+    "ast_hash": "5f87c405770434684a601abe313f965b",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/acquisition.yaml": {
+    "mtime": 1787397823.86775,
+    "ast_hash": "596bfdfac3b4df51a6a7cac10cdaf167",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/autofocus.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "eb809081bbc195506168034fcdfc9798",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/camera.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "dfc4945e8b5f16535249c22f7bc0feb4",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/full.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "f23ca50863cc02a29c4df0d81501237b",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/guiding.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "a6dac94fa557f15aa342fa6d0c6f2e97",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/mode.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "32f73dbf5b1c79f19f769a4481b4c492",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/roof.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "9a85491a753f5d694f81fc877b05a3cd",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/spectrograph.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "c17f527a381d0b7064a40f2790d3ad1b",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/telescope.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "7bcc01dda81313464ecc98bf27814873",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/telescope_acl.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "1d46e19120817e2f555dc94fcf8aa5af",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/telescope_acl_denied.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "9df45747a648aadc5761b13051060cd2",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/test/video.yaml": {
+    "mtime": 1787397823.8684301,
+    "ast_hash": "48fd4fdfabca94ffab19c58b9fc9bbd2",
+    "semantic_hash": ""
+  },
+  "specs/design/basevideo-http-auth.md": {
+    "mtime": 1787485068.4505916,
+    "ast_hash": "2b9e06c8f6a6f221e9017fb818e7306d",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-21-basevideo-http-token-auth.md": {
+    "mtime": 1787485068.4535916,
+    "ast_hash": "17b5200f5c6076e9da8c49c6336cc366",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-21-keycloak-idp-hint-login.md": {
+    "mtime": 1787487102.096941,
+    "ast_hash": "1154f45f2023375dcaa956f95c8f7dbf",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/docs/source/_static/pyobs.gif": {
+    "mtime": 1787397823.851797,
+    "ast_hash": "5003079f83d017fdc9abe678d78032f6",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/arrow-alt-circle-down-solid.svg": {
+    "mtime": 1787397823.86075,
+    "ast_hash": "0a03722054ec2b97b824fc7c8f3f73d9",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/arrow-alt-circle-left-solid.svg": {
+    "mtime": 1787397823.8612738,
+    "ast_hash": "063800bbb88ecedf17a6c986ede1c620",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/arrow-alt-circle-right-solid.svg": {
+    "mtime": 1787397823.8612738,
+    "ast_hash": "c0f84169eeaced30b5308a21113c6f0c",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/arrow-alt-circle-up-solid.svg": {
+    "mtime": 1787397823.8612738,
+    "ast_hash": "b704353c49e04a1d9514442eebe812ba",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/arrow-up-right-from-square-solid.svg": {
+    "mtime": 1787397823.8612738,
+    "ast_hash": "032d1002f622ff2428fa66efe92d34e0",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/arrows-to-eye-solid.svg": {
+    "mtime": 1787397823.8612738,
+    "ast_hash": "ff5e48dfdd1568682db75b70679a195a",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/chart-line-solid.svg": {
+    "mtime": 1787397823.8612738,
+    "ast_hash": "0def3934518473518eac265a0f47c72b",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/circle-question-solid.svg": {
+    "mtime": 1787397823.8612738,
+    "ast_hash": "9e2812a5e8711211c2e2b0e054e7b3be",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/cloud-sun-solid.svg": {
+    "mtime": 1787397823.8612738,
+    "ast_hash": "af95b6df4505d7fc9236cc0427e780b5",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/edit-solid.svg": {
+    "mtime": 1787397823.8612738,
+    "ast_hash": "9a4d5fd542b2140b088ef8beac109cf6",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/search-solid.svg": {
+    "mtime": 1787397823.86175,
+    "ast_hash": "c6a0effbe867db0941bd5592f8f43810",
+    "semantic_hash": ""
+  },
+  ".claude/scratch/pyobs-gui/pyobs_gui/qt/resources/undo-solid.svg": {
+    "mtime": 1787397823.86175,
+    "ast_hash": "7016a569d101b2c112d99c0679443eea",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
-    "mtime": 1787165194.712845,
+    "mtime": 1787485112.5551689,
     "ast_hash": "a982203ecebf282f9c8a5c449243a650",
     "semantic_hash": ""
   },
   ".claude/skills/do-python-release/SKILL.md": {
-    "mtime": 1787165191.3918009,
+    "mtime": 1787485112.555975,
     "ast_hash": "86b21a41cfca90ac6d9fa4c737ce1d0f",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/SKILL.md": {
-    "mtime": 1787113431.3396375,
+    "mtime": 1787485112.5562925,
     "ast_hash": "dfb0a6554c4af62df6effc61c6c7d245",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/add-watch.md": {
-    "mtime": 1787113431.3396375,
+    "mtime": 1787485112.5562925,
     "ast_hash": "d59d027fe449f06aa03905a01184e779",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/exports.md": {
-    "mtime": 1787113431.3403862,
+    "mtime": 1787485112.557061,
     "ast_hash": "9da2a2152e60a22f07f05fed5158f287",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/extraction-spec.md": {
-    "mtime": 1787113431.3403862,
+    "mtime": 1787485112.557061,
     "ast_hash": "42fef56a01698118f7fd722acdadea34",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/github-and-merge.md": {
-    "mtime": 1787113431.3403862,
+    "mtime": 1787485112.557061,
     "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/hooks.md": {
-    "mtime": 1787113431.3403862,
+    "mtime": 1787485112.557169,
     "ast_hash": "3f545db6ce646650bb9de588f5512a27",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/query.md": {
-    "mtime": 1787113431.3403862,
+    "mtime": 1787485112.557169,
     "ast_hash": "3c46f8ad006874260614ed8657d02307",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/transcribe.md": {
-    "mtime": 1787113431.3403862,
+    "mtime": 1787485112.557169,
     "ast_hash": "67b6a5fa6c0974e18f60db9f8932fbd8",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/update.md": {
-    "mtime": 1787113431.3403862,
+    "mtime": 1787485112.557169,
     "ast_hash": "9378bd03d56baaf78bd738ab3848f142",
-    "semantic_hash": ""
-  },
-  "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md": {
-    "mtime": 1787253889.2801256,
-    "ast_hash": "bc76d9fabcea2d46e849251f147dde31",
     "semantic_hash": ""
   }
 }

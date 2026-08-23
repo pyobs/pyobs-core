@@ -7,8 +7,6 @@ from pyobs.utils.serialization import PolymorphicBaseModel
 class SkyFlatsBasePointing(PolymorphicBaseModel, metaclass=ABCMeta):
     """Base class for flat pointings."""
 
-    __module__ = "pyobs.utils.skyflats.pointing"
-
     @abstractmethod
     async def __call__(self, telescope: IPointingAltAz) -> None:
         """Move telescope.

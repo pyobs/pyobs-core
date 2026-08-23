@@ -241,18 +241,18 @@ correct regardless, but the measurement is what closes the incident properly.
 
 - [ ] Step 0: at the affected site, capture the exact blocking call once (asyncio debug or
       `py-spy`) — confirm FITS parse and/or `LocalFile` I/O, record baseline stall duration
-- [ ] `imagewatcher.py`: offload `fits.HDUList.fromstring(data)` via `asyncio.to_thread` in
+- [x] `imagewatcher.py`: offload `fits.HDUList.fromstring(data)` via `asyncio.to_thread` in
       `_worker`
-- [ ] `localfile.py`: route `read`, `write`, `close` bodies through `run_in_executor`
-- [ ] `localfile.py`: route `remove`, `exists`, `find` through `run_in_executor` (`remove`/`find`
+- [x] `localfile.py`: route `read`, `write`, `close` bodies through `run_in_executor`
+- [x] `localfile.py`: route `remove`, `exists`, `find` through `run_in_executor` (`remove`/`find`
       bodies extracted as module-level helpers; `exists` calls `os.path.exists` directly)
-- [ ] `localfile.py`: move `open()`/`makedirs` out of `__init__` into an overridden `__aenter__`,
+- [x] `localfile.py`: move `open()`/`makedirs` out of `__init__` into an overridden `__aenter__`,
       routed through `run_in_executor` via a `_open_sync` helper
-- [ ] Docstring note on `ImageWatcher.process_extra`/`cleanup_extra`: subclass hooks run on the
+- [x] Docstring note on `ImageWatcher.process_extra`/`cleanup_extra`: subclass hooks run on the
       event loop and must not block
-- [ ] New heartbeat-style tests in `tests/modules/image/test_imagewatcher.py` and
+- [x] New heartbeat-style tests in `tests/modules/image/test_imagewatcher.py` and
       `tests/vfs/test_localfile.py` (per Tests above)
-- [ ] `pytest tests/modules/image/ tests/vfs/` green; `pyrefly` clean on both touched files
+- [x] `pytest tests/modules/image/ tests/vfs/` green; `pyrefly` clean on both touched files
 - [ ] Deploy to site; confirm `module.py:205/207` stall warnings gone (or below threshold) over
       one night
 - [ ] Update this doc's `Status:` to `implemented` once landed and verified

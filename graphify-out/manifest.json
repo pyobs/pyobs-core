@@ -25,8 +25,8 @@
     "semantic_hash": "332d1b275af3b1e81c2c2d397ef1126d"
   },
   "pyobs/application.py": {
-    "mtime": 1786871936.742259,
-    "ast_hash": "256a62b0e0b3b842b887378a9a41a254",
+    "mtime": 1787297706.7877393,
+    "ast_hash": "3067df99f69f30233771d7dc0220aca1",
     "semantic_hash": ""
   },
   "pyobs/background_task.py": {
@@ -1030,8 +1030,8 @@
     "semantic_hash": ""
   },
   "pyobs/modules/camera/basevideo.py": {
-    "mtime": 1787113381.6366532,
-    "ast_hash": "dda0dc33676b45f8f91dfd6f815e3672",
+    "mtime": 1787297882.287706,
+    "ast_hash": "0faa09050151b0d1b4dcbe4e47183384",
     "semantic_hash": ""
   },
   "pyobs/modules/camera/dummycamera.py": {
@@ -2225,8 +2225,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1787250792.6432698,
-    "ast_hash": "3e484a607ebe89d6ce2543bbc09d0988",
+    "mtime": 1787297978.403613,
+    "ast_hash": "478ffcc05067d3303c65821d73fa1420",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -3310,9 +3310,9 @@
     "semantic_hash": "08ce5cf52ced5b76e3130ee9a61e568c"
   },
   "tests/test_application.py": {
-    "mtime": 1785225910.3840895,
-    "ast_hash": "975d353660abbe998432e4de1d69d0c9",
-    "semantic_hash": "975d353660abbe998432e4de1d69d0c9"
+    "mtime": 1787297795.4416468,
+    "ast_hash": "3ad39be96f51a7ab5687ffe9923d6e52",
+    "semantic_hash": ""
   },
   "tests/test_background_task.py": {
     "mtime": 1782030067.2061088,
@@ -3545,8 +3545,8 @@
     "semantic_hash": "8e42c2a2da1f4f294ce8e0d8ca8a2a53"
   },
   "CHANGELOG.rst": {
-    "mtime": 1787250779.3470864,
-    "ast_hash": "d4cff48d36f8bb9318d1746ddcfdec95",
+    "mtime": 1787297805.490719,
+    "ast_hash": "bba6826aa93369fdad49149ff969d65f",
     "semantic_hash": ""
   },
   "CLAUDE.md": {

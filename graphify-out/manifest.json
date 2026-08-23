@@ -2225,8 +2225,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1787485091.7208962,
-    "ast_hash": "929345754f5ddcb6c8865ac1bf301ac4",
+    "mtime": 1787490528.8738275,
+    "ast_hash": "f9f4fe9b790f7f57f648bb53e47b8605",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -4345,8 +4345,8 @@
     "semantic_hash": ""
   },
   "specs/plans/index.md": {
-    "mtime": 1787487116.2361238,
-    "ast_hash": "d72e792f41aa9956bf32695b4b3e4e0f",
+    "mtime": 1787491308.1105688,
+    "ast_hash": "792e0f33b795d493c7b657dae1576107",
     "semantic_hash": ""
   },
   "specs/steering/index.md": {
@@ -5092,6 +5092,11 @@
   ".claude/skills/graphify/references/update.md": {
     "mtime": 1787485112.557169,
     "ast_hash": "9378bd03d56baaf78bd738ab3848f142",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-23-iag50-pyobs-core-2x-migration.md": {
+    "mtime": 1787491278.117194,
+    "ast_hash": "796817a7da6c590241957ab31cbdc909",
     "semantic_hash": ""
   }
 }

@@ -1,6 +1,8 @@
 # Plan: Stop ImageWatcher per-file processing from blocking the event loop
 
-Status: proposed
+Status: implemented, closed 2026-08-23 (PR #798) — FITS parse offloaded via `asyncio.to_thread`,
+`LocalFile` read/write/close/remove/find/exists moved to the executor alongside the existing
+`listdir` precedent.
 Issues: found via live incident diagnosis on MONET South (`(imagewatcher) module.py:205/207
 "Event loop stalled for 0.81s"` / `"...recovered after being stalled for 2.81s total."`,
 2026-08-20, on a stock `pyobs.modules.image.ImageWatcher` — config `pyobs-monet/config/south/monet/imagewatcher.yaml`)

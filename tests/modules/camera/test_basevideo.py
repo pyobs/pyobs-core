@@ -650,6 +650,66 @@ async def test_raw_handler_touches_activity_without_new_frame(mocker) -> None:
     assert bv.camera_active is True
 
 
+@pytest.mark.asyncio
+async def test_raw_handler_dedupes_frame_build_across_consumers(mocker) -> None:
+    # two simultaneous raw clients waking for the *same* frame must not each pay for
+    # the header build/JSON serialization/tobytes() copy -- only the first computes
+    # it, the second reuses the cached (meta, frame) bytes (#769). Both handlers are
+    # started while genuinely blocked on the (unset) event, so a single set() wakes
+    # both in the same batch -- mirrors Event.wait()'s real coalescing behavior,
+    # unlike calling raw_handler() while the event happens to already be set.
+    bv = make_basevideo()
+    await bv._set_image(np.zeros((4, 4), dtype=np.uint16))
+    bv._new_frame.clear()
+
+    from aiohttp.client_exceptions import ClientConnectionResetError
+
+    responses = []
+
+    def make_response(*args, **kwargs) -> MagicMock:
+        response = MagicMock()
+        response.prepare = AsyncMock()
+        response.write = AsyncMock(side_effect=ClientConnectionResetError())
+        responses.append(response)
+        return response
+
+    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", side_effect=make_response)
+    raw_frame_spy = mocker.spy(bv, "_raw_frame")
+
+    task1 = asyncio.create_task(bv.raw_handler(make_request()))
+    task2 = asyncio.create_task(bv.raw_handler(make_request()))
+    await asyncio.sleep(0)  # let both tasks reach the event wait and actually suspend
+
+    await bv._set_image(np.ones((4, 4), dtype=np.uint16))  # single wake -> both proceed
+
+    await asyncio.wait_for(asyncio.gather(task1, task2), timeout=2)
+
+    assert raw_frame_spy.call_count == 1
+    assert len(responses) == 2
+    assert responses[0].write.await_args.args == responses[1].write.await_args.args
+
+
+@pytest.mark.asyncio
+async def test_raw_handler_recomputes_after_new_frame(mocker) -> None:
+    # the cache must not serve stale bytes once a new frame has arrived
+    bv = make_basevideo()
+    await bv._set_image(np.zeros((4, 4), dtype=np.uint16))
+
+    from aiohttp.client_exceptions import ClientConnectionResetError
+
+    response = MagicMock()
+    response.prepare = AsyncMock()
+    response.write = AsyncMock(side_effect=ClientConnectionResetError())
+    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+    raw_frame_spy = mocker.spy(bv, "_raw_frame")
+
+    await bv.raw_handler(make_request())
+    await bv._set_image(np.ones((4, 4), dtype=np.uint16))
+    await bv.raw_handler(make_request())
+
+    assert raw_frame_spy.call_count == 2
+
+
 # ── token auth ─────────────────────────────────────────────────────────────
 
 

@@ -91,9 +91,23 @@ Implementation plans, checklist-style. Newest at the bottom.
   four repos landed and pinned to `pyobs-auth>=2.0.0.dev9`; live browser E2E / SSO short-circuit /
   deployment env vars are operational follow-ups, not part of this plan's closure (Repos:
   pyobs-auth, pyobs-archive, pyobs-robotic-backend, pyobs-web-admin)
+- [2026-08-20-imagewatcher-event-loop-blocking.md](2026-08-20-imagewatcher-event-loop-blocking.md) —
+  stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from blocking the event loop.
+  **implemented, closed 2026-08-23** (PR #798; MONET South incident, 2026-08-20)
 
 ## Not finished
 
+- [2026-08-24-rename-robotic-backend-to-portal.md](2026-08-24-rename-robotic-backend-to-portal.md) —
+  execute ADR 0013: rename `pyobs-robotic-backend` → `pyobs-portal` fleet-wide; in
+  pyobs-core, `pyobs.robotic.storage.backend` → `.storage.portal`,
+  `Backend*Archive` → `Portal*Archive`. **proposed, not started** (Repos: pyobs-core,
+  pyobs-robotic-backend, pyobs-auth, pyobs-archive, pyobs-web-admin, pyobs-iagvt,
+  pyobs-monet)
+- [2026-08-23-iag50-pyobs-core-2x-migration.md](2026-08-23-iag50-pyobs-core-2x-migration.md) —
+  pyobs-iag50's `2.0.0.dev2` version bump was premature (still pinned/locked to pyobs-core 1.x);
+  real migration work — grid-API rewrite, `self.proxy()` context-manager change, missing-await
+  fixes. **in progress** — `1.x` branch cut, `develop` reset to `2.0.0.dev0`, code fixes not yet
+  done, three open questions need Tim's input (Repos: pyobs-iag50)
 - [2026-07-27-gui-widget-plugins-and-packaging.md](2026-07-27-gui-widget-plugins-and-packaging.md) —
   widget plugin mechanism + `pyside6-deploy` packaging. **draft** (Repos: pyobs-gui)
 - [2026-07-29-gui-telescopewidget-layout.md](2026-07-29-gui-telescopewidget-layout.md) —
@@ -117,11 +131,13 @@ Implementation plans, checklist-style. Newest at the bottom.
   Keycloak admin/deployment config only (Repos: pyobs-archive, pyobs-robotic-backend)
 - [2026-08-19-archive-project-access-control.md](2026-08-19-archive-project-access-control.md) —
   show only images the logged-in user has access to, keyed on projects from
-  `pyobs-robotic-backend`. **planned** (pyobs/pyobs-archive#42; depends on
-  pyobs/pyobs-robotic-backend#79) (Repos: pyobs-archive, pyobs-robotic-backend)
-- [2026-08-20-imagewatcher-event-loop-blocking.md](2026-08-20-imagewatcher-event-loop-blocking.md) —
-  stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from blocking the event loop.
-  **proposed** (MONET South incident, 2026-08-20)
+  `pyobs-robotic-backend`. **superseded, implemented** — see
+  `pyobs-archive/specs/plans/2026-08-20-archive-project-access-control.md` for the current design
+  (pyobs/pyobs-archive#42) (Repos: pyobs-archive, pyobs-robotic-backend, pyobs-core)
 - [2026-08-21-basevideo-http-token-auth.md](2026-08-21-basevideo-http-token-auth.md) —
   shared-token auth + browser login page for `BaseVideo`'s HTTP endpoints (design:
   `specs/design/basevideo-http-auth.md`). **implemented, closed** (Repos: pyobs-core, pyobs-gui)
+- [2026-08-24-script-field-interface-annotations.md](2026-08-24-script-field-interface-annotations.md) —
+  tag `Script` module-name fields (`ImagingScript.camera`, etc.) with required `pyobs.interfaces`
+  via `typing.Annotated`, for pyobs-robotic-backend's module dropdowns. **implemented, closed**
+  (closed #808, PR #809)

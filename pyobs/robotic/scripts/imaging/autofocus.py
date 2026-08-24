@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from pyobs.interfaces import IAutoFocus, IMotion, IPointingRaDec, IReady, ITelescope
 from pyobs.robotic.scripts import Script
@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 class AutoFocusScript(Script):
     """Script for running autofocus series."""
 
-    autofocus: str = "autofocus"
-    telescope: str = "telescope"
+    autofocus: Annotated[str, IAutoFocus] = "autofocus"
+    telescope: Annotated[str, ITelescope, IPointingRaDec] = "telescope"
     count: int = 5
     step: float = 0.1
     exposure_time: float = 2.0

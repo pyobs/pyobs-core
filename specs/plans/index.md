@@ -131,3 +131,6 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-21-basevideo-http-token-auth.md](2026-08-21-basevideo-http-token-auth.md) —
   shared-token auth + browser login page for `BaseVideo`'s HTTP endpoints (design:
   `specs/design/basevideo-http-auth.md`). **implemented, closed** (Repos: pyobs-core, pyobs-gui)
+- [2026-08-24-script-field-interface-annotations.md](2026-08-24-script-field-interface-annotations.md) —
+  tag `Script` module-name fields (`ImagingScript.camera`, etc.) with required `pyobs.interfaces`
+  via `typing.Annotated`, for pyobs-robotic-backend's module dropdowns. **planned** (tracks #808)

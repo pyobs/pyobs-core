@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from pyobs.interfaces import (
     IBinning,
@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 class DarkBiasScript(Script):
     """Script for running darks or biases."""
 
-    camera: str
+    camera: Annotated[str, IData, IBinning, IWindow, IExposureTime, IImageType]
     count: int = 20
     exptime: float = 0
     binning: tuple[int, int] = (1, 1)

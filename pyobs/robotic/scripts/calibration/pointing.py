@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from pyobs.interfaces import IPointingAltAz, IReady
 from pyobs.robotic.scripts import Script
@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 class PointingScript(Script):
     """Script for pointing the telescope for flats."""
 
-    telescope: str
+    telescope: Annotated[str, IPointingAltAz, IReady]
     pointing: SkyFlatsBasePointing
 
     async def can_run(self, data: TaskData | None) -> bool:

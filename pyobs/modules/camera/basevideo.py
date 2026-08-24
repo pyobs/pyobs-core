@@ -154,6 +154,10 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._image_requests: list[ImageRequest] = []
         self._next_image: NextImage | None = None
         self._last_image: LastImage | None = None
+        # lazy per-frame cache for raw_handler: the first of N simultaneous raw
+        # consumers to wake for a given frame computes (meta, frame) bytes and the
+        # rest reuse it, instead of each redoing the header build/JSON/copy (#769)
+        self._raw_frame_cache: tuple[int, bytes, bytes] | None = None
         self._last_time = 0.0
         self._flip = flip
         # 60s is a starting point, not measured -- trades off against _activate_camera()/
@@ -500,8 +504,16 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             if last is None:
                 continue
 
-            # build frame bytes (JSON meta header + raw little-endian bytes)
-            meta, frame = self._raw_frame(last.data, last.date_obs)
+            # build frame bytes (JSON meta header + raw little-endian bytes), reusing
+            # the cached result if another consumer already built this frame -- safe
+            # without a lock since _raw_frame() is synchronous, so no other task can
+            # interleave between the cache check and the store (#769)
+            cached = self._raw_frame_cache
+            if cached is not None and cached[0] == self._frame_num:
+                _, meta, frame = cached
+            else:
+                meta, frame = self._raw_frame(last.data, last.date_obs)
+                self._raw_frame_cache = (self._frame_num, meta, frame)
 
             # now send it!
             try:

@@ -1195,8 +1195,8 @@
     "semantic_hash": "37ae5cbbac569c2c4c52e66983c9dcca"
   },
   "pyobs/modules/robotic/mastermind.py": {
-    "mtime": 1786371439.2447135,
-    "ast_hash": "9bffc568b1b9e4ad82ca31f252011020",
+    "mtime": 1787551863.121254,
+    "ast_hash": "a65eb15da994b8ee6f4baea99efeefa7",
     "semantic_hash": ""
   },
   "pyobs/modules/robotic/pointing.py": {
@@ -1785,18 +1785,18 @@
     "semantic_hash": "85d2495efb80b1067e920ea55ab0b18f"
   },
   "pyobs/robotic/utils/archive/archive.py": {
-    "mtime": 1787241769.855388,
-    "ast_hash": "83a2ee52f9157637bc1edac37b8203ce",
+    "mtime": 1787504245.3119388,
+    "ast_hash": "bcb0c3a5da7b57e7ed30fdda1f8a1fc8",
     "semantic_hash": ""
   },
   "pyobs/robotic/utils/archive/local_archive.py": {
-    "mtime": 1787241769.855388,
-    "ast_hash": "c789d987f2e39595d70f93b21436b932",
+    "mtime": 1787504247.8949683,
+    "ast_hash": "071b274875288536b2e8576ad482f1b3",
     "semantic_hash": ""
   },
   "pyobs/robotic/utils/archive/pyobs_archive.py": {
-    "mtime": 1787241769.855388,
-    "ast_hash": "a785304ab56e77a0a84f1eb3d961dd8f",
+    "mtime": 1787504250.394997,
+    "ast_hash": "a93e82b98ed3a5bacef96cb93241414f",
     "semantic_hash": ""
   },
   "pyobs/robotic/utils/exptime/__init__.py": {
@@ -1835,14 +1835,14 @@
     "semantic_hash": "f6146c2056e71cacbb73e939e6cd7664"
   },
   "pyobs/robotic/utils/skyflats/pointing/base.py": {
-    "mtime": 1782055637.9526732,
-    "ast_hash": "5140bbd76736c50006d311da15d7f77e",
-    "semantic_hash": "5140bbd76736c50006d311da15d7f77e"
+    "mtime": 1787504253.028027,
+    "ast_hash": "a9882e7ca05fc53bdbdede1582d8e45b",
+    "semantic_hash": ""
   },
   "pyobs/robotic/utils/skyflats/pointing/static.py": {
-    "mtime": 1782055642.9177449,
-    "ast_hash": "8a892eadd05228c5cafdcafcf80c755b",
-    "semantic_hash": "8a892eadd05228c5cafdcafcf80c755b"
+    "mtime": 1787504255.551056,
+    "ast_hash": "9f1176b4724fd141fa2e8a1a28765c9e",
+    "semantic_hash": ""
   },
   "pyobs/robotic/utils/skyflats/priorities/__init__.py": {
     "mtime": 1782030067.1921089,
@@ -1850,19 +1850,19 @@
     "semantic_hash": "ca85d0b3af3dfcc8672bb1cd501c0439"
   },
   "pyobs/robotic/utils/skyflats/priorities/archive.py": {
-    "mtime": 1782030067.1921089,
-    "ast_hash": "7b58f2e369ac09819b5e289057dde7a3",
-    "semantic_hash": "7b58f2e369ac09819b5e289057dde7a3"
+    "mtime": 1787504262.388134,
+    "ast_hash": "afadfce8b7081fbbe1fe8d57fcac73d1",
+    "semantic_hash": ""
   },
   "pyobs/robotic/utils/skyflats/priorities/base.py": {
-    "mtime": 1782030067.1921089,
-    "ast_hash": "582dde539fc6e1354e89274e35c46a8d",
-    "semantic_hash": "582dde539fc6e1354e89274e35c46a8d"
+    "mtime": 1787504265.1631658,
+    "ast_hash": "15be5864739934aa31c7a14388d01023",
+    "semantic_hash": ""
   },
   "pyobs/robotic/utils/skyflats/priorities/const.py": {
-    "mtime": 1782030067.1921089,
-    "ast_hash": "0d93f0d7bf6c719410c4f6437a14d22b",
-    "semantic_hash": "0d93f0d7bf6c719410c4f6437a14d22b"
+    "mtime": 1787504268.1982005,
+    "ast_hash": "f534988aaca752c8b3b97ec8559a2021",
+    "semantic_hash": ""
   },
   "pyobs/robotic/utils/skyflats/scheduler.py": {
     "mtime": 1784225633.6167738,
@@ -2680,8 +2680,8 @@
     "semantic_hash": "8f51af345b7d7e505f73b761eaeaac56"
   },
   "tests/integration/test_mastermind.py": {
-    "mtime": 1786371439.2457135,
-    "ast_hash": "cfd2552a214eb64fced80bb0ea4ea3d0",
+    "mtime": 1787551889.5265968,
+    "ast_hash": "4b8150ab20c5203664af1996709922f1",
     "semantic_hash": ""
   },
   "tests/integration/test_scheduler_mastermind.py": {
@@ -4345,8 +4345,8 @@
     "semantic_hash": ""
   },
   "specs/plans/index.md": {
-    "mtime": 1787491308.1105688,
-    "ast_hash": "792e0f33b795d493c7b657dae1576107",
+    "mtime": 1787552003.477076,
+    "ast_hash": "d2c701734276e9366eac9c9455b5a62d",
     "semantic_hash": ""
   },
   "specs/steering/index.md": {
@@ -4440,8 +4440,8 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-19-archive-project-access-control.md": {
-    "mtime": 1787162722.4323041,
-    "ast_hash": "87957276cce51f59ba8494e06b0d327b",
+    "mtime": 1787551999.242021,
+    "ast_hash": "66c8fa10dabcd5df16e90089b28350e5",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-20-backend-archive-marker-loss.md": {
@@ -4450,8 +4450,8 @@
     "semantic_hash": ""
   },
   "specs/steering/fleet-open-items.md": {
-    "mtime": 1787488082.6445367,
-    "ast_hash": "bda33246e757165ae98b8034fb63d3dc",
+    "mtime": 1787552093.5572457,
+    "ast_hash": "4328643c7d9db729ab83f6f5a3295403",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md": {

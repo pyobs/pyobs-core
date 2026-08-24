@@ -16,14 +16,13 @@ and remove closed items outright, never annotate them.** Only open items live he
 
 Repos: the whole pyobs fleet.
 
-## Open issues (3, checked 2026-08-24)
+## Open issues (2, checked 2026-08-24)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
-| pyobs-archive | [#47](https://github.com/pyobs/pyobs-archive/issues/47) | `zip_view` doesn't enforce authentication (missing `@api_view` wrapper) | plain Django function, not a DRF view — its `@permission_classes([IsAuthenticated])` is inert; anonymous callers can hit `/frames/zip/` today. Found while implementing #42's access control (PRs #45/#46), predates and is unrelated to that work |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
 
 ## Open plans

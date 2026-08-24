@@ -97,6 +97,12 @@ Implementation plans, checklist-style. Newest at the bottom.
 
 ## Not finished
 
+- [2026-08-24-rename-robotic-backend-to-portal.md](2026-08-24-rename-robotic-backend-to-portal.md) —
+  execute ADR 0013: rename `pyobs-robotic-backend` → `pyobs-portal` fleet-wide; in
+  pyobs-core, `pyobs.robotic.storage.backend` → `.storage.portal`,
+  `Backend*Archive` → `Portal*Archive`. **proposed, not started** (Repos: pyobs-core,
+  pyobs-robotic-backend, pyobs-auth, pyobs-archive, pyobs-web-admin, pyobs-iagvt,
+  pyobs-monet)
 - [2026-08-23-iag50-pyobs-core-2x-migration.md](2026-08-23-iag50-pyobs-core-2x-migration.md) —
   pyobs-iag50's `2.0.0.dev2` version bump was premature (still pinned/locked to pyobs-core 1.x);
   real migration work — grid-API rewrite, `self.proxy()` context-manager change, missing-await

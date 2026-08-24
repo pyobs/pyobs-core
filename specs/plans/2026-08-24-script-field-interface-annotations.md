@@ -1,7 +1,8 @@
 # Plan: Tag `Script` module-name fields with required `pyobs.interfaces` via `Annotated`
 
-Status: implemented, PR open. Tracks github.com/pyobs/pyobs-core#808 (requested by
-pyobs/pyobs-robotic-backend#98). PR #809 opened and approved, not yet merged.
+Status: implemented, closed. Tracks github.com/pyobs/pyobs-core#808 (requested by
+pyobs/pyobs-robotic-backend#98). Landed via PR #809, squash-merged into `develop`
+2026-08-24 (`696f8bf5`).
 
 ## Problem
 
@@ -106,4 +107,4 @@ the issue — `.interface` is a dynamic FQCN string chosen by the caller, not a 
       passed, 1 pre-existing unrelated failure confirmed identical on `develop`)
 - [x] Posted the corrected audit table as a comment on #808 before implementing:
       github.com/pyobs/pyobs-core/issues/808#issuecomment-5394604012
-- [x] PR #809 opened, reviewed (approved) — not yet merged
+- [x] PR #809 opened, reviewed (approved), squash-merged into `develop`

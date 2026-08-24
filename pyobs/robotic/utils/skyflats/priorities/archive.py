@@ -11,8 +11,6 @@ from .base import SkyflatPriorities
 class ArchiveSkyflatPriorities(SkyflatPriorities):
     """Calculate flat priorities from an archive."""
 
-    __module__ = "pyobs.utils.skyflats.priorities"
-
     archive: Archive
     site: str
     instrument: str

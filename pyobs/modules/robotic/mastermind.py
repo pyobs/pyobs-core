@@ -253,6 +253,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             hdr = self._task.get_fits_headers()
             hdr["TASK"] = FitsHeaderEntry(self._task.name, "Name of task")
             hdr["REQNUM"] = FitsHeaderEntry(str(self._task.id), "Unique ID of task")
+            if self._task.project:
+                hdr["PROJECT"] = FitsHeaderEntry(self._task.project, "Project code")
             if self._obsnum is not None:
                 hdr["OBSNUM"] = FitsHeaderEntry(self._obsnum, "Observation number (night-obsnum)")
             return hdr

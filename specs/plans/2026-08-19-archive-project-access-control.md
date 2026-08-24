@@ -1,10 +1,17 @@
 # Plan: Project-based access control for pyobs-archive
 
 Tracks pyobs/pyobs-archive#42. Depends on pyobs/pyobs-robotic-backend#79 (per-project `public`
-flag).
-Repos: pyobs-archive, pyobs-robotic-backend.
+flag; closed, implemented).
+Repos: pyobs-archive, pyobs-robotic-backend, pyobs-core.
 
-Status: planned
+Status: superseded, implemented. The archive-side implementation (sections 1-5, 7 below) shipped
+in pyobs-archive #45/#46 under the more detailed companion plan
+`pyobs-archive/specs/plans/2026-08-20-archive-project-access-control.md` — read that one for
+current design decisions, rollout sequence, and resolved open questions. This doc's only
+still-open item, "who writes the `PROJECT` FITS keyword" (§1, Open questions), is now also
+closed: `Mastermind.get_fits_header_before()` (`pyobs/modules/robotic/mastermind.py`) emits
+`PROJECT` from `self._task.project` alongside `TASK`/`REQNUM`/`OBSNUM`, landed 2026-08-24. This
+doc is kept for history; don't re-derive from it — the archive plan is authoritative.
 
 ## Problem
 

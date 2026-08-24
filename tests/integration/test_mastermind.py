@@ -70,8 +70,8 @@ def make_mastermind(obs_archive, runner=None, task_archive=None) -> Mastermind:
     return mm
 
 
-def make_obs(duration: float = 60.0, obs_id: Any = None) -> Observation:
-    task = Task(id=1, name="test_task", duration=duration)
+def make_obs(duration: float = 60.0, obs_id: Any = None, project: str = "") -> Observation:
+    task = Task(id=1, name="test_task", duration=duration, project=project)
     return Observation(
         id=obs_id,
         task=task,
@@ -265,6 +265,36 @@ async def test_mastermind_reports_obsnum_in_fits_header() -> None:
     assert any("OBSNUM" in h for h in seen_headers)
     header_obsnum = next(h["OBSNUM"].value for h in seen_headers if "OBSNUM" in h)
     assert header_obsnum == "20251103-001"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_reports_project_in_fits_header() -> None:
+    """PROJECT appears in get_fits_header_before() with the task's project code."""
+    obs_archive = make_obs_archive()
+    mm = make_mastermind(obs_archive)
+    await obs_archive.add_observations(ObservationList([make_obs(duration=1.0, project="EXO")]))
+
+    reached = await run_until_state(mm, obs_archive, ObservationState.IN_PROGRESS)
+    assert reached
+
+    hdr = await mm.get_fits_header_before()
+    assert hdr["PROJECT"].value == "EXO"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_omits_project_header_when_task_has_none() -> None:
+    """No PROJECT key when the task carries no project code."""
+    obs_archive = make_obs_archive()
+    mm = make_mastermind(obs_archive)
+    await obs_archive.add_observations(ObservationList([make_obs(duration=1.0)]))
+
+    reached = await run_until_state(mm, obs_archive, ObservationState.IN_PROGRESS)
+    assert reached
+
+    hdr = await mm.get_fits_header_before()
+    assert "PROJECT" not in hdr
 
 
 @pytest.mark.asyncio

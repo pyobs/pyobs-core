@@ -34,9 +34,6 @@ One row per issue — same layout for every repo.
   decided + spiked, widget-selection mechanism still open.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *proposed* (pyobs-gui). `TelescopeWidget` width-floor investigation with candidate fixes.
-- [2026-08-20-imagewatcher-event-loop-blocking.md](../plans/2026-08-20-imagewatcher-event-loop-blocking.md) —
-  *proposed* (pyobs-monet). Stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from
-  blocking the event loop (MONET South incident, 2026-08-20).
 - [2026-08-23-iag50-pyobs-core-2x-migration.md](../plans/2026-08-23-iag50-pyobs-core-2x-migration.md) —
   *in progress* (pyobs-iag50, IAG-internal). `1.x` branch cut, `develop` reset to
   `2.0.0.dev0`/`pyobs-core>=2.0.0.dev93`; actual code migration (grid-API rewrite, `self.proxy()`

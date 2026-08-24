@@ -91,6 +91,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   four repos landed and pinned to `pyobs-auth>=2.0.0.dev9`; live browser E2E / SSO short-circuit /
   deployment env vars are operational follow-ups, not part of this plan's closure (Repos:
   pyobs-auth, pyobs-archive, pyobs-robotic-backend, pyobs-web-admin)
+- [2026-08-20-imagewatcher-event-loop-blocking.md](2026-08-20-imagewatcher-event-loop-blocking.md) —
+  stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from blocking the event loop.
+  **implemented, closed 2026-08-23** (PR #798; MONET South incident, 2026-08-20)
 
 ## Not finished
 
@@ -125,9 +128,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   `pyobs-robotic-backend`. **superseded, implemented** — see
   `pyobs-archive/specs/plans/2026-08-20-archive-project-access-control.md` for the current design
   (pyobs/pyobs-archive#42) (Repos: pyobs-archive, pyobs-robotic-backend, pyobs-core)
-- [2026-08-20-imagewatcher-event-loop-blocking.md](2026-08-20-imagewatcher-event-loop-blocking.md) —
-  stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from blocking the event loop.
-  **proposed** (MONET South incident, 2026-08-20)
 - [2026-08-21-basevideo-http-token-auth.md](2026-08-21-basevideo-http-token-auth.md) —
   shared-token auth + browser login page for `BaseVideo`'s HTTP endpoints (design:
   `specs/design/basevideo-http-auth.md`). **implemented, closed** (Repos: pyobs-core, pyobs-gui)

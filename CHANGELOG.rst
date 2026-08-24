@@ -2,10 +2,11 @@ v2.0.0.dev78 (unreleased)
 *************************
 * ``BaseVideo.raw_handler`` now caches the per-frame ``(meta, frame)`` bytes it builds
   (header assembly, JSON serialization, ``ascontiguousarray``/``tobytes()`` copy), keyed by
-  ``_frame_num``. With N simultaneous raw clients (guiding, a recorder, a viewer -- see
-  ``specs/design/basevideo-raw-frame-streaming.md``), only the first consumer to wake for a
-  given frame does the work; the rest reuse the cached result instead of redoing it (#769).
-  Costs nothing with 0 or 1 raw clients connected.
+  ``_frame_num``. With N simultaneous raw clients (guiding, a recorder, a viewer -- a case
+  the raw endpoint (``specs/design/basevideo-raw-frame-streaming.md``) already supports but
+  didn't dedupe for), only the first consumer to wake for a given frame does the work; the
+  rest reuse the cached result instead of redoing it (#769). Costs nothing with 0 or 1 raw
+  clients connected.
 * ``Application`` now logs module-creation failures (unconsumed config keys, broken ``__init__``
   chains, ...) at ERROR level with the full traceback before re-raising, so they land in the
   configured log file / journald instead of only on stderr -- which is ``/dev/null`` for

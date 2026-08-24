@@ -507,7 +507,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             # build frame bytes (JSON meta header + raw little-endian bytes), reusing
             # the cached result if another consumer already built this frame -- safe
             # without a lock since _raw_frame() is synchronous, so no other task can
-            # interleave between the cache check and the store (design doc §769)
+            # interleave between the cache check and the store (#769)
             cached = self._raw_frame_cache
             if cached is not None and cached[0] == self._frame_num:
                 _, meta, frame = cached

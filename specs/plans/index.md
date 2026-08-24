@@ -133,4 +133,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   `specs/design/basevideo-http-auth.md`). **implemented, closed** (Repos: pyobs-core, pyobs-gui)
 - [2026-08-24-script-field-interface-annotations.md](2026-08-24-script-field-interface-annotations.md) —
   tag `Script` module-name fields (`ImagingScript.camera`, etc.) with required `pyobs.interfaces`
-  via `typing.Annotated`, for pyobs-robotic-backend's module dropdowns. **planned** (tracks #808)
+  via `typing.Annotated`, for pyobs-robotic-backend's module dropdowns. **implemented, PR open**
+  (tracks #808, PR #809)

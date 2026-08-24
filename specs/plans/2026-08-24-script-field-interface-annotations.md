@@ -1,7 +1,7 @@
 # Plan: Tag `Script` module-name fields with required `pyobs.interfaces` via `Annotated`
 
-Status: planned. Tracks github.com/pyobs/pyobs-core#808 (requested by
-pyobs/pyobs-robotic-backend#98).
+Status: implemented, PR open. Tracks github.com/pyobs/pyobs-core#808 (requested by
+pyobs/pyobs-robotic-backend#98). PR #809 opened and approved, not yet merged.
 
 ## Problem
 
@@ -26,7 +26,8 @@ camera: Annotated[str, ICamera]
 telescope: Annotated[str | None, ITelescope] = None
 ```
 
-Confirmed against pydantic 2.13.4 (the version this repo pins): arbitrary classes placed in
+Confirmed against pydantic 2.13.4 (what this repo's lockfile resolves to; `pyproject.toml` pins
+`>=2.12.5`): arbitrary classes placed in
 `Annotated` are accepted without validation and preserved in `FieldInfo.metadata`
 (`cls.model_fields["camera"].metadata`) for a consumer to introspect. This changes nothing about
 validation or runtime behavior — fields keep behaving exactly as plain `str`/`str | None` today.
@@ -89,25 +90,20 @@ the issue — `.interface` is a dynamic FQCN string chosen by the caller, not a 
 
 ## Implementation checklist
 
-- [ ] `pyobs/robotic/scripts/imaging/imaging.py` — import `Annotated`; tag all five module-name
-      fields (`camera`, `telescope`, `filters`, `autoguider`, `acquisition`) with `Annotated`,
-      including `filters`/`autoguider`/`acquisition` even though each is already single-interface
-      and unchanged from the issue's table (`IFilters`, `IAutoGuiding`, `IAcquisition`
-      respectively) — converted for consistency within the class rather than mixing tagged and
-      untagged module-name fields on the same model
-- [ ] `pyobs/robotic/scripts/calibration/darkbias.py` — tag `camera`
-- [ ] `pyobs/robotic/scripts/calibration/pointing.py` — tag `telescope`
-- [ ] `pyobs/robotic/scripts/imaging/autofocus.py` — tag `telescope`, `autofocus`
-- [ ] `pyobs/robotic/scripts/calibration/skyflats.py` — tag `roof`, `telescope`, `flatfield`
-- [ ] `pyobs/robotic/scripts/control/selector.py` — tag `selector` only, leave `mode` as plain `str`
-- [ ] Add a unit test (new or extending an existing `tests/robotic/scripts/test_*.py`) asserting
-      `cls.model_fields["camera"].metadata == [ICamera, IBinning, IWindow, IExposureTime,
-      IImageType]` (or equivalent) for at least one multi-interface field and one single-interface
-      field, to lock in the `Annotated` metadata shape pyobs-robotic-backend will read
-- [ ] `pyrefly` clean (not mypy — see `CLAUDE.md`)
-- [ ] Confirm no runtime/validation behavior changed: existing script tests
-      (`tests/robotic/scripts/test_imaging.py`, `test_darkbias.py`, `test_autofocus.py`,
-      `test_control.py`) pass unmodified
-- [ ] Post the corrected audit table (this doc) as a comment on #808 before implementing, since it
-      changes four entries from the issue's original table — give a chance to object before code
-      lands
+- [x] `pyobs/robotic/scripts/imaging/imaging.py` — tagged all five module-name fields (`camera`,
+      `telescope`, `filters`, `autoguider`, `acquisition`) with `Annotated`, including
+      `filters`/`autoguider`/`acquisition` for consistency even though each is single-interface and
+      unchanged from the issue's table
+- [x] `pyobs/robotic/scripts/calibration/darkbias.py` — tagged `camera`
+- [x] `pyobs/robotic/scripts/calibration/pointing.py` — tagged `telescope`
+- [x] `pyobs/robotic/scripts/imaging/autofocus.py` — tagged `telescope`, `autofocus`
+- [x] `pyobs/robotic/scripts/calibration/skyflats.py` — tagged `roof`, `telescope`, `flatfield`
+- [x] `pyobs/robotic/scripts/control/selector.py` — tagged `selector` only, `mode` left as plain `str`
+- [x] Added `tests/robotic/scripts/test_field_interface_annotations.py` — 9 tests asserting the
+      exact `Annotated` metadata for every tagged field across all 6 script classes
+- [x] `pyrefly check` clean on all changed files
+- [x] Confirmed no runtime/validation behavior changed: full non-integration suite passes (1585
+      passed, 1 pre-existing unrelated failure confirmed identical on `develop`)
+- [x] Posted the corrected audit table as a comment on #808 before implementing:
+      github.com/pyobs/pyobs-core/issues/808#issuecomment-5394604012
+- [x] PR #809 opened, reviewed (approved) — not yet merged

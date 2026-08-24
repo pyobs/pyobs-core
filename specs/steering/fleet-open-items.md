@@ -16,16 +16,14 @@ and remove closed items outright, never annotate them.** Only open items live he
 
 Repos: the whole pyobs fleet.
 
-## Open issues (5, checked 2026-08-24)
+## Open issues (3, checked 2026-08-24)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#769](https://github.com/pyobs/pyobs-core/issues/769) | Dedupe per-frame header/JSON build in `BaseVideo` raw_handler | flagged in #766 review; N raw clients ⇒ N× header build/serialization/copy per frame |
-| pyobs-core | [#767](https://github.com/pyobs/pyobs-core/issues/767) | `FitsHeaderMixin` only catches `RemoteError` | a peer's malformed response (non-`IqError`/`IqTimeout`) crashes the whole exposure |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
-| pyobs-archive | [#42](https://github.com/pyobs/pyobs-archive/issues/42) | Show only images the logged-in user has access to | needs connection to pyobs-robotic-backend |
+| pyobs-archive | [#47](https://github.com/pyobs/pyobs-archive/issues/47) | `zip_view` doesn't enforce authentication (missing `@api_view` wrapper) | plain Django function, not a DRF view — its `@permission_classes([IsAuthenticated])` is inert; anonymous callers can hit `/frames/zip/` today. Found while implementing #42's access control (PRs #45/#46), predates and is unrelated to that work |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
 
 ## Open plans
@@ -37,12 +35,14 @@ One row per issue — same layout for every repo.
   decided + spiked, widget-selection mechanism still open.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *proposed* (pyobs-gui). `TelescopeWidget` width-floor investigation with candidate fixes.
-- [2026-08-19-archive-project-access-control.md](../plans/2026-08-19-archive-project-access-control.md) —
-  *planned* (pyobs-archive, pyobs-robotic-backend). Show only frames the logged-in user has
-  access to; core/pipeline angle of pyobs-archive#42 (mastermind writes `PROJECT` FITS keyword).
 - [2026-08-20-imagewatcher-event-loop-blocking.md](../plans/2026-08-20-imagewatcher-event-loop-blocking.md) —
   *proposed* (pyobs-monet). Stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from
   blocking the event loop (MONET South incident, 2026-08-20).
+- [2026-08-23-iag50-pyobs-core-2x-migration.md](../plans/2026-08-23-iag50-pyobs-core-2x-migration.md) —
+  *in progress* (pyobs-iag50, IAG-internal). `1.x` branch cut, `develop` reset to
+  `2.0.0.dev0`/`pyobs-core>=2.0.0.dev93`; actual code migration (grid-API rewrite, `self.proxy()`
+  async-context-manager change, missing-await fixes) not yet done, three open questions need
+  Tim's input.
 
 ### Design docs still *proposed*
 
@@ -53,8 +53,6 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
-- **pyobs-archive** — [2026-08-20-archive-project-access-control](../../pyobs-archive/specs/plans/2026-08-20-archive-project-access-control.md) —
-  project-based access control for frames, archive side of pyobs-archive#42 (*planned*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
 - **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —

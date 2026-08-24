@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from pyobs.interfaces import IBinning, IFilters, IFlatField, IReady, IRoof, ITelescope
 from pyobs.robotic.scripts import Script
@@ -21,9 +21,9 @@ FlatFunctions = str | dict[str, str | dict[str, str]]
 class SkyFlatsScript(Script):
     """Script for scheduling and running skyflats using an IFlatField module."""
 
-    roof: str
-    telescope: str
-    flatfield: str
+    roof: Annotated[str, IRoof]
+    telescope: Annotated[str, ITelescope]
+    flatfield: Annotated[str, IBinning, IFilters, IFlatField]
     functions: FlatFunctions = {}
     priorities: SkyflatPriorities
     min_exptime: float = 0.5

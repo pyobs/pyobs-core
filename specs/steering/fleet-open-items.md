@@ -66,7 +66,10 @@ One line per plan — same layout for every repo.
 
 ## Open decisions
 
-- **ADR 0013** (rename pyobs-robotic-backend → `pyobs-schedule`) — *proposed*: `pyobs-schedule` is
-  the recommendation, pending team confirmation; the rename itself (repo/package/Docker
-  image/Keycloak client, in lockstep) has not been executed. See
-  [0013-renaming-pyobs-robotic-backend.md](../adrs/0013-renaming-pyobs-robotic-backend.md).
+- **ADR 0013** (rename pyobs-robotic-backend → `pyobs-portal`) — *accepted*, not yet
+  executed: repo/package/Docker image/Keycloak client rename plus the pyobs-core
+  `storage.backend`→`storage.portal`/`Backend*Archive`→`Portal*Archive` rename, in
+  lockstep with iagvt/monet deployment YAML. See
+  [0013-renaming-pyobs-robotic-backend.md](../adrs/0013-renaming-pyobs-robotic-backend.md)
+  and
+  [2026-08-24-rename-robotic-backend-to-portal.md](../plans/2026-08-24-rename-robotic-backend-to-portal.md).

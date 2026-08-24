@@ -32,6 +32,8 @@ Short decision records for choices that had genuine considered-and-rejected alte
   event delivery moves from PEP presence auto-subscribe to explicit pubsub subscription.
   *accepted*
 - [0013-renaming-pyobs-robotic-backend.md](0013-renaming-pyobs-robotic-backend.md) —
-  naming decision for the robotic-backend service; proposed name `pyobs-schedule`,
-  not yet settled (package/image/Keycloak client in lockstep). *proposed* (Repos:
-  pyobs-robotic-backend, pyobs-auth)
+  rename `pyobs-robotic-backend` to `pyobs-portal` (package/image/Keycloak client in
+  lockstep; in pyobs-core, `storage.backend`/`Backend*Archive` → `storage.portal`/
+  `Portal*Archive`). *accepted*, execution tracked in
+  `specs/plans/2026-08-24-rename-robotic-backend-to-portal.md` (Repos:
+  pyobs-robotic-backend, pyobs-auth, pyobs-archive, pyobs-web-admin)

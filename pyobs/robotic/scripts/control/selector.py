@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from pyobs.interfaces import IMotion
 from pyobs.interfaces.IMode import IMode
@@ -19,7 +19,7 @@ class SelectorScript(Script):
     """Script for running Mode Selection."""
 
     mode: str
-    selector: str
+    selector: Annotated[str, IMode, IMotion]
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.

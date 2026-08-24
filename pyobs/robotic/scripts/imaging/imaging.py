@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
@@ -80,11 +80,11 @@ class ImagingScript(Script):
 
     configuration: Configuration = Field(default_factory=Configuration)
 
-    camera: str
-    telescope: str | None = None
-    filters: str | None = None
-    autoguider: str | None = None
-    acquisition: str | None = None
+    camera: Annotated[str, ICamera, IBinning, IWindow, IExposureTime, IImageType]
+    telescope: Annotated[str | None, ITelescope, IPointingRaDec] = None
+    filters: Annotated[str | None, IFilters] = None
+    autoguider: Annotated[str | None, IAutoGuiding] = None
+    acquisition: Annotated[str | None, IAcquisition] = None
 
     _object_name: str | None = PrivateAttr(default=None)
 

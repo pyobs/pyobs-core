@@ -122,8 +122,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   Keycloak admin/deployment config only (Repos: pyobs-archive, pyobs-robotic-backend)
 - [2026-08-19-archive-project-access-control.md](2026-08-19-archive-project-access-control.md) —
   show only images the logged-in user has access to, keyed on projects from
-  `pyobs-robotic-backend`. **planned** (pyobs/pyobs-archive#42; depends on
-  pyobs/pyobs-robotic-backend#79) (Repos: pyobs-archive, pyobs-robotic-backend)
+  `pyobs-robotic-backend`. **superseded, implemented** — see
+  `pyobs-archive/specs/plans/2026-08-20-archive-project-access-control.md` for the current design
+  (pyobs/pyobs-archive#42) (Repos: pyobs-archive, pyobs-robotic-backend, pyobs-core)
 - [2026-08-20-imagewatcher-event-loop-blocking.md](2026-08-20-imagewatcher-event-loop-blocking.md) —
   stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from blocking the event loop.
   **proposed** (MONET South incident, 2026-08-20)

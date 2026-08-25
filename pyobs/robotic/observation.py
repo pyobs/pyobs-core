@@ -39,6 +39,12 @@ class Observation(BaseModel):
     """Per-night observation number, e.g. "20260810-001". Assigned by Mastermind when the
     observation starts running; None before that (or if never observed)."""
 
+    archive_url: str | None = None
+    """Link to this observation's data in the archive's own frontend, as serialized by
+    pyobs-portal (pyobs-portal#82). Portal-only UI metadata: Mastermind tolerates but never
+    consumes it -- it is always None for the pending/in_progress states Mastermind schedules
+    on, and is declared so the portal's payloads keep validating under ``extra="forbid"``."""
+
     def __str__(self) -> str:
         return (
             f"Observation {self.id} of {self.task.name} (#{self.task.id}) "

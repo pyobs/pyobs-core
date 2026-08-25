@@ -210,17 +210,22 @@ shortcuts sections (all 14 `DEFAULT_CONFIG` pages, shortcuts table grounded in
 not a running GUI, so add those as a follow-up) and rewrote the README (was a one-line stub) with
 real install/running instructions.
 
-**gui-nonpython**: neither repo had any docs/source/ or `.readthedocs.yml` before 2026-08-25.
-**pyobs-web-client** — fixed 2026-08-25: `docs/source/` (hand-written `index.rst`, no `Available
+**gui-nonpython**: neither repo had any docs/source/ or `.readthedocs.yml` before 2026-08-25. Both
+fixed 2026-08-25. **pyobs-web-client**: `docs/source/` (hand-written `index.rst`, no `Available
 classes` section — nothing to introspect), `.readthedocs.yml`, README pointer; `specs/` cleanup
 (two new design docs, first ADR) and `DEVELOPMENT.md` trim done in the same pass — see that repo's
-`specs/index.md`. **pyobs-polaris** — docs site (`Doxyfile`, `docs/source/`, `.readthedocs.yml`
-with the Doxygen/doxysphinx pre-build job) done 2026-08-25; the much larger `DEVELOPMENT.md` →
-`specs/` split (its `DEVELOPMENT.md` was 3187 lines/239K with no `specs/` at all beforehand) was
-still in progress as of this writing — check that repo's `specs/index.md` for current status
-before assuming it's finished. Neither repo's Doxygen/doxysphinx pipeline has been verified
-against a real `doxygen`/`doxysphinx` install (not available in the environment this was written
-in) — verify locally before relying on the RTD build succeeding.
+`specs/index.md`. **pyobs-polaris**: docs site (`Doxyfile`, `docs/source/`, `.readthedocs.yml`
+with the Doxygen/doxysphinx pre-build job) plus a full `specs/` build-out — its `DEVELOPMENT.md`
+had no `specs/` at all beforehand and was 3187 lines/239K, split into 55 `specs/design/*.md` docs
+(one per shipped feature), its first ADR (`0001-qml-over-qtwidgets.md`, cross-linked with this
+repo's own `0010-pyobs-gui-stays-on-qtwidgets-not-qml.md`), and three `specs/steering/*.md` docs
+(environment setup, releases, handoff notes); `DEVELOPMENT.md` is now a short pointer, matching
+pyobs-web-client's shape — see that repo's `specs/index.md`. Neither repo's Doxygen/doxysphinx
+pipeline has been verified against a real `doxygen`/`doxysphinx` install (not available in the
+environment this was written in, no passwordless way to install `doxygen` there) — the
+hand-written `.rst` portion of both sites builds clean locally (`sphinx-build -W`), but verify the
+full `doxygen && doxysphinx build && sphinx-build` chain locally before trusting the RTD build to
+succeed unmodified.
 
 **web-app**: **all nine repos in this group now have docs matching the shape above**, fixed
 2026-08-25. pyobs-web-admin already met a reasonable version of the target shape beforehand.

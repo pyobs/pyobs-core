@@ -1,7 +1,8 @@
-# Sphinx docs should follow a shared per-group structure, enforced in CI
+# Sphinx docs and README should follow a shared per-group structure, enforced in CI
 
 Companion to [[fleet-tooling-consistency]] — that doc covers lint/type-check/test/Dependabot
-baseline, this one covers the fourth leg: docs. Group membership below follows the categories in
+baseline, this one covers the fourth leg: docs (Sphinx under `docs/source/`) and, alongside it,
+each repo's top-level `README.md`. Group membership below follows the categories in
 `specs/steering/pyobs-project-tiers.md` (Cameras / Mounts-domes-focusers → **driver-module**,
 Python User interfaces → **gui**, everything under Connected projects → **web-app**). pyobs-core
 itself is exempt — it's the framework's own reference manual, already far larger than any
@@ -13,11 +14,12 @@ Repos: pyobs-core (this doc), and every repo listed under "Current state" below.
 
 1. Find the repo in "Current state" below to get its group (driver-module / gui / web-app).
 2. Copy the matching skeleton(s) from `docs/templates/` in **this** repo (pyobs-core) —
-   `driver-module-conf.py` + `driver-module-index.rst`, `gui-index.rst` (conf.py is the same
-   driver-module one), or the `web-app/` directory — into the target repo's `docs/source/`,
-   replacing `CHANGEME` placeholders with real content. Don't invent new section names or drop
-   required ones; if a section genuinely doesn't apply (e.g. no global shortcuts), say so in the
-   PR description rather than silently omitting it.
+   `driver-module-conf.py` + `driver-module-index.rst` + `driver-module-readme.md`,
+   `gui-index.rst` + `gui-readme.md` (conf.py is the same driver-module one), or the `web-app/`
+   directory (includes `README.md`) — into the target repo's `docs/source/` and repo root
+   respectively, replacing `CHANGEME` placeholders with real content. Don't invent new section
+   names or drop required ones; if a section genuinely doesn't apply (e.g. no global shortcuts),
+   say so in the PR description rather than silently omitting it.
 3. Run `uv run sphinx-build -W -b html docs/source docs/build/html` locally and fix every warning
    before opening a PR — CI will eventually enforce this (see "Enforcement") but doesn't yet on
    most repos, so don't rely on it catching mistakes for you.
@@ -47,6 +49,12 @@ pyobs-v4l, pyobs-alpaca, pyobs-brot, pyobs-gemini, pyobs-zaber, pyobs-zwoeaf.
   covering the module's real options, not a stub), `Available classes` (one
   `.. autoclass:: <fqcn>` block per public class, `:members:` and `:show-inheritance:`).
 - `docs/source/_static/pyobs.gif` — shared logo asset, copied verbatim.
+- `README.md` — copy `docs/templates/driver-module-readme.md`. Already a real unwritten
+  convention across pyobs-qhyccd/pyobs-fli/pyobs-zaber/pyobs-tis: RST-underline title reading
+  `<Vendor> module for *pyobs*`, one-line blurb linking pyobs.org, optional `System dependencies`
+  (only if there's a non-pip driver/package to install first), then `Install *pyobs-X*` with
+  clone + `uv sync`. The README and `index.rst` blurbs should say the same thing, not drift into
+  two descriptions of the same module.
 
 No `api/`, no multi-page toctree. If a driver module grows enough surface area to need more than
 one page, it's no longer a plain driver-module for docs purposes — flag it for a
@@ -69,6 +77,12 @@ sections after "Available classes":
 pyobs-gui's docs today are the plain driver-module shape (title/blurb/example-config/autoclass
 only) with no widget catalog at all — that's the gap, not a template mismatch to fix by relaxing
 the template.
+
+`README.md` — copy `docs/templates/gui-readme.md`: same driver-module shape (title, blurb,
+optional system deps, install) plus a `Running` section (launch command + minimal fleet-connect
+config), since a GUI is something you run, not just a class you configure into another module's
+comm. pyobs-gui's current README is a one-line stub (`A GUI for pyobs....`) — biggest README gap
+in the fleet.
 
 ### web-app
 
@@ -95,6 +109,13 @@ pyobs-web-admin's shape as the reference:
 extensions may legitimately differ for a Django app's docs — but still needs `project`,
 `copyright`, `author` set and a working `sphinx-build`.
 
+`README.md` — copy `docs/templates/web-app/README.md`: short overview (matching `index.rst`'s
+opening paragraph) + a pointer into the real docs for installation/configuration, plus a brief
+local-dev quickstart. Don't duplicate the configuration table or install steps in both places —
+pyobs-archive's current README already has a full settings table that `docs/source/` doesn't;
+once `configuration.rst` exists, the table's home is there and the README should link to it
+instead of carrying its own copy that can drift out of sync.
+
 ## Enforcement
 
 Three checks, in a `.github/workflows/docs.yml` copy-pasted into each repo (same pattern as
@@ -115,6 +136,10 @@ exists for the fleet today, so this isn't centralized either):
    `docs/templates/driver-module-conf.py`. Fails the build on any other line drifting. Not applied
    to web-app — its `conf.py`s are expected to differ.
 
+`README.md` is **not** part of CI enforcement — it's prose, not a fixed set of files, so there's
+nothing a script can usefully assert beyond "the file exists." Treat it as a documented convention
+to follow by hand (and to check for in review), not something a failing build will catch.
+
 ## Current state (surveyed 2026-08-25)
 
 **driver-module**: pyobs-aravis, pyobs-asi, pyobs-fli, pyobs-flipro, pyobs-qhyccd, pyobs-sbig,
@@ -124,14 +149,21 @@ pyobs-fli, pyobs-zaber, pyobs-tis, pyobs-brot; the rest assumed conformant pendi
 run once the checker exists — this was a spot-check, not an exhaustive audit). **pyobs-gemini has
 no docs at all** — biggest gap in this group.
 
-**gui**: pyobs-gui has the driver-module shape, not the gui shape — no widget catalog, no
-shortcuts page — and hasn't been touched since 2024-03-21 despite #141/#142 shipping since.
+README.md across driver-module was spot-checked on pyobs-qhyccd, pyobs-fli, pyobs-zaber, pyobs-tis
+and matches the convention above; not exhaustively audited beyond those four.
 
-**web-app**: pyobs-web-admin is the only repo meeting a reasonable version of the target shape
-already. pyobs-archive has docs but single-page and untouched since 2022-01-19 (predates its
-auth/admin-sync/IdP-login features entirely). pyobs-weather has docs, stale since 2023-07-03.
+**gui**: pyobs-gui has the driver-module docs shape, not the gui shape — no widget catalog, no
+shortcuts page — and hasn't been touched since 2024-03-21 despite #141/#142 shipping since. Its
+README is worse: a one-line stub (`A GUI for pyobs....`), no install/running instructions at all.
+
+**web-app**: pyobs-web-admin is the only repo meeting a reasonable version of the target docs
+shape already; its README also already roughly matches the target (overview + Features), though
+it doesn't yet link out to `docs/source/` the way the template asks. pyobs-archive has docs but
+single-page and untouched since 2022-01-19 (predates its auth/admin-sync/IdP-login features
+entirely); its README carries its own full configuration table, which should move to
+`configuration.rst` once that exists. pyobs-weather has docs, stale since 2023-07-03.
 pyobs-portal, pyobs-auth, pyobs-pipeline, pyobs-astrometry, pyobs-allsky-cloudcover,
-pyobs-dashboard-utils have no docs at all.
+pyobs-dashboard-utils have no Sphinx docs at all; README presence/shape on these wasn't checked.
 
 None of the three enforcement checks exist yet anywhere in the fleet — this doc defines the
 target, it doesn't claim any of it is live. No rollout plan has been written yet; when one is,

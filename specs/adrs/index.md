@@ -27,7 +27,7 @@ Short decision records for choices that had genuine considered-and-rejected alte
   self-hosted Keycloak alongside odin as two parallel auth backends. *superseded 2026-08-19* — the
   design/plan went the other way: observation-portal is brokered *through* Keycloak and archive's
   direct OAuth2 integration was removed (`specs/design/shared-auth-keycloak.md`) (Repos:
-  pyobs-core, pyobs-archive, pyobs-robotic-backend)
+  pyobs-core, pyobs-archive, pyobs-portal)
 - [0012-event-delivery-explicit-pubsub-subscription-not-presence.md](0012-event-delivery-explicit-pubsub-subscription-not-presence.md) —
   event delivery moves from PEP presence auto-subscribe to explicit pubsub subscription.
   *accepted*
@@ -36,4 +36,4 @@ Short decision records for choices that had genuine considered-and-rejected alte
   lockstep; in pyobs-core, `storage.backend`/`Backend*Archive` → `storage.portal`/
   `Portal*Archive`). *accepted*, execution tracked in
   `specs/plans/2026-08-24-rename-robotic-backend-to-portal.md` (Repos:
-  pyobs-robotic-backend, pyobs-auth, pyobs-archive, pyobs-web-admin)
+  pyobs-portal, pyobs-auth, pyobs-archive, pyobs-web-admin)

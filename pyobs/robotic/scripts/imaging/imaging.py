@@ -38,26 +38,42 @@ log = logging.getLogger(__name__)
 class AcquisitionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    enabled: bool = True
-    optional: bool = False
+    enabled: bool = Field(
+        default=True, description="Whether to perform acquisition before starting this configuration."
+    )
+    optional: bool = Field(
+        default=False, description="If acquisition fails, continue without it instead of aborting the script."
+    )
 
 
 class GuidingConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    enabled: bool = True
-    optional: bool = False
+    enabled: bool = Field(default=True, description="Whether to start auto-guiding before starting this configuration.")
+    optional: bool = Field(
+        default=False, description="If starting auto-guiding fails, continue without it instead of aborting the script."
+    )
 
 
 class InstrumentConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    exposure_time: float | ExposureTimeProvider = 0.0
-    count: int = 1
-    image_type: ImageType = ImageType.OBJECT
-    binning: tuple[int, int] = (1, 1)
-    window: tuple[int, int, int, int] | None = None
-    optical_filter: str | None = None
+    exposure_time: float | ExposureTimeProvider = Field(
+        default=0.0, description="Exposure time in seconds, or a provider that computes it dynamically."
+    )
+    count: int = Field(default=1, description="Number of exposures to take with this configuration.")
+    image_type: ImageType = Field(
+        default=ImageType.OBJECT,
+        description="Type of image to take: OBJECT (science), BIAS, DARK, SKYFLAT, FOCUS, ACQUISITION, or GUIDING.",
+    )
+    binning: tuple[int, int] = Field(default=(1, 1), description="Detector binning as (x, y).")
+    window: tuple[int, int, int, int] | None = Field(
+        default=None,
+        description="Detector sub-window as (left, top, width, height). Uses the full frame if unset.",
+    )
+    optical_filter: str | None = Field(
+        default=None, description="Name of the filter to use. Uses the camera's current filter if unset."
+    )
 
     async def get_exposure_time(self) -> float:
         """Return the exposure time, computing it dynamically if needed."""
@@ -69,22 +85,41 @@ class InstrumentConfig(BaseModel):
 class Configuration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    acquisition_config: AcquisitionConfig = Field(default_factory=AcquisitionConfig)
-    guiding_config: GuidingConfig = Field(default_factory=GuidingConfig)
-    instrument_configs: list[InstrumentConfig] = Field(default_factory=lambda: [InstrumentConfig()])
-    repeats: int = 1
+    acquisition_config: AcquisitionConfig = Field(
+        default_factory=AcquisitionConfig, description="Settings for acquiring the target before exposing."
+    )
+    guiding_config: GuidingConfig = Field(
+        default_factory=GuidingConfig, description="Settings for auto-guiding while exposing."
+    )
+    instrument_configs: list[InstrumentConfig] = Field(
+        default_factory=lambda: [InstrumentConfig()],
+        description="Sequence of instrument configurations to run, in order, once per repeat.",
+    )
+    repeats: int = Field(
+        default=1, description="Number of times to repeat the full sequence of instrument configurations."
+    )
 
 
 class ImagingScript(Script):
     """Default script for imaging configs."""
 
-    configuration: Configuration = Field(default_factory=Configuration)
+    configuration: Configuration = Field(default_factory=Configuration, description="What to expose and how.")
 
-    camera: Annotated[str, ICamera, IBinning, IWindow, IExposureTime, IImageType]
-    telescope: Annotated[str | None, ITelescope, IPointingRaDec] = None
-    filters: Annotated[str | None, IFilters] = None
-    autoguider: Annotated[str | None, IAutoGuiding] = None
-    acquisition: Annotated[str | None, IAcquisition] = None
+    camera: Annotated[str, ICamera, IBinning, IWindow, IExposureTime, IImageType] = Field(
+        description="Name of the camera module to expose with."
+    )
+    telescope: Annotated[str | None, ITelescope, IPointingRaDec] = Field(
+        default=None, description="Name of the telescope module to point at the target. Required for OBJECT exposures."
+    )
+    filters: Annotated[str | None, IFilters] = Field(
+        default=None, description="Name of the filter wheel module. Required if any instrument config sets a filter."
+    )
+    autoguider: Annotated[str | None, IAutoGuiding] = Field(
+        default=None, description="Name of the auto-guiding module. Required if guiding is enabled."
+    )
+    acquisition: Annotated[str | None, IAcquisition] = Field(
+        default=None, description="Name of the acquisition module. Required if acquisition is enabled."
+    )
 
     _object_name: str | None = PrivateAttr(default=None)
 

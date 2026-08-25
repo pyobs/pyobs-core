@@ -3,7 +3,7 @@
 Status: implemented — the plan (`specs/plans/2026-08-12-shared-auth-keycloak.md`) was closed
 2026-08-19: `pyobs-auth` released (`2.0.0.dev7`), pyobs-archive cutover landed (`2.0.0.dev8`,
 commit `01eb06e` removed `OAuth2Backend`/`BearerAuthentication`/`OAUTH_CLIENT`; `Profile.keycloak_sub`
-user mapping), pyobs-robotic-backend wired in (`KeycloakAuthentication`, `KeycloakIdentity` model);
+user mapping), pyobs-portal wired in (`KeycloakAuthentication`, `KeycloakIdentity` model);
 browser login/logout verified end to end against the running Keycloak. Section 0 of the plan
 (observation-portal brokering in the Keycloak admin console) remains open but is admin/deployment
 config, tracked in #748, not pyobs code.
@@ -16,7 +16,7 @@ is configured: "Log in with `<hinted IdP>`" (default, via `IDP_HINT`) and "Log i
 Keycloak account" (via a present-but-empty `?idp_hint=`), keeping the local-account path reachable.
 The alias and button label are per-deployment `PYOBS_AUTH` config (`IDP_HINT`/`IDP_LABEL`) — an
 instance of this design's "upstream wiring is operational config" principle.
-Repos: pyobs-auth, pyobs-archive, pyobs-robotic-backend, pyobs-web-admin
+Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin
 
 ## Problem
 
@@ -32,7 +32,7 @@ Tracks #748. Each pyobs web service currently rolls its own auth, uncoordinated:
   a `PROFILE_URL`. Successful auth mints/updates a local Django `User` + `Profile` (storing the
   observation-portal access/refresh token — written but never read elsewhere in archive, confirmed
   by grep; no downstream code depends on archive holding a live observation-portal token).
-- **pyobs-robotic-backend** (`settings.py` `DEFAULT_AUTHENTICATION_CLASSES`) uses plain DRF
+- **pyobs-portal** (`settings.py` `DEFAULT_AUTHENTICATION_CLASSES`) uses plain DRF
   `TokenAuthentication` + `SessionAuthentication` against its own local Django user database — no
   connection to observation-portal or to archive's users at all.
 
@@ -47,14 +47,14 @@ than treating it as a second, permanently-separate integration.
 
 Two separable problems, both in scope, with different trust models:
 
-1. **User-facing SSO** — one login across archive/robotic-backend/future dashboards, via Keycloak
+1. **User-facing SSO** — one login across archive/portal/future dashboards, via Keycloak
    as the sole OIDC provider.
-2. **Service-to-service auth** — e.g. Mastermind calling robotic-backend's API, pyobs-core modules
+2. **Service-to-service auth** — e.g. Mastermind calling portal's API, pyobs-core modules
    calling other services' APIs. Optional: what's already in use here (DRF `TokenAuthentication`,
    a static per-module token — this is what's referred to as "PSK" in this doc, not a real
    HMAC/PSK scheme) stays available as an alternative to OIDC client-credentials, not replaced by
-   it. Concretely: `pyobs/robotic/storage/backend/taskarchive.py` and `observationarchive.py`
-   (pyobs-core) send `Authorization: Token <token>` against robotic-backend today — that path is
+   it. Concretely: `pyobs/robotic/storage/portal/taskarchive.py` and `observationarchive.py`
+   (pyobs-core) send `Authorization: Token <token>` against portal today — that path is
    unaffected by this work.
 
 ## Decision: Keycloak as the single issuer; observation-portal becomes a brokered upstream, not a second integration
@@ -72,7 +72,7 @@ code that talks to observation-portal directly:
   Connect v1.0" IdP type, auto-configured from that discovery document). A user picks "log in with
   observation-portal" on Keycloak's login screen; Keycloak does the federation handshake and mints
   its own Keycloak token.
-- **`pyobs-auth` and every service (archive, robotic-backend, future services) only ever talk to
+- **`pyobs-auth` and every service (archive, portal, future services) only ever talk to
   Keycloak.** There is exactly one issuer, one JWKS endpoint, one client library code path — no
   multi-issuer validation logic, no `AUTH_PROVIDER` switch, no bespoke `OAuth2Backend`/
   `BearerAuthentication` kept alive as permanent second code. Full cutover, not a dual-path state:
@@ -91,18 +91,18 @@ code that talks to observation-portal directly:
   requires the client app to handle the user's raw password directly. `pyobs-auth`'s OIDC client
   logic (below) already does auth-code, so this falls out of the cutover rather than being separate
   work.
-- **pyobs-robotic-backend** currently has no OAuth2 path at all — just DRF `TokenAuthentication`
-  + `SessionAuthentication` (`pyobs_robotic_backend/settings.py:148-155`). It goes straight to
+- **pyobs-portal** currently has no OAuth2 path at all — just DRF `TokenAuthentication`
+  + `SessionAuthentication` (`pyobs_portal/settings.py:148-155`). It goes straight to
   Keycloak, same as every other service — nothing special about it relative to archive post-cutover.
 - **Service-to-service auth remains optional and the existing token mechanism stays supported.**
   Keycloak's client-credentials grant is available for services that want OIDC-based service
-  auth, but existing token-secured calls (pyobs-core modules → robotic-backend, via
+  auth, but existing token-secured calls (pyobs-core modules → portal, via
   `Authorization: Token <token>`) don't have to migrate as a precondition of this work.
 
 ## Proposed change: `pyobs-auth` package
 
 A new shared package, `pyobs-auth`, holds the Keycloak OIDC client logic once, rather than
-duplicating it into archive and robotic-backend separately (which is the situation being fixed).
+duplicating it into archive and portal separately (which is the situation being fixed).
 Released the normal way, like other pyobs repos (`do-python-release`, uv/poetry, GitHub tags) —
 nothing unusual about its release process.
 
@@ -111,20 +111,20 @@ Scope of the package (to be refined during implementation):
 - OIDC discovery + token exchange (authorization-code grant for user login, client-credentials
   grant for service-to-service).
 - Bearer-token validation (signature/issuer/audience checks against Keycloak's JWKS endpoint).
-- A DRF `authentication.BaseAuthentication` implementation, so archive/robotic-backend wire it in
+- A DRF `authentication.BaseAuthentication` implementation, so archive/portal wire it in
   consistently. Single-issuer only — no need to design for multiple trusted issuers, since
   observation-portal (and any other upstream) is brokered behind Keycloak, not validated directly.
 
 ## Decision: realm layout and user mapping
 
 - **One shared realm** for the whole pyobs ecosystem, with one Keycloak client registered per
-  service (archive, robotic-backend, future services), rather than per-service realms. A user
+  service (archive, portal, future services), rather than per-service realms. A user
   authenticated in the realm is inherently known to every service's client — no cross-realm
   federation needed to get the shared-identity property this work is for.
 - **Keycloak's `sub` claim (stable subject/user ID) is the join key** to each service's local
-  Django `User`, not username or email. Both archive and robotic-backend store the Keycloak `sub`
+  Django `User`, not username or email. Both archive and portal store the Keycloak `sub`
   against their local `User` (archive: presumably on `Profile`, or its Keycloak equivalent;
-  robotic-backend needs an equivalent field added, since it has no `Profile`-like model today).
+  portal needs an equivalent field added, since it has no `Profile`-like model today).
   Chosen over matching on username/email because those can change (rename, email update) without
   the underlying identity changing — matching on them would silently orphan or misjoin a user
   after such a change. This also applies to brokered logins (observation-portal or any other

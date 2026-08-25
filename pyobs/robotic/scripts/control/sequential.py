@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import astropy.units as u
 from astropy.time import TimeDelta
+from pydantic import Field
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -17,8 +18,11 @@ log = logging.getLogger(__name__)
 class SequentialRunner(Script):
     """Script for running a sequence of other scripts."""
 
-    scripts: list[Script]
-    check_all_can_run: bool = True
+    scripts: list[Script] = Field(description="Scripts to run in sequence, each only if it can run.")
+    check_all_can_run: bool = Field(
+        default=True,
+        description="If set, all scripts must be able to run for this script to run; otherwise, only the first must.",
+    )
 
     async def can_run(self, data: TaskData | None) -> bool:
         if self.check_all_can_run:

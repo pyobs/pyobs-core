@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Annotated
 
+from pydantic import Field
+
 from pyobs.interfaces import IPointingAltAz, IReady
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.skyflats.pointing import SkyFlatsBasePointing
@@ -17,8 +19,8 @@ log = logging.getLogger(__name__)
 class PointingScript(Script):
     """Script for pointing the telescope for flats."""
 
-    telescope: Annotated[str, IPointingAltAz, IReady]
-    pointing: SkyFlatsBasePointing
+    telescope: Annotated[str, IPointingAltAz, IReady] = Field(description="Name of the telescope module to point.")
+    pointing: SkyFlatsBasePointing = Field(description="Strategy used to compute the flat-field pointing.")
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.

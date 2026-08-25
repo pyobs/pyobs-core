@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Annotated
 
+from pydantic import Field
+
 from pyobs.interfaces import (
     IBinning,
     IData,
@@ -23,10 +25,12 @@ log = logging.getLogger(__name__)
 class DarkBiasScript(Script):
     """Script for running darks or biases."""
 
-    camera: Annotated[str, IData, IBinning, IWindow, IExposureTime, IImageType]
-    count: int = 20
-    exptime: float = 0
-    binning: tuple[int, int] = (1, 1)
+    camera: Annotated[str, IData, IBinning, IWindow, IExposureTime, IImageType] = Field(
+        description="Name of the camera module to expose with."
+    )
+    count: int = Field(default=20, description="Number of exposures to take.")
+    exptime: float = Field(default=0, description="Exposure time in seconds. 0 takes a bias, anything else a dark.")
+    binning: tuple[int, int] = Field(default=(1, 1), description="Detector binning as (x, y).")
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.

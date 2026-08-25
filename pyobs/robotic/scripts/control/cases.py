@@ -4,6 +4,8 @@ import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
     from pyobs.utils.time import Time
@@ -16,8 +18,10 @@ log = logging.getLogger(__name__)
 class CasesRunner(Script):
     """Script for distinguishing cases."""
 
-    expression: str
-    cases: dict[str | int | float, Script]
+    expression: str = Field(description="Python expression to evaluate; its value selects which script to run.")
+    cases: dict[str | int | float, Script] = Field(
+        description='Scripts to run, keyed by the value of `expression`. Use key "else" for a fallback.'
+    )
 
     def __get_script(self) -> Script:
         # evaluate condition

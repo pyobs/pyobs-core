@@ -1540,19 +1540,19 @@
     "semantic_hash": "e4ccb7eebb48f3ea976bb12d30714af3"
   },
   "pyobs/robotic/scripts/calibration/darkbias.py": {
-    "mtime": 1784225633.6117737,
-    "ast_hash": "3363b3505b4db4fc814ec05e6f2598ff",
-    "semantic_hash": "3363b3505b4db4fc814ec05e6f2598ff"
+    "mtime": 1787586200.1111948,
+    "ast_hash": "f9937c5659f79e18cdf692e9f4165fbf",
+    "semantic_hash": ""
   },
   "pyobs/robotic/scripts/calibration/pointing.py": {
-    "mtime": 1784225633.6117737,
-    "ast_hash": "6203a0b0d06203ec241c8c9e892541a0",
-    "semantic_hash": "6203a0b0d06203ec241c8c9e892541a0"
+    "mtime": 1787586200.1111948,
+    "ast_hash": "cadea04e3908d36897632b6aa2c7ff45",
+    "semantic_hash": ""
   },
   "pyobs/robotic/scripts/calibration/skyflats.py": {
-    "mtime": 1784225633.6127737,
-    "ast_hash": "9c2697de645c5c9158424d67ca51cc36",
-    "semantic_hash": "9c2697de645c5c9158424d67ca51cc36"
+    "mtime": 1787586200.112195,
+    "ast_hash": "07ad0c9f995a1607d21c477972855556",
+    "semantic_hash": ""
   },
   "pyobs/robotic/scripts/control/__init__.py": {
     "mtime": 1782030067.1871088,
@@ -1575,9 +1575,9 @@
     "semantic_hash": "9269c94ebed564d951effe98bfe5a767"
   },
   "pyobs/robotic/scripts/control/selector.py": {
-    "mtime": 1784225633.6127737,
-    "ast_hash": "17c581328917ab7bb66ba06b2a9d71b4",
-    "semantic_hash": "17c581328917ab7bb66ba06b2a9d71b4"
+    "mtime": 1787586200.112195,
+    "ast_hash": "bab7ef4f437d906c57438e76f6e6baeb",
+    "semantic_hash": ""
   },
   "pyobs/robotic/scripts/control/sequential.py": {
     "mtime": 1782030067.1871088,
@@ -1595,13 +1595,13 @@
     "semantic_hash": "cdb9f66e8374dc32b01915b638a62573"
   },
   "pyobs/robotic/scripts/imaging/autofocus.py": {
-    "mtime": 1784310355.0220408,
-    "ast_hash": "93c2fa6dbc344266f5fa369d6afef212",
-    "semantic_hash": "93c2fa6dbc344266f5fa369d6afef212"
+    "mtime": 1787586200.112195,
+    "ast_hash": "26b7ebdaf886edfa032792d3735d676a",
+    "semantic_hash": ""
   },
   "pyobs/robotic/scripts/imaging/imaging.py": {
-    "mtime": 1786911999.750248,
-    "ast_hash": "5fd621705270981202b358b8a778dd57",
+    "mtime": 1787586200.112195,
+    "ast_hash": "188b4e93c2f309a1d44c5a08fd0cd7e6",
     "semantic_hash": ""
   },
   "pyobs/robotic/scripts/imaging/transitimaging.py": {
@@ -2225,8 +2225,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1787490528.8738275,
-    "ast_hash": "f9f4fe9b790f7f57f648bb53e47b8605",
+    "mtime": 1787586352.5059268,
+    "ast_hash": "8fe2ea14d2e27b0c7ac039ee54392277",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -4335,8 +4335,8 @@
     "semantic_hash": ""
   },
   "specs/adrs/index.md": {
-    "mtime": 1787241769.8563879,
-    "ast_hash": "eabaf20b518b4deba6c90fd96e6c9bc8",
+    "mtime": 1787586200.478199,
+    "ast_hash": "e41c5b0f7d6e6930fb3eaad82cad8e0c",
     "semantic_hash": ""
   },
   "specs/design/index.md": {
@@ -4345,8 +4345,8 @@
     "semantic_hash": ""
   },
   "specs/plans/index.md": {
-    "mtime": 1787552605.7450588,
-    "ast_hash": "fc65c217a07c6793a806ce8fb5ebd95e",
+    "mtime": 1787586200.4791992,
+    "ast_hash": "1bb61a72fee1e2f849e17eb10d4e8168",
     "semantic_hash": ""
   },
   "specs/steering/index.md": {
@@ -4435,8 +4435,8 @@
     "semantic_hash": ""
   },
   "specs/adrs/0013-renaming-pyobs-robotic-backend.md": {
-    "mtime": 1787241769.8563879,
-    "ast_hash": "5c56bb8bc663d5ea7f9ab6b53a5d960d",
+    "mtime": 1787586200.478199,
+    "ast_hash": "d441e96ab324fc694ab5a8738fb76d0d",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-19-archive-project-access-control.md": {
@@ -4450,8 +4450,8 @@
     "semantic_hash": ""
   },
   "specs/steering/fleet-open-items.md": {
-    "mtime": 1787552611.1801314,
-    "ast_hash": "80f524124631d9af3ce11681fd7b73b8",
+    "mtime": 1787586200.4791992,
+    "ast_hash": "525e447313a6303d912f8b0581c882f1",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md": {
@@ -5040,63 +5040,78 @@
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
-    "mtime": 1787552106.0874083,
+    "mtime": 1787586223.5404603,
     "ast_hash": "a982203ecebf282f9c8a5c449243a650",
     "semantic_hash": ""
   },
   ".claude/skills/do-python-release/SKILL.md": {
-    "mtime": 1787552106.0884085,
+    "mtime": 1787586223.541512,
     "ast_hash": "86b21a41cfca90ac6d9fa4c737ce1d0f",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/SKILL.md": {
-    "mtime": 1787552106.0894084,
+    "mtime": 1787586223.5418744,
     "ast_hash": "dfb0a6554c4af62df6effc61c6c7d245",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/add-watch.md": {
-    "mtime": 1787552106.0894084,
+    "mtime": 1787586223.5418744,
     "ast_hash": "d59d027fe449f06aa03905a01184e779",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/exports.md": {
-    "mtime": 1787552106.090362,
+    "mtime": 1787586223.5427911,
     "ast_hash": "9da2a2152e60a22f07f05fed5158f287",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/extraction-spec.md": {
-    "mtime": 1787552106.0904083,
+    "mtime": 1787586223.5427911,
     "ast_hash": "42fef56a01698118f7fd722acdadea34",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/github-and-merge.md": {
-    "mtime": 1787552106.0904083,
+    "mtime": 1787586223.5427911,
     "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/hooks.md": {
-    "mtime": 1787552106.0904083,
+    "mtime": 1787586223.5427911,
     "ast_hash": "3f545db6ce646650bb9de588f5512a27",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/query.md": {
-    "mtime": 1787552106.0914085,
+    "mtime": 1787586223.5427911,
     "ast_hash": "3c46f8ad006874260614ed8657d02307",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/transcribe.md": {
-    "mtime": 1787552106.0914085,
+    "mtime": 1787586223.5427911,
     "ast_hash": "67b6a5fa6c0974e18f60db9f8932fbd8",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/update.md": {
-    "mtime": 1787552106.0924084,
+    "mtime": 1787586223.5427911,
     "ast_hash": "9378bd03d56baaf78bd738ab3848f142",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-23-iag50-pyobs-core-2x-migration.md": {
     "mtime": 1787491278.117194,
     "ast_hash": "796817a7da6c590241957ab31cbdc909",
+    "semantic_hash": ""
+  },
+  "tests/robotic/scripts/test_field_interface_annotations.py": {
+    "mtime": 1787586200.113195,
+    "ast_hash": "1aee0e8ee6f7d172d88d579aace485c5",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-24-rename-robotic-backend-to-portal.md": {
+    "mtime": 1787586200.478199,
+    "ast_hash": "150c7be2c0d654933a39ddb9445b723d",
+    "semantic_hash": ""
+  },
+  "specs/plans/2026-08-24-script-field-interface-annotations.md": {
+    "mtime": 1787586200.465199,
+    "ast_hash": "c251349be6e3d2de998535405b7bb093",
     "semantic_hash": ""
   }
 }

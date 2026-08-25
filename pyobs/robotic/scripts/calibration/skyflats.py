@@ -31,7 +31,12 @@ class SkyFlatsScript(Script):
         description="Name of the module that takes the flat-field exposures."
     )
     functions: FlatFunctions = Field(
-        default={}, description="Sky-brightness model functions used to schedule flats, keyed by filter/binning."
+        default={},
+        description=(
+            "Exposure-time function(s) of solar altitude `h` in degrees, e.g. 'exp(-0.9*(h+3.9))'. "
+            "Either a single expression for all filters/binnings, a dict keyed by binning ('1x1') or "
+            "filter, or a nested dict of binning -> filter -> expression."
+        ),
     )
     priorities: SkyflatPriorities = Field(description="Strategy for prioritizing filter/binning combinations.")
     min_exptime: float = Field(default=0.5, description="Minimum acceptable exposure time in seconds.")

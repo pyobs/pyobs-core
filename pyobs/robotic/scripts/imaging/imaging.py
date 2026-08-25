@@ -62,7 +62,10 @@ class InstrumentConfig(BaseModel):
         default=0.0, description="Exposure time in seconds, or a provider that computes it dynamically."
     )
     count: int = Field(default=1, description="Number of exposures to take with this configuration.")
-    image_type: ImageType = Field(default=ImageType.OBJECT, description="Type of image to take.")
+    image_type: ImageType = Field(
+        default=ImageType.OBJECT,
+        description="Type of image to take: OBJECT (science), BIAS, DARK, SKYFLAT, FOCUS, ACQUISITION, or GUIDING.",
+    )
     binning: tuple[int, int] = Field(default=(1, 1), description="Detector binning as (x, y).")
     window: tuple[int, int, int, int] | None = Field(
         default=None,

@@ -13,14 +13,14 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BackendTaskArchive(TaskArchive):
-    """Task archive based on pyobs-robotic-backend."""
+class PortalTaskArchive(TaskArchive):
+    """Task archive based on pyobs-portal."""
 
     def __init__(self, url: str, token: str, auto_update: bool = True, **kwargs: Any):
         """Creates a new task archive.
 
         Args:
-            url: URL of pyobs-robotic-backend.
+            url: URL of pyobs-portal.
             token: Auth token.
         """
         TaskArchive.__init__(self, **kwargs)
@@ -36,12 +36,12 @@ class BackendTaskArchive(TaskArchive):
             self.add_background_task(self._check_for_changes)
 
     async def open(self) -> None:
-        """Opens the backend task archive."""
+        """Opens the portal task archive."""
         self._aiohttp_session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
         await TaskArchive.open(self)
 
     async def close(self) -> None:
-        """Closes the backend observation archive."""
+        """Closes the portal task archive."""
         await TaskArchive.close(self)
         if self._aiohttp_session is not None:
             await self._aiohttp_session.close()
@@ -54,18 +54,18 @@ class BackendTaskArchive(TaskArchive):
         return self._aiohttp_session
 
     async def _check_for_changes(self) -> None:
-        """Update tasks in background, gated on the backend's update marker."""
+        """Update tasks in background, gated on the portal's update marker."""
         while True:
             try:
                 await self._poll()
             except Exception as e:
-                log.error("Failed to update tasks from backend: %s", e)
+                log.error("Failed to update tasks from portal: %s", e)
             await asyncio.sleep(5)
 
     async def _poll(self) -> None:
-        """Re-download tasks/projects when the backend's ``last_task_update`` marker moved.
+        """Re-download tasks/projects when the portal's ``last_task_update`` marker moved.
 
-        The marker is a DB-derived ``Max(updated_at)`` (pyobs-robotic-backend#84), truthful across
+        The marker is a DB-derived ``Max(updated_at)`` (pyobs-portal#84), truthful across
         gunicorn workers, so it is a safe refresh gate. Without it the archive re-downloaded (and
         re-compared) on every poll, and the content comparison misfired whenever runtime code
         mutated a serialized task field (e.g. ``DynamicTarget.resolve()`` overwriting ``name``),
@@ -78,14 +78,14 @@ class BackendTaskArchive(TaskArchive):
             self._last_marker = last_update
 
     async def _update(self) -> None:
-        """Fetch tasks/projects from the backend and apply them if anything changed.
+        """Fetch tasks/projects from the portal and apply them if anything changed.
 
-        Called by :meth:`_poll` after the backend marker moved (or on the first poll); applies the
+        Called by :meth:`_poll` after the portal marker moved (or on the first poll); applies the
         download only when the content actually differs from the cached copy. The comparison uses
         ``model_dump()`` rather than pydantic ``==``, which also compares runtime attributes (e.g.
         ``Task._cant_run_reason`` set by ``can_run()``) and would flag unchanged tasks as changed
         on every poll; it is keyed by ID so that a stable reordering of the same items (e.g. an
-        unordered backend queryset) is not mistaken for a change.
+        unordered portal queryset) is not mistaken for a change.
         """
         projects = await self._get_projects()
         tasks = await self._get_tasks()
@@ -105,12 +105,12 @@ class BackendTaskArchive(TaskArchive):
         return Time(res["last_task_update"])
 
     async def _get_projects(self) -> list[Project]:
-        """Fetch projects from backend."""
+        """Fetch projects from portal."""
         projects = await http_request_paginated(self._session, urljoin(self._url, "/api/projects/"), strict=True)
         return [self.pyobs_model_validate(Project, project) for project in projects]
 
     async def _get_tasks(self) -> list[Task]:
-        """Fetch tasks from backend."""
+        """Fetch tasks from portal."""
         tasks = await http_request_paginated(self._session, urljoin(self._url, "/api/tasks/"), strict=True)
         return [self.pyobs_model_validate(Task, task) for task in tasks]
 
@@ -118,7 +118,7 @@ class BackendTaskArchive(TaskArchive):
         """Returns time when last time any tasks changed (as observed by this archive).
 
         This is the local time at which the last content change was detected by the polling loop,
-        not the backend's marker timestamp -- the marker is per-process and unreliable.
+        not the portal's marker timestamp -- the marker is per-process and unreliable.
         """
         return self._last_update
 
@@ -151,4 +151,4 @@ class BackendTaskArchive(TaskArchive):
             return None
 
 
-__all__ = ["BackendTaskArchive"]
+__all__ = ["PortalTaskArchive"]

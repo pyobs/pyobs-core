@@ -248,8 +248,8 @@ Where to go next
   types (flat fields, focus runs, spectroscopy) — see :doc:`/api/robotic/scripts` for the full
   list of built-in scripts and the writing guide.
 - Replace ``YamlTaskArchive`` and ``YamlObservationArchive`` with
-  :class:`~pyobs.robotic.storage.backend.BackendTaskArchive` and
-  :class:`~pyobs.robotic.storage.backend.BackendObservationArchive` to use the *pyobs-robotic-backend*
+  :class:`~pyobs.robotic.storage.portal.PortalTaskArchive` and
+  :class:`~pyobs.robotic.storage.portal.PortalObservationArchive` to use the *pyobs-portal*
   web service for multi-telescope coordination — see :doc:`/api/robotic/scheduling`.
 - Add :class:`~pyobs.robotic.scheduler.merits.TransitMerit` or
   :class:`~pyobs.robotic.scheduler.merits.TimeWindowMerit` to the task YAML files for more

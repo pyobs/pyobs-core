@@ -15,8 +15,8 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BackendObservationArchive(ObservationArchive):
-    """Observation archive based on pyobs-robotic-backend."""
+class PortalObservationArchive(ObservationArchive):
+    """Observation archive based on pyobs-portal."""
 
     def __init__(
         self,
@@ -39,12 +39,12 @@ class BackendObservationArchive(ObservationArchive):
             self.add_background_task(self._check_for_changes)
 
     async def open(self) -> None:
-        """Opens the backend observation archive."""
+        """Opens the portal observation archive."""
         self._aiohttp_session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
         await ObservationArchive.open(self)
 
     async def close(self) -> None:
-        """Closes the backend observation archive."""
+        """Closes the portal observation archive."""
         await ObservationArchive.close(self)
         if self._aiohttp_session is not None:
             await self._aiohttp_session.close()
@@ -57,20 +57,20 @@ class BackendObservationArchive(ObservationArchive):
         return self._aiohttp_session
 
     async def _check_for_changes(self) -> None:
-        """Update schedule in background, gated on the backend's update marker."""
+        """Update schedule in background, gated on the portal's update marker."""
 
         while True:
             try:
                 await self._poll()
             except Exception as e:
-                log.error("Failed to update observations from backend: %s", e)
+                log.error("Failed to update observations from portal: %s", e)
             await asyncio.sleep(5)
 
     async def _poll(self) -> None:
-        """Re-download the schedule when the backend's ``last_observation_update`` marker moved.
+        """Re-download the schedule when the portal's ``last_observation_update`` marker moved.
 
-        The marker is a DB-derived ``Max(updated_at)`` (pyobs-robotic-backend#84), truthful across
-        gunicorn workers, so it is a safe refresh gate; see ``BackendTaskArchive._poll``. The
+        The marker is a DB-derived ``Max(updated_at)`` (pyobs-portal#84), truthful across
+        gunicorn workers, so it is a safe refresh gate; see ``PortalTaskArchive._poll``. The
         content comparison in :meth:`_update` still decides whether to fire ``on_tasks_changed``.
         """
         last_update = await self.last_update_time()
@@ -79,12 +79,12 @@ class BackendObservationArchive(ObservationArchive):
             self._last_marker = last_update
 
     async def _update(self) -> None:
-        """Fetch the schedule from the backend and apply it if anything changed.
+        """Fetch the schedule from the portal and apply it if anything changed.
 
-        Called by :meth:`_poll` after the backend marker moved (or on the first poll). Changes are
+        Called by :meth:`_poll` after the portal marker moved (or on the first poll). Changes are
         detected by comparing full observation contents via ``model_dump(use_task_id=True)``,
         keyed by observation ID so a stable reordering of the same items is not mistaken for a
-        change: the backend serializes ``task`` as a plain FK ID, while cached copies get their
+        change: the portal serializes ``task`` as a plain FK ID, while cached copies get their
         ``task`` replaced by a full ``Task`` when the mastermind calls ``fetch_task()``, so the ID
         normalization keeps both sides comparable. The comparison includes ``state``
         (``Observation.__eq__`` ignores it), which matters for in-set transitions such as
@@ -265,4 +265,4 @@ class BackendObservationArchive(ObservationArchive):
         return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
 
-__all__ = ["BackendObservationArchive"]
+__all__ = ["PortalObservationArchive"]

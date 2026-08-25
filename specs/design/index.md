@@ -25,11 +25,11 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [module_observer_location.md](module_observer_location.md) — module observer-location
   capabilities. *implemented, closed*
 - [obsnum_fits_header.md](obsnum_fits_header.md) — `OBSNUM` per-night observation counter in FITS
-  headers. *implemented, closed* (#738; Repos: pyobs-core, pyobs-robotic-backend)
+  headers. *implemented, closed* (#738; Repos: pyobs-core, pyobs-portal)
 - [pyobs_2_0_wire_protocol.md](pyobs_2_0_wire_protocol.md) — pyobs 2.0 wire protocol, state, and
   access control. *implemented, closed*
 - [rpc_gating_on_startup.md](rpc_gating_on_startup.md) — gating RPC commands until module startup
   completes. *implemented, closed* (#673)
 - [shared-auth-keycloak.md](shared-auth-keycloak.md) — shared auth across pyobs web projects via
   Keycloak. *implemented* (plan `2026-08-12-shared-auth-keycloak.md` closed 2026-08-19;
-  Repos: pyobs-archive, pyobs-robotic-backend)
+  Repos: pyobs-archive, pyobs-portal)

@@ -39,6 +39,14 @@ v2.0.0.dev78 (unreleased)
   on ``Task``). Without it, the strict ``Task`` model rejected the new key and
   ``BackendTaskArchive`` failed every download, leaving the scheduler and mastermind without a
   task list.
+* ``Observation`` gained an ``archive_url`` field (``str | None``, default ``None``), matching the
+  computed link pyobs-portal#82 started returning from ``GET /api/observations/`` (a deep link into
+  the archive's frontend for terminal observations; always ``None`` for the ``pending``/
+  ``in_progress`` states Mastermind schedules on). Without it, the strict ``Observation`` model
+  rejected the new key and ``PortalObservationArchive`` failed every download; the validation
+  error was swallowed by ``_check_for_changes``'s retry handler, so the marker-gated poll loop
+  stalled forever without ever picking up schedule changes. The field is portal-only UI metadata
+  that Mastermind tolerates but never consumes.
 * ``Project`` gained a ``public`` flag (default ``False``), matching the field the robotic backend
   (pyobs-robotic-backend#79) will start returning from ``GET /api/projects/``. Without it, the
   strict ``Project`` model rejected the new key and ``BackendTaskArchive`` silently kept running on

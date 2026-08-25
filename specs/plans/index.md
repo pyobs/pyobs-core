@@ -94,16 +94,15 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-20-imagewatcher-event-loop-blocking.md](2026-08-20-imagewatcher-event-loop-blocking.md) —
   stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from blocking the event loop.
   **implemented, closed 2026-08-23** (PR #798; MONET South incident, 2026-08-20)
-
-## Not finished
-
 - [2026-08-24-rename-robotic-backend-to-portal.md](2026-08-24-rename-robotic-backend-to-portal.md) —
   execute ADR 0013: rename `pyobs-robotic-backend` → `pyobs-portal` fleet-wide; in
   pyobs-core, `pyobs.robotic.storage.backend` → `.storage.portal`,
-  `Backend*Archive` → `Portal*Archive`. **in progress** — GitHub repo renamed, PRs open on
-  pyobs-portal and pyobs-core, not yet merged (Repos: pyobs-core,
-  pyobs-robotic-backend, pyobs-auth, pyobs-archive, pyobs-web-admin, pyobs-iagvt,
-  pyobs-monet)
+  `Backend*Archive` → `Portal*Archive`. **implemented, closed 2026-08-25** — code merged
+  everywhere; pyobs-core `2.0.0.dev97` (contains the rename) published to PyPI; iagvt/monet
+  pins bumped to it and pushed (`612d9e4`, `ab02dfc`) (Repos: pyobs-core, pyobs-portal,
+  pyobs-auth, pyobs-archive, pyobs-web-admin, pyobs-iagvt, pyobs-monet)
+
+## Not finished
 - [2026-08-23-iag50-pyobs-core-2x-migration.md](2026-08-23-iag50-pyobs-core-2x-migration.md) —
   pyobs-iag50's `2.0.0.dev2` version bump was premature (still pinned/locked to pyobs-core 1.x);
   real migration work — grid-API rewrite, `self.proxy()` context-manager change, missing-await

@@ -1,20 +1,20 @@
 # Plan: Stop gating backend-archive refreshes on the `last_*_update` marker
 
-Status: implemented, closed 2026-08-20 (PR #790, issue #789 closed; robotic-backend root cause
+Status: implemented, closed 2026-08-20 (PR #790, issue #789 closed; portal root cause
 fixed separately via #84, closing #83)
-Repos: pyobs-core, pyobs-robotic-backend
+Repos: pyobs-core, pyobs-portal
 Issue: pyobs-core#789
 
 ## Problem
 
 The Mastermind keeps running stale tasks: edits to tasks (duration, script, priority,
-`active`) and newly scheduled observations made in the pyobs-robotic-backend never reach the
+`active`) and newly scheduled observations made in the pyobs-portal never reach the
 running mastermind, and window-expired observations stay runnable. Verified in the field and
 pinned down in issue #789:
 
-1. `BackendTaskArchive._check_for_changes()` (`pyobs/robotic/storage/backend/taskarchive.py`)
-   and `BackendObservationArchive._check_for_changes()`
-   (`pyobs/robotic/storage/backend/observationarchive.py`) poll
+1. `PortalTaskArchive._check_for_changes()` (`pyobs/robotic/storage/portal/taskarchive.py`)
+   and `PortalObservationArchive._check_for_changes()`
+   (`pyobs/robotic/storage/portal/observationarchive.py`) poll
    `GET /api/last_task_update/` resp. `/api/last_observation_update/` every 5 s and only
    re-download tasks/observations when the returned timestamp is newer than the locally cached
    `_last_update`.
@@ -43,7 +43,7 @@ comparing the downloaded content against the cached copy. This matches the issue
 fix ("re-fetch unconditionally on each poll ... or compare list contents/hash to detect
 changes; treat a missing/older marker as 'refresh anyway'").
 
-### `BackendTaskArchive`
+### `PortalTaskArchive`
 
 - Extract the loop body into a testable `_update()` method; `_check_for_changes()` keeps the
   `while True` / try-except / `asyncio.sleep(5)` shell.
@@ -64,12 +64,12 @@ changes; treat a missing/older marker as 'refresh anyway'").
   data — now an error instead, logged by the loop and retried on the next poll.
 - `_last_update` is never initialized from the backend marker anymore, so the `1970-01-01`
   fallback can't pin the archive. `last_update_time()` stays as a public method (the endpoint
-  still exists; the robotic-backend side may fix the marker later) but is no longer used for
+  still exists; the portal side may fix the marker later) but is no longer used for
   gating.
 - `last_changed()` now returns the local time at which a content change was last observed —
   semantically "last time tasks changed" from this archive's point of view.
 
-### `BackendObservationArchive`
+### `PortalObservationArchive`
 
 Same shape:
 
@@ -93,16 +93,16 @@ Same shape:
   they cause a re-download and a log line, never a missed change. The dangerous direction —
   missing a real change — is what this fix eliminates.
 
-### Out of scope (pyobs-robotic-backend)
+### Out of scope (pyobs-portal)
 
 The root-cause fixes on the backend side (DB-derived `updated_at` markers instead of the
 per-process cache, stamping `updated_at` in the celery bulk paths) live in the sibling repo and
-are not part of this PR — tracked as pyobs-robotic-backend#83. With this change the mastermind no
+are not part of this PR — tracked as pyobs-portal#83. With this change the mastermind no
 longer depends on any of them for correctness.
 
 ## Testing
 
-`tests/robotic/storage/backend/test_backend_archives.py` and `tests/utils/test_http.py`:
+`tests/robotic/storage/portal/test_portal_archives.py` and `tests/utils/test_http.py`:
 
 - `_update()` re-downloads and applies changes **even when the backend marker is stale/unchanged**
   (the regression: previously a pinned `_last_update` skipped the download). Mock
@@ -127,7 +127,7 @@ longer depends on any of them for correctness.
 ## Rollout
 
 No config changes. The archives self-heal on restart; no migration. Rollback is reverting this
-PR (the marker-gated behavior returns). The pyobs-robotic-backend marker fixes can land
+PR (the marker-gated behavior returns). The pyobs-portal marker fixes can land
 independently whenever; they will only make `last_update_time()` truthful again, not change
 refresh behavior.
 

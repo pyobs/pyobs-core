@@ -72,7 +72,7 @@ async def test_dynamic_target_resolves(observer: Observer, data: DataProvider, m
     assert target._target is not None
     assert target.name == "(dynamic)"
     # resolving must not leak the picked star into the serialized (declared-field) state:
-    # BackendTaskArchive compares model_dump() across polls, so mutating `name` here made
+    # PortalTaskArchive compares model_dump() across polls, so mutating `name` here made
     # every poll look like a change and livelocked the scheduler.
     assert target.model_dump() == dump_before
 

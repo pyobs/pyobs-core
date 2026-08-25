@@ -10,7 +10,7 @@ considered-and-rejected parallel-backends option.
 
 date: 2026-08-10
 
-Repos: pyobs-core (this doc), pyobs-archive, pyobs-robotic-backend
+Repos: pyobs-core (this doc), pyobs-archive, pyobs-portal
 
 ## Context and Problem Statement
 
@@ -21,7 +21,7 @@ Tracks #748. Each pyobs web service currently rolls its own auth, uncoordinated:
   (`BearerAuthentication`). odin is archive's connection to LCO (Las Cumbres Observatory) — this
   needs to keep working, since archive must continue to support LCO as a login/identity option,
   not just GWDG and local accounts.
-- **pyobs-robotic-backend** uses plain DRF `TokenAuthentication`/`SessionAuthentication` against
+- **pyobs-portal** uses plain DRF `TokenAuthentication`/`SessionAuthentication` against
   its own local Django user table, with no connection to odin or to archive's users.
 
 A user authenticated against one pyobs web service has no way to be recognized by another, and
@@ -32,7 +32,7 @@ in, which rules out authenticating directly against GWDG's OIDC provider as a co
 ## Considered Options
 
 * **Standardize on odin** — reuse archive's existing `OAuth2Backend`/`BearerAuthentication`
-  pattern in robotic-backend and future services.
+  pattern in portal and future services.
 * **Authenticate directly against GWDG's OIDC provider** — GWDG runs a standard, working OIDC
   provider (proven via a separate GWDG-affiliated Django project, `labcourse`, which integrates
   it through `authlib`'s Django OIDC client: discovery via `server_metadata_url`, authorization
@@ -87,7 +87,7 @@ at this scale (an institute, plus external collaborators — not internet-scale 
 Keycloak's HA sizing guide targets much larger deployments than this.
 
 This ADR covers user-facing SSO only. Service-to-service auth (e.g. Mastermind calling
-robotic-backend's API) is a separate concern — likely a Keycloak client-credentials grant per
+portal's API) is a separate concern — likely a Keycloak client-credentials grant per
 service, in the same realm — and is left for separate design work rather than folded in here.
 
 Access isn't role-gated by GWDG affiliation: any valid GWDG account is treated as equally

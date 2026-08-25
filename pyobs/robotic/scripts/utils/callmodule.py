@@ -41,10 +41,12 @@ def _build_params_model(method, provided_keys):
 class CallModuleScript(Script):
     """Script for calling a method on a module."""
 
-    module: str
-    interface: str
-    method: str
-    params: dict[str, str | int | float] = Field(default_factory=dict)
+    module: str = Field(description="Name of the module to call the method on.")
+    interface: str = Field(description="Full class path of the interface that declares `method`.")
+    method: str = Field(description="Name of the method to call.")
+    params: dict[str, str | int | float] = Field(
+        default_factory=dict, description="Keyword arguments to pass to the method, validated against its signature."
+    )
 
     @model_validator(mode="after")
     def _validate_params(self) -> CallModuleScript:

@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from pyobs.interfaces import FitsHeaderEntry
 from pyobs.utils.serialization import PolymorphicBaseModel
 from pyobs.utils.time import Time
@@ -14,7 +16,7 @@ log = logging.getLogger(__name__)
 
 
 class Script(PolymorphicBaseModel):
-    exptime_done: float = 0.0
+    exptime_done: float = Field(default=0.0, description="Exposure time accumulated so far while running this script.")
 
     _cant_run_reason: str | None = None
 

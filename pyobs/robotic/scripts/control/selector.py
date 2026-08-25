@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Annotated
 
+from pydantic import Field
+
 from pyobs.interfaces import IMotion
 from pyobs.interfaces.IMode import IMode
 from pyobs.robotic.scripts import Script
@@ -18,8 +20,8 @@ log = logging.getLogger(__name__)
 class SelectorScript(Script):
     """Script for running Mode Selection."""
 
-    mode: str
-    selector: Annotated[str, IMode, IMotion]
+    mode: str = Field(description="Name of the mode to select.")
+    selector: Annotated[str, IMode, IMotion] = Field(description="Name of the mode-selection module.")
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.

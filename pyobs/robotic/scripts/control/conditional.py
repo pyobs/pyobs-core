@@ -4,6 +4,8 @@ import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
     from pyobs.utils.time import Time
@@ -16,9 +18,11 @@ log = logging.getLogger(__name__)
 class ConditionalRunner(Script):
     """Script for running an if condition."""
 
-    condition: str
-    true: Script
-    false: Script | None = None
+    condition: str = Field(description="Python expression to evaluate; run `true` if truthy, `false` otherwise.")
+    true: Script = Field(description="Script to run if `condition` is truthy.")
+    false: Script | None = Field(
+        default=None, description="Script to run if `condition` is falsy. Does nothing if unset."
+    )
 
     def __get_script(self) -> Script | None:
         # evaluate condition

@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Annotated
 
+from pydantic import Field
+
 from pyobs.interfaces import IBinning, IFilters, IFlatField, IReady, IRoof, ITelescope
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.skyflats.priorities.base import SkyflatPriorities
@@ -21,17 +23,26 @@ FlatFunctions = str | dict[str, str | dict[str, str]]
 class SkyFlatsScript(Script):
     """Script for scheduling and running skyflats using an IFlatField module."""
 
-    roof: Annotated[str, IRoof]
-    telescope: Annotated[str, ITelescope]
-    flatfield: Annotated[str, IBinning, IFilters, IFlatField]
-    functions: FlatFunctions = {}
-    priorities: SkyflatPriorities
-    min_exptime: float = 0.5
-    max_exptime: float = 5
-    timespan: float = 7200
-    filter_change: float = 30
-    count: int = 20
-    readout: dict[str, float] | None = None
+    roof: Annotated[str, IRoof] = Field(description="Name of the roof module, checked to be open before starting.")
+    telescope: Annotated[str, ITelescope] = Field(
+        description="Name of the telescope module, checked to be ready before starting."
+    )
+    flatfield: Annotated[str, IBinning, IFilters, IFlatField] = Field(
+        description="Name of the module that takes the flat-field exposures."
+    )
+    functions: FlatFunctions = Field(
+        default={}, description="Sky-brightness model functions used to schedule flats, keyed by filter/binning."
+    )
+    priorities: SkyflatPriorities = Field(description="Strategy for prioritizing filter/binning combinations.")
+    min_exptime: float = Field(default=0.5, description="Minimum acceptable exposure time in seconds.")
+    max_exptime: float = Field(default=5, description="Maximum acceptable exposure time in seconds.")
+    timespan: float = Field(default=7200, description="Time span in seconds to schedule flats over.")
+    filter_change: float = Field(default=30, description="Estimated time in seconds to change a filter.")
+    count: int = Field(default=20, description="Number of exposures to take per filter/binning combination.")
+    readout: dict[str, float] | None = Field(
+        default=None,
+        description='Readout time in seconds per binning, keyed as "BxB" (e.g. "2x2"). Assumes 0s if unset.',
+    )
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.

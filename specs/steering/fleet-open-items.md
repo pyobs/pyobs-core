@@ -16,7 +16,7 @@ and remove closed items outright, never annotate them.** Only open items live he
 
 Repos: the whole pyobs fleet.
 
-## Open issues (2, checked 2026-08-25)
+## Open issues (4, checked 2026-08-25)
 
 One row per issue — same layout for every repo.
 
@@ -24,6 +24,8 @@ One row per issue — same layout for every repo.
 |---|---|---|---|
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
+| pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned to Tim* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
+| pyobs-web-admin | [#68](https://github.com/pyobs/pyobs-web-admin/issues/68) | `api_module_classes` has no fleet-aggregating counterpart (external callers only see one host) | *bug* — design done, see plan below; not yet implemented |
 
 ## Open plans
 
@@ -65,4 +67,7 @@ One line per plan — same layout for every repo.
   VFS endpoint auth (Basic Auth → Bearer token) (*proposed, unblocked — the pyobs-core release
   it depended on has shipped; pyobs-web-client's own `specs/plans/index.md` blurb hasn't caught
   up yet*)
+- **pyobs-web-admin** — [2026-08-25-module-classes-fleet-aggregation](../../pyobs-web-admin/specs/plans/2026-08-25-module-classes-fleet-aggregation.md) —
+  make `api_module_classes` fleet-aware, following the `api_all_logs` self-aggregating pattern
+  (*designed, not yet implemented* — #68)
 

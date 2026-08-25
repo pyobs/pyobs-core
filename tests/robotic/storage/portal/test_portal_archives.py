@@ -323,6 +323,38 @@ async def test_obs_get_observations_builds_params(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_obs_get_observations_tolerates_portal_archive_url(mocker) -> None:
+    """pyobs-portal's ObservationSerializer emits a computed ``archive_url`` per row
+    (pyobs-portal#82) -- None for the pending/in_progress states Mastermind fetches, a deep
+    link for terminal ones. Observation declares the field so the payload still validates
+    under ``extra="forbid"``; a validation error here used to be swallowed by
+    ``_check_for_changes`` and stall the poll loop forever."""
+    archive = make_obs_archive()
+    mocker.patch(
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
+        AsyncMock(
+            return_value=[
+                dict(OBS_DICT, id="obs-1", archive_url=None),
+                dict(
+                    OBS_DICT,
+                    id="obs-2",
+                    state="completed",
+                    archive_url="https://archive.example/?start=2025-11-03T22%3A55%3A00&end=2025-11-03T23%3A10%3A00&OBSNUM=20260810-001",
+                ),
+            ]
+        ),
+    )
+
+    result = await archive.get_observations()
+
+    assert len(result) == 2
+    assert result[0].archive_url is None
+    assert result[1].archive_url == (
+        "https://archive.example/?start=2025-11-03T22%3A55%3A00&end=2025-11-03T23%3A10%3A00&OBSNUM=20260810-001"
+    )
+
+
+@pytest.mark.asyncio
 async def test_obs_last_update_time(mocker) -> None:
     archive = make_obs_archive()
     mocker.patch(
@@ -336,7 +368,7 @@ async def test_obs_last_update_time(mocker) -> None:
 # ── change detection: content comparison (#789/#790) + marker-gated polling (#84) ────────────────
 
 
-OBS_DICT = {"task": 1, "start": T0.isot, "end": T1.isot, "state": "pending"}
+OBS_DICT = {"task": 1, "start": T0.isot, "end": T1.isot, "state": "pending", "archive_url": None}
 
 
 @pytest.mark.asyncio

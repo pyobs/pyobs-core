@@ -146,24 +146,31 @@ to follow by hand (and to check for in review), not something a failing build wi
 pyobs-tis, pyobs-v4l, pyobs-alpaca, pyobs-brot, pyobs-zaber, pyobs-zwoeaf all have docs matching
 the shape above (conf.py verified byte-identical modulo project/copyright on pyobs-qhyccd,
 pyobs-fli, pyobs-zaber, pyobs-tis, pyobs-brot; the rest assumed conformant pending an actual CI
-run once the checker exists — this was a spot-check, not an exhaustive audit). **pyobs-gemini has
-no docs at all** — biggest gap in this group.
+run once the checker exists — this was a spot-check, not an exhaustive audit). **pyobs-gemini**
+had no docs/README at all — fixed 2026-08-25 (develop @ `a0d2f50`): full driver-module docs
+scaffolding (conf.py/index.rst/Makefile/requirements.txt) plus README added from scratch, content
+grounded in `GeminiFocuserRotator`'s actual constructor and driven by `docs/templates/`.
 
 README.md across driver-module was spot-checked on pyobs-qhyccd, pyobs-fli, pyobs-zaber, pyobs-tis
 and matches the convention above; not exhaustively audited beyond those four.
 
-**gui**: pyobs-gui has the driver-module docs shape, not the gui shape — no widget catalog, no
-shortcuts page — and hasn't been touched since 2024-03-21 despite #141/#142 shipping since. Its
-README is worse: a one-line stub (`A GUI for pyobs....`), no install/running instructions at all.
+**gui**: pyobs-gui — fixed 2026-08-25 (develop @ `4fd6180`). Added the Widgets and Keyboard
+shortcuts sections (all 14 `DEFAULT_CONFIG` pages, shortcuts table grounded in
+`mainwindow.py`'s `_FIXED_SHORTCUTS`/`_ASSIGNABLE_SLOTS`; no screenshots — written from source,
+not a running GUI, so add those as a follow-up) and rewrote the README (was a one-line stub) with
+real install/running instructions.
 
 **web-app**: pyobs-web-admin is the only repo meeting a reasonable version of the target docs
 shape already; its README also already roughly matches the target (overview + Features), though
-it doesn't yet link out to `docs/source/` the way the template asks. pyobs-archive has docs but
-single-page and untouched since 2022-01-19 (predates its auth/admin-sync/IdP-login features
-entirely); its README carries its own full configuration table, which should move to
-`configuration.rst` once that exists. pyobs-weather has docs, stale since 2023-07-03.
-pyobs-portal, pyobs-auth, pyobs-pipeline, pyobs-astrometry, pyobs-allsky-cloudcover,
-pyobs-dashboard-utils have no Sphinx docs at all; README presence/shape on these wasn't checked.
+it doesn't yet link out to `docs/source/` the way the template asks. **pyobs-archive** — fixed
+2026-08-25 (develop @ `7aad1dd`): split into index/installation/configuration/architecture/api/
+development, correcting the old single page's stale Docker Compose example and REST API errors
+(wrong auth header, a nonexistent `/api-token-auth/` endpoint) rather than just relocating them;
+README now points into `docs/` instead of carrying its own configuration table. pyobs-weather has
+docs, stale since 2023-07-03 — not yet fixed. pyobs-portal, pyobs-auth, pyobs-pipeline,
+pyobs-astrometry, pyobs-allsky-cloudcover, pyobs-dashboard-utils have no Sphinx docs at all;
+README presence/shape on these wasn't checked. None of these six, nor pyobs-weather, have been
+touched yet — next candidates for this rollout.
 
 None of the three enforcement checks exist yet anywhere in the fleet — this doc defines the
 target, it doesn't claim any of it is live. No rollout plan has been written yet; when one is,

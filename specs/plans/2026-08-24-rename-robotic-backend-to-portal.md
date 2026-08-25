@@ -1,6 +1,8 @@
 # Plan: Rename pyobs-robotic-backend → pyobs-portal
 
-Status: proposed, not started.
+Status: proposed, not started. Re-checked 2026-08-25 against all six repos' current
+`develop`/default branches: no step below has been started anywhere (no renamed dirs,
+branches, or class names found). Two updates below (Step 4, Step 5) reflect that check.
 
 Decision record: `specs/adrs/0013-renaming-pyobs-robotic-backend.md` (accepted
 2026-08-24, name is `pyobs-portal`). This plan is the execution checklist; the ADR's own
@@ -52,8 +54,11 @@ naming the old dotted path (`pyobs.robotic.storage.backend.BackendTaskArchive` /
     `task_scheduler.py` — internal imports
 - [ ] `README.md` — title, image references, env var table (`KEYCLOAK_CLIENT_ID` default
       `robotic-backend` → `portal`)
-- [ ] `docker-compose.yml` — `image: ghcr.io/pyobs/pyobs/pyobs-robotic-backend:latest`
-      (3 occurrences: web, celery worker, task-scheduler script) → `pyobs-portal`
+- [ ] `docker-compose.yml` — `image: ghcr.io/pyobs/pyobs-robotic-backend:latest` (3
+      occurrences: web, celery worker, task-scheduler script) → `ghcr.io/pyobs/pyobs-portal`
+      (**resolved 2026-08-25, was Open question 3**: re-checked the file, the path is a
+      single `pyobs/`, not a double `pyobs/pyobs` — the earlier "double pyobs/pyobs" note
+      was a misread, no typo to fix, just the straightforward image-name swap)
 - [ ] `.env.example` — `KEYCLOAK_CLIENT_ID=robotic-backend` → `portal`
 - [ ] `uv.lock` — regenerate after `pyproject.toml` rename
 - [ ] `specs/index.md` and any plan docs in this repo referencing the old name in prose
@@ -61,6 +66,18 @@ naming the old dotted path (`pyobs.robotic.storage.backend.BackendTaskArchive` /
       `2026-08-20-connect-pyobs-archive.md`, `2026-08-20-script-builder.md`) — leave
       *closed* plans' historical prose as-is unless it names a code identifier that moved;
       update only actual dotted-path/import references
+- [ ] **added 2026-08-25** — local checkout housekeeping on this machine (not part of the
+      repo's own history, do after the GitHub rename above so `git remote -v` still
+      resolves): rename the local clone directory
+      `/home/husser/code/pyobs/pyobs-robotic-backend` → `/home/husser/code/pyobs/pyobs-portal`
+  - `.idea/` inside it is gitignored (confirmed via `.gitignore:19`, not tracked), so it
+    won't move with a repo-side rename and needs the same local touch-up: rename
+    `.idea/pyobs-robotic-backend.iml` → `.idea/pyobs-portal.iml`, and update the old-name
+    references inside `.idea/modules.xml` (module `fileurl`/`filepath` pointing at the
+    `.iml`), `.idea/misc.xml` (`sdkName value="uv (pyobs-robotic-backend)"` →
+    `"uv (pyobs-portal)"`), and `.idea/workspace.xml` (grepped 2026-08-25, also references
+    the old name — PyCharm regenerates most of `workspace.xml` on next open, so a targeted
+    fix is optional, just don't be surprised if it's stale until then)
 
 ## Step 2 — `pyobs-core` storage rename (this repo)
 
@@ -129,21 +146,39 @@ naming the old dotted path (`pyobs.robotic.storage.backend.BackendTaskArchive` /
 
 ## Step 4 — `pyobs-archive`
 
-- [ ] `README.md` — `ROBOTIC_BACKEND_URL` env var table row and prose mention; **decide
-      here whether the env var itself is renamed** (e.g. `PORTAL_URL`) — this is a
-      deployment-facing name independent of the ADR's Python-identifier scope, archive's
-      own call; if renamed, keep a fallback read of the old name for one release to avoid
-      breaking existing deployments silently
-- [ ] `.env.example` — same var, matching README decision
-- [ ] `pyobs_archive/settings.py` — comment above the env var
-- [ ] `pyobs_archive/api/management/commands/sync_projects.py` — docstring mention
+- [ ] `README.md` — `ROBOTIC_BACKEND_URL` → `PORTAL_URL` (**resolved 2026-08-25, was Open
+      question 1**: rename it) env var table row and prose mention
+- [ ] `.env.example` — same var rename
+- [ ] `pyobs_archive/settings.py` — `ROBOTIC_BACKEND_URL = os.environ.get('ROBOTIC_BACKEND_URL',
+      '')` → `PORTAL_URL = os.environ.get('PORTAL_URL', '')`; keep a fallback read of the old
+      env var name for one release (`os.environ.get('PORTAL_URL') or
+      os.environ.get('ROBOTIC_BACKEND_URL', '')`) so existing deployments don't silently
+      break, then drop the fallback in a follow-up release once the fleet's `.env` files are
+      confirmed updated
+- [ ] `pyobs_archive/api/management/commands/sync_projects.py` — docstring mention;
+      `settings.ROBOTIC_BACKEND_URL`/`ROBOTIC_BACKEND_TOKEN` → `settings.PORTAL_URL`/
+      `PORTAL_TOKEN`; `from pyobs_archive.api.backend import BackendClient,
+      BackendUnavailable` → `from pyobs_archive.api.portal import PortalClient,
+      PortalUnavailable`
 - [ ] `pyobs_archive/api/models.py` — docstring "Local mirror of a pyobs-robotic-backend
-      Project..."
-- [ ] `pyobs_archive/api/backend.py` — module docstring "Client for the
-      pyobs-robotic-backend API." and class docstring; consider whether the file itself
-      (`backend.py`) should move to `portal.py` for consistency — archive's call, not
-      forced by this plan, since the class inside is a generic REST client wrapper, not a
-      `pyobs.robotic.storage` subclass
+      Project..."; same `settings.ROBOTIC_BACKEND_URL`/`TOKEN` and `BackendClient`/
+      `BackendUnavailable` import/usage rename as above
+- [ ] `pyobs_archive/api/backend.py` → `pyobs_archive/api/portal.py` (**resolved 2026-08-25,
+      was Open question 2**: rename the file; git mv, not delete+recreate, to preserve
+      blame) — module docstring "Client for the pyobs-robotic-backend API." → "...
+      pyobs-portal API."; class `BackendClient` → `PortalClient`, exception
+      `BackendUnavailable` → `PortalUnavailable` (real identifiers, not just prose —
+      **correction 2026-08-25**: originally scoped as docstring-only, but
+      `pyobs_archive/api/models.py` and
+      `pyobs_archive/api/management/commands/sync_projects.py` both import these names, and
+      `pyobs_archive/api/tests.py` references them ~15 times, including a test class named
+      after it, `BackendClientPaginationTests` → `PortalClientPaginationTests`)
+- [ ] `pyobs_archive/api/tests.py` — **added 2026-08-25**, missed in the original grep:
+      ~15 occurrences of `self.settings(ROBOTIC_BACKEND_URL=...)` → `PORTAL_URL=...` test
+      overrides; `from pyobs_archive.api.backend import BackendClient, BackendUnavailable`
+      → `from pyobs_archive.api.portal import PortalClient, PortalUnavailable`; all
+      `BackendClient`/`BackendUnavailable` references (mock patches, instantiations,
+      assertions) and the `BackendClientPaginationTests` class name
 
 ## Step 5 — Deployment YAML (fleet)
 
@@ -154,8 +189,8 @@ naming the old dotted path (`pyobs.robotic.storage.backend.BackendTaskArchive` /
 - [ ] `pyobs-monet/config/south/monet/scheduler.yaml`: same two dotted-path updates
 - [ ] `pyobs-monet/config/south/monet/mastermind.yaml`: same two dotted-path updates
 - [ ] Confirm no other live site config (iag50, brot, gemini, monti) uses the backend
-      archive classes — grepped 2026-08-24, none found; re-check at execution time in case
-      a config was added since
+      archive classes — grepped 2026-08-24, none found; re-grepped 2026-08-25, still none;
+      re-check at execution time in case a config was added since
 - [ ] `pyobs-iagvt_1.x/config/{robotic,scheduler}.yaml` and
       `pytel-dev/configs/{scheduler2,mastermind2}.yaml` also reference the old dotted
       path — **out of scope**, these are the frozen 1.x branch and legacy pre-pyobs
@@ -178,16 +213,15 @@ naming the old dotted path (`pyobs.robotic.storage.backend.BackendTaskArchive` /
       after acceptance (precedent: `0011-keycloak-identity-broker-for-shared-auth.md`
       stayed put after being superseded)
 
-## Open questions (need a decision before or during execution, not blocking the plan write-up)
+## Open questions — resolved 2026-08-25
 
-1. `pyobs-archive`'s `ROBOTIC_BACKEND_URL` env var — rename to match, or leave as a stable
-   deployment-facing name that just happens to point at a differently-named service? Both
-   are defensible; pick one before Step 4 and note the choice here.
-2. `pyobs-archive/pyobs_archive/api/backend.py` — rename the file to `portal.py`, or leave
-   it since it's a thin generic REST client wrapper rather than a `pyobs.robotic.storage`
-   subclass? Archive maintainer's call.
-3. Whether the GitHub org's Docker image path is genuinely
-   `ghcr.io/pyobs/pyobs/pyobs-robotic-backend` (double `pyobs/pyobs`, as found in
-   `docker-compose.yml`) or a typo predating this plan — worth fixing to
-   `ghcr.io/pyobs/pyobs-portal` while touching this line anyway, confirm against the
-   actual GHCR package before Step 1.
+All three questions below are decided; Steps 1 and 4 above already reflect the outcome.
+
+1. `pyobs-archive`'s `ROBOTIC_BACKEND_URL` env var → **renamed** to `PORTAL_URL` (with a
+   one-release fallback read of the old name, see Step 4).
+2. `pyobs-archive/pyobs_archive/api/backend.py` → **renamed** to `portal.py`, including its
+   `BackendClient`/`BackendUnavailable` identifiers → `PortalClient`/`PortalUnavailable`
+   (see Step 4).
+3. The GitHub org's Docker image path — **no typo**, re-checked `docker-compose.yml`
+   directly: it's a single `ghcr.io/pyobs/pyobs-robotic-backend`, not a double
+   `pyobs/pyobs`. Straightforward rename to `ghcr.io/pyobs/pyobs-portal` (see Step 1).

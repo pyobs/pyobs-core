@@ -182,8 +182,8 @@ three concrete implementations:
    * - ``pyobs.robotic.storage.filesystem``
      - Tasks and observations stored as YAML files on disk. The simplest setup — no external
        services required. Good for single-telescope systems.
-   * - ``pyobs.robotic.storage.backend``
-     - Tasks and observations managed by the *pyobs-robotic-backend* HTTP service. Enables
+   * - ``pyobs.robotic.storage.portal``
+     - Tasks and observations managed by the *pyobs-portal* HTTP service. Enables
        multi-telescope coordination and a web UI for queue management.
    * - ``pyobs.robotic.storage.lco``
      - Integration with the Las Cumbres Observatory observation portal. Used for LCO-connected

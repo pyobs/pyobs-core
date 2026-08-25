@@ -83,14 +83,14 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-20-backend-archive-marker-loss.md](2026-08-20-backend-archive-marker-loss.md) —
   stop gating backend-archive refreshes on the per-process `last_*_update` marker; re-fetch
   every poll and detect changes by content. **implemented, closed 2026-08-20** (PR #790,
-  issue #789 closed; robotic-backend root cause fixed separately via #84, closing #83;
-  Repos: pyobs-core, pyobs-robotic-backend)
+  issue #789 closed; portal root cause fixed separately via #84, closing #83;
+  Repos: pyobs-core, pyobs-portal)
 - [2026-08-21-keycloak-idp-hint-login.md](2026-08-21-keycloak-idp-hint-login.md) — one-click IdP
   login via `kc_idp_hint`: `IDP_HINT` support in pyobs-auth + dual login buttons (hinted IdP vs.
   local Keycloak account) in the services' login pages. **implemented, closed 2026-08-23** — all
   four repos landed and pinned to `pyobs-auth>=2.0.0.dev9`; live browser E2E / SSO short-circuit /
   deployment env vars are operational follow-ups, not part of this plan's closure (Repos:
-  pyobs-auth, pyobs-archive, pyobs-robotic-backend, pyobs-web-admin)
+  pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin)
 - [2026-08-20-imagewatcher-event-loop-blocking.md](2026-08-20-imagewatcher-event-loop-blocking.md) —
   stop `ImageWatcher._worker`'s FITS parse and `LocalFile` I/O from blocking the event loop.
   **implemented, closed 2026-08-23** (PR #798; MONET South incident, 2026-08-20)
@@ -100,7 +100,8 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-24-rename-robotic-backend-to-portal.md](2026-08-24-rename-robotic-backend-to-portal.md) —
   execute ADR 0013: rename `pyobs-robotic-backend` → `pyobs-portal` fleet-wide; in
   pyobs-core, `pyobs.robotic.storage.backend` → `.storage.portal`,
-  `Backend*Archive` → `Portal*Archive`. **proposed, not started** (Repos: pyobs-core,
+  `Backend*Archive` → `Portal*Archive`. **in progress** — GitHub repo renamed, PRs open on
+  pyobs-portal and pyobs-core, not yet merged (Repos: pyobs-core,
   pyobs-robotic-backend, pyobs-auth, pyobs-archive, pyobs-web-admin, pyobs-iagvt,
   pyobs-monet)
 - [2026-08-23-iag50-pyobs-core-2x-migration.md](2026-08-23-iag50-pyobs-core-2x-migration.md) —
@@ -126,18 +127,18 @@ Implementation plans, checklist-style. Newest at the bottom.
   the Dependabot auto-merge workflow (validated live on pyobs-alpaca#33). Closes #752
 - [2026-08-12-shared-auth-keycloak.md](2026-08-12-shared-auth-keycloak.md) — `pyobs-auth` +
   Keycloak integration. **implemented, closed 2026-08-19** — `pyobs-auth` (`2.0.0.dev7`),
-  `pyobs-archive` cutover (`2.0.0.dev8`), and `pyobs-robotic-backend` all landed/released; live
+  `pyobs-archive` cutover (`2.0.0.dev8`), and `pyobs-portal` all landed/released; live
   Keycloak login + logout verified; observation-portal brokering (Section 0) tracked separately,
-  Keycloak admin/deployment config only (Repos: pyobs-archive, pyobs-robotic-backend)
+  Keycloak admin/deployment config only (Repos: pyobs-archive, pyobs-portal)
 - [2026-08-19-archive-project-access-control.md](2026-08-19-archive-project-access-control.md) —
   show only images the logged-in user has access to, keyed on projects from
-  `pyobs-robotic-backend`. **superseded, implemented** — see
+  `pyobs-portal`. **superseded, implemented** — see
   `pyobs-archive/specs/plans/2026-08-20-archive-project-access-control.md` for the current design
-  (pyobs/pyobs-archive#42) (Repos: pyobs-archive, pyobs-robotic-backend, pyobs-core)
+  (pyobs/pyobs-archive#42) (Repos: pyobs-archive, pyobs-portal, pyobs-core)
 - [2026-08-21-basevideo-http-token-auth.md](2026-08-21-basevideo-http-token-auth.md) —
   shared-token auth + browser login page for `BaseVideo`'s HTTP endpoints (design:
   `specs/design/basevideo-http-auth.md`). **implemented, closed** (Repos: pyobs-core, pyobs-gui)
 - [2026-08-24-script-field-interface-annotations.md](2026-08-24-script-field-interface-annotations.md) —
   tag `Script` module-name fields (`ImagingScript.camera`, etc.) with required `pyobs.interfaces`
-  via `typing.Annotated`, for pyobs-robotic-backend's module dropdowns. **implemented, closed**
+  via `typing.Annotated`, for pyobs-portal's module dropdowns. **implemented, closed**
   (closed #808, PR #809)

@@ -364,16 +364,16 @@ services required — the simplest setup for a single telescope.
    :members:
    :show-inheritance:
 
-**Backend** (``pyobs.robotic.storage.backend``)
+**Portal** (``pyobs.robotic.storage.portal``)
 
-Tasks and observations are managed by the *pyobs-robotic-backend* HTTP service. Enables
+Tasks and observations are managed by the *pyobs-portal* HTTP service. Enables
 multi-telescope coordination, a web UI for queue management, and centralised logging.
 
-.. autoclass:: pyobs.robotic.storage.backend.BackendTaskArchive
+.. autoclass:: pyobs.robotic.storage.portal.PortalTaskArchive
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.storage.backend.BackendObservationArchive
+.. autoclass:: pyobs.robotic.storage.portal.PortalObservationArchive
    :members:
    :show-inheritance:
 

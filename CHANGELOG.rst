@@ -1,5 +1,11 @@
 v2.0.0.dev78 (unreleased)
 *************************
+* **Breaking:** ``pyobs.robotic.storage.backend`` is renamed to ``pyobs.robotic.storage.portal``,
+  and ``BackendTaskArchive``/``BackendObservationArchive`` are renamed to
+  ``PortalTaskArchive``/``PortalObservationArchive``, following the ``pyobs-robotic-backend`` ->
+  ``pyobs-portal`` rename (see ADR 0013,
+  ``specs/adrs/0013-renaming-pyobs-robotic-backend.md``). There is no deprecation shim -- update
+  the ``class:`` dotted path in any deployment YAML using the old names before upgrading.
 * ``BaseVideo.raw_handler`` now caches the per-frame ``(meta, frame)`` bytes it builds
   (header assembly, JSON serialization, ``ascontiguousarray``/``tobytes()`` copy), keyed by
   ``_frame_num``. With N simultaneous raw clients (guiding, a recorder, a viewer -- a case

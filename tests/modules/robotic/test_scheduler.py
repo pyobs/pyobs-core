@@ -14,8 +14,8 @@ from pyobs.robotic.observation import Observation, ObservationList, ObservationS
 from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.robotic.scheduler.astroplanscheduler import AstroplanScheduler
 from pyobs.robotic.scheduler.ondemandscheduler import OnDemandScheduler
-from pyobs.robotic.storage.backend.observationarchive import BackendObservationArchive
 from pyobs.robotic.storage.lco.observationarchive import LcoObservationArchive
+from pyobs.robotic.storage.portal.observationarchive import PortalObservationArchive
 from pyobs.robotic.task import TaskData
 from pyobs.utils.time import Time
 
@@ -134,13 +134,13 @@ def test_init_defaults() -> None:
 # unconditionally used to rely on the target silently absorbing an unwanted kwarg, which stopped
 # being true once Object.__init__ started forwarding leftovers to object.__init__(). Regression
 # coverage for the auto_update bug found in PR #776 review: dropping it unconditionally would have
-# re-enabled BackendObservationArchive's polling loop in two live fleets.
+# re-enabled PortalObservationArchive's polling loop in two live fleets.
 
 
 @pytest.mark.parametrize(
     "class_path,param_name,expected",
     [
-        ("pyobs.robotic.storage.backend.observationarchive.BackendObservationArchive", "auto_update", True),
+        ("pyobs.robotic.storage.portal.observationarchive.PortalObservationArchive", "auto_update", True),
         ("pyobs.robotic.storage.lco.observationarchive.LcoObservationArchive", "auto_update", False),
         ("pyobs.robotic.scheduler.ondemandscheduler.OnDemandScheduler", "observation_archive", True),
         ("pyobs.robotic.scheduler.astroplanscheduler.AstroplanScheduler", "observation_archive", False),
@@ -153,7 +153,7 @@ def test_class_accepts_param_dict_config(class_path: str, param_name: str, expec
 @pytest.mark.parametrize(
     "klass,param_name,expected",
     [
-        (BackendObservationArchive, "auto_update", True),
+        (PortalObservationArchive, "auto_update", True),
         (LcoObservationArchive, "auto_update", False),
         (OnDemandScheduler, "observation_archive", True),
         (AstroplanScheduler, "observation_archive", False),
@@ -176,7 +176,7 @@ def test_init_injects_auto_update_false_for_backend_observation_archive() -> Non
     # unconditionally re-enabled this 5s polling loop in two live fleet configs
     scheduler = make_scheduler(
         schedule={
-            "class": "pyobs.robotic.storage.backend.observationarchive.BackendObservationArchive",
+            "class": "pyobs.robotic.storage.portal.observationarchive.PortalObservationArchive",
             "url": "http://x",
             "token": "t",
         }

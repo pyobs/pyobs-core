@@ -8,8 +8,8 @@ from astropy.time import TimeDelta
 
 from pyobs.robotic import Task
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
-from pyobs.robotic.storage.backend.observationarchive import BackendObservationArchive
-from pyobs.robotic.storage.backend.taskarchive import BackendTaskArchive
+from pyobs.robotic.storage.portal.observationarchive import PortalObservationArchive
+from pyobs.robotic.storage.portal.taskarchive import PortalTaskArchive
 from pyobs.robotic.task import Project
 from pyobs.utils.time import Time
 
@@ -30,19 +30,19 @@ def make_obs(
     return Observation(task=task, start=start, end=end, state=state)
 
 
-def make_task_archive() -> BackendTaskArchive:
-    archive = BackendTaskArchive(url="http://localhost:8000", token="testtoken", auto_update=False)
+def make_task_archive() -> PortalTaskArchive:
+    archive = PortalTaskArchive(url="http://localhost:8000", token="testtoken", auto_update=False)
     archive._aiohttp_session = MagicMock()
     return archive
 
 
-def make_obs_archive() -> BackendObservationArchive:
-    archive = BackendObservationArchive(url="http://localhost:8000", token="testtoken", auto_update=False)
+def make_obs_archive() -> PortalObservationArchive:
+    archive = PortalObservationArchive(url="http://localhost:8000", token="testtoken", auto_update=False)
     archive._aiohttp_session = MagicMock()
     return archive
 
 
-# ── BackendTaskArchive ────────────────────────────────────────────────────────
+# ── PortalTaskArchive ────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -95,7 +95,7 @@ async def test_task_get_task_not_found() -> None:
 async def test_task_last_update_time(mocker) -> None:
     archive = make_task_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_with_retries",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_with_retries",
         AsyncMock(return_value={"last_task_update": "2025-11-03T23:00:00.000"}),
     )
     t = await archive.last_update_time()
@@ -103,10 +103,10 @@ async def test_task_last_update_time(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_task_get_projects_from_backend(mocker) -> None:
+async def test_task_get_projects_from_portal(mocker) -> None:
     archive = make_task_archive()
     mock = mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(return_value=[{"code": "test", "name": "Test", "priority": 1.0}]),
     )
     result = await archive._get_projects()
@@ -117,11 +117,11 @@ async def test_task_get_projects_from_backend(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_task_get_projects_from_backend_accepts_public(mocker) -> None:
-    """Projects with the backend `public` flag ingest without a strict-model ValidationError."""
+async def test_task_get_projects_from_portal_accepts_public(mocker) -> None:
+    """Projects with the portal `public` flag ingest without a strict-model ValidationError."""
     archive = make_task_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(
             return_value=[
                 {"code": "public", "name": "Public", "priority": 1.0, "public": True},
@@ -138,10 +138,10 @@ async def test_task_get_projects_from_backend_accepts_public(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_task_get_tasks_from_backend(mocker) -> None:
+async def test_task_get_tasks_from_portal(mocker) -> None:
     archive = make_task_archive()
     mock = mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(return_value=[{"id": 1, "name": "t1", "duration": 300}]),
     )
     result = await archive._get_tasks()
@@ -151,12 +151,12 @@ async def test_task_get_tasks_from_backend(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_task_get_tasks_from_backend_accepts_updated_at(mocker) -> None:
-    """Tasks with the backend `updated_at` field (pyobs-robotic-backend#84) ingest without a
+async def test_task_get_tasks_from_portal_accepts_updated_at(mocker) -> None:
+    """Tasks with the portal `updated_at` field (pyobs-portal#84) ingest without a
     strict-model ValidationError, and the value round-trips."""
     archive = make_task_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(return_value=[{"id": 1, "name": "t1", "duration": 300, "updated_at": "2026-08-20T17:59:29.526066Z"}]),
     )
     result = await archive._get_tasks()
@@ -164,7 +164,7 @@ async def test_task_get_tasks_from_backend_accepts_updated_at(mocker) -> None:
     assert result[0].updated_at == "2026-08-20T17:59:29.526066Z"
 
 
-# ── BackendObservationArchive ─────────────────────────────────────────────────
+# ── PortalObservationArchive ─────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -178,7 +178,7 @@ async def test_obs_get_schedule_returns_cached() -> None:
 
 @pytest.mark.asyncio
 async def test_obs_get_schedule_time_ignored() -> None:
-    """time parameter is unused — backend returns cached observations."""
+    """time parameter is unused — portal returns cached observations."""
     archive = make_obs_archive()
     obs = make_obs(make_task())
     archive._observations = ObservationList([obs])
@@ -199,7 +199,7 @@ async def test_obs_get_next_returns_active() -> None:
 
 @pytest.mark.asyncio
 async def test_obs_get_next_boundary_exclusive() -> None:
-    """Backend uses strictly exclusive boundaries (start < time < end)."""
+    """Portal uses strictly exclusive boundaries (start < time < end)."""
     archive = make_obs_archive()
     obs = make_obs(make_task(), start=T0, end=T1, state=ObservationState.PENDING)
     archive._observations = ObservationList([obs])
@@ -257,7 +257,7 @@ async def test_obs_get_current_returns_none_when_idle() -> None:
 async def test_obs_add_observations(mocker) -> None:
     archive = make_obs_archive()
     mock_request = mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_with_retries",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_with_retries",
         AsyncMock(return_value={}),
     )
     obs = make_obs(make_task())
@@ -272,7 +272,7 @@ async def test_obs_add_observations(mocker) -> None:
 async def test_obs_clear_schedule(mocker) -> None:
     archive = make_obs_archive()
     mock_request = mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_with_retries",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_with_retries",
         AsyncMock(return_value={}),
     )
     await archive.clear_schedule(T0)
@@ -285,7 +285,7 @@ async def test_obs_clear_schedule(mocker) -> None:
 async def test_obs_update_observation(mocker) -> None:
     archive = make_obs_archive()
     mock_request = mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_with_retries",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_with_retries",
         AsyncMock(return_value={}),
     )
     obs = make_obs(make_task())
@@ -303,7 +303,7 @@ async def test_obs_update_observation(mocker) -> None:
 async def test_obs_get_observations_builds_params(mocker) -> None:
     archive = make_obs_archive()
     mock_request = mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
         AsyncMock(return_value=[]),
     )
     task = make_task(5)
@@ -326,7 +326,7 @@ async def test_obs_get_observations_builds_params(mocker) -> None:
 async def test_obs_last_update_time(mocker) -> None:
     archive = make_obs_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_with_retries",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_with_retries",
         AsyncMock(return_value={"last_observation_update": "2025-11-03T23:00:00.000"}),
     )
     t = await archive.last_update_time()
@@ -343,13 +343,13 @@ OBS_DICT = {"task": 1, "start": T0.isot, "end": T1.isot, "state": "pending"}
 async def test_task_update_not_gated_on_marker(mocker) -> None:
     """`_update()` itself does not consult the marker -- the gate lives in `_poll()`, so a direct
     download always applies. (The #789 failure mode -- the marker being per-process and stale --
-    is resolved by the backend computing it from the DB; see the `_poll` tests.)"""
+    is resolved by the portal computing it from the DB; see the `_poll` tests.)"""
     archive = make_task_archive()
     marker = mocker.patch.object(archive, "last_update_time", AsyncMock(return_value=T0))
     on_tasks_changed = AsyncMock()
     archive._on_tasks_changed = on_tasks_changed
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(
             side_effect=[
                 [{"code": "test", "name": "Test", "priority": 1.0}],  # projects
@@ -376,7 +376,7 @@ async def test_task_update_no_change_no_notification(mocker) -> None:
     projects = [{"code": "test", "name": "Test", "priority": 1.0}]
     tasks = [{"id": 1, "name": "t1", "duration": 300}]
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(side_effect=[projects, tasks, projects, tasks]),
     )
 
@@ -397,12 +397,12 @@ async def test_task_update_no_change_no_notification(mocker) -> None:
 
 @pytest.mark.asyncio
 async def test_task_update_detects_content_change(mocker) -> None:
-    """Same task identity but changed content (e.g. active=False in the backend) must be applied."""
+    """Same task identity but changed content (e.g. active=False in the portal) must be applied."""
     archive = make_task_archive()
     on_tasks_changed = AsyncMock()
     archive._on_tasks_changed = on_tasks_changed
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(
             side_effect=[
                 [{"code": "test", "name": "Test", "priority": 1.0}],
@@ -434,7 +434,7 @@ async def test_task_update_ignores_runtime_attributes(mocker) -> None:
     tasks = [{"id": 1, "name": "t1", "duration": 300}]
     projects = [{"code": "test", "name": "Test", "priority": 1.0}]
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(side_effect=[projects, tasks, projects, tasks]),
     )
 
@@ -454,7 +454,7 @@ async def test_obs_update_downloads_and_applies(mocker) -> None:
     """New observations appear in the cache on the next poll."""
     archive = make_obs_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
         AsyncMock(side_effect=[[OBS_DICT], [OBS_DICT], [OBS_DICT]]),
     )
 
@@ -471,7 +471,7 @@ async def test_obs_update_no_change_keeps_cache(mocker) -> None:
     """Idempotent poll must not replace the cached list or bump _last_update."""
     archive = make_obs_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
         AsyncMock(side_effect=[[OBS_DICT], [OBS_DICT]]),
     )
 
@@ -488,7 +488,7 @@ async def test_obs_update_no_change_keeps_cache(mocker) -> None:
 
 @pytest.mark.asyncio
 async def test_obs_update_detects_state_transition_in_fetched_set(mocker) -> None:
-    """An in-set state transition (pending -> in_progress, both within the backend's
+    """An in-set state transition (pending -> in_progress, both within the portal's
     state=pending,in_progress filter) must be picked up even though Observation.__eq__ ignores
     state -- the comparison covers the full dumped content."""
     # sanity: plain __eq__ misses the state change entirely (same task id/start/end)
@@ -498,7 +498,7 @@ async def test_obs_update_detects_state_transition_in_fetched_set(mocker) -> Non
 
     archive = make_obs_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
         AsyncMock(side_effect=[[OBS_DICT], [dict(OBS_DICT, state="in_progress")]]),
     )
 
@@ -512,13 +512,13 @@ async def test_obs_update_detects_state_transition_in_fetched_set(mocker) -> Non
 
 @pytest.mark.asyncio
 async def test_obs_update_applies_shrinkage_when_observation_disappears(mocker) -> None:
-    """The production path for the window_expired symptom from #789: the backend's server-side
+    """The production path for the window_expired symptom from #789: the portal's server-side
     state=pending,in_progress and end_after=now filters drop the expired observation from the
     response, and the unconditional refetch must apply that shrinkage -- otherwise the mastermind
     keeps treating the window-expired observation as runnable."""
     archive = make_obs_archive()
     mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
         AsyncMock(side_effect=[[OBS_DICT], []]),
     )
 
@@ -532,7 +532,7 @@ async def test_obs_update_applies_shrinkage_when_observation_disappears(mocker) 
 
 @pytest.mark.asyncio
 async def test_task_update_order_insensitive(mocker) -> None:
-    """The same items in a different order (e.g. an unordered backend queryset) must not be
+    """The same items in a different order (e.g. an unordered portal queryset) must not be
     reported as a change -- the comparison is keyed by ID."""
     archive = make_task_archive()
     on_tasks_changed = AsyncMock()
@@ -540,7 +540,7 @@ async def test_task_update_order_insensitive(mocker) -> None:
     projects = [{"code": "a", "name": "A", "priority": 1.0}, {"code": "b", "name": "B", "priority": 1.0}]
     tasks = [{"id": 1, "name": "t1", "duration": 300}, {"id": 2, "name": "t2", "duration": 300}]
     mocker.patch(
-        "pyobs.robotic.storage.backend.taskarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(side_effect=[projects, tasks, list(reversed(projects)), list(reversed(tasks))]),
     )
 
@@ -559,7 +559,7 @@ async def test_obs_update_order_insensitive(mocker) -> None:
     obs_a = {"id": "obs-a", "task": 1, "start": T0.isot, "end": T1.isot, "state": "pending"}
     obs_b = {"id": "obs-b", "task": 1, "start": T1.isot, "end": T2.isot, "state": "pending"}
     mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
         AsyncMock(side_effect=[[obs_a, obs_b], [obs_b, obs_a]]),
     )
 
@@ -581,7 +581,7 @@ async def test_obs_update_normalizes_task_id(mocker) -> None:
     # seed cache the way the mastermind leaves it: task resolved to a full Task object
     archive._observations = ObservationList([make_obs(make_task())])
     mocker.patch(
-        "pyobs.robotic.storage.backend.observationarchive.http_request_paginated",
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
         AsyncMock(side_effect=[[OBS_DICT]]),
     )
 

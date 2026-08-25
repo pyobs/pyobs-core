@@ -4,6 +4,8 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
     from pyobs.utils.time import Time
@@ -22,8 +24,11 @@ async def _run_script(script: Script, data: TaskData | None) -> None:
 class ParallelRunner(Script):
     """Script for running other scripts in parallel."""
 
-    scripts: list[Script]
-    check_all_can_run: bool = True
+    scripts: list[Script] = Field(description="Scripts to run concurrently.")
+    check_all_can_run: bool = Field(
+        default=True,
+        description="If set, all scripts must be able to run for this script to run; otherwise, any one suffices.",
+    )
 
     async def can_run(self, data: TaskData | None) -> bool:
         results = [await s.can_run(data) for s in self.scripts]

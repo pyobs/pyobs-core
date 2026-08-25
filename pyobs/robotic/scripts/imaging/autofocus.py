@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Annotated
 
+from pydantic import Field
+
 from pyobs.interfaces import IAutoFocus, IMotion, IPointingRaDec, IReady, ITelescope
 from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
@@ -16,11 +18,15 @@ log = logging.getLogger(__name__)
 class AutoFocusScript(Script):
     """Script for running autofocus series."""
 
-    autofocus: Annotated[str, IAutoFocus] = "autofocus"
-    telescope: Annotated[str, ITelescope, IPointingRaDec] = "telescope"
-    count: int = 5
-    step: float = 0.1
-    exposure_time: float = 2.0
+    autofocus: Annotated[str, IAutoFocus] = Field(
+        default="autofocus", description="Name of the auto-focus module to run the series with."
+    )
+    telescope: Annotated[str, ITelescope, IPointingRaDec] = Field(
+        default="telescope", description="Name of the telescope module, moved to the target and stopped afterwards."
+    )
+    count: int = Field(default=5, description="Number of focus steps to take in the series.")
+    step: float = Field(default=0.1, description="Focus step size.")
+    exposure_time: float = Field(default=2.0, description="Exposure time in seconds for each focus step.")
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.

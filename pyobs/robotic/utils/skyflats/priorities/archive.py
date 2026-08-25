@@ -1,5 +1,6 @@
 import astropy.units as u
 from astropy.time import TimeDelta
+from pydantic import Field
 
 from pyobs.robotic.utils.archive import Archive
 from pyobs.utils.enums import ImageType
@@ -11,11 +12,11 @@ from .base import SkyflatPriorities
 class ArchiveSkyflatPriorities(SkyflatPriorities):
     """Calculate flat priorities from an archive."""
 
-    archive: Archive
-    site: str
-    instrument: str
-    filter_names: list[str]
-    binnings: list[int]
+    archive: Archive = Field(description="Archive to query for the timestamp of the last flat per filter/binning.")
+    site: str = Field(description="Site code to filter archive frames by.")
+    instrument: str = Field(description="Instrument code to filter archive frames by.")
+    filter_names: list[str] = Field(description="Filters to compute priorities for.")
+    binnings: list[int] = Field(description="Binnings (as N for NxN) to compute priorities for.")
 
     model_config = {"arbitrary_types_allowed": True}
 

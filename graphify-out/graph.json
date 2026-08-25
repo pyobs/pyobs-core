@@ -184,15 +184,29 @@
   },
   "nodes": [
     {
+      "label": "pyobs-core",
+      "file_type": "code",
+      "type": "package",
+      "ecosystem": "python",
+      "source_file": "pyproject.toml",
+      "source_location": "L1",
+      "version": "2.0.0.dev94",
+      "_origin": "ast",
+      "id": "pkg_pyobs_core",
+      "community": 399,
+      "community_name": "pyobs-core",
+      "norm_label": "pyobs-core"
+    },
+    {
       "label": "2026-08-20-imagewatcher-event-loop-blocking.md",
       "file_type": "document",
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "2026-08-20-imagewatcher-event-loop-blocking.md"
+      "norm_label": "2026-08-20-imagewatcher-event-loop-blocking.md",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking"
     },
     {
       "label": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
@@ -200,10 +214,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "plan: stop imagewatcher per-file processing from blocking the event loop"
+      "norm_label": "plan: stop imagewatcher per-file processing from blocking the event loop",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop"
     },
     {
       "label": "Problem",
@@ -211,10 +225,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L10",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_problem",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "problem"
+      "norm_label": "problem",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_problem"
     },
     {
       "label": "Goal",
@@ -222,10 +236,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L42",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_goal",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "goal"
+      "norm_label": "goal",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_goal"
     },
     {
       "label": "Considered options",
@@ -233,10 +247,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L50",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_considered_options",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "considered options"
+      "norm_label": "considered options",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_considered_options"
     },
     {
       "label": "Decision",
@@ -244,10 +258,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L69",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_decision",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "decision"
+      "norm_label": "decision",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_decision"
     },
     {
       "label": "1. Offload the FITS parse \u2014 `pyobs/modules/image/imagewatcher.py`",
@@ -255,10 +269,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L71",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_1_offload_the_fits_parse_pyobs_modules_image_imagewatcher_py",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "1. offload the fits parse \u2014 `pyobs/modules/image/imagewatcher.py`"
+      "norm_label": "1. offload the fits parse \u2014 `pyobs/modules/image/imagewatcher.py`",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_1_offload_the_fits_parse_pyobs_modules_image_imagewatcher_py"
     },
     {
       "label": "2. Make `LocalFile` I/O non-blocking \u2014 `pyobs/vfs/localfile.py`",
@@ -266,10 +280,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L97",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_2_make_localfile_i_o_non_blocking_pyobs_vfs_localfile_py",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "2. make `localfile` i/o non-blocking \u2014 `pyobs/vfs/localfile.py`"
+      "norm_label": "2. make `localfile` i/o non-blocking \u2014 `pyobs/vfs/localfile.py`",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_2_make_localfile_i_o_non_blocking_pyobs_vfs_localfile_py"
     },
     {
       "label": "3. Stop `LocalFile.__init__` opening the file synchronously \u2014 `pyobs/vfs/localfile.py`",
@@ -277,10 +291,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L132",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_3_stop_localfile_init_opening_the_file_synchronously_pyobs_vfs_localfile_py",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "3. stop `localfile.__init__` opening the file synchronously \u2014 `pyobs/vfs/localfile.py`"
+      "norm_label": "3. stop `localfile.__init__` opening the file synchronously \u2014 `pyobs/vfs/localfile.py`",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_3_stop_localfile_init_opening_the_file_synchronously_pyobs_vfs_localfile_py"
     },
     {
       "label": "4. (step 0, diagnostic) Confirm the culprit and measure before/after",
@@ -288,10 +302,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L177",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_4_step_0_diagnostic_confirm_the_culprit_and_measure_before_after",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "4. (step 0, diagnostic) confirm the culprit and measure before/after"
+      "norm_label": "4. (step 0, diagnostic) confirm the culprit and measure before/after",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_4_step_0_diagnostic_confirm_the_culprit_and_measure_before_after"
     },
     {
       "label": "Tests",
@@ -299,10 +313,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L186",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_tests",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "tests"
+      "norm_label": "tests",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_tests"
     },
     {
       "label": "Existing coverage (regression net, must keep passing)",
@@ -310,10 +324,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L188",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_existing_coverage_regression_net_must_keep_passing",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "existing coverage (regression net, must keep passing)"
+      "norm_label": "existing coverage (regression net, must keep passing)",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_existing_coverage_regression_net_must_keep_passing"
     },
     {
       "label": "New tests required",
@@ -321,10 +335,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L195",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_new_tests_required",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "new tests required"
+      "norm_label": "new tests required",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_new_tests_required"
     },
     {
       "label": "Consequences",
@@ -332,10 +346,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L217",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_consequences",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "consequences"
+      "norm_label": "consequences",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_consequences"
     },
     {
       "label": "Implementation checklist",
@@ -343,10 +357,10 @@
       "source_file": "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md",
       "source_location": "L242",
       "_origin": "ast",
-      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_implementation_checklist",
       "community": 166,
       "community_name": "Plan: Stop ImageWatcher per-file processing from blocking the event loop",
-      "norm_label": "implementation checklist"
+      "norm_label": "implementation checklist",
+      "id": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_implementation_checklist"
     },
     {
       "label": "plans/index.md",
@@ -354,10 +368,10 @@
       "source_file": "specs/plans/index.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "specs_plans_index",
       "community": 308,
       "community_name": "plans/index.md",
-      "norm_label": "plans/index.md"
+      "norm_label": "plans/index.md",
+      "id": "specs_plans_index"
     },
     {
       "label": "Plans",
@@ -365,10 +379,10 @@
       "source_file": "specs/plans/index.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "specs_plans_index_plans",
       "community": 308,
       "community_name": "plans/index.md",
-      "norm_label": "plans"
+      "norm_label": "plans",
+      "id": "specs_plans_index_plans"
     },
     {
       "label": "Not finished",
@@ -376,10 +390,10 @@
       "source_file": "specs/plans/index.md",
       "source_location": "L98",
       "_origin": "ast",
-      "id": "specs_plans_index_not_finished",
       "community": 308,
       "community_name": "plans/index.md",
-      "norm_label": "not finished"
+      "norm_label": "not finished",
+      "id": "specs_plans_index_not_finished"
     },
     {
       "label": "fleet-open-items.md",
@@ -387,10 +401,10 @@
       "source_file": "specs/steering/fleet-open-items.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "specs_steering_fleet_open_items",
       "community": 308,
       "community_name": "plans/index.md",
-      "norm_label": "fleet-open-items.md"
+      "norm_label": "fleet-open-items.md",
+      "id": "specs_steering_fleet_open_items"
     },
     {
       "label": "Fleet open items: open issues and plans across the pyobs fleet",
@@ -398,10 +412,10 @@
       "source_file": "specs/steering/fleet-open-items.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "specs_steering_fleet_open_items_fleet_open_items_open_issues_and_plans_across_the_pyobs_fleet",
       "community": 313,
       "community_name": "Fleet open items: open issues and plans across the pyobs fleet",
-      "norm_label": "fleet open items: open issues and plans across the pyobs fleet"
+      "norm_label": "fleet open items: open issues and plans across the pyobs fleet",
+      "id": "specs_steering_fleet_open_items_fleet_open_items_open_issues_and_plans_across_the_pyobs_fleet"
     },
     {
       "label": "Open issues (2, checked 2026-08-24)",
@@ -409,10 +423,10 @@
       "source_file": "specs/steering/fleet-open-items.md",
       "source_location": "L19",
       "_origin": "ast",
-      "id": "specs_steering_fleet_open_items_open_issues_2_checked_2026_08_24",
       "community": 313,
       "community_name": "Fleet open items: open issues and plans across the pyobs fleet",
-      "norm_label": "open issues (2, checked 2026-08-24)"
+      "norm_label": "open issues (2, checked 2026-08-24)",
+      "id": "specs_steering_fleet_open_items_open_issues_2_checked_2026_08_24"
     },
     {
       "label": "Open plans",
@@ -420,10 +434,10 @@
       "source_file": "specs/steering/fleet-open-items.md",
       "source_location": "L28",
       "_origin": "ast",
-      "id": "specs_steering_fleet_open_items_open_plans",
       "community": 313,
       "community_name": "Fleet open items: open issues and plans across the pyobs fleet",
-      "norm_label": "open plans"
+      "norm_label": "open plans",
+      "id": "specs_steering_fleet_open_items_open_plans"
     },
     {
       "label": "pyobs-core `specs/plans/`",
@@ -431,10 +445,10 @@
       "source_file": "specs/steering/fleet-open-items.md",
       "source_location": "L30",
       "_origin": "ast",
-      "id": "specs_steering_fleet_open_items_pyobs_core_specs_plans",
       "community": 313,
       "community_name": "Fleet open items: open issues and plans across the pyobs fleet",
-      "norm_label": "pyobs-core `specs/plans/`"
+      "norm_label": "pyobs-core `specs/plans/`",
+      "id": "specs_steering_fleet_open_items_pyobs_core_specs_plans"
     },
     {
       "label": "Design docs still *proposed*",
@@ -442,10 +456,10 @@
       "source_file": "specs/steering/fleet-open-items.md",
       "source_location": "L43",
       "_origin": "ast",
-      "id": "specs_steering_fleet_open_items_design_docs_still_proposed",
       "community": 313,
       "community_name": "Fleet open items: open issues and plans across the pyobs fleet",
-      "norm_label": "design docs still *proposed*"
+      "norm_label": "design docs still *proposed*",
+      "id": "specs_steering_fleet_open_items_design_docs_still_proposed"
     },
     {
       "label": "Sibling repos",
@@ -453,10 +467,10 @@
       "source_file": "specs/steering/fleet-open-items.md",
       "source_location": "L48",
       "_origin": "ast",
-      "id": "specs_steering_fleet_open_items_sibling_repos",
       "community": 313,
       "community_name": "Fleet open items: open issues and plans across the pyobs fleet",
-      "norm_label": "sibling repos"
+      "norm_label": "sibling repos",
+      "id": "specs_steering_fleet_open_items_sibling_repos"
     },
     {
       "label": "Open decisions",
@@ -464,10 +478,10 @@
       "source_file": "specs/steering/fleet-open-items.md",
       "source_location": "L67",
       "_origin": "ast",
-      "id": "specs_steering_fleet_open_items_open_decisions",
       "community": 313,
       "community_name": "Fleet open items: open issues and plans across the pyobs fleet",
-      "norm_label": "open decisions"
+      "norm_label": "open decisions",
+      "id": "specs_steering_fleet_open_items_open_decisions"
     },
     {
       "label": "mastermind.py",
@@ -2415,20 +2429,6 @@
       "community_name": "Plan: pyobs-iag50 pyobs-core 2.x migration",
       "norm_label": "open questions \u2014 need your input before finishing \u00a73",
       "id": "specs_plans_2026_08_23_iag50_pyobs_core_2x_migration_open_questions_need_your_input_before_finishing_3"
-    },
-    {
-      "label": "pyobs-core",
-      "file_type": "code",
-      "type": "package",
-      "ecosystem": "python",
-      "source_file": "pyproject.toml",
-      "source_location": "L1",
-      "version": "2.0.0.dev93",
-      "_origin": "ast",
-      "community": 399,
-      "community_name": "pyobs-core",
-      "norm_label": "pyobs-core",
-      "id": "pkg_pyobs_core"
     },
     {
       "label": "basetelescope.py",
@@ -108671,9 +108671,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop"
     },
     {
       "relation": "references",
@@ -108682,9 +108682,9 @@
       "source_location": "L94",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking"
     },
     {
       "relation": "contains",
@@ -108693,9 +108693,9 @@
       "source_location": "L217",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_consequences",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_consequences"
     },
     {
       "relation": "contains",
@@ -108704,9 +108704,9 @@
       "source_location": "L50",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_considered_options",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_considered_options"
     },
     {
       "relation": "contains",
@@ -108715,9 +108715,9 @@
       "source_location": "L69",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_decision",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_decision"
     },
     {
       "relation": "contains",
@@ -108726,9 +108726,9 @@
       "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_goal",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_goal"
     },
     {
       "relation": "contains",
@@ -108737,9 +108737,9 @@
       "source_location": "L242",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_implementation_checklist",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_implementation_checklist"
     },
     {
       "relation": "contains",
@@ -108748,9 +108748,9 @@
       "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_problem",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_problem"
     },
     {
       "relation": "contains",
@@ -108759,9 +108759,9 @@
       "source_location": "L186",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_plan_stop_imagewatcher_per_file_processing_from_blocking_the_event_loop",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_tests",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_tests"
     },
     {
       "relation": "contains",
@@ -108770,9 +108770,9 @@
       "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_decision",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_1_offload_the_fits_parse_pyobs_modules_image_imagewatcher_py",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_1_offload_the_fits_parse_pyobs_modules_image_imagewatcher_py"
     },
     {
       "relation": "contains",
@@ -108781,9 +108781,9 @@
       "source_location": "L97",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_decision",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_2_make_localfile_i_o_non_blocking_pyobs_vfs_localfile_py",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_2_make_localfile_i_o_non_blocking_pyobs_vfs_localfile_py"
     },
     {
       "relation": "contains",
@@ -108792,9 +108792,9 @@
       "source_location": "L132",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_decision",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_3_stop_localfile_init_opening_the_file_synchronously_pyobs_vfs_localfile_py",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_3_stop_localfile_init_opening_the_file_synchronously_pyobs_vfs_localfile_py"
     },
     {
       "relation": "contains",
@@ -108803,9 +108803,9 @@
       "source_location": "L177",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_decision",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_4_step_0_diagnostic_confirm_the_culprit_and_measure_before_after",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_4_step_0_diagnostic_confirm_the_culprit_and_measure_before_after"
     },
     {
       "relation": "contains",
@@ -108814,9 +108814,9 @@
       "source_location": "L188",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_tests",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_existing_coverage_regression_net_must_keep_passing",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_existing_coverage_regression_net_must_keep_passing"
     },
     {
       "relation": "contains",
@@ -108825,9 +108825,9 @@
       "source_location": "L195",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_tests",
-      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_new_tests_required",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_imagewatcher_event_loop_blocking_new_tests_required"
     },
     {
       "relation": "references",
@@ -108836,9 +108836,9 @@
       "source_location": "L7",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_19_exception_handling",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_19_exception_handling"
     },
     {
       "relation": "references",
@@ -108847,9 +108847,9 @@
       "source_location": "L9",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_19_icamera_iexposure",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_19_icamera_iexposure"
     },
     {
       "relation": "references",
@@ -108858,9 +108858,9 @@
       "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_19_idatasequence",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_19_idatasequence"
     },
     {
       "relation": "references",
@@ -108869,9 +108869,9 @@
       "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_19_image_trim",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_19_image_trim"
     },
     {
       "relation": "references",
@@ -108880,9 +108880,9 @@
       "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_19_module_observer_location",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_19_module_observer_location"
     },
     {
       "relation": "references",
@@ -108891,9 +108891,9 @@
       "source_location": "L5",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_19_pyobs_2_0_work_plan",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_19_pyobs_2_0_work_plan"
     },
     {
       "relation": "references",
@@ -108902,9 +108902,9 @@
       "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_22_ejabberd_throughput_benchmarking",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_22_ejabberd_throughput_benchmarking"
     },
     {
       "relation": "references",
@@ -108913,9 +108913,9 @@
       "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_22_enforce_state_publishing",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_22_enforce_state_publishing"
     },
     {
       "relation": "references",
@@ -108924,9 +108924,9 @@
       "source_location": "L21",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_22_state_freshness_max_age",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_22_state_freshness_max_age"
     },
     {
       "relation": "references",
@@ -108935,9 +108935,9 @@
       "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_26_gui_interactive_login",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_26_gui_interactive_login"
     },
     {
       "relation": "references",
@@ -108946,9 +108946,9 @@
       "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_27_gui_login_window",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_27_gui_login_window"
     },
     {
       "relation": "references",
@@ -108957,9 +108957,9 @@
       "source_location": "L105",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_27_gui_widget_plugins_and_packaging",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_27_gui_widget_plugins_and_packaging"
     },
     {
       "relation": "references",
@@ -108968,9 +108968,9 @@
       "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_29_gui_acl_aware_widget_gating",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_29_gui_acl_aware_widget_gating"
     },
     {
       "relation": "references",
@@ -108979,9 +108979,9 @@
       "source_location": "L29",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_29_gui_iacquisition_widget",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_29_gui_iacquisition_widget"
     },
     {
       "relation": "references",
@@ -108990,9 +108990,9 @@
       "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_29_gui_iautofocus_widget",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_29_gui_iautofocus_widget"
     },
     {
       "relation": "references",
@@ -109001,9 +109001,9 @@
       "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_29_gui_iautoguiding_widget",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_29_gui_iautoguiding_widget"
     },
     {
       "relation": "references",
@@ -109012,9 +109012,9 @@
       "source_location": "L35",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_29_gui_navbar_shortcuts",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_29_gui_navbar_shortcuts"
     },
     {
       "relation": "references",
@@ -109023,9 +109023,9 @@
       "source_location": "L107",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_29_gui_telescopewidget_layout",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_29_gui_telescopewidget_layout"
     },
     {
       "relation": "references",
@@ -109034,9 +109034,9 @@
       "source_location": "L37",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_07_31_pipeline_step_error_control",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_31_pipeline_step_error_control"
     },
     {
       "relation": "references",
@@ -109045,9 +109045,9 @@
       "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_03_scheduler_event_loop_blocking",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_03_scheduler_event_loop_blocking"
     },
     {
       "relation": "references",
@@ -109056,9 +109056,9 @@
       "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_04_event_role_advertising",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_04_event_role_advertising"
     },
     {
       "relation": "references",
@@ -109067,9 +109067,9 @@
       "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_04_httpfilecache_cors_token_auth",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_04_httpfilecache_cors_token_auth"
     },
     {
       "relation": "references",
@@ -109078,9 +109078,9 @@
       "source_location": "L62",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_05_scheduler_archive_prefetch_for_process_isolation",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_05_scheduler_archive_prefetch_for_process_isolation"
     },
     {
       "relation": "references",
@@ -109089,9 +109089,9 @@
       "source_location": "L47",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_08_logevent_double_delivery_investigation"
     },
     {
       "relation": "references",
@@ -109100,9 +109100,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_08_pyobs_pipeline",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_08_pyobs_pipeline"
     },
     {
       "relation": "references",
@@ -109111,9 +109111,9 @@
       "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_09_night_archive_io_hardening",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_09_night_archive_io_hardening"
     },
     {
       "relation": "references",
@@ -109122,9 +109122,9 @@
       "source_location": "L66",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_09_object_kwarg_validation",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_09_object_kwarg_validation"
     },
     {
       "relation": "references",
@@ -109133,9 +109133,9 @@
       "source_location": "L109",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_11_basevideo_raw_frame_streaming",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_11_basevideo_raw_frame_streaming"
     },
     {
       "relation": "references",
@@ -109144,9 +109144,9 @@
       "source_location": "L111",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_11_camera_driver_gui_split",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_11_camera_driver_gui_split"
     },
     {
       "relation": "references",
@@ -109155,9 +109155,9 @@
       "source_location": "L117",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_11_core_tier_test_baseline_and_dependabot_automerge",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_11_core_tier_test_baseline_and_dependabot_automerge"
     },
     {
       "relation": "references",
@@ -109166,9 +109166,9 @@
       "source_location": "L121",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_12_shared_auth_keycloak",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_12_shared_auth_keycloak"
     },
     {
       "relation": "references",
@@ -109177,9 +109177,9 @@
       "source_location": "L55",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_15_log_loaded_pyobs_package_versions",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_15_log_loaded_pyobs_package_versions"
     },
     {
       "relation": "references",
@@ -109188,9 +109188,9 @@
       "source_location": "L59",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_15_pydantic_extra_validation",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_15_pydantic_extra_validation"
     },
     {
       "relation": "references",
@@ -109199,9 +109199,9 @@
       "source_location": "L78",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_16_explicit_pubsub_event_subscriptions",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_16_explicit_pubsub_event_subscriptions"
     },
     {
       "relation": "references",
@@ -109210,9 +109210,9 @@
       "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_16_fits_header_fetch_timeout",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_16_fits_header_fetch_timeout"
     },
     {
       "relation": "references",
@@ -109221,9 +109221,9 @@
       "source_location": "L75",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_16_logevent_double_delivery_fix_discussion",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_16_logevent_double_delivery_fix_discussion"
     },
     {
       "relation": "references",
@@ -109232,9 +109232,9 @@
       "source_location": "L70",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_18_cooperative_mixin_init",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_18_cooperative_mixin_init"
     },
     {
       "relation": "references",
@@ -109243,9 +109243,9 @@
       "source_location": "L126",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_19_archive_project_access_control",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_19_archive_project_access_control"
     },
     {
       "relation": "references",
@@ -109254,9 +109254,9 @@
       "source_location": "L83",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_20_backend_archive_marker_loss",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_20_backend_archive_marker_loss"
     },
     {
       "relation": "references",
@@ -109265,9 +109265,9 @@
       "source_location": "L88",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_21_keycloak_idp_hint_login",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_21_keycloak_idp_hint_login"
     },
     {
       "relation": "references",
@@ -109276,9 +109276,9 @@
       "source_location": "L100",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_2026_08_23_iag50_pyobs_core_2x_migration",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_23_iag50_pyobs_core_2x_migration"
     },
     {
       "relation": "contains",
@@ -109287,9 +109287,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index",
-      "target": "specs_plans_index_plans",
-      "confidence_score": 1.0
+      "target": "specs_plans_index_plans"
     },
     {
       "relation": "contains",
@@ -109298,9 +109298,9 @@
       "source_location": "L98",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_plans_index_plans",
-      "target": "specs_plans_index_not_finished",
-      "confidence_score": 1.0
+      "target": "specs_plans_index_not_finished"
     },
     {
       "relation": "references",
@@ -109309,9 +109309,9 @@
       "source_location": "L72",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items",
-      "target": "specs_adrs_0013_renaming_pyobs_robotic_backend",
-      "confidence_score": 1.0
+      "target": "specs_adrs_0013_renaming_pyobs_robotic_backend"
     },
     {
       "relation": "references",
@@ -109320,9 +109320,9 @@
       "source_location": "L32",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items",
-      "target": "specs_plans_2026_07_27_gui_widget_plugins_and_packaging",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_27_gui_widget_plugins_and_packaging"
     },
     {
       "relation": "references",
@@ -109331,9 +109331,9 @@
       "source_location": "L35",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items",
-      "target": "specs_plans_2026_07_29_gui_telescopewidget_layout",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_07_29_gui_telescopewidget_layout"
     },
     {
       "relation": "references",
@@ -109342,9 +109342,9 @@
       "source_location": "L37",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items",
-      "target": "specs_plans_2026_08_23_iag50_pyobs_core_2x_migration",
-      "confidence_score": 1.0
+      "target": "specs_plans_2026_08_23_iag50_pyobs_core_2x_migration"
     },
     {
       "relation": "contains",
@@ -109353,9 +109353,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items",
-      "target": "specs_steering_fleet_open_items_fleet_open_items_open_issues_and_plans_across_the_pyobs_fleet",
-      "confidence_score": 1.0
+      "target": "specs_steering_fleet_open_items_fleet_open_items_open_issues_and_plans_across_the_pyobs_fleet"
     },
     {
       "relation": "references",
@@ -109375,9 +109375,9 @@
       "source_location": "L67",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items_fleet_open_items_open_issues_and_plans_across_the_pyobs_fleet",
-      "target": "specs_steering_fleet_open_items_open_decisions",
-      "confidence_score": 1.0
+      "target": "specs_steering_fleet_open_items_open_decisions"
     },
     {
       "relation": "contains",
@@ -109386,9 +109386,9 @@
       "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items_fleet_open_items_open_issues_and_plans_across_the_pyobs_fleet",
-      "target": "specs_steering_fleet_open_items_open_issues_2_checked_2026_08_24",
-      "confidence_score": 1.0
+      "target": "specs_steering_fleet_open_items_open_issues_2_checked_2026_08_24"
     },
     {
       "relation": "contains",
@@ -109397,9 +109397,9 @@
       "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items_fleet_open_items_open_issues_and_plans_across_the_pyobs_fleet",
-      "target": "specs_steering_fleet_open_items_open_plans",
-      "confidence_score": 1.0
+      "target": "specs_steering_fleet_open_items_open_plans"
     },
     {
       "relation": "contains",
@@ -109408,9 +109408,9 @@
       "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items_open_plans",
-      "target": "specs_steering_fleet_open_items_design_docs_still_proposed",
-      "confidence_score": 1.0
+      "target": "specs_steering_fleet_open_items_design_docs_still_proposed"
     },
     {
       "relation": "contains",
@@ -109419,9 +109419,9 @@
       "source_location": "L30",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items_open_plans",
-      "target": "specs_steering_fleet_open_items_pyobs_core_specs_plans",
-      "confidence_score": 1.0
+      "target": "specs_steering_fleet_open_items_pyobs_core_specs_plans"
     },
     {
       "relation": "contains",
@@ -109430,9 +109430,9 @@
       "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "specs_steering_fleet_open_items_open_plans",
-      "target": "specs_steering_fleet_open_items_sibling_repos",
-      "confidence_score": 1.0
+      "target": "specs_steering_fleet_open_items_sibling_repos"
     },
     {
       "relation": "re_exports",
@@ -357486,5 +357486,5 @@
       "source_file": "specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md"
     }
   ],
-  "built_at_commit": "89905b1255485d765c3506dcfd97427a7bffdedb"
+  "built_at_commit": "ef873cae28aaa4475c3bd357796e104bbfe59976"
 }

@@ -1,7 +1,7 @@
 # Graph Report - pyobs-core  (2026-08-24)
 
 ## Corpus Check
-- 893 files · ~505,687 words
+- 896 files · ~508,890 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `89905b12`
+- Built from commit: `ef873cae`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1889,7 +1889,7 @@ Nodes (3): ModuleGui, Any, LogRecord
   specs/design/exception_handling.md · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **683 isolated node(s):** `Problem`, `Goal`, `Considered options`, `1. Offload the FITS parse — `pyobs/modules/image/imagewatcher.py``, `2. Make `LocalFile` I/O non-blocking — `pyobs/vfs/localfile.py`` (+678 more)
+- **683 isolated node(s):** `pyobs-core`, `Problem`, `Goal`, `Considered options`, `1. Offload the FITS parse — `pyobs/modules/image/imagewatcher.py`` (+678 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **61 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 

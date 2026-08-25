@@ -1,7 +1,7 @@
 # `OBSNUM`: per-night observation counter in FITS headers
 
-Status: implemented, closed. Tracks #738. Repos: pyobs-core, pyobs-robotic-backend.
-Landed in pyobs-core#746 (released 2.0.0.dev71) and pyobs-robotic-backend#69.
+Status: implemented, closed. Tracks #738. Repos: pyobs-core, pyobs-portal.
+Landed in pyobs-core#746 (released 2.0.0.dev71) and pyobs-portal#69.
 
 ## Problem
 
@@ -127,8 +127,8 @@ implementations to see what this costs:
 - **filesystem** (`filesystem/observationarchive.py:188-202`) rewrites the whole YAML-serialized
   `Observation` — same, free.
 - **backend** (`backend/observationarchive.py:178-190`) PUTs `observation.model_dump(use_task_id=True)`
-  — but this is **not free**, checked against the actual `pyobs-robotic-backend` repo: its Django
-  `Observation` model (`pyobs_robotic_backend/api/models.py:71-85`) has no `obsnum` column, and
+  — but this is **not free**, checked against the actual `pyobs-portal` repo: its Django
+  `Observation` model (`pyobs_portal/api/models.py:71-85`) has no `obsnum` column, and
   `ObservationSerializer` (`api/serializers.py:83-86`) is a `ModelSerializer` with an explicit
   `fields = ["id", "task", "start", "end", "state", "target"]` allowlist — DRF silently drops any
   key in the PUT body that isn't in that list. Sending `obsnum` today would be a silent no-op, not
@@ -188,11 +188,11 @@ class of gap `FRAMENUM` already tolerates when a single exposure fails mid-seque
 - No changes to `Observation.id` — it stays whatever the archive backend uses it for (UUID, unset,
   etc.); `obsnum`/`OBSNUM` is additive, and this proposal doesn't try to unify the two.
 - `Observation` (`observation.py:28-43`) gains `obsnum: str | None = None` (compound form).
-- **`pyobs-robotic-backend`**: add an `obsnum` column to the `Observation` model
-  (`pyobs_robotic_backend/api/models.py:71-85`, e.g. `CharField(max_length=32, null=True,
+- **`pyobs-portal`**: add an `obsnum` column to the `Observation` model
+  (`pyobs_portal/api/models.py:71-85`, e.g. `CharField(max_length=32, null=True,
   blank=True)`) with a migration alongside the existing ones in
-  `pyobs_robotic_backend/api/migrations/`, and add `"obsnum"` to `ObservationSerializer.Meta.fields`
-  (`api/serializers.py:85-86`). Without both, `BackendObservationArchive.update_observation()` keeps
+  `pyobs_portal/api/migrations/`, and add `"obsnum"` to `ObservationSerializer.Meta.fields`
+  (`api/serializers.py:85-86`). Without both, `PortalObservationArchive.update_observation()` keeps
   silently dropping the field even after the pyobs-core side ships.
 - `Mastermind.__init__` (`mastermind.py:66`) gains a `NightlyCounter` (or equivalent) instance,
   cache path `/pyobs/modules/{self.name}/obsnum.yaml`.

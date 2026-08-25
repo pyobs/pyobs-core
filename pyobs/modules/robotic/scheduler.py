@@ -102,7 +102,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # get scheduler
         self._task_archive = self.add_child_object(tasks, TaskArchive, on_tasks_changed=self._update_schedule)
-        # BackendObservationArchive declares auto_update and gates its own polling loop on it --
+        # PortalObservationArchive declares auto_update and gates its own polling loop on it --
         # since we already drive updates via on_tasks_changed above, that poller must stay off.
         # Other ObservationArchive implementations (e.g. LcoObservationArchive) don't declare it at
         # all, so it must not be injected unconditionally.

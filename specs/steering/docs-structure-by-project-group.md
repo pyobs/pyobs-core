@@ -4,25 +4,31 @@ Companion to [[fleet-tooling-consistency]] — that doc covers lint/type-check/t
 baseline, this one covers the fourth leg: docs (Sphinx under `docs/source/`) and, alongside it,
 each repo's top-level `README.md`. Group membership below follows the categories in
 `specs/steering/pyobs-project-tiers.md` (Cameras / Mounts-domes-focusers → **driver-module**,
-Python User interfaces → **gui**, everything under Connected projects → **web-app**). pyobs-core
-itself is exempt — it's the framework's own reference manual, already far larger than any
-template here should be, and stays bespoke.
+Python User interfaces → **gui**, everything under Connected projects → **web-app**), plus one
+group not in that doc's categories: **gui-nonpython** — the non-Python GUI clients (pyobs-polaris,
+pyobs-web-client). pyobs-core itself is exempt — it's the framework's own reference manual,
+already far larger than any template here should be, and stays bespoke.
 
 Repos: pyobs-core (this doc), and every repo listed under "Current state" below.
 
 ## If you're an agent handed this doc to fix one repo's docs
 
-1. Find the repo in "Current state" below to get its group (driver-module / gui / web-app).
+1. Find the repo in "Current state" below to get its group (driver-module / gui / gui-nonpython /
+   web-app).
 2. Copy the matching skeleton(s) from `docs/templates/` in **this** repo (pyobs-core) —
    `driver-module-conf.py` + `driver-module-index.rst` + `driver-module-readme.md`,
-   `gui-index.rst` + `gui-readme.md` (conf.py is the same driver-module one), or the `web-app/`
-   directory (includes `README.md`) — into the target repo's `docs/source/` and repo root
-   respectively, replacing `CHANGEME` placeholders with real content. Don't invent new section
-   names or drop required ones; if a section genuinely doesn't apply (e.g. no global shortcuts),
-   say so in the PR description rather than silently omitting it.
+   `gui-index.rst` + `gui-readme.md` (conf.py is the same driver-module one),
+   `gui-nonpython-conf.py` + `gui-nonpython-index.rst` + `gui-nonpython-readme.md` (conf.py is
+   **not** the driver-module one here — it drops the Python-only autodoc/napoleon/viewcode
+   extensions), or the `web-app/` directory (includes `README.md`) — into the target repo's
+   `docs/source/` and repo root respectively, replacing `CHANGEME` placeholders with real content.
+   Don't invent new section names or drop required ones; if a section genuinely doesn't apply (e.g.
+   no global shortcuts), say so in the PR description rather than silently omitting it.
 3. Run `uv run sphinx-build -W -b html docs/source docs/build/html` locally and fix every warning
    before opening a PR — CI will eventually enforce this (see "Enforcement") but doesn't yet on
-   most repos, so don't rely on it catching mistakes for you.
+   most repos, so don't rely on it catching mistakes for you. For a `gui-nonpython` repo with a
+   Doxygen `api/` page, also run `doxygen` then
+   `doxysphinx build docs/source docs/build/html Doxyfile` first — see that group's section below.
 4. Update this doc's "Current state" section for the repo you touched, in the same PR.
 
 ## Why this exists
@@ -62,9 +68,9 @@ one-off design doc rather than stretching this template.
 
 ### gui
 
-Applies to: pyobs-gui. (pyobs-polaris and pyobs-web-client are UI clients too, but not
-Python/Sphinx — C++/Qt and TypeScript/Vue respectively. Out of scope for this doc; if they get
-authored docs at all it's via their own toolchain's convention, not Sphinx.)
+Applies to: pyobs-gui. (pyobs-polaris and pyobs-web-client are UI clients too, but not Python —
+C++/Qt/QML and TypeScript/Vue respectively — so they follow the **gui-nonpython** group below
+instead of this one.)
 
 Same `conf.py` template and `_static/pyobs.gif` as driver-module. `index.rst` — copy
 `docs/templates/gui-index.rst`, which extends the driver-module shape with two more required
@@ -83,6 +89,47 @@ optional system deps, install) plus a `Running` section (launch command + minima
 config), since a GUI is something you run, not just a class you configure into another module's
 comm. pyobs-gui's current README is a one-line stub (`A GUI for pyobs....`) — biggest README gap
 in the fleet.
+
+### gui-nonpython
+
+Applies to: pyobs-polaris (C++/Qt/QML), pyobs-web-client (TypeScript/Vue).
+
+Both repos can use the same Sphinx + `sphinx_rtd_theme` + Read the Docs pipeline as every other
+group — genuine visual parity with the rest of the fleet, not an approximation via a different
+tool's theme. What differs from `gui` is only: no Python to autodoc, an `Available classes`
+section that only applies where a Doxygen bridge exists, and a `Views` catalog instead of
+`Widgets` (both repos already call their top-level screens "views" in their own source —
+`qml/views/*.qml`, `src/views/*.vue` — this is their own vocabulary, not invented for the docs).
+
+- `docs/source/conf.py` — copy `docs/templates/gui-nonpython-conf.py`. **Not** the driver-module
+  conf.py — it drops `sphinx.ext.autodoc`/`napoleon`/`viewcode` (nothing to introspect), keeping
+  `sphinx_rtd_theme`, the logo, and general config identical.
+- `docs/source/index.rst` — copy `docs/templates/gui-nonpython-index.rst`: title/blurb →
+  `Example configuration` → `Available classes` → `Views` → `Keyboard shortcuts`.
+  - `Available classes`: **Doxygen-backed repos only.** For pyobs-polaris, generate it via
+    [doxysphinx](https://github.com/boschglobal/doxysphinx) (Doxygen → HTML → doxysphinx converts
+    to `.rst` → Sphinx renders it with the same theme as everything else): Doxyfile needs
+    `OUTPUT_DIRECTORY` inside `docs/source/` (e.g. `docs/source/api/`), `GENERATE_TREEVIEW = NO`,
+    `DISABLE_INDEX = NO`, `CREATE_SUBDIRS = NO`, `INPUT = src` (Doxygen doesn't parse QML — the
+    `qml/` views are documented in the `Views` section instead, not generated). Build order:
+    `doxygen` then `doxysphinx build docs/source docs/build/html Doxyfile`, then `sphinx-build`.
+    For pyobs-web-client there's no such bridge and nothing to introspect (it's a thin XMPP
+    client, not a library) — delete this section entirely rather than leaving a stub.
+  - `Views`: one subsection per top-level view the client ships — screenshot + which module
+    interface(s) it drives. Same shape as `gui`'s `Widgets` section.
+  - `Keyboard shortcuts`: same optional/delete-if-none rule as `gui`.
+- `docs/source/_static/pyobs.gif` — same shared logo asset as the other groups.
+- `README.md` — copy `docs/templates/gui-nonpython-readme.md`: same `gui` shape (title, blurb,
+  optional system deps, install/build in the repo's native toolchain, `Running`), plus a
+  `Documentation` pointer to `docs.pyobs.org/projects/pyobs-<repo>/`.
+- `.readthedocs.yml`: same `sphinx.configuration: docs/source/conf.py` /
+  `python.install` (`sphinx`, `sphinx_rtd_theme`) pattern as the Python repos — pyobs-web-client's
+  needs nothing else (no Node/JS tooling for docs at all, since the pages are hand-written, not
+  generated from the app's own TS source). pyobs-polaris additionally needs
+  `build.apt_packages: [doxygen]`, `python.install` adding `doxysphinx`, and a
+  `build.jobs.pre_build` running `doxygen` then `doxysphinx build ...` before Sphinx builds.
+
+Neither repo has any of this yet as of 2026-08-25 — see "Current state" below.
 
 ### web-app
 
@@ -123,18 +170,21 @@ Three checks, in a `.github/workflows/docs.yml` copy-pasted into each repo (same
 exists for the fleet today, so this isn't centralized either):
 
 1. **`sphinx-build -W -b html docs/source docs/build/html`** — warnings-as-errors. Catches broken
-   `autoclass` refs, bad toctrees, malformed rst. Applies to all three groups.
+   `autoclass` refs, bad toctrees, malformed rst. Applies to all four groups (for pyobs-polaris,
+   run the Doxygen/doxysphinx pre-build step first, same as locally).
 2. **Required-files check** — a script asserting the group's required file set (above) exists
-   under `docs/source/`, run with `--group driver-module|gui|web-app`. Doesn't exist yet; write it
-   as `scripts/check_docs_structure.py` in pyobs-core and copy it into each repo the same way
-   `ruff.yml` itself is copied, not imported as a package (the fleet has no shared-tooling
-   package to import it from). Flags both missing required files and, for driver-module/gui,
-   unexpected extra top-level pages (a second `.rst` file at the top level is a sign the repo
-   drifted from the single-page shape without anyone deciding it should).
-3. **`conf.py` template diff** — driver-module and gui only. Strip the `project =` and
-   `copyright =` lines, diff the rest against pyobs-core's canonical
-   `docs/templates/driver-module-conf.py`. Fails the build on any other line drifting. Not applied
-   to web-app — its `conf.py`s are expected to differ.
+   under `docs/source/`, run with `--group driver-module|gui|gui-nonpython|web-app`. Doesn't exist
+   yet; write it as `scripts/check_docs_structure.py` in pyobs-core and copy it into each repo the
+   same way `ruff.yml` itself is copied, not imported as a package (the fleet has no
+   shared-tooling package to import it from). Flags both missing required files and, for
+   driver-module/gui/gui-nonpython, unexpected extra top-level pages (a second `.rst` file at the
+   top level is a sign the repo drifted from the single-page shape without anyone deciding it
+   should).
+3. **`conf.py` template diff** — driver-module, gui, and gui-nonpython. Strip the `project =` and
+   `copyright =` lines, diff the rest against pyobs-core's canonical `docs/templates/*-conf.py` for
+   that repo's group (`driver-module-conf.py` for driver-module/gui, `gui-nonpython-conf.py` for
+   gui-nonpython). Fails the build on any other line drifting. Not applied to web-app — its
+   `conf.py`s are expected to differ.
 
 `README.md` is **not** part of CI enforcement — it's prose, not a fixed set of files, so there's
 nothing a script can usefully assert beyond "the file exists." Treat it as a documented convention
@@ -160,17 +210,70 @@ shortcuts sections (all 14 `DEFAULT_CONFIG` pages, shortcuts table grounded in
 not a running GUI, so add those as a follow-up) and rewrote the README (was a one-line stub) with
 real install/running instructions.
 
-**web-app**: pyobs-web-admin is the only repo meeting a reasonable version of the target docs
-shape already; its README also already roughly matches the target (overview + Features), though
-it doesn't yet link out to `docs/source/` the way the template asks. **pyobs-archive** — fixed
-2026-08-25 (develop @ `7aad1dd`): split into index/installation/configuration/architecture/api/
-development, correcting the old single page's stale Docker Compose example and REST API errors
-(wrong auth header, a nonexistent `/api-token-auth/` endpoint) rather than just relocating them;
-README now points into `docs/` instead of carrying its own configuration table. pyobs-weather has
-docs, stale since 2023-07-03 — not yet fixed. pyobs-portal, pyobs-auth, pyobs-pipeline,
-pyobs-astrometry, pyobs-allsky-cloudcover, pyobs-dashboard-utils have no Sphinx docs at all;
-README presence/shape on these wasn't checked. None of these six, nor pyobs-weather, have been
-touched yet — next candidates for this rollout.
+**gui-nonpython**: neither repo had any docs/source/ or `.readthedocs.yml` before 2026-08-25.
+**pyobs-web-client** — fixed 2026-08-25: `docs/source/` (hand-written `index.rst`, no `Available
+classes` section — nothing to introspect), `.readthedocs.yml`, README pointer; `specs/` cleanup
+(two new design docs, first ADR) and `DEVELOPMENT.md` trim done in the same pass — see that repo's
+`specs/index.md`. **pyobs-polaris** — docs site (`Doxyfile`, `docs/source/`, `.readthedocs.yml`
+with the Doxygen/doxysphinx pre-build job) done 2026-08-25; the much larger `DEVELOPMENT.md` →
+`specs/` split (its `DEVELOPMENT.md` was 3187 lines/239K with no `specs/` at all beforehand) was
+still in progress as of this writing — check that repo's `specs/index.md` for current status
+before assuming it's finished. Neither repo's Doxygen/doxysphinx pipeline has been verified
+against a real `doxygen`/`doxysphinx` install (not available in the environment this was written
+in) — verify locally before relying on the RTD build succeeding.
+
+**web-app**: **all nine repos in this group now have docs matching the shape above**, fixed
+2026-08-25. pyobs-web-admin already met a reasonable version of the target shape beforehand.
+
+- **pyobs-archive** (develop @ `7aad1dd`): split into
+  index/installation/configuration/architecture/api/development, correcting the old single
+  page's stale Docker Compose example and REST API errors (wrong auth header, a nonexistent
+  `/api-token-auth/` endpoint) rather than just relocating them; README now points into `docs/`
+  instead of carrying its own configuration table.
+- **pyobs-weather** (develop @ `fd146c5`): same split, correcting a Redis+Celery+local_settings.py
+  deployment description the app no longer uses and a stale REST API shape (`/api/history/`'s
+  response shape had changed, several endpoints were undocumented). Also unpinned the dev-group
+  Sphinx version (`Sphinx>=4.4,<5` couldn't even build — a transitive dependency needed Sphinx
+  ≥5 — unrelated pre-existing breakage, fixed in the same commit) to match the rest of the fleet.
+- **pyobs-portal** (develop @ `47f89dd`): had no docs at all; added
+  index/installation/configuration/architecture/api/frontend/development (a `frontend.rst` beyond
+  the base template, for the built-in web UI) reorganized from the repo's own already-current
+  README, filling a few real gaps (`WEBADMIN_URL` wasn't documented anywhere; several `/api/`
+  endpoints were missing from the README's table).
+- **pyobs-auth** (develop @ `9af8e06`): had no docs at all; adapted the web-app shape for a
+  library rather than a deployed service — `installation.rst` covers adding it to a Django
+  project (not Docker Compose), `api.rst` is an autoclass Python API reference (not REST, since
+  this repo has none).
+- **pyobs-pipeline** (develop @ `91642c7`): had no docs at all; added
+  index/installation/configuration/architecture/development (no `api.rst` — a server-rendered app
+  with one JSON polling endpoint, not a REST-backed service). Preserved the README's hard-won
+  `.env` `$`-escaping-under-Docker-Compose and reverse-proxy-CSRF gotchas verbatim; added the
+  Site/Pipeline/PipelineStep/SitePipeline/ReductionPeriod domain model to `architecture.rst`,
+  grounded in `reduction/models.py`. Added a `dependency-groups.dev` (none existed) with Sphinx.
+- **pyobs-astrometry** (`master` renamed to `main` in the same session, then `develop` branched
+  off it — see below; commit `f031320`): had no docs at all; one page, not a multi-page split —
+  a single stateless Flask endpoint with no Python dependency management of its own (apt packages
+  baked into the `Dockerfile`) doesn't warrant one.
+- **pyobs-allsky-cloudcover** (`develop` branch created off `main` in the same session — see
+  below; commit `c2e8d55`): had no docs at all; one page (driver-module shape, not web-app) since
+  it's a pyobs `Module` (configured via `class:` in YAML, like the driver-module fleet) with a
+  small bolted-on web query API, not a deployed multi-page service. No autoclass reference —
+  this repo is Python+Rust (maturin/PyO3, Poetry, not uv) and building the Rust extension just to
+  import it for docs wasn't worth the cost; classes are described in prose instead.
+- **pyobs-dashboard-utils** (develop @ `f8f52b5`): had no docs at all; driver-module-shaped single
+  page (bundles five independent `Module` classes, not one service) — ported the README's already
+  solid per-module config docs into RST with autoclass for all five, and wrote a real LDP Plotter
+  section from source (the README's was one line).
+
+Two of these repos didn't have a `develop` branch before this session: **pyobs-astrometry** only
+had `master` (renamed to `main` via the GitHub API, then `develop` branched off the new `main`)
+and **pyobs-allsky-cloudcover** only had `main` (branch created off it). Both repos' docs commits
+above landed on the new `develop`.
+
+Also unpinned pyobs-gui's `Sphinx>=8.2.3,<9`/`sphinx-rtd-theme>=3.0.2,<4` caps (develop @
+`d999ad9`) to match pyobs-core's floor-only convention — it was one version behind the rest of
+the fleet for no reason found. The whole fleet now resolves to the same Sphinx major version
+(9.x) wherever it isn't hard-pinned for a real reason.
 
 None of the three enforcement checks exist yet anywhere in the fleet — this doc defines the
 target, it doesn't claim any of it is live. No rollout plan has been written yet; when one is,

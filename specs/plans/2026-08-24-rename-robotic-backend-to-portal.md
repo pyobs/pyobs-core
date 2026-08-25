@@ -1,8 +1,21 @@
 # Plan: Rename pyobs-robotic-backend → pyobs-portal
 
-Status: proposed, not started. Re-checked 2026-08-25 against all six repos' current
-`develop`/default branches: no step below has been started anywhere (no renamed dirs,
-branches, or class names found). Two updates below (Step 4, Step 5) reflect that check.
+Status: in progress. Branches pushed and PRs/MRs opened 2026-08-25 for all six repos; none
+merged yet. Individual file-level checkboxes below are left unchecked as a historical record
+of the original plan — treat the PR/MR links as the source of truth for what's actually
+landed, and check items off (or drop this plan) once merged, per Step 7.
+
+- Step 1 (`pyobs-robotic-backend` -> `pyobs-portal`): GitHub repo renamed; code rename PR
+  pyobs/pyobs-portal#104.
+- Step 2 (pyobs-core `storage.backend` -> `storage.portal`, breaking): PR
+  pyobs/pyobs-core#814.
+- Step 3 (`pyobs-auth` prose): PR pyobs/pyobs-auth#10.
+- Step 4 (`pyobs-archive`, incl. resolved Open questions 1/2): PR pyobs/pyobs-archive#51.
+- Step 5 (`pyobs-iagvt`/`pyobs-monet` deployment YAML) — **held, do not merge** until Step 2
+  is released and installed on those hosts: gitlab.gwdg.de/iagvt/pyobs-iagvt!63,
+  gitlab.gwdg.de/monet/pyobs-monet!56.
+- Step 6 (`pyobs-web-admin` prose): PR pyobs/pyobs-web-admin#66.
+- Local checkout housekeeping (clone dir rename, `.idea/` fixups) done 2026-08-25.
 
 Decision record: `specs/adrs/0013-renaming-pyobs-robotic-backend.md` (accepted
 2026-08-24, name is `pyobs-portal`). This plan is the execution checklist; the ADR's own

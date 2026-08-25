@@ -1,21 +1,34 @@
 # Plan: Rename pyobs-robotic-backend → pyobs-portal
 
-Status: in progress. Branches pushed and PRs/MRs opened 2026-08-25 for all six repos; none
-merged yet. Individual file-level checkboxes below are left unchecked as a historical record
-of the original plan — treat the PR/MR links as the source of truth for what's actually
-landed, and check items off (or drop this plan) once merged, per Step 7.
+Status: code merged everywhere 2026-08-25; **deployment to iagvt/monet is not yet safe,
+see the warning under Step 5**. Individual file-level checkboxes below are left unchecked as
+a historical record of the original plan — treat the PR/MR links as the source of truth for
+what's actually landed.
 
 - Step 1 (`pyobs-robotic-backend` -> `pyobs-portal`): GitHub repo renamed; code rename PR
-  pyobs/pyobs-portal#104.
+  pyobs/pyobs-portal#104, merged. Version bumped to `2.0.0.dev9`.
 - Step 2 (pyobs-core `storage.backend` -> `storage.portal`, breaking): PR
-  pyobs/pyobs-core#814.
-- Step 3 (`pyobs-auth` prose): PR pyobs/pyobs-auth#10.
-- Step 4 (`pyobs-archive`, incl. resolved Open questions 1/2): PR pyobs/pyobs-archive#51.
-- Step 5 (`pyobs-iagvt`/`pyobs-monet` deployment YAML) — **held, do not merge** until Step 2
-  is released and installed on those hosts: gitlab.gwdg.de/iagvt/pyobs-iagvt!63,
-  gitlab.gwdg.de/monet/pyobs-monet!56.
-- Step 6 (`pyobs-web-admin` prose): PR pyobs/pyobs-web-admin#66.
+  pyobs/pyobs-core#814, merged. Version bumped to `2.0.0.dev96` on `develop` — **not yet
+  published to PyPI** (no release/tag cut yet).
+- Step 3 (`pyobs-auth` prose): PR pyobs/pyobs-auth#10, merged. No version bump (no functional
+  change).
+- Step 4 (`pyobs-archive`, incl. resolved Open questions 1/2): PR pyobs/pyobs-archive#51,
+  merged. Version bumped to `2.0.0.dev10`.
+- Step 5 (`pyobs-iagvt`/`pyobs-monet` deployment YAML): gitlab.gwdg.de/iagvt/pyobs-iagvt!63,
+  gitlab.gwdg.de/monet/pyobs-monet!56 — **merged 2026-08-25 into each repo's `develop`.**
+  **Not yet safe to deploy**: neither repo has an auto-deploy pipeline (checked
+  `.gitlab-ci.yml`, lint/test only), so nothing on the live iagvtsrv/monet-south hosts has
+  changed yet, but `develop` now points at `pyobs.robotic.storage.portal.PortalTaskArchive`/
+  `PortalObservationArchive`, which don't exist in any `pyobs-core` released to PyPI (Step 2
+  is unreleased). **Do not deploy or restart Scheduler/Mastermind on either host until
+  `pyobs-core` >=2.0.0.dev96-equivalent is actually released and installed there** — doing so
+  first will crash both modules with an ImportError.
+- Step 6 (`pyobs-web-admin` prose): PR pyobs/pyobs-web-admin#66, merged. No version bump (no
+  functional change).
 - Local checkout housekeeping (clone dir rename, `.idea/` fixups) done 2026-08-25.
+- Pin follow-up still open: once `pyobs-core` is actually released, bump `pyobs-portal`'s
+  `pyobs-core>=2.0.0.dev95` pin (attempted 2026-08-25, reverted — `uv lock` failed because
+  `dev96` isn't on PyPI yet) and cut/deploy the `pyobs-core` release so Step 5 can go live.
 
 Decision record: `specs/adrs/0013-renaming-pyobs-robotic-backend.md` (accepted
 2026-08-24, name is `pyobs-portal`). This plan is the execution checklist; the ADR's own

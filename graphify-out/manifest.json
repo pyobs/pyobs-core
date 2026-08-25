@@ -1355,8 +1355,8 @@
     "semantic_hash": "d069edcb2d2af769a97cb236fd1d8e16"
   },
   "pyobs/robotic/observation.py": {
-    "mtime": 1786360996.421144,
-    "ast_hash": "499c5dfae3bb10563bb98f6ccd3c063a",
+    "mtime": 1787668398.1664472,
+    "ast_hash": "6255d04f0b6e07ba61c93150b432c445",
     "semantic_hash": ""
   },
   "pyobs/robotic/scheduler/__init__.py": {
@@ -2210,8 +2210,8 @@
     "semantic_hash": "9cf1c6c74851628b176248b17386ad00"
   },
   "pyproject.toml": {
-    "mtime": 1787648098.2471588,
-    "ast_hash": "54360beaf3c327c09d875c497eab3355",
+    "mtime": 1787656706.1636326,
+    "ast_hash": "70ea043e3d778e584c69c23d444776ef",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -3520,8 +3520,8 @@
     "semantic_hash": "8e42c2a2da1f4f294ce8e0d8ca8a2a53"
   },
   "CHANGELOG.rst": {
-    "mtime": 1787648098.2020376,
-    "ast_hash": "e8d72f9c5610041e21a2b73a7f97e151",
+    "mtime": 1787668444.339727,
+    "ast_hash": "78725a8db036538ae4882d918282331a",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -4320,8 +4320,8 @@
     "semantic_hash": ""
   },
   "specs/plans/index.md": {
-    "mtime": 1787648580.7873437,
-    "ast_hash": "29bb4389b7064f427089f3a2d187d01c",
+    "mtime": 1787656706.1636326,
+    "ast_hash": "566ac74004086f8fa7d4d4aaa01dba9f",
     "semantic_hash": ""
   },
   "specs/steering/index.md": {
@@ -4425,8 +4425,8 @@
     "semantic_hash": ""
   },
   "specs/steering/fleet-open-items.md": {
-    "mtime": 1787572177.2731612,
-    "ast_hash": "525e447313a6303d912f8b0581c882f1",
+    "mtime": 1787668135.7208576,
+    "ast_hash": "a1ebb355bf03c9731635710330d8e1e0",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md": {
@@ -4460,8 +4460,8 @@
     "semantic_hash": ""
   },
   "specs/plans/2026-08-24-rename-robotic-backend-to-portal.md": {
-    "mtime": 1787648921.6729727,
-    "ast_hash": "24a98030291605b15ea2def12a8cceda",
+    "mtime": 1787648980.2852526,
+    "ast_hash": "dfa8d1038ebf0918e2250a65de4a33c0",
     "semantic_hash": ""
   },
   "specs/plans/2026-08-24-script-field-interface-annotations.md": {
@@ -4495,8 +4495,8 @@
     "semantic_hash": ""
   },
   "tests/robotic/storage/portal/test_portal_archives.py": {
-    "mtime": 1787648098.2497396,
-    "ast_hash": "47ac438a528035f723a22b2b027849cc",
+    "mtime": 1787668407.6065044,
+    "ast_hash": "c6eff15b482ad3c55d98758bdcddb4ee",
     "semantic_hash": ""
   }
 }

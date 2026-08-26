@@ -16,14 +16,14 @@ class SaveImage(ImageProcessor):
     Save an image as an encoded byte stream (e.g., JPEG, PNG) via the virtual file system.
 
     This processor formats a destination filename using a
-    :class:`pyobs.utils.formatter.FilenameFormatter`, encodes the input
+    :class:`~pyobs.utils.fits.FilenameFormatter`, encodes the input
     :class:`pyobs.images.Image` to the desired image format using Pillow, and writes
     the resulting bytes to the pyobs virtual file system (``vfs``). The original image
     object is returned unchanged.
 
     :param str filename: Filename template for saving the encoded image. The actual path is
                          produced by :meth:`pyobs.images.Image.format_filename` using a
-                         :class:`FilenameFormatter`. The file extension is used to infer
+                         :class:`~pyobs.utils.fits.FilenameFormatter`. The file extension is used to infer
                          the image format if ``format`` is not provided. Default: ``"/pyobs/image.jpg"``.
     :param str format: Explicit image format to use for encoding (e.g., ``"JPEG"``, ``"PNG"``,
                        ``"TIFF"``). If ``None``, the format is inferred from the filename extension.
@@ -31,27 +31,27 @@ class SaveImage(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Save Image behavior
+    -------------------
     - Computes the target path via ``image.format_filename(self._formatter)``.
     - Encodes the image to bytes using :meth:`SaveImage.encode_image`, which leverages Pillow:
 
       - If ``format`` is ``None``, the format is inferred from the filename extension
         (uppercased) with a special case mapping ``JPG -> JPEG``.
       - Conversion from :class:`pyobs.images.Image` to a Pillow image is performed by
-        :class:`pyobs.utils.image.PillowHelper`.
+        the internal ``PillowHelper``.
 
     - Writes the encoded bytes to the virtual file system using ``self.vfs.write_bytes(filename, data)``.
     - Returns the original image without modification.
 
-    Input/Output
-    ------------
+    Save Image input/output
+    -----------------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` (unchanged), with side effect of writing encoded
       bytes to the virtual file system at the formatted path.
 
-    Configuration (YAML)
-    --------------------
+    Save Image configuration (YAML)
+    -------------------------------
     Save as JPEG inferred from extension:
 
     .. code-block:: yaml

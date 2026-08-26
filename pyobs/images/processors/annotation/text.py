@@ -44,9 +44,9 @@ class Text(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
-    - Converts the input image to a Pillow image via :class:`pyobs.utils.image.PillowHelper.from_image`.
+    Text behavior
+    -------------
+    - Converts the input image to a Pillow image via ``PillowHelper.from_image``.
     - Resolves the position with ``PillowHelper.position(image, x, y, wcs)`` and the fill color with
       ``PillowHelper.color(fill)``.
     - Attempts to format ``text`` using ``self._text.format(**image.header)``; if a placeholder key
@@ -57,13 +57,13 @@ class Text(ImageProcessor):
     - Converts the Pillow image back to a :class:`pyobs.images.Image` with
       ``PillowHelper.to_image(image, im)``.
 
-    Input/Output
-    ------------
+    Text input/output
+    -----------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` (copied) with the text drawn onto the pixel data.
 
-    Configuration (YAML)
-    --------------------
+    Text configuration (YAML)
+    -------------------------
     Draw static text in pixel coordinates:
 
     .. code-block:: yaml
@@ -112,7 +112,7 @@ class Text(ImageProcessor):
     -----
     - Header-based formatting uses Python’s ``str.format`` mechanism with ``image.header`` as
       the source of values. Missing keys are ignored and the unformatted text is used.
-    - Color representation and supported value formats depend on :class:`pyobs.utils.image.PillowHelper`.
+    - Color representation and supported value formats depend on the internal ``PillowHelper``.
     - The ``anchor`` option controls how the text is positioned relative to ``(x, y)``; refer to
       Pillow’s documentation for the available anchor codes.
     - If no font is provided, Pillow’s default font is used. When a TrueType font is specified,

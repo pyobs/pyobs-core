@@ -14,7 +14,7 @@ class PixelOffset(Offsets):
     Attach desired pixel offsets to the image metadata for later application by an acquisition module.
 
     This processor stores a pixel-offset request in the image metadata as
-    a :class:`pyobs.images.processors.offsets.PixelOffsets` object. Downstream modules
+    a :class:`~pyobs.images.meta.PixelOffsets` object. Downstream modules
     (e.g., acquisition/guiding) can read these offsets and apply the corresponding
     pointing shift. Pixel data and FITS headers are not modified.
 
@@ -23,19 +23,19 @@ class PixelOffset(Offsets):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.offsets.Offsets`.
 
-    Behavior
-    --------
-    - Creates a :class:`PixelOffsets` instance with the given ``dx`` and ``dy`` values.
+    Pixel Offset behavior
+    ---------------------
+    - Creates a :class:`~pyobs.images.meta.PixelOffsets` instance with the given ``dx`` and ``dy`` values.
     - Calls ``image.set_meta(...)`` to attach the offsets to the image metadata.
     - Returns the same image object; pixel data and FITS headers remain unchanged.
 
-    Input/Output
-    ------------
+    Pixel Offset input/output
+    -------------------------
     - Input: :class:`pyobs.images.Image`.
     - Output: :class:`pyobs.images.Image` with a ``PixelOffsets`` metadata entry set.
 
-    Configuration (YAML)
-    --------------------
+    Pixel Offset configuration (YAML)
+    ---------------------------------
     Request a shift of +12 pixels in x and -8 pixels in y:
 
     .. code-block:: yaml

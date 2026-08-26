@@ -184,15 +184,29 @@
   },
   "nodes": [
     {
+      "label": "pyobs-core",
+      "file_type": "code",
+      "type": "package",
+      "ecosystem": "python",
+      "source_file": "pyproject.toml",
+      "source_location": "L1",
+      "version": "2.0.0.dev98",
+      "_origin": "ast",
+      "id": "pkg_pyobs_core",
+      "community": 399,
+      "community_name": "pyobs-core",
+      "norm_label": "pyobs-core"
+    },
+    {
       "label": "observation.py",
       "file_type": "code",
       "source_file": "pyobs/robotic/observation.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "pyobs_robotic_observation",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": "observation.py"
+      "norm_label": "observation.py",
+      "id": "pyobs_robotic_observation"
     },
     {
       "label": "ObservationState",
@@ -202,10 +216,10 @@
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observationstate",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": "observationstate"
+      "norm_label": "observationstate",
+      "id": "pyobs_robotic_observation_observationstate"
     },
     {
       "label": "StrEnum",
@@ -213,10 +227,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "strenum",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": "strenum"
+      "norm_label": "strenum",
+      "id": "strenum"
     },
     {
       "label": "Observation",
@@ -226,10 +240,10 @@
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": "observation"
+      "norm_label": "observation",
+      "id": "pyobs_robotic_observation_observation"
     },
     {
       "label": "BaseModel",
@@ -237,10 +251,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "basemodel",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": "basemodel"
+      "norm_label": "basemodel",
+      "id": "basemodel"
     },
     {
       "label": ".__str__()",
@@ -249,10 +263,10 @@
       "source_location": "L48",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation_str",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": ".__str__()"
+      "norm_label": ".__str__()",
+      "id": "pyobs_robotic_observation_observation_str"
     },
     {
       "label": ".__eq__()",
@@ -261,10 +275,10 @@
       "source_location": "L54",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation_eq",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": ".__eq__()"
+      "norm_label": ".__eq__()",
+      "id": "pyobs_robotic_observation_observation_eq"
     },
     {
       "label": ".__ne__()",
@@ -273,10 +287,10 @@
       "source_location": "L59",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation_ne",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": ".__ne__()"
+      "norm_label": ".__ne__()",
+      "id": "pyobs_robotic_observation_observation_ne"
     },
     {
       "label": ".__lt__()",
@@ -285,10 +299,10 @@
       "source_location": "L64",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation_lt",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": ".__lt__()"
+      "norm_label": ".__lt__()",
+      "id": "pyobs_robotic_observation_observation_lt"
     },
     {
       "label": ".__gt__()",
@@ -297,10 +311,10 @@
       "source_location": "L69",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation_gt",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": ".__gt__()"
+      "norm_label": ".__gt__()",
+      "id": "pyobs_robotic_observation_observation_gt"
     },
     {
       "label": ".__le__()",
@@ -309,10 +323,10 @@
       "source_location": "L74",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation_le",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": ".__le__()"
+      "norm_label": ".__le__()",
+      "id": "pyobs_robotic_observation_observation_le"
     },
     {
       "label": ".__ge__()",
@@ -321,10 +335,10 @@
       "source_location": "L79",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation_ge",
       "community": 7,
       "community_name": "Observation",
-      "norm_label": ".__ge__()"
+      "norm_label": ".__ge__()",
+      "id": "pyobs_robotic_observation_observation_ge"
     },
     {
       "label": ".model_dump()",
@@ -333,10 +347,10 @@
       "source_location": "L84",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation_model_dump",
       "community": 33,
       "community_name": "BaseCamera",
-      "norm_label": ".model_dump()"
+      "norm_label": ".model_dump()",
+      "id": "pyobs_robotic_observation_observation_model_dump"
     },
     {
       "label": "Any",
@@ -344,10 +358,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "any",
       "community": 33,
       "community_name": "BaseCamera",
-      "norm_label": "any"
+      "norm_label": "any",
+      "id": "any"
     },
     {
       "label": ".fetch_task()",
@@ -356,10 +370,10 @@
       "source_location": "L92",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observation_fetch_task",
       "community": 223,
       "community_name": "Mastermind",
-      "norm_label": ".fetch_task()"
+      "norm_label": ".fetch_task()",
+      "id": "pyobs_robotic_observation_observation_fetch_task"
     },
     {
       "label": "TaskArchive",
@@ -367,10 +381,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "taskarchive",
       "community": 223,
       "community_name": "Mastermind",
-      "norm_label": "taskarchive"
+      "norm_label": "taskarchive",
+      "id": "taskarchive"
     },
     {
       "label": "ObservationList",
@@ -380,10 +394,10 @@
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observationlist",
       "community": 281,
       "community_name": "ObservationList",
-      "norm_label": "observationlist"
+      "norm_label": "observationlist",
+      "id": "pyobs_robotic_observation_observationlist"
     },
     {
       "label": ".__init__()",
@@ -392,10 +406,10 @@
       "source_location": "L102",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observationlist_init",
       "community": 281,
       "community_name": "ObservationList",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "pyobs_robotic_observation_observationlist_init"
     },
     {
       "label": ".filter()",
@@ -404,10 +418,10 @@
       "source_location": "L107",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observationlist_filter",
       "community": 281,
       "community_name": "ObservationList",
-      "norm_label": ".filter()"
+      "norm_label": ".filter()",
+      "id": "pyobs_robotic_observation_observationlist_filter"
     },
     {
       "label": "Time",
@@ -415,10 +429,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_py_time",
       "community": 281,
       "community_name": "ObservationList",
-      "norm_label": "time"
+      "norm_label": "time",
+      "id": "pyobs_robotic_observation_py_time"
     },
     {
       "label": ".model_dump()",
@@ -427,10 +441,10 @@
       "source_location": "L131",
       "_callable": true,
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_observationlist_model_dump",
       "community": 33,
       "community_name": "BaseCamera",
-      "norm_label": ".model_dump()"
+      "norm_label": ".model_dump()",
+      "id": "pyobs_robotic_observation_observationlist_model_dump"
     },
     {
       "label": "Fetch a task from the task archive.",
@@ -438,10 +452,10 @@
       "source_file": "pyobs/robotic/observation.py",
       "source_location": "L93",
       "_origin": "ast",
-      "id": "pyobs_robotic_observation_rationale_93",
       "community": 223,
       "community_name": "Mastermind",
-      "norm_label": "fetch a task from the task archive."
+      "norm_label": "fetch a task from the task archive.",
+      "id": "pyobs_robotic_observation_rationale_93"
     },
     {
       "label": "test_portal_archives.py",
@@ -449,10 +463,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_portal_archives.py"
+      "norm_label": "test_portal_archives.py",
+      "id": "tests_robotic_storage_portal_test_portal_archives"
     },
     {
       "label": "make_task()",
@@ -461,10 +475,10 @@
       "source_location": "L23",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_make_task",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "make_task()"
+      "norm_label": "make_task()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "label": "Task",
@@ -472,10 +486,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "task",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "task"
+      "norm_label": "task",
+      "id": "task"
     },
     {
       "label": "make_obs()",
@@ -484,10 +498,10 @@
       "source_location": "L27",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_make_obs",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "make_obs()"
+      "norm_label": "make_obs()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "label": "Time",
@@ -495,10 +509,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_py_time",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "time"
+      "norm_label": "time",
+      "id": "tests_robotic_storage_portal_test_portal_archives_py_time"
     },
     {
       "label": "make_task_archive()",
@@ -507,10 +521,10 @@
       "source_location": "L33",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "make_task_archive()"
+      "norm_label": "make_task_archive()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "label": "PortalTaskArchive",
@@ -518,10 +532,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "portaltaskarchive",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "portaltaskarchive"
+      "norm_label": "portaltaskarchive",
+      "id": "portaltaskarchive"
     },
     {
       "label": "make_obs_archive()",
@@ -530,10 +544,10 @@
       "source_location": "L39",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "make_obs_archive()"
+      "norm_label": "make_obs_archive()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "label": "PortalObservationArchive",
@@ -541,10 +555,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "portalobservationarchive",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "portalobservationarchive"
+      "norm_label": "portalobservationarchive",
+      "id": "portalobservationarchive"
     },
     {
       "label": "asyncio",
@@ -552,10 +566,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "asyncio",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "asyncio"
+      "norm_label": "asyncio",
+      "id": "asyncio"
     },
     {
       "label": "test_task_last_changed_none_initially()",
@@ -564,10 +578,10 @@
       "source_location": "L49",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_none_initially",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_last_changed_none_initially()"
+      "norm_label": "test_task_last_changed_none_initially()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_none_initially"
     },
     {
       "label": "test_task_last_changed_returns_cached()",
@@ -576,10 +590,10 @@
       "source_location": "L55",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_returns_cached",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_last_changed_returns_cached()"
+      "norm_label": "test_task_last_changed_returns_cached()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_returns_cached"
     },
     {
       "label": "test_task_get_projects_returns_cached()",
@@ -588,10 +602,10 @@
       "source_location": "L62",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_returns_cached",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_get_projects_returns_cached()"
+      "norm_label": "test_task_get_projects_returns_cached()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_returns_cached"
     },
     {
       "label": "test_task_get_schedulable_tasks_returns_cached()",
@@ -600,10 +614,10 @@
       "source_location": "L71",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_schedulable_tasks_returns_cached",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_get_schedulable_tasks_returns_cached()"
+      "norm_label": "test_task_get_schedulable_tasks_returns_cached()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_schedulable_tasks_returns_cached"
     },
     {
       "label": "test_task_get_task_found()",
@@ -612,10 +626,10 @@
       "source_location": "L79",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_found",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_get_task_found()"
+      "norm_label": "test_task_get_task_found()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_found"
     },
     {
       "label": "test_task_get_task_not_found()",
@@ -624,10 +638,10 @@
       "source_location": "L88",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_not_found",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_get_task_not_found()"
+      "norm_label": "test_task_get_task_not_found()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_not_found"
     },
     {
       "label": "test_task_last_update_time()",
@@ -636,10 +650,10 @@
       "source_location": "L95",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_last_update_time",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_last_update_time()"
+      "norm_label": "test_task_last_update_time()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_last_update_time"
     },
     {
       "label": "test_task_get_projects_from_portal()",
@@ -648,10 +662,10 @@
       "source_location": "L106",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_get_projects_from_portal()"
+      "norm_label": "test_task_get_projects_from_portal()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal"
     },
     {
       "label": "test_task_get_projects_from_portal_accepts_public()",
@@ -660,10 +674,10 @@
       "source_location": "L120",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal_accepts_public",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_get_projects_from_portal_accepts_public()"
+      "norm_label": "test_task_get_projects_from_portal_accepts_public()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal_accepts_public"
     },
     {
       "label": "test_task_get_tasks_from_portal()",
@@ -672,10 +686,10 @@
       "source_location": "L141",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_get_tasks_from_portal()"
+      "norm_label": "test_task_get_tasks_from_portal()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal"
     },
     {
       "label": "test_task_get_tasks_from_portal_accepts_updated_at()",
@@ -684,10 +698,10 @@
       "source_location": "L154",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal_accepts_updated_at",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_get_tasks_from_portal_accepts_updated_at()"
+      "norm_label": "test_task_get_tasks_from_portal_accepts_updated_at()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal_accepts_updated_at"
     },
     {
       "label": "test_obs_get_schedule_returns_cached()",
@@ -696,10 +710,10 @@
       "source_location": "L171",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_returns_cached",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_schedule_returns_cached()"
+      "norm_label": "test_obs_get_schedule_returns_cached()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_returns_cached"
     },
     {
       "label": "test_obs_get_schedule_time_ignored()",
@@ -708,10 +722,10 @@
       "source_location": "L180",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_schedule_time_ignored()"
+      "norm_label": "test_obs_get_schedule_time_ignored()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored"
     },
     {
       "label": "test_obs_get_next_returns_active()",
@@ -720,10 +734,10 @@
       "source_location": "L190",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_returns_active",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_next_returns_active()"
+      "norm_label": "test_obs_get_next_returns_active()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_returns_active"
     },
     {
       "label": "test_obs_get_next_boundary_exclusive()",
@@ -732,10 +746,10 @@
       "source_location": "L201",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_next_boundary_exclusive()"
+      "norm_label": "test_obs_get_next_boundary_exclusive()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive"
     },
     {
       "label": "test_obs_get_next_skips_non_pending()",
@@ -744,10 +758,10 @@
       "source_location": "L213",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_skips_non_pending",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_next_skips_non_pending()"
+      "norm_label": "test_obs_get_next_skips_non_pending()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_skips_non_pending"
     },
     {
       "label": "test_obs_get_next_calls_fetch_task()",
@@ -756,10 +770,10 @@
       "source_location": "L222",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_next_calls_fetch_task()"
+      "norm_label": "test_obs_get_next_calls_fetch_task()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task"
     },
     {
       "label": "test_obs_get_current_returns_in_progress()",
@@ -768,10 +782,10 @@
       "source_location": "L239",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_in_progress",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_current_returns_in_progress()"
+      "norm_label": "test_obs_get_current_returns_in_progress()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_in_progress"
     },
     {
       "label": "test_obs_get_current_returns_none_when_idle()",
@@ -780,10 +794,10 @@
       "source_location": "L249",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_none_when_idle",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_current_returns_none_when_idle()"
+      "norm_label": "test_obs_get_current_returns_none_when_idle()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_none_when_idle"
     },
     {
       "label": "test_obs_add_observations()",
@@ -792,10 +806,10 @@
       "source_location": "L257",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_add_observations",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_add_observations()"
+      "norm_label": "test_obs_add_observations()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_add_observations"
     },
     {
       "label": "test_obs_clear_schedule()",
@@ -804,10 +818,10 @@
       "source_location": "L272",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_clear_schedule",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_clear_schedule()"
+      "norm_label": "test_obs_clear_schedule()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_clear_schedule"
     },
     {
       "label": "test_obs_update_observation()",
@@ -816,10 +830,10 @@
       "source_location": "L285",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_observation",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_update_observation()"
+      "norm_label": "test_obs_update_observation()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_observation"
     },
     {
       "label": "test_obs_get_observations_builds_params()",
@@ -828,10 +842,10 @@
       "source_location": "L303",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_builds_params",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_observations_builds_params()"
+      "norm_label": "test_obs_get_observations_builds_params()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_builds_params"
     },
     {
       "label": "test_obs_get_observations_tolerates_portal_archive_url()",
@@ -840,10 +854,10 @@
       "source_location": "L326",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_tolerates_portal_archive_url",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_get_observations_tolerates_portal_archive_url()"
+      "norm_label": "test_obs_get_observations_tolerates_portal_archive_url()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_tolerates_portal_archive_url"
     },
     {
       "label": "test_obs_last_update_time()",
@@ -852,10 +866,10 @@
       "source_location": "L358",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_last_update_time",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_last_update_time()"
+      "norm_label": "test_obs_last_update_time()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_last_update_time"
     },
     {
       "label": "test_task_update_not_gated_on_marker()",
@@ -864,10 +878,10 @@
       "source_location": "L375",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_not_gated_on_marker",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_update_not_gated_on_marker()"
+      "norm_label": "test_task_update_not_gated_on_marker()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_not_gated_on_marker"
     },
     {
       "label": "test_task_update_no_change_no_notification()",
@@ -876,10 +890,10 @@
       "source_location": "L403",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_no_change_no_notification",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_update_no_change_no_notification()"
+      "norm_label": "test_task_update_no_change_no_notification()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_no_change_no_notification"
     },
     {
       "label": "test_task_update_detects_content_change()",
@@ -888,10 +902,10 @@
       "source_location": "L431",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_detects_content_change",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_update_detects_content_change()"
+      "norm_label": "test_task_update_detects_content_change()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_detects_content_change"
     },
     {
       "label": "test_task_update_ignores_runtime_attributes()",
@@ -900,10 +914,10 @@
       "source_location": "L459",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_ignores_runtime_attributes",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_update_ignores_runtime_attributes()"
+      "norm_label": "test_task_update_ignores_runtime_attributes()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_ignores_runtime_attributes"
     },
     {
       "label": "test_obs_update_downloads_and_applies()",
@@ -912,10 +926,10 @@
       "source_location": "L485",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_downloads_and_applies",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_update_downloads_and_applies()"
+      "norm_label": "test_obs_update_downloads_and_applies()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_downloads_and_applies"
     },
     {
       "label": "test_obs_update_no_change_keeps_cache()",
@@ -924,10 +938,10 @@
       "source_location": "L502",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_no_change_keeps_cache",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_update_no_change_keeps_cache()"
+      "norm_label": "test_obs_update_no_change_keeps_cache()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_no_change_keeps_cache"
     },
     {
       "label": "test_obs_update_detects_state_transition_in_fetched_set()",
@@ -936,10 +950,10 @@
       "source_location": "L522",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_update_detects_state_transition_in_fetched_set()"
+      "norm_label": "test_obs_update_detects_state_transition_in_fetched_set()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set"
     },
     {
       "label": "test_obs_update_applies_shrinkage_when_observation_disappears()",
@@ -948,10 +962,10 @@
       "source_location": "L546",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_applies_shrinkage_when_observation_disappears",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_update_applies_shrinkage_when_observation_disappears()"
+      "norm_label": "test_obs_update_applies_shrinkage_when_observation_disappears()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_applies_shrinkage_when_observation_disappears"
     },
     {
       "label": "test_task_update_order_insensitive()",
@@ -960,10 +974,10 @@
       "source_location": "L566",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_order_insensitive",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_update_order_insensitive()"
+      "norm_label": "test_task_update_order_insensitive()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_update_order_insensitive"
     },
     {
       "label": "test_obs_update_order_insensitive()",
@@ -972,10 +986,10 @@
       "source_location": "L588",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_order_insensitive",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_update_order_insensitive()"
+      "norm_label": "test_obs_update_order_insensitive()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_order_insensitive"
     },
     {
       "label": "test_obs_update_normalizes_task_id()",
@@ -984,10 +998,10 @@
       "source_location": "L608",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_update_normalizes_task_id()"
+      "norm_label": "test_obs_update_normalizes_task_id()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id"
     },
     {
       "label": "test_task_poll_downloads_on_first_poll()",
@@ -996,10 +1010,10 @@
       "source_location": "L630",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_on_first_poll",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_poll_downloads_on_first_poll()"
+      "norm_label": "test_task_poll_downloads_on_first_poll()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_on_first_poll"
     },
     {
       "label": "test_task_poll_skips_when_marker_unchanged()",
@@ -1008,10 +1022,10 @@
       "source_location": "L641",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_skips_when_marker_unchanged",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_poll_skips_when_marker_unchanged()"
+      "norm_label": "test_task_poll_skips_when_marker_unchanged()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_skips_when_marker_unchanged"
     },
     {
       "label": "test_task_poll_downloads_when_marker_newer()",
@@ -1020,10 +1034,10 @@
       "source_location": "L653",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_when_marker_newer",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_task_poll_downloads_when_marker_newer()"
+      "norm_label": "test_task_poll_downloads_when_marker_newer()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_when_marker_newer"
     },
     {
       "label": "test_obs_poll_downloads_on_first_poll()",
@@ -1032,10 +1046,10 @@
       "source_location": "L665",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_on_first_poll",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_poll_downloads_on_first_poll()"
+      "norm_label": "test_obs_poll_downloads_on_first_poll()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_on_first_poll"
     },
     {
       "label": "test_obs_poll_skips_when_marker_unchanged()",
@@ -1044,10 +1058,10 @@
       "source_location": "L675",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_skips_when_marker_unchanged",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_poll_skips_when_marker_unchanged()"
+      "norm_label": "test_obs_poll_skips_when_marker_unchanged()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_skips_when_marker_unchanged"
     },
     {
       "label": "test_obs_poll_downloads_when_marker_newer()",
@@ -1056,10 +1070,10 @@
       "source_location": "L686",
       "_callable": true,
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_when_marker_newer",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "test_obs_poll_downloads_when_marker_newer()"
+      "norm_label": "test_obs_poll_downloads_when_marker_newer()",
+      "id": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_when_marker_newer"
     },
     {
       "label": "Projects with the portal `public` flag ingest without a strict-model\u2026",
@@ -1067,10 +1081,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L121",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_121",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "projects with the portal `public` flag ingest without a strict-model..."
+      "norm_label": "projects with the portal `public` flag ingest without a strict-model...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_121"
     },
     {
       "label": "Tasks with the portal `updated_at` field (pyobs-portal#84) ingest without a\u2026",
@@ -1078,10 +1092,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L155",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_155",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "tasks with the portal `updated_at` field (pyobs-portal#84) ingest without a..."
+      "norm_label": "tasks with the portal `updated_at` field (pyobs-portal#84) ingest without a...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_155"
     },
     {
       "label": "time parameter is unused \u2014 portal returns cached observations.",
@@ -1089,10 +1103,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L181",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_181",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "time parameter is unused \u2014 portal returns cached observations."
+      "norm_label": "time parameter is unused \u2014 portal returns cached observations.",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_181"
     },
     {
       "label": "Portal uses strictly exclusive boundaries (start < time < end).",
@@ -1100,10 +1114,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L202",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_202",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "portal uses strictly exclusive boundaries (start < time < end)."
+      "norm_label": "portal uses strictly exclusive boundaries (start < time < end).",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_202"
     },
     {
       "label": "fetch_task is called with task_archive when provided.",
@@ -1111,10 +1125,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L223",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_223",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "fetch_task is called with task_archive when provided."
+      "norm_label": "fetch_task is called with task_archive when provided.",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_223"
     },
     {
       "label": "pyobs-portal's ObservationSerializer emits a computed ``archive_url`` per row\u2026",
@@ -1122,10 +1136,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L327",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_327",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "pyobs-portal's observationserializer emits a computed ``archive_url`` per row..."
+      "norm_label": "pyobs-portal's observationserializer emits a computed ``archive_url`` per row...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_327"
     },
     {
       "label": "`_update()` itself does not consult the marker -- the gate lives in `_poll()`,\u2026",
@@ -1133,10 +1147,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L376",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_376",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "`_update()` itself does not consult the marker -- the gate lives in `_poll()`,..."
+      "norm_label": "`_update()` itself does not consult the marker -- the gate lives in `_poll()`,...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_376"
     },
     {
       "label": "Idempotent poll: identical content must not fire on_tasks_changed or bump\u2026",
@@ -1144,10 +1158,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L404",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_404",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "idempotent poll: identical content must not fire on_tasks_changed or bump..."
+      "norm_label": "idempotent poll: identical content must not fire on_tasks_changed or bump...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_404"
     },
     {
       "label": "Same task identity but changed content (e.g. active=False in the portal) must\u2026",
@@ -1155,10 +1169,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L432",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_432",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "same task identity but changed content (e.g. active=false in the portal) must..."
+      "norm_label": "same task identity but changed content (e.g. active=false in the portal) must...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_432"
     },
     {
       "label": "Change detection must compare model fields, not pydantic __eq__: runtime\u2026",
@@ -1166,10 +1180,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L460",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_460",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "change detection must compare model fields, not pydantic __eq__: runtime..."
+      "norm_label": "change detection must compare model fields, not pydantic __eq__: runtime...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_460"
     },
     {
       "label": "New observations appear in the cache on the next poll.",
@@ -1177,10 +1191,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L486",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_486",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "new observations appear in the cache on the next poll."
+      "norm_label": "new observations appear in the cache on the next poll.",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_486"
     },
     {
       "label": "Idempotent poll must not replace the cached list or bump _last_update.",
@@ -1188,10 +1202,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L503",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_503",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "idempotent poll must not replace the cached list or bump _last_update."
+      "norm_label": "idempotent poll must not replace the cached list or bump _last_update.",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_503"
     },
     {
       "label": "An in-set state transition (pending -> in_progress, both within the portal's\u2026",
@@ -1199,10 +1213,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L523",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_523",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "an in-set state transition (pending -> in_progress, both within the portal's..."
+      "norm_label": "an in-set state transition (pending -> in_progress, both within the portal's...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_523"
     },
     {
       "label": "The production path for the window_expired symptom from #789: the portal's\u2026",
@@ -1210,10 +1224,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L547",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_547",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "the production path for the window_expired symptom from #789: the portal's..."
+      "norm_label": "the production path for the window_expired symptom from #789: the portal's...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_547"
     },
     {
       "label": "The same items in a different order (e.g. an unordered portal queryset) must\u2026",
@@ -1221,10 +1235,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L567",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_567",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "the same items in a different order (e.g. an unordered portal queryset) must..."
+      "norm_label": "the same items in a different order (e.g. an unordered portal queryset) must...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_567"
     },
     {
       "label": "The same observations in a different order must not be reported as a change.",
@@ -1232,10 +1246,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L589",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_589",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "the same observations in a different order must not be reported as a change."
+      "norm_label": "the same observations in a different order must not be reported as a change.",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_589"
     },
     {
       "label": "Cached observations get their task replaced by a full Task object when the\u2026",
@@ -1243,10 +1257,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L609",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_609",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "cached observations get their task replaced by a full task object when the..."
+      "norm_label": "cached observations get their task replaced by a full task object when the...",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_609"
     },
     {
       "label": "First poll: no cached marker -> download and remember the marker.",
@@ -1254,10 +1268,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L631",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_631",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "first poll: no cached marker -> download and remember the marker."
+      "norm_label": "first poll: no cached marker -> download and remember the marker.",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_631"
     },
     {
       "label": "Marker did not move -> no download (no spurious re-download/comparison).",
@@ -1265,10 +1279,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L642",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_642",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "marker did not move -> no download (no spurious re-download/comparison)."
+      "norm_label": "marker did not move -> no download (no spurious re-download/comparison).",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_642"
     },
     {
       "label": "Marker moved -> download and advance the cached marker.",
@@ -1276,10 +1290,10 @@
       "source_file": "tests/robotic/storage/portal/test_portal_archives.py",
       "source_location": "L654",
       "_origin": "ast",
-      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_654",
       "community": 8,
       "community_name": "asyncio",
-      "norm_label": "marker moved -> download and advance the cached marker."
+      "norm_label": "marker moved -> download and advance the cached marker.",
+      "id": "tests_robotic_storage_portal_test_portal_archives_rationale_654"
     },
     {
       "label": "fleet-open-items.md",
@@ -5005,20 +5019,6 @@
       "community_name": "Scheduler",
       "norm_label": "constant flat priorities.",
       "id": "pyobs_robotic_utils_skyflats_priorities_const_rationale_7"
-    },
-    {
-      "label": "pyobs-core",
-      "file_type": "code",
-      "type": "package",
-      "ecosystem": "python",
-      "source_file": "pyproject.toml",
-      "source_location": "L1",
-      "version": "2.0.0.dev96",
-      "_origin": "ast",
-      "community": 399,
-      "community_name": "pyobs-core",
-      "norm_label": "pyobs-core",
-      "id": "pkg_pyobs_core"
     },
     {
       "label": "0011-keycloak-identity-broker-for-shared-auth.md",
@@ -109549,9 +109549,9 @@
       "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation",
-      "target": "enum",
-      "confidence_score": 1.0
+      "target": "enum"
     },
     {
       "relation": "contains",
@@ -109560,9 +109560,9 @@
       "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation",
-      "target": "pyobs_robotic_observation_observation",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation"
     },
     {
       "relation": "contains",
@@ -109571,9 +109571,9 @@
       "source_location": "L101",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation",
-      "target": "pyobs_robotic_observation_observationlist",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observationlist"
     },
     {
       "relation": "contains",
@@ -109582,9 +109582,9 @@
       "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation",
-      "target": "pyobs_robotic_observation_observationstate",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observationstate"
     },
     {
       "relation": "imports_from",
@@ -109594,9 +109594,9 @@
       "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation",
-      "target": "pyobs_robotic_task",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_task"
     },
     {
       "relation": "imports_from",
@@ -109606,9 +109606,9 @@
       "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation",
-      "target": "pyobs_utils_serialization",
-      "confidence_score": 1.0
+      "target": "pyobs_utils_serialization"
     },
     {
       "relation": "imports_from",
@@ -109618,9 +109618,9 @@
       "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation",
-      "target": "pyobs_utils_time",
-      "confidence_score": 1.0
+      "target": "pyobs_utils_time"
     },
     {
       "relation": "imports_from",
@@ -109894,9 +109894,9 @@
       "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "pyobs_robotic_observation",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation"
     },
     {
       "relation": "imports_from",
@@ -109930,9 +109930,9 @@
       "source_location": "L107",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observationlist_filter",
-      "target": "pyobs_robotic_observation_observationstate",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observationstate"
     },
     {
       "relation": "inherits",
@@ -109941,9 +109941,9 @@
       "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observationstate",
-      "target": "strenum",
-      "confidence_score": 1.0
+      "target": "strenum"
     },
     {
       "relation": "imports",
@@ -110317,9 +110317,9 @@
       "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "pyobs_robotic_observation_observationstate",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observationstate"
     },
     {
       "relation": "references",
@@ -110329,9 +110329,9 @@
       "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "target": "pyobs_robotic_observation_observationstate",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observationstate"
     },
     {
       "relation": "imports",
@@ -110352,9 +110352,9 @@
       "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "method",
@@ -110363,9 +110363,9 @@
       "source_location": "L54",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "pyobs_robotic_observation_observation_eq",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_eq"
     },
     {
       "relation": "method",
@@ -110374,9 +110374,9 @@
       "source_location": "L92",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "pyobs_robotic_observation_observation_fetch_task",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_fetch_task"
     },
     {
       "relation": "method",
@@ -110385,9 +110385,9 @@
       "source_location": "L79",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "pyobs_robotic_observation_observation_ge",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_ge"
     },
     {
       "relation": "method",
@@ -110396,9 +110396,9 @@
       "source_location": "L69",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "pyobs_robotic_observation_observation_gt",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_gt"
     },
     {
       "relation": "method",
@@ -110407,9 +110407,9 @@
       "source_location": "L74",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "pyobs_robotic_observation_observation_le",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_le"
     },
     {
       "relation": "method",
@@ -110418,9 +110418,9 @@
       "source_location": "L64",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "pyobs_robotic_observation_observation_lt",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_lt"
     },
     {
       "relation": "method",
@@ -110429,9 +110429,9 @@
       "source_location": "L84",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "pyobs_robotic_observation_observation_model_dump",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_model_dump"
     },
     {
       "relation": "method",
@@ -110440,9 +110440,9 @@
       "source_location": "L59",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "pyobs_robotic_observation_observation_ne",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_ne"
     },
     {
       "relation": "method",
@@ -110451,9 +110451,9 @@
       "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation",
-      "target": "pyobs_robotic_observation_observation_str",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_str"
     },
     {
       "relation": "references",
@@ -110463,9 +110463,9 @@
       "source_location": "L102",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observationlist_init",
-      "target": "pyobs_robotic_observation_observation",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation"
     },
     {
       "relation": "imports",
@@ -111312,9 +111312,9 @@
       "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "pyobs_robotic_observation_observation",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation"
     },
     {
       "relation": "references",
@@ -111324,9 +111324,9 @@
       "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "target": "pyobs_robotic_observation_observation",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation"
     },
     {
       "relation": "calls",
@@ -111336,9 +111336,9 @@
       "source_location": "L527",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set",
-      "target": "pyobs_robotic_observation_observation",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation"
     },
     {
       "relation": "imports",
@@ -111405,9 +111405,9 @@
       "source_location": "L84",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation_model_dump",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "calls",
@@ -111417,9 +111417,9 @@
       "source_location": "L85",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation_model_dump",
-      "target": "pyobs_robotic_observation_observationlist_model_dump",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observationlist_model_dump"
     },
     {
       "relation": "references",
@@ -111741,9 +111741,9 @@
       "source_location": "L131",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observationlist_model_dump",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "references",
@@ -111753,9 +111753,9 @@
       "source_location": "L92",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observation_fetch_task",
-      "target": "taskarchive",
-      "confidence_score": 1.0
+      "target": "taskarchive"
     },
     {
       "relation": "rationale_for",
@@ -111764,9 +111764,9 @@
       "source_location": "L93",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_rationale_93",
-      "target": "pyobs_robotic_observation_observation_fetch_task",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observation_fetch_task"
     },
     {
       "relation": "references",
@@ -111793,27 +111793,15 @@
       "target": "pyobs_robotic_observation_observationlist"
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "pyobs/robotic/observation.py",
-      "source_location": "L107",
-      "weight": 1.0,
-      "_origin": "ast",
-      "context": "return_type",
-      "source": "pyobs_robotic_observation_observationlist_filter",
-      "target": "pyobs_robotic_observation_observationlist",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "pyobs/robotic/observation.py",
       "source_location": "L102",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observationlist",
-      "target": "pyobs_robotic_observation_observationlist_init",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observationlist_init"
     },
     {
       "relation": "method",
@@ -111822,9 +111810,21 @@
       "source_location": "L131",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observationlist",
-      "target": "pyobs_robotic_observation_observationlist_model_dump",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observationlist_model_dump"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "pyobs/robotic/observation.py",
+      "source_location": "L107",
+      "weight": 1.0,
+      "_origin": "ast",
+      "context": "return_type",
+      "confidence_score": 1.0,
+      "source": "pyobs_robotic_observation_observationlist_filter",
+      "target": "pyobs_robotic_observation_observationlist"
     },
     {
       "relation": "imports",
@@ -113372,9 +113372,9 @@
       "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "pyobs_robotic_observation_observationlist",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_observationlist"
     },
     {
       "relation": "calls",
@@ -113504,9 +113504,9 @@
       "source_location": "L107",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "pyobs_robotic_observation_observationlist_filter",
-      "target": "pyobs_robotic_observation_py_time",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_observation_py_time"
     },
     {
       "relation": "imports_from",
@@ -113516,9 +113516,9 @@
       "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "pyobs_robotic_storage_portal_observationarchive",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_storage_portal_observationarchive"
     },
     {
       "relation": "imports_from",
@@ -113528,9 +113528,9 @@
       "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "pyobs_robotic_storage_portal_taskarchive",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_storage_portal_taskarchive"
     },
     {
       "relation": "imports_from",
@@ -113540,9 +113540,9 @@
       "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "pyobs_robotic_task",
-      "confidence_score": 1.0
+      "target": "pyobs_robotic_task"
     },
     {
       "relation": "imports_from",
@@ -113552,9 +113552,9 @@
       "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "pyobs_utils_time",
-      "confidence_score": 1.0
+      "target": "pyobs_utils_time"
     },
     {
       "relation": "contains",
@@ -113563,9 +113563,9 @@
       "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "contains",
@@ -113574,9 +113574,9 @@
       "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "contains",
@@ -113585,9 +113585,9 @@
       "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "contains",
@@ -113596,9 +113596,9 @@
       "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "contains",
@@ -113607,9 +113607,9 @@
       "source_location": "L257",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_add_observations",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_add_observations"
     },
     {
       "relation": "contains",
@@ -113618,9 +113618,9 @@
       "source_location": "L272",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_clear_schedule",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_clear_schedule"
     },
     {
       "relation": "contains",
@@ -113629,9 +113629,9 @@
       "source_location": "L239",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_in_progress",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_in_progress"
     },
     {
       "relation": "contains",
@@ -113640,9 +113640,9 @@
       "source_location": "L249",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_none_when_idle",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_none_when_idle"
     },
     {
       "relation": "contains",
@@ -113651,9 +113651,9 @@
       "source_location": "L201",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive"
     },
     {
       "relation": "contains",
@@ -113662,9 +113662,9 @@
       "source_location": "L222",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task"
     },
     {
       "relation": "contains",
@@ -113673,9 +113673,9 @@
       "source_location": "L190",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_returns_active",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_returns_active"
     },
     {
       "relation": "contains",
@@ -113684,9 +113684,9 @@
       "source_location": "L213",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_skips_non_pending",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_skips_non_pending"
     },
     {
       "relation": "contains",
@@ -113695,9 +113695,9 @@
       "source_location": "L303",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_builds_params",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_builds_params"
     },
     {
       "relation": "contains",
@@ -113706,9 +113706,9 @@
       "source_location": "L326",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_tolerates_portal_archive_url",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_tolerates_portal_archive_url"
     },
     {
       "relation": "contains",
@@ -113717,9 +113717,9 @@
       "source_location": "L171",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_returns_cached",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_returns_cached"
     },
     {
       "relation": "contains",
@@ -113728,9 +113728,9 @@
       "source_location": "L180",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored"
     },
     {
       "relation": "contains",
@@ -113739,9 +113739,9 @@
       "source_location": "L358",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_last_update_time",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_last_update_time"
     },
     {
       "relation": "contains",
@@ -113750,9 +113750,9 @@
       "source_location": "L665",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_on_first_poll",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_on_first_poll"
     },
     {
       "relation": "contains",
@@ -113761,9 +113761,9 @@
       "source_location": "L686",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_when_marker_newer",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_when_marker_newer"
     },
     {
       "relation": "contains",
@@ -113772,9 +113772,9 @@
       "source_location": "L675",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_skips_when_marker_unchanged",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_skips_when_marker_unchanged"
     },
     {
       "relation": "contains",
@@ -113783,9 +113783,9 @@
       "source_location": "L546",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_applies_shrinkage_when_observation_disappears",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_applies_shrinkage_when_observation_disappears"
     },
     {
       "relation": "contains",
@@ -113794,9 +113794,9 @@
       "source_location": "L522",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set"
     },
     {
       "relation": "contains",
@@ -113805,9 +113805,9 @@
       "source_location": "L485",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_downloads_and_applies",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_downloads_and_applies"
     },
     {
       "relation": "contains",
@@ -113816,9 +113816,9 @@
       "source_location": "L502",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_no_change_keeps_cache",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_no_change_keeps_cache"
     },
     {
       "relation": "contains",
@@ -113827,9 +113827,9 @@
       "source_location": "L608",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id"
     },
     {
       "relation": "contains",
@@ -113838,9 +113838,9 @@
       "source_location": "L285",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_observation",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_observation"
     },
     {
       "relation": "contains",
@@ -113849,9 +113849,9 @@
       "source_location": "L588",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_order_insensitive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_order_insensitive"
     },
     {
       "relation": "contains",
@@ -113860,9 +113860,9 @@
       "source_location": "L106",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal"
     },
     {
       "relation": "contains",
@@ -113871,9 +113871,9 @@
       "source_location": "L120",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal_accepts_public",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal_accepts_public"
     },
     {
       "relation": "contains",
@@ -113882,9 +113882,9 @@
       "source_location": "L62",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_returns_cached",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_returns_cached"
     },
     {
       "relation": "contains",
@@ -113893,9 +113893,9 @@
       "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_schedulable_tasks_returns_cached",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_schedulable_tasks_returns_cached"
     },
     {
       "relation": "contains",
@@ -113904,9 +113904,9 @@
       "source_location": "L79",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_found",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_found"
     },
     {
       "relation": "contains",
@@ -113915,9 +113915,9 @@
       "source_location": "L88",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_not_found",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_not_found"
     },
     {
       "relation": "contains",
@@ -113926,9 +113926,9 @@
       "source_location": "L141",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal"
     },
     {
       "relation": "contains",
@@ -113937,9 +113937,9 @@
       "source_location": "L154",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal_accepts_updated_at",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal_accepts_updated_at"
     },
     {
       "relation": "contains",
@@ -113948,9 +113948,9 @@
       "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_none_initially",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_none_initially"
     },
     {
       "relation": "contains",
@@ -113959,9 +113959,9 @@
       "source_location": "L55",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_returns_cached",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_returns_cached"
     },
     {
       "relation": "contains",
@@ -113970,9 +113970,9 @@
       "source_location": "L95",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_last_update_time",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_last_update_time"
     },
     {
       "relation": "contains",
@@ -113981,9 +113981,9 @@
       "source_location": "L630",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_on_first_poll",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_on_first_poll"
     },
     {
       "relation": "contains",
@@ -113992,9 +113992,9 @@
       "source_location": "L653",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_when_marker_newer",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_when_marker_newer"
     },
     {
       "relation": "contains",
@@ -114003,9 +114003,9 @@
       "source_location": "L641",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_skips_when_marker_unchanged",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_skips_when_marker_unchanged"
     },
     {
       "relation": "contains",
@@ -114014,9 +114014,9 @@
       "source_location": "L431",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_detects_content_change",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_detects_content_change"
     },
     {
       "relation": "contains",
@@ -114025,9 +114025,9 @@
       "source_location": "L459",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_ignores_runtime_attributes",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_ignores_runtime_attributes"
     },
     {
       "relation": "contains",
@@ -114036,9 +114036,9 @@
       "source_location": "L403",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_no_change_no_notification",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_no_change_no_notification"
     },
     {
       "relation": "contains",
@@ -114047,9 +114047,9 @@
       "source_location": "L375",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_not_gated_on_marker",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_not_gated_on_marker"
     },
     {
       "relation": "contains",
@@ -114058,9 +114058,9 @@
       "source_location": "L566",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_order_insensitive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_order_insensitive"
     },
     {
       "relation": "references",
@@ -114070,9 +114070,9 @@
       "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "target": "task",
-      "confidence_score": 1.0
+      "target": "task"
     },
     {
       "relation": "calls",
@@ -114082,9 +114082,9 @@
       "source_location": "L263",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_add_observations",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114094,9 +114094,9 @@
       "source_location": "L241",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_in_progress",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114106,9 +114106,9 @@
       "source_location": "L251",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_none_when_idle",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114118,9 +114118,9 @@
       "source_location": "L204",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114130,9 +114130,9 @@
       "source_location": "L225",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114142,9 +114142,9 @@
       "source_location": "L192",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_returns_active",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114154,9 +114154,9 @@
       "source_location": "L215",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_skips_non_pending",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114166,9 +114166,9 @@
       "source_location": "L309",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_builds_params",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114178,9 +114178,9 @@
       "source_location": "L173",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_returns_cached",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114190,9 +114190,9 @@
       "source_location": "L183",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114202,9 +114202,9 @@
       "source_location": "L527",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114214,9 +114214,9 @@
       "source_location": "L614",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114226,9 +114226,9 @@
       "source_location": "L291",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_observation",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114238,9 +114238,9 @@
       "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_schedulable_tasks_returns_cached",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "calls",
@@ -114250,9 +114250,9 @@
       "source_location": "L81",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_found",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task"
     },
     {
       "relation": "references",
@@ -114262,9 +114262,9 @@
       "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "target": "task",
-      "confidence_score": 1.0
+      "target": "task"
     },
     {
       "relation": "calls",
@@ -114274,9 +114274,9 @@
       "source_location": "L476",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_ignores_runtime_attributes",
-      "target": "task",
-      "confidence_score": 1.0
+      "target": "task"
     },
     {
       "relation": "references",
@@ -114286,9 +114286,9 @@
       "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "target": "tests_robotic_storage_portal_test_portal_archives_py_time",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_py_time"
     },
     {
       "relation": "calls",
@@ -114298,9 +114298,9 @@
       "source_location": "L263",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_add_observations",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114310,9 +114310,9 @@
       "source_location": "L241",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_in_progress",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114322,9 +114322,9 @@
       "source_location": "L251",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_none_when_idle",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114334,9 +114334,9 @@
       "source_location": "L204",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114346,9 +114346,9 @@
       "source_location": "L226",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114358,9 +114358,9 @@
       "source_location": "L192",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_returns_active",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114370,9 +114370,9 @@
       "source_location": "L215",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_skips_non_pending",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114382,9 +114382,9 @@
       "source_location": "L173",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_returns_cached",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114394,9 +114394,9 @@
       "source_location": "L183",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114406,9 +114406,9 @@
       "source_location": "L614",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "calls",
@@ -114418,9 +114418,9 @@
       "source_location": "L291",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_observation",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs"
     },
     {
       "relation": "references",
@@ -114430,9 +114430,9 @@
       "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "target": "portaltaskarchive",
-      "confidence_score": 1.0
+      "target": "portaltaskarchive"
     },
     {
       "relation": "calls",
@@ -114442,9 +114442,9 @@
       "source_location": "L107",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114454,9 +114454,9 @@
       "source_location": "L122",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal_accepts_public",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114466,9 +114466,9 @@
       "source_location": "L63",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_returns_cached",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114478,9 +114478,9 @@
       "source_location": "L72",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_schedulable_tasks_returns_cached",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114490,9 +114490,9 @@
       "source_location": "L80",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_found",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114502,9 +114502,9 @@
       "source_location": "L89",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_not_found",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114514,9 +114514,9 @@
       "source_location": "L142",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114526,9 +114526,9 @@
       "source_location": "L157",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal_accepts_updated_at",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114538,9 +114538,9 @@
       "source_location": "L50",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_none_initially",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114550,9 +114550,9 @@
       "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_returns_cached",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114562,9 +114562,9 @@
       "source_location": "L96",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_last_update_time",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114574,9 +114574,9 @@
       "source_location": "L632",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_on_first_poll",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114586,9 +114586,9 @@
       "source_location": "L655",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_when_marker_newer",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114598,9 +114598,9 @@
       "source_location": "L643",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_skips_when_marker_unchanged",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114610,9 +114610,9 @@
       "source_location": "L433",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_detects_content_change",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114622,9 +114622,9 @@
       "source_location": "L463",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_ignores_runtime_attributes",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114634,9 +114634,9 @@
       "source_location": "L405",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_no_change_no_notification",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114646,9 +114646,9 @@
       "source_location": "L379",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_not_gated_on_marker",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "calls",
@@ -114658,9 +114658,9 @@
       "source_location": "L569",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_order_insensitive",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_task_archive"
     },
     {
       "relation": "references",
@@ -114670,9 +114670,9 @@
       "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "target": "portalobservationarchive",
-      "confidence_score": 1.0
+      "target": "portalobservationarchive"
     },
     {
       "relation": "calls",
@@ -114682,9 +114682,9 @@
       "source_location": "L258",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_add_observations",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114694,9 +114694,9 @@
       "source_location": "L273",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_clear_schedule",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114706,9 +114706,9 @@
       "source_location": "L240",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_in_progress",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114718,9 +114718,9 @@
       "source_location": "L250",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_none_when_idle",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114730,9 +114730,9 @@
       "source_location": "L203",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114742,9 +114742,9 @@
       "source_location": "L224",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114754,9 +114754,9 @@
       "source_location": "L191",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_returns_active",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114766,9 +114766,9 @@
       "source_location": "L214",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_skips_non_pending",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114778,9 +114778,9 @@
       "source_location": "L304",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_builds_params",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114790,9 +114790,9 @@
       "source_location": "L332",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_tolerates_portal_archive_url",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114802,9 +114802,9 @@
       "source_location": "L172",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_returns_cached",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114814,9 +114814,9 @@
       "source_location": "L182",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114826,9 +114826,9 @@
       "source_location": "L359",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_last_update_time",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114838,9 +114838,9 @@
       "source_location": "L666",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_on_first_poll",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114850,9 +114850,9 @@
       "source_location": "L687",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_when_marker_newer",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114862,9 +114862,9 @@
       "source_location": "L676",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_skips_when_marker_unchanged",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114874,9 +114874,9 @@
       "source_location": "L551",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_applies_shrinkage_when_observation_disappears",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114886,9 +114886,9 @@
       "source_location": "L531",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114898,9 +114898,9 @@
       "source_location": "L487",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_downloads_and_applies",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114910,9 +114910,9 @@
       "source_location": "L504",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_no_change_keeps_cache",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114922,9 +114922,9 @@
       "source_location": "L612",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114934,9 +114934,9 @@
       "source_location": "L286",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_observation",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "calls",
@@ -114946,9 +114946,9 @@
       "source_location": "L590",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_order_insensitive",
-      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_make_obs_archive"
     },
     {
       "relation": "imports",
@@ -115258,9 +115258,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_add_observations",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115270,9 +115270,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_clear_schedule",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115282,9 +115282,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_in_progress",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115294,9 +115294,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_current_returns_none_when_idle",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115306,9 +115306,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115318,9 +115318,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115330,9 +115330,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_returns_active",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115342,9 +115342,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_skips_non_pending",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115354,9 +115354,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_builds_params",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115366,9 +115366,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_tolerates_portal_archive_url",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115378,9 +115378,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_returns_cached",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115390,9 +115390,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115402,9 +115402,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_last_update_time",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115414,9 +115414,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_on_first_poll",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115426,9 +115426,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_downloads_when_marker_newer",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115438,9 +115438,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_poll_skips_when_marker_unchanged",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115450,9 +115450,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_applies_shrinkage_when_observation_disappears",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115462,9 +115462,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115474,9 +115474,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_downloads_and_applies",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115486,9 +115486,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_no_change_keeps_cache",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115498,9 +115498,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115510,9 +115510,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_observation",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115522,9 +115522,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_order_insensitive",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115534,9 +115534,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115546,9 +115546,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal_accepts_public",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115558,9 +115558,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_returns_cached",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115570,9 +115570,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_schedulable_tasks_returns_cached",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115582,9 +115582,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_found",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115594,9 +115594,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_task_not_found",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115606,9 +115606,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115618,9 +115618,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal_accepts_updated_at",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115630,9 +115630,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_none_initially",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115642,9 +115642,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_last_changed_returns_cached",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115654,9 +115654,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_last_update_time",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115666,9 +115666,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_on_first_poll",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115678,9 +115678,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_when_marker_newer",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115690,9 +115690,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_skips_when_marker_unchanged",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115702,9 +115702,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_detects_content_change",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115714,9 +115714,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_ignores_runtime_attributes",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115726,9 +115726,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_no_change_no_notification",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115738,9 +115738,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_not_gated_on_marker",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "references",
@@ -115750,9 +115750,9 @@
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_test_task_update_order_insensitive",
-      "target": "asyncio",
-      "confidence_score": 1.0
+      "target": "asyncio"
     },
     {
       "relation": "imports",
@@ -115893,9 +115893,9 @@
       "source_location": "L121",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_121",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal_accepts_public",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_projects_from_portal_accepts_public"
     },
     {
       "relation": "rationale_for",
@@ -115904,9 +115904,9 @@
       "source_location": "L155",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_155",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal_accepts_updated_at",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_get_tasks_from_portal_accepts_updated_at"
     },
     {
       "relation": "rationale_for",
@@ -115915,9 +115915,9 @@
       "source_location": "L181",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_181",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_schedule_time_ignored"
     },
     {
       "relation": "rationale_for",
@@ -115926,9 +115926,9 @@
       "source_location": "L202",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_202",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_boundary_exclusive"
     },
     {
       "relation": "rationale_for",
@@ -115937,9 +115937,9 @@
       "source_location": "L223",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_223",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_next_calls_fetch_task"
     },
     {
       "relation": "rationale_for",
@@ -115948,9 +115948,9 @@
       "source_location": "L327",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_327",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_tolerates_portal_archive_url",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_get_observations_tolerates_portal_archive_url"
     },
     {
       "relation": "rationale_for",
@@ -115959,9 +115959,9 @@
       "source_location": "L376",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_376",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_not_gated_on_marker",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_not_gated_on_marker"
     },
     {
       "relation": "rationale_for",
@@ -115970,9 +115970,9 @@
       "source_location": "L404",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_404",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_no_change_no_notification",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_no_change_no_notification"
     },
     {
       "relation": "rationale_for",
@@ -115981,9 +115981,9 @@
       "source_location": "L432",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_432",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_detects_content_change",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_detects_content_change"
     },
     {
       "relation": "rationale_for",
@@ -115992,9 +115992,9 @@
       "source_location": "L460",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_460",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_ignores_runtime_attributes",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_ignores_runtime_attributes"
     },
     {
       "relation": "rationale_for",
@@ -116003,9 +116003,9 @@
       "source_location": "L486",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_486",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_downloads_and_applies",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_downloads_and_applies"
     },
     {
       "relation": "rationale_for",
@@ -116014,9 +116014,9 @@
       "source_location": "L503",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_503",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_no_change_keeps_cache",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_no_change_keeps_cache"
     },
     {
       "relation": "rationale_for",
@@ -116025,9 +116025,9 @@
       "source_location": "L523",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_523",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_detects_state_transition_in_fetched_set"
     },
     {
       "relation": "rationale_for",
@@ -116036,9 +116036,9 @@
       "source_location": "L547",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_547",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_applies_shrinkage_when_observation_disappears",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_applies_shrinkage_when_observation_disappears"
     },
     {
       "relation": "rationale_for",
@@ -116047,9 +116047,9 @@
       "source_location": "L567",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_567",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_order_insensitive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_update_order_insensitive"
     },
     {
       "relation": "rationale_for",
@@ -116058,9 +116058,9 @@
       "source_location": "L589",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_589",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_order_insensitive",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_order_insensitive"
     },
     {
       "relation": "rationale_for",
@@ -116069,9 +116069,9 @@
       "source_location": "L609",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_609",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_obs_update_normalizes_task_id"
     },
     {
       "relation": "rationale_for",
@@ -116080,9 +116080,9 @@
       "source_location": "L631",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_631",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_on_first_poll",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_on_first_poll"
     },
     {
       "relation": "rationale_for",
@@ -116091,9 +116091,9 @@
       "source_location": "L642",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_642",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_skips_when_marker_unchanged",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_skips_when_marker_unchanged"
     },
     {
       "relation": "rationale_for",
@@ -116102,9 +116102,9 @@
       "source_location": "L654",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "tests_robotic_storage_portal_test_portal_archives_rationale_654",
-      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_when_marker_newer",
-      "confidence_score": 1.0
+      "target": "tests_robotic_storage_portal_test_portal_archives_test_task_poll_downloads_when_marker_newer"
     },
     {
       "relation": "references",
@@ -357741,5 +357741,5 @@
       "source_file": "specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md"
     }
   ],
-  "built_at_commit": "c8f05145ef4675dc1fe4d46b6e38d98facde43c2"
+  "built_at_commit": "b9f946e159e088ce76106299a39a1337c11df7ab"
 }

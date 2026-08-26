@@ -22,8 +22,9 @@ class Smooth(ImageProcessor):
                         produce stronger smoothing. Required.
     :param int order: The order of the filter along each axis (``0`` for smoothing; higher
                       values compute derivatives of the Gaussian). Default: ``0``.
-    :param {"reflect","constant","nearest","mirror","wrap","grid-constant","grid-mirror","grid-wrap"} mode:
-        How the input array is extended at borders. See SciPy’s documentation for details.
+    :param str mode: How the input array is extended at borders -- one of ``"reflect"``,
+        ``"constant"``, ``"nearest"``, ``"mirror"``, ``"wrap"``, ``"grid-constant"``,
+        ``"grid-mirror"``, ``"grid-wrap"``. See SciPy's documentation for details.
         Default: ``"reflect"``.
     :param float cval: Constant value used to fill beyond edges when ``mode="constant"``.
                        Default: ``0.0``.
@@ -32,8 +33,8 @@ class Smooth(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Smooth behavior
+    ---------------
     - Creates a copy of the input image. If no data are present (``safe_data is None``),
       logs a warning and returns the original image unchanged.
     - Applies :func:`scipy.ndimage.gaussian_filter` to ``output_image.data`` with the configured
@@ -44,13 +45,13 @@ class Smooth(ImageProcessor):
       processing each channel separately upstream.
     - Header metadata are preserved; only the pixel data are modified.
 
-    Input/Output
-    ------------
+    Smooth input/output
+    -------------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` (copied) with Gaussian-smoothed data.
 
-    Configuration (YAML)
-    --------------------
+    Smooth configuration (YAML)
+    ---------------------------
     Basic smoothing:
 
     .. code-block:: yaml
@@ -85,10 +86,9 @@ class Smooth(ImageProcessor):
     - For multi-channel images where you do not want cross-channel blurring, split channels and
       smooth each channel independently before recombining.
 
-    See also
-    --------
-    SciPy reference for :func:`scipy.ndimage.gaussian_filter`:
-    https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html#scipy-ndimage-gaussian-filter
+    See the `SciPy reference for scipy.ndimage.gaussian_filter
+    <https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html>`_
+    for more details.
     """
 
     __module__ = "pyobs.images.processors.image"

@@ -25,8 +25,8 @@ def parse_section_bounds(header: fits.Header, keyword: str = "TRIMSEC") -> tuple
         keyword: Header keyword for section.
 
     Returns:
-        (x0, x1, y0, y1) such that data[y0:y1, x0:x1] gives the section, or None if
-        the keyword is not present in the header.
+        A tuple ``(x0, x1, y0, y1)`` -- ``data[y0:y1, x0:x1]`` gives the section -- or
+        ``None`` if the keyword is not present in the header.
 
     Raises:
         ValueError: If the keyword is present but its value is malformed.

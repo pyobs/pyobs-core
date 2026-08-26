@@ -258,7 +258,7 @@ class VirtualFileSystem:
             Local path.
 
         Raises:
-            ValueError if path does not lead to LocalFile.
+            ValueError: If path does not lead to a LocalFile.
         """
         from .localfile import LocalFile
 

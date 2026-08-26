@@ -16,10 +16,12 @@ class GridNode(Object, metaclass=abc.ABCMeta):
 
     A GridNode implements the Python iterator protocol to produce a sequence
     of 2D points. Points can be either:
+
       - Tuples of floats representing (x, y) in degrees, or
       - astropy.coordinates.SkyCoord instances (e.g., in RA/Dec or Alt/Az frames).
 
     Subclasses must implement:
+
       - _get_next(): fetches the next point
       - __len__(): number of remaining points (if known)
       - append_last(): append the last yielded point back to the sequence

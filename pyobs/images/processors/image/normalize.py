@@ -28,8 +28,8 @@ class Normalize(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Normalize behavior
+    ------------------
     - Creates a copy of the input image and replaces its ``data`` with a normalized
       ``numpy.uint8`` array.
     - If ``vmin``/``vmax`` are ``None``, they are computed over the entire array
@@ -39,13 +39,13 @@ class Normalize(ImageProcessor):
       is used for all channels (no per-channel normalization).
     - Header metadata are preserved; only the pixel data and dtype change.
 
-    Input/Output
-    ------------
+    Normalize input/output
+    ----------------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` (copied) with data normalized to ``uint8``.
 
-    Configuration (YAML)
-    --------------------
+    Normalize configuration (YAML)
+    ------------------------------
     Automatic bounds:
 
     .. code-block:: yaml

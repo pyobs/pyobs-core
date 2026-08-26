@@ -21,7 +21,7 @@ class HttpServer(ImageProcessor):
     - ``GET /``: A simple HTML page embedding the image.
     - ``GET /<filename>``: The raw encoded image bytes.
 
-    Images are encoded using :func:`pyobs.images.processors.image.saveimage.SaveImage.encode_image`
+    Images are encoded using :meth:`~pyobs.images.processors.image.SaveImage.encode_image`
     based on the configured ``filename`` extension or an explicitly provided ``format``.
 
     :param str filename: The filename to serve the image as, which also determines the path
@@ -36,26 +36,26 @@ class HttpServer(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Http Server behavior
+    --------------------
     - On the first call, starts an :class:`aiohttp.web.TCPSite` bound to ``url:port`` and
       registers two routes:
       - ``GET /<filename>`` returns the currently stored image bytes with content type ``image/*``.
       - ``GET /`` returns a minimal HTML page embedding the image via ``<img src="<filename>">``.
     - Encodes the input image using
-      :func:`pyobs.images.processors.image.saveimage.SaveImage.encode_image(image, filename, format)`
+      :meth:`~pyobs.images.processors.image.SaveImage.encode_image`
       and stores it as the "current" image to be served by the endpoints.
     - Subsequent calls update the stored image; clients fetching ``/<filename>`` will receive
       the latest version.
     - If no image has been processed yet, ``GET /<filename>`` responds with 404 Not Found.
 
-    Input/Output
-    ------------
+    Http Server input/output
+    ------------------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` (unchanged), while the encoded bytes are exposed via HTTP.
 
-    Configuration (YAML)
-    --------------------
+    Http Server configuration (YAML)
+    --------------------------------
     Serve a JPEG on localhost:
 
     .. code-block:: yaml
@@ -91,7 +91,7 @@ class HttpServer(ImageProcessor):
     - The response content type is ``image/*``; some clients may expect a specific MIME type
       if the chosen format is known (e.g., ``image/jpeg`` or ``image/png``).
     - If the encoding fails (e.g., due to unsupported format), the underlying encoder may raise
-      an exception; those propagate from :func:`SaveImage.encode_image`.
+      an exception; those propagate from :meth:`~pyobs.images.processors.image.SaveImage.encode_image`.
     """
 
     __module__ = "pyobs.images.processors.image"

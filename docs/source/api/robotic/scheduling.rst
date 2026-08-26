@@ -56,12 +56,16 @@ the mastermind consumes them.
 .. autoclass:: pyobs.robotic.observation.ObservationState
    :members:
 
+.. autoclass:: pyobs.robotic.observation.ObservationList
+   :members:
+   :show-inheritance:
+
 
 Targets
 ^^^^^^^^
 
 A :class:`~pyobs.robotic.scheduler.targets.Target` defines where to point the telescope. It is a
-:class:`~pyobs.robotic.utils.serialization.PolymorphicBaseModel`, so any subclass can appear in
+:class:`~pyobs.utils.serialization.PolymorphicBaseModel`, so any subclass can appear in
 the task YAML via the ``class:`` key.
 
 The ``coordinates(time)`` method accepts a :class:`~pyobs.utils.time.Time` and returns a
@@ -257,6 +261,9 @@ than accessing the archive directly. This ensures the lookahead cache is used du
    :members:
    :show-inheritance:
 
+.. autoclass:: pyobs.robotic.scheduler.merits.timewindow.TimeWindow
+   :members:
+
 .. autoclass:: pyobs.robotic.scheduler.merits.TransitMerit
    :members:
    :show-inheritance:
@@ -345,6 +352,13 @@ implementations of each — see :ref:`archive-implementations` below.
    :members:
    :show-inheritance:
 
+:class:`~pyobs.robotic.taskrunner.TaskRunner` is the abstract base for the object that actually
+executes a task's :class:`~pyobs.robotic.scripts.Script` once the mastermind hands it over.
+
+.. autoclass:: pyobs.robotic.taskrunner.TaskRunner
+   :members:
+   :show-inheritance:
+
 
 .. _archive-implementations:
 
@@ -354,9 +368,19 @@ Archive implementations
 **Filesystem** (``pyobs.robotic.storage.filesystem``)
 
 Tasks are YAML files in a directory; observations are YAML files named by night. No external
-services required — the simplest setup for a single telescope.
+services required — the simplest setup for a single telescope. ``FileSystemTaskArchive``/
+``FileSystemObservationArchive`` are abstract intermediate bases shared by any filesystem-backed
+archive; ``YamlTaskArchive``/``YamlObservationArchive`` are the concrete YAML implementation.
+
+.. autoclass:: pyobs.robotic.storage.filesystem.taskarchive.FileSystemTaskArchive
+   :members:
+   :show-inheritance:
 
 .. autoclass:: pyobs.robotic.storage.filesystem.YamlTaskArchive
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.storage.filesystem.observationarchive.FileSystemObservationArchive
    :members:
    :show-inheritance:
 
@@ -394,6 +418,10 @@ appropriate :class:`~pyobs.robotic.scripts.Script` subclass based on a configura
    :show-inheritance:
 
 .. autoclass:: pyobs.robotic.storage.lco.LcoTaskRunner
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.storage.lco.task.LcoTask
    :members:
    :show-inheritance:
 

@@ -212,3 +212,13 @@ renderer is still JavaScript:
   override, `QFormLayout::setRowWrapPolicy()`, resize-driven reparenting)
   remain valid and unaffected by this decision — those are QtWidgets fixes
   for a QtWidgets app we're staying on.
+
+## Related decision in a different client
+
+`pyobs-polaris` (a separate, later C++/Qt desktop client, built from scratch rather than migrated)
+made the opposite call for itself — QML over QtWidgets — in
+`pyobs-polaris/specs/adrs/0001-qml-over-qtwidgets.md`. Not a contradiction: that decision is for a
+*new* codebase with no existing widget inventory to migrate, where this doc's core finding (the
+schema-less, live-discovered wire protocol rewards QML's declarative/reactive binding model) still
+holds, but none of the migration-cost consequences above (rewriting 18 existing widgets' Python-Qt
+bridge with no test suite) apply, since there's nothing to migrate.

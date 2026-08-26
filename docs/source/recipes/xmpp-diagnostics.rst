@@ -32,8 +32,7 @@ show_module_info.py — inspect a live module's presence and capabilities
 Connects as an observer and pretty-prints a module's presence state, its disco#info (XEP-0030) features,
 and the ``urn:pyobs:capabilities:*`` payloads it's published — i.e. exactly what another module sees
 when it discovers this one for the first time. Useful for confirming a module actually announced the
-interfaces you expect, or for diagnosing the kind of capability-fetch problems covered in
-:file:`specs/plans/ejabberd-throughput-benchmarking.md`::
+interfaces you expect, or for diagnosing capability-fetch problems::
 
     python scripts/xmpp/show_module_info.py camera
     python scripts/xmpp/show_module_info.py camera telescope focuser
@@ -127,6 +126,8 @@ overrides these compose files mount in; look there if you need to see or tweak t
 Background: the incident behind these tools
 ----------------------------------------------
 
-The investigation that motivated most of these scenarios — a real production incident where modules
-joining an ejabberd fleet got silent capability-fetch timeouts — is written up in full, including root
-cause, in :file:`specs/plans/ejabberd-throughput-benchmarking.md` in the repository.
+Most of these scenarios are motivated by a real production incident where modules joining an
+ejabberd fleet got silent capability-fetch timeouts. Root cause: under real fleet traffic, ejabberd's
+stock default shaper is low enough to trip a genuine ejabberd bug in ``xmpp_socket.erl`` — a throttled
+connection's read isn't re-armed afterwards, stalling that connection's IQ throughput indefinitely
+rather than just delaying it. See :ref:`installing-ejabberd` for the shaper settings that avoid it.

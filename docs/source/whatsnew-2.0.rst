@@ -110,6 +110,18 @@ Modules and configuration
   from the XMPP server due to a JID conflict (a duplicate login, or an admin-issued kick,
   both surface as the same stream-error condition).
 
+Stricter constructor kwarg validation
+-----------------------------------------
+
+``Object.__init__`` now forwards any kwarg it doesn't itself recognize to
+``super().__init__(**kwargs)`` cooperatively, instead of silently absorbing it. Every mixin
+listed after ``Module`` in a subclass's MRO (``WeatherAwareMixin``, ``MotionStatusMixin``,
+``PipelineMixin``, and others) gets a real chance to claim its own kwargs, and a kwarg that
+*no* class in the chain recognizes now raises ``TypeError`` (naming the offending class and
+the actual unconsumed kwargs) instead of being dropped without a trace. If a custom module or
+mixin relied on an unrecognized keyword argument (a stale config key, a typo) being silently
+ignored, construction now fails loudly instead.
+
 .. _module-startup-gating:
 
 Modules reject RPC calls until fully started
@@ -309,6 +321,11 @@ publish ``ExposureState`` via ``self.comm.set_state(...)``.
 Other renamed/removed utilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+* ``pyobs.robotic.storage.backend`` is renamed to ``pyobs.robotic.storage.portal``, and
+  ``BackendTaskArchive``/``BackendObservationArchive`` to ``PortalTaskArchive``/
+  ``PortalObservationArchive``, following the ``pyobs-robotic-backend`` → ``pyobs-portal``
+  rename (see ADR 0013, ``specs/adrs/0013-renaming-pyobs-robotic-backend.md``). No deprecation
+  shim, update the ``class:`` dotted path in any deployment YAML using the old names.
 * ``pyobs.utils.pipeline.Night`` is renamed to ``Reduction`` (the class covers solar reductions
   too, not just nighttime ones). ``store_local`` is replaced by a single ``output`` parameter
   (a local path, a dict, or an ``Archive``), so input and output archives can differ. The dead
@@ -645,6 +662,19 @@ bytes, with latest-frame-wins backpressure (a slow client drops stale frames rat
 queuing them up). See `IVideo gains a raw stream, video renamed to mjpeg`_ above for the
 capability-level change.
 
+BaseVideo authentication
+----------------------------
+
+``BaseVideo`` gained an opt-in ``token`` parameter that gates its MJPEG/raw/FITS endpoints
+behind either an ``Authorization: Bearer <token>`` header or an HMAC-signed session cookie
+issued by a new browser ``/login`` page (``/logout`` clears it); ``/ping`` stays open
+regardless. The cookie is stateless (an expiry plus an HMAC-SHA256 signature over it, keyed by
+the token), and every comparison is constant-time. An unauthenticated browser request is
+redirected to ``/login`` (401 → 303) so a person hitting the stream directly gets a form
+instead of a bare error. ``HttpFile`` gained a public ``headers`` property so a consumer (e.g.
+``pyobs-gui``'s ``VideoWidget``) can read the ``Authorization`` header without reaching into a
+private attribute.
+
 Access control (ACLs)
 ----------------------
 
@@ -712,6 +742,14 @@ Other notable changes
   only being visible indirectly as peers timing out trying to reach that module.
 * Every module now logs the versions of loaded ``pyobs-*`` packages at startup, alongside the
   IERS-cache priming that already happens there.
+* ``ImageWatcher`` no longer blocks the event loop while processing watched files: FITS parsing
+  and file I/O now run off the event loop, so a slow parse no longer freezes RPC handling,
+  ``inotify`` processing, and comm keepalive for the whole module.
+* ``move_radec``/``move_altaz`` now reject non-finite (NaN/inf) RA/Dec/Alt/Az with a clear
+  ``InvalidArgumentError`` instead of letting them reach a numpy 2.x formatting bug that killed
+  the RPC handler mid-slew.
+* A misbehaving peer's malformed ``IFitsHeaderBefore``/``IFitsHeaderAfter`` response no longer
+  crashes the whole exposure; the failure is now logged and that peer's headers are skipped.
 
 Upgrading
 =========
@@ -742,3 +780,9 @@ GUI/client), check for, in roughly descending order of how likely they are to af
    ``worker_procs`` — rename to ``Reduction`` and switch to the ``output`` param.
 #. Any client relying on ``HttpFile``'s Basic Auth against ``HttpFileCache`` — switch to the
    new token param, since Basic Auth credentials are no longer accepted at all.
+#. Any code using ``pyobs.robotic.storage.backend``, ``BackendTaskArchive``, or
+   ``BackendObservationArchive`` — rename to ``pyobs.robotic.storage.portal``,
+   ``PortalTaskArchive``, ``PortalObservationArchive``.
+#. Any module or mixin that relied on an unrecognized constructor kwarg being silently
+   dropped — construction now raises ``TypeError`` instead (see `Stricter constructor kwarg
+   validation`_ above).

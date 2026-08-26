@@ -1,44 +1,5 @@
-v2.0.0.dev78 (unreleased)
+v2.0.0.dev98 (2026-08-25)
 *************************
-* **Breaking:** ``pyobs.robotic.storage.backend`` is renamed to ``pyobs.robotic.storage.portal``,
-  and ``BackendTaskArchive``/``BackendObservationArchive`` are renamed to
-  ``PortalTaskArchive``/``PortalObservationArchive``, following the ``pyobs-robotic-backend`` ->
-  ``pyobs-portal`` rename (see ADR 0013,
-  ``specs/adrs/0013-renaming-pyobs-robotic-backend.md``). There is no deprecation shim -- update
-  the ``class:`` dotted path in any deployment YAML using the old names before upgrading.
-* ``BaseVideo.raw_handler`` now caches the per-frame ``(meta, frame)`` bytes it builds
-  (header assembly, JSON serialization, ``ascontiguousarray``/``tobytes()`` copy), keyed by
-  ``_frame_num``. With N simultaneous raw clients (guiding, a recorder, a viewer -- a case
-  the raw endpoint (``specs/design/basevideo-raw-frame-streaming.md``) already supports but
-  didn't dedupe for), only the first consumer to wake for a given frame does the work; the
-  rest reuse the cached result instead of redoing it (#769). Costs nothing with 0 or 1 raw
-  clients connected.
-* ``Application`` now logs module-creation failures (unconsumed config keys, broken ``__init__``
-  chains, ...) at ERROR level with the full traceback before re-raising, so they land in the
-  configured log file / journald instead of only on stderr -- which is ``/dev/null`` for
-  daemonized modules (``--pid-file``, as started by pyobsd / pyobs-web-admin). Such a failure
-  previously vanished from all logs: the log simply stopped after the last INFO line and the
-  module just showed as stopped.
-* ``BackendTaskArchive`` and ``BackendObservationArchive`` gate their 5s refresh on the backend's
-  ``last_task_update``/``last_observation_update`` marker again. The marker is now a DB-derived
-  ``Max(updated_at)`` (pyobs-robotic-backend#84) that is truthful across gunicorn workers, so the
-  archives no longer re-download (and re-compare) on every poll — the per-poll content comparison
-  was fragile and misfired whenever runtime code mutated a serialized field (see the
-  ``DynamicTarget.resolve()`` fix below), livelocking the scheduler. The content comparison is
-  kept as the ``on_tasks_changed`` trigger, so no-op marker bumps never fire a scheduler run.
-* ``DynamicTarget.resolve()`` no longer overwrites its declared ``name`` field with the picked
-  star's name. That mutation leaked into ``Task.model_dump()`` (which serializes the static
-  target), so ``BackendTaskArchive``'s content comparison saw a "change" on every poll while the
-  scheduler resolved a dynamic target (e.g. the CSV-picker autofocus task) — the constant
-  ``on_tasks_changed`` kept ``_need_update`` set and every scheduler run aborted itself with
-  "Not using scheduler results, since update was requested", so no schedule was ever committed.
-  The picked star is still available via the resolved target (``_target``) and lands in the
-  scheduled observation; the serialized ``name`` stays ``"(dynamic)"``.
-* ``Task`` gained an ``updated_at`` field (``str | None``, default ``None``), matching the field
-  pyobs-robotic-backend#84 started returning from ``GET /api/tasks/`` (DB-derived ``updated_at``
-  on ``Task``). Without it, the strict ``Task`` model rejected the new key and
-  ``BackendTaskArchive`` failed every download, leaving the scheduler and mastermind without a
-  task list.
 * ``Observation`` gained an ``archive_url`` field (``str | None``, default ``None``), matching the
   computed link pyobs-portal#82 started returning from ``GET /api/observations/`` (a deep link into
   the archive's frontend for terminal observations; always ``None`` for the ``pending``/
@@ -47,10 +8,247 @@ v2.0.0.dev78 (unreleased)
   error was swallowed by ``_check_for_changes``'s retry handler, so the marker-gated poll loop
   stalled forever without ever picking up schedule changes. The field is portal-only UI metadata
   that Mastermind tolerates but never consumes.
+
+v2.0.0.dev97 (2026-08-25)
+*************************
+* No pyobs-core code changes -- version bump only.
+
+v2.0.0.dev96 (2026-08-25)
+*************************
+* **Breaking:** ``pyobs.robotic.storage.backend`` is renamed to ``pyobs.robotic.storage.portal``,
+  and ``BackendTaskArchive``/``BackendObservationArchive`` are renamed to
+  ``PortalTaskArchive``/``PortalObservationArchive``, following the ``pyobs-robotic-backend`` ->
+  ``pyobs-portal`` rename (see ADR 0013,
+  ``specs/adrs/0013-renaming-pyobs-robotic-backend.md``). There is no deprecation shim -- update
+  the ``class:`` dotted path in any deployment YAML using the old names before upgrading.
+
+v2.0.0.dev95 (2026-08-25)
+*************************
+* Added ``Field(description=...)`` to every field across all ``pyobs.robotic.scripts`` ``Script``
+  subclasses and their nested config models (e.g. skyflat priorities) -- pyobs-robotic-backend's
+  script builder renders each field's JSON-schema description as form help text, and none had one
+  (``InstrumentConfig.image_type`` only appeared to, via a leaked ``ImageType`` enum docstring, now
+  replaced with an explicit member listing). A new parametrized test guards every ``Script``/config
+  field for a description going forward. Fixes #811. (#812)
+
+v2.0.0.dev94 (2026-08-24)
+*************************
+* Fixed broken ``__module__`` overrides on ``PolymorphicBaseModel`` subclasses
+  (``SkyFlatsBasePointing``, ``SkyflatPriorities``, ``Archive`` and its subclasses including
+  ``LocalArchive``/``PyobsArchive``): a stale short path left over from an earlier
+  ``pyobs.robotic.utils`` reorg made serialization, which keys on ``self.__module__``, produce
+  unparseable dumps on reload (``ModuleNotFoundError``). Removed the overrides so ``__module__``
+  reflects the real, importable path. Fixes #806.
+* ``BaseVideo.raw_handler`` now caches the per-frame ``(meta, frame)`` bytes it builds
+  (header assembly, JSON serialization, ``ascontiguousarray``/``tobytes()`` copy), keyed by
+  ``_frame_num``. With N simultaneous raw clients (guiding, a recorder, a viewer -- a case
+  the raw endpoint (``specs/design/basevideo-raw-frame-streaming.md``) already supports but
+  didn't dedupe for), only the first consumer to wake for a given frame does the work; the
+  rest reuse the cached result instead of redoing it (#769). Costs nothing with 0 or 1 raw
+  clients connected.
+* ``Mastermind.get_fits_header_before()`` now emits a ``PROJECT`` FITS keyword from
+  ``Task.project``, alongside ``TASK``/``REQNUM``/``OBSNUM`` -- closes the last open item of the
+  project-based access-control work for pyobs-archive (pyobs-archive#42; superseded by that repo's
+  own more detailed plan, which already shipped the archive-side filtering).
+* ``Script`` module-name fields (``pyobs.robotic.scripts``) are now tagged with their required
+  ``pyobs.interfaces`` via ``Annotated`` metadata, letting pyobs-robotic-backend introspect
+  ``FieldInfo.metadata`` to render interface-filtered module dropdowns instead of hand-maintaining
+  a duplicate table (pyobs-robotic-backend#98). Fixes #808. (#809)
+
+v2.0.0.dev93 (2026-08-23)
+*************************
+* ``ImageWatcher`` no longer blocks the event loop while processing watched files: per-file FITS
+  parsing (``astropy.io.fits.HDUList.fromstring``) now runs via ``asyncio.to_thread()``, and all
+  blocking ``LocalFile`` I/O (open/read/write/close/remove/find/exists) is routed through the
+  default executor, mirroring the existing ``listdir`` pattern -- root cause of the 2026-08-20
+  "Event loop stalled" incident on MONET South, where RPC handling, inotify processing, and comm
+  keepalive froze for seconds during a slow parse. ``LocalFile``'s ``open()``/``makedirs`` moved
+  from ``__init__`` into ``__aenter__`` (still validating the path synchronously at construction
+  time), closing a gap for network-mounted watch paths; every VFS consumer inherits the fix, not
+  just ``ImageWatcher``. See ``specs/plans/2026-08-20-imagewatcher-event-loop-blocking.md``. (#798)
+* ``move_radec``/``move_altaz`` now reject non-finite (NaN/inf) RA/Dec/Alt/Az up front with
+  ``InvalidArgumentError``, instead of letting them reach a NaN altitude comparison that was
+  silently always ``False`` and then ``Angle.to_string()``, whose numpy 2.x vectorized formatter
+  raised a ``RuntimeWarning`` that ``application.py``'s filterwarnings promotes to a hard error --
+  killing the RPC handler mid-slew. All ``to_string()`` call sites in the affected module were
+  replaced with manual sexagesimal formatting, mirroring pyobs-gui's fix for the same numpy 2.x
+  issue. Fixes #802.
+
+v2.0.0.dev92 (2026-08-23)
+*************************
+* ``BaseVideo`` gained an opt-in ``token`` parameter gating its MJPEG/raw/FITS endpoints behind
+  either an ``Authorization: Bearer <token>`` header or an HMAC-signed session cookie issued by a
+  new browser ``/login`` page (``/logout`` clears it); ``/ping`` stays open. The cookie is
+  stateless (expiry plus HMAC-SHA256 over the expiry, keyed by the token), all comparisons are
+  constant-time, and an unauthenticated request is redirected (401 -> 303) to ``/login`` so
+  browsers land on the form. ``HttpFile`` gained a public ``headers`` property so consumers (e.g.
+  pyobs-gui's ``VideoWidget``) can read the ``Authorization`` header without reaching into a
+  private attribute. See ``specs/plans/2026-08-21-basevideo-http-token-auth.md``. (#799)
+
+v2.0.0.dev91 (2026-08-21)
+*************************
+* Demoted routine retry/shutdown log messages from WARNING to INFO.
+* Fixed ``BIASSEC``/``TRIMSEC`` FITS-header computation: the old guard fired (and warned) for any
+  window not covering the full visible frame on both axes -- exactly the common case of a subframe
+  with no prescan/overscan at all (e.g. guided skyflats) -- while the case it claimed to describe,
+  prescan/overscan on *both* axes, slipped through silently and wrote an incomplete one-axis
+  ``BIASSEC``. The check is now based on whether the window actually extends beyond the visible
+  frame: fully-inside windows log at INFO (nothing to compute), and true both-axis prescan/overscan
+  windows warn that only one axis is supported. Header output is unchanged for the common cases.
+* ``Application`` now logs module-creation failures (unconsumed config keys, broken ``__init__``
+  chains, ...) at ERROR level with the full traceback before re-raising, so they land in the
+  configured log file / journald instead of only on stderr -- which is ``/dev/null`` for
+  daemonized modules (``--pid-file``, as started by pyobsd / pyobs-web-admin). Such a failure
+  previously vanished from all logs: the log simply stopped after the last INFO line and the
+  module just showed as stopped.
+* Fixed ``BaseVideo``'s index page using a root-absolute ``/video.mjpg`` image URL, which 404s when
+  the module is served behind a reverse-proxy path prefix (e.g. ``/pyobs/fibercamera/``) since the
+  browser resolves it against the host root instead of the page's own path -- and since that
+  request never reaches the module, the camera is never (re)activated. Now relative.
+
+v2.0.0.dev90 (2026-08-20)
+*************************
+* ``BackendTaskArchive`` and ``BackendObservationArchive`` gate their 5s refresh on the backend's
+  ``last_task_update``/``last_observation_update`` marker again. The marker is now a DB-derived
+  ``Max(updated_at)`` (pyobs-robotic-backend#84) that is truthful across gunicorn workers, so the
+  archives no longer re-download (and re-compare) on every poll -- the per-poll content comparison
+  was fragile and misfired whenever runtime code mutated a serialized field (see the
+  ``DynamicTarget.resolve()`` fix below), livelocking the scheduler. The content comparison is
+  kept as the ``on_tasks_changed`` trigger, so no-op marker bumps never fire a scheduler run.
+
+v2.0.0.dev89 (2026-08-20)
+*************************
+* ``DynamicTarget.resolve()`` no longer overwrites its declared ``name`` field with the picked
+  star's name. That mutation leaked into ``Task.model_dump()`` (which serializes the static
+  target), so ``BackendTaskArchive``'s content comparison saw a "change" on every poll while the
+  scheduler resolved a dynamic target (e.g. the CSV-picker autofocus task) -- the constant
+  ``on_tasks_changed`` kept ``_need_update`` set and every scheduler run aborted itself with
+  "Not using scheduler results, since update was requested", so no schedule was ever committed.
+  The picked star is still available via the resolved target (``_target``) and lands in the
+  scheduled observation; the serialized ``name`` stays ``"(dynamic)"``.
+
+v2.0.0.dev88 (2026-08-20)
+*************************
+* ``Task`` gained an ``updated_at`` field (``str | None``, default ``None``), matching the field
+  pyobs-robotic-backend#84 started returning from ``GET /api/tasks/`` (DB-derived ``updated_at``
+  on ``Task``). Without it, the strict ``Task`` model rejected the new key and
+  ``BackendTaskArchive`` failed every download, leaving the scheduler and mastermind without a
+  task list.
+
+v2.0.0.dev87 (2026-08-20)
+*************************
+* ``BackendTaskArchive`` and ``BackendObservationArchive`` no longer gate their 5s refresh loop on
+  the robotic-backend's ``last_task_update``/``last_observation_update`` marker. That marker is
+  computed from a per-process Django ``LocMemCache`` and is unreliable across gunicorn workers, so
+  a stale or missing marker pinned the archive's ``_last_update`` and the mastermind kept running
+  stale tasks/schedules (edited task parameters, deactivated tasks, newly scheduled observations,
+  window-expired observations) forever. Both archives now re-fetch unconditionally on every poll
+  and detect real changes by comparing the downloaded content against the cached copy (full model
+  dumps, including observation ``state``), firing ``on_tasks_changed`` only when content actually
+  changed; ``last_changed()`` now reports the local time a change was last observed. Fixes #789.
+  (#790)
+* ``PyobsArchive`` and ``LocalArchive`` gained an ``obsnum`` filter on ``list_frames()`` and
+  ``list_options()``: ``PyobsArchive`` now emits the ``OBSNUM`` query parameter (exact match on
+  ``Frame.OBSNUM``), and ``LocalArchive`` filters its local index on the ``OBSNUM`` FITS header, so
+  observations can be matched to their archived frames via ``list_frames(obsnum=...)``. Needed by
+  pyobs-robotic-backend#82. (#791)
+
+v2.0.0.dev86 (2026-08-19)
+*************************
+* Fixed ``FitsHeaderMixin.add_requested_fits_headers()`` letting a misbehaving peer's malformed
+  ``IFitsHeaderBefore``/``IFitsHeaderAfter`` response crash the whole exposure: it only caught
+  ``exc.RemoteError``, but ``XmppComm.execute()`` only converts ``IqError``/``IqTimeout`` into
+  that, so anything else raised while making or deserializing the RPC call escaped uncaught. Now
+  catches ``Exception`` broadly (logging the peer and failure type, skipping just that peer), while
+  ``CancelledError`` -- a ``BaseException`` -- still propagates, preserving cancellation semantics.
+  Fixes #767.
 * ``Project`` gained a ``public`` flag (default ``False``), matching the field the robotic backend
   (pyobs-robotic-backend#79) will start returning from ``GET /api/projects/``. Without it, the
   strict ``Project`` model rejected the new key and ``BackendTaskArchive`` silently kept running on
   stale or empty task/project data. Fixes #786.
+* Fixed ``XmppComm`` crashing on payload-less pubsub notifications (retract stanzas, node purges,
+  and nodes with ``deliver_payloads`` off all arrive without a ``<payload>`` element under
+  ``<item>``): ``_handle_event`` raised ``AttributeError`` on ``None.text``, surfacing only as a
+  noisy "Task exception was never retrieved" since the dispatching task was never awaited. Now
+  guards the payload access and drops payload-less notifications, and the background task gets a
+  done-callback so any future exception is retrieved and logged normally.
+
+v2.0.0.dev85 (2026-08-19)
+*************************
+* ``http_request_paginated()`` now tolerates page drift mid-fetch: DRF's ``page=N`` pagination
+  404s with "Invalid page." once ``N`` exceeds the current page count, and on a live-growing
+  dataset with non-unique ordering (e.g. ``Observation.Meta.ordering = ["start"]``) a concurrent
+  insert can shift page boundaries between fetching a "next" link and following it, crashing the
+  whole request. Now stops pagination early with whatever was already fetched -- but only for that
+  specific error shape, and never on the first page, so other 404s still raise.
+
+v2.0.0.dev84 (2026-08-19)
+*************************
+* ``Project`` gained a missing ``users`` field (per-user project visibility), matching the robotic
+  backend's ``ProjectSerializer``. With ``extra="forbid"`` enabled (#762), the unmodeled field
+  previously raised a validation error instead of being silently dropped.
+
+v2.0.0.dev83 (2026-08-19)
+*************************
+* The ``TypeError`` raised when a leftover kwarg reaches ``object.__init__()`` unclaimed (end of
+  the cooperative ``super().__init__(**kwargs)`` chain added below) is now re-raised with a
+  diagnosable message naming the offending class and the actual unconsumed kwargs -- not
+  ``Object``'s own pre-consumption view, which could wrongly flag a kwarg a downstream mixin in the
+  MRO had already legitimately claimed (e.g. ``motion_status_interfaces``). The precise leftover
+  set is read from the deepest frame in the chained exception's traceback, i.e. the cooperative
+  call that actually reached ``object.__init__()`` and got rejected. Previously this raised only
+  the generic, class-and-kwarg-less ``object.__init__() takes exactly one argument`` message.
+
+v2.0.0.dev82 (2026-08-19)
+*************************
+* ``Object.__init__`` now forwards leftover kwargs cooperatively via ``super().__init__(**kwargs)``
+  instead of silently absorbing them, giving mixins listed after ``Module`` in a subclass's MRO
+  (``WeatherAwareMixin``, ``MotionStatusMixin``, ``PipelineMixin``, etc.) a real chance to claim
+  their own kwargs -- prerequisite for eventually raising on genuinely unrecognized ones. Converted
+  the 14 pyobs-core classes that composed mixins via explicit multi-call fan-out to a single
+  cooperative call, reordering base classes in ``BaseRoof``/``BaseTelescope``/``DummyMode`` so
+  ``Module`` runs first (every mixin that calls ``add_background_task``/``add_child_object`` or
+  reads ``self.comm`` needs ``Object``/``Module`` already set up). ``FitsHeaderMixin``'s cache-path
+  attribute is now a lazily-computed property instead of eager at ``__init__`` time, since it can
+  now run before ``Module`` has set ``self._device_name``. ``PipelineMixin``'s ``archive``
+  default-injection now only applies to step classes that actually declare an ``archive``
+  parameter (checked via signature inspection), instead of injecting unconditionally and relying on
+  silent-drop -- exactly the behavior this change removes. See
+  ``specs/plans/2026-08-18-cooperative-mixin-init.md``.
+* Fixed a regression from the change above: unconditionally dropping ``auto_update=False`` from
+  ``Scheduler``'s kwarg injection (justified at the time as "never declared, no effect") silently
+  re-enabled ``BackendObservationArchive``'s 5-second polling loop, which *does* declare and gate on
+  that kwarg -- a poller deliberately disabled when the scheduler moved to event-driven
+  ``on_tasks_changed`` updates, live on two fleet configs (MONET South, iagvtsrv). The kwarg-support
+  check is now a general ``_class_accepts_param()``, reused for both the ``observation_archive`` and
+  ``auto_update`` injections.
+* Fixed ``WindowingWidget.value_top`` (``pyobs/utils/gui/camera/windowingwidget.py``) returning the
+  Left spinbox's value instead of the Top spinbox's (copy-paste bug) -- windowing offsets set via
+  the GUI applied the wrong Y coordinate.
+
+v2.0.0.dev81 (2026-08-18)
+*************************
+* No pyobs-core code changes -- version bump only.
+
+v2.0.0.dev80 (2026-08-18)
+*************************
+* ``BaseVideo`` now declares itself a sender of ``NewImageEvent`` via ``comm.register_event()`` in
+  ``open()``, matching ``BaseCamera``'s existing registration -- without it, a peer's disco#info-
+  driven subscription logic never subscribed (since it skips event types a peer doesn't advertise
+  sending), so ``send_event()`` succeeded server-side but nothing ever received it: the GUI's
+  video/FITS grab silently never updated, with no errors on either side.
+
+v2.0.0.dev79 (2026-08-18)
+*************************
+* Fixed a TOCTOU race in ``BaseVideo.activate_camera()``/``deactivate_camera()``: two concurrent
+  callers (e.g. an incoming video-stream request racing an RPC like ``set_exposure_time``) could
+  both observe ``self._active`` as unset and both proceed to open/close the camera,
+  double-connecting to the same GigE device and tripping "Controller privilege required for
+  streaming control" on devices that only grant one controller. The check-and-set is now
+  serialized with a lock.
+
+v2.0.0.dev78 (2026-08-18)
+*************************
 * ``BaseVideo`` gained a raw-frame streaming endpoint (``/video.raw``) alongside the existing MJPEG
   stream: a multipart, event-driven feed of a JSON FITS-keyed meta header plus raw little-endian
   frame bytes, with latest-frame-wins backpressure (a slow client drops stale frames instead of
@@ -76,21 +274,6 @@ v2.0.0.dev78 (unreleased)
   ``ImageFitsHeaderMixin.__init__`` instead of forwarding ``**kwargs``, silently dropping a
   configured ``fits_header_timeout`` for exactly the modules (e.g. ``fli230``) that motivated this
   fix. Fixes #764. (#765, #768)
-* ``BackendTaskArchive`` and ``BackendObservationArchive`` no longer gate their 5s refresh loop on
-  the robotic-backend's ``last_task_update``/``last_observation_update`` marker. That marker is
-  computed from a per-process Django ``LocMemCache`` and is unreliable across gunicorn workers, so
-  a stale or missing marker pinned the archive's ``_last_update`` and the mastermind kept running
-  stale tasks/schedules (edited task parameters, deactivated tasks, newly scheduled observations,
-  window-expired observations) forever. Both archives now re-fetch unconditionally on every poll
-  and detect real changes by comparing the downloaded content against the cached copy (full model
-  dumps, including observation ``state``), firing ``on_tasks_changed`` only when content actually
-  changed; ``last_changed()`` now reports the local time a change was last observed. Fixes #789.
-  (#790)
-* ``PyobsArchive`` and ``LocalArchive`` gained an ``obsnum`` filter on ``list_frames()`` and
-  ``list_options()``: ``PyobsArchive`` now emits the ``OBSNUM`` query parameter (exact match on
-  ``Frame.OBSNUM``), and ``LocalArchive`` filters its local index on the ``OBSNUM`` FITS header, so
-  observations can be matched to their archived frames via ``list_frames(obsnum=...)``. Needed by
-  pyobs-robotic-backend#82. (#791)
 
 v2.0.0.dev77 (2026-08-16)
 *************************

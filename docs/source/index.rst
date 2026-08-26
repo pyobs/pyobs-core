@@ -41,18 +41,58 @@ The architecture is guided by several principles:
 Ecosystem and Repositories
 --------------------------
 
-The pyobs organization on GitHub hosts a family of repositories:
+The pyobs organization on GitHub hosts a family of repositories, grouped by role:
+
+**Core framework**
 
 - **pyobs-core** — The main framework providing interfaces, module management, and communication infrastructure.
-- **pyobs-asi**, **pyobs-qhyccd**, **pyobs-sbig** — Drivers for various astronomical cameras.
-- **pyobs-aravis** — Support for Aravis-compatible industrial cameras.
-- **pyobs-zwoeaf** — Module for ZWO EAF focus motors.
+
+**Hardware drivers and GUI**
+
+- **pyobs-asi**, **pyobs-qhyccd**, **pyobs-sbig**, **pyobs-fli**, **pyobs-flipro**, **pyobs-tis** — Drivers for various astronomical cameras.
+- **pyobs-aravis**, **pyobs-v4l** — Support for Aravis-compatible and Video4Linux industrial cameras.
+- **pyobs-zwoeaf**, **pyobs-gemini** — Focuser/rotator modules (ZWO EAF, Optec Gemini).
+- **pyobs-zaber** — Zaber motor control.
+- **pyobs-brot** — BROTlib-based telescopes, domes, and roofs.
 - **pyobs-pilar** — Interface to the Pilar telescope control system.
 - **pyobs-alpaca** — ASCOM Alpaca bridge for interoperability with other software.
 - **pyobs-gui** — Graphical user interface for controlling and monitoring observatories.
+
+**Web services**
+
+- **pyobs-portal** — Web backend for robotic mode.
+- **pyobs-archive** — Webservice for an archive of astronomical images, LCO-compatible.
+- **pyobs-pipeline** — Web-based monitoring and configuration for data reduction pipelines.
+- **pyobs-web-admin** — Web GUI for managing pyobs modules.
+- **pyobs-auth** — Shared Keycloak/OIDC authentication client for pyobs web services.
+- **pyobs-weather** — Weather data aggregator.
 - **pyobs-astrometry** — Web service wrapper for `astrometry.net` solve-field operations.
 
-Together, these components form a complete, extensible observatory control system.
+**Non-Python clients**
+
+- **pyobs-polaris** — C++/Qt/QML GUI for pyobs.
+- **pyobs-web-client** — Web client for pyobs using XMPP.
+
+Together, these components form a complete, extensible observatory control system. See
+`Affiliated projects`_ below for links to each web service's and client's own documentation.
+
+.. _Affiliated projects:
+
+Affiliated projects
+--------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   pyobs-weather <https://docs.pyobs.org/projects/pyobs-weather/en/latest/>
+   pyobs-archive <https://docs.pyobs.org/projects/pyobs-archive/en/latest/>
+   pyobs-portal <https://docs.pyobs.org/projects/pyobs-portal/en/latest/>
+   pyobs-web-admin <https://docs.pyobs.org/projects/pyobs-web-admin/en/latest/>
+   pyobs-auth <https://docs.pyobs.org/projects/pyobs-auth/en/latest/>
+   pyobs-pipeline <https://docs.pyobs.org/projects/pyobs-pipeline/en/latest/>
+   pyobs-astrometry <https://docs.pyobs.org/projects/pyobs-astrometry/en/latest/>
+   pyobs-polaris <https://docs.pyobs.org/projects/pyobs-polaris/en/latest/>
+   pyobs-web-client <https://docs.pyobs.org/projects/pyobs-web-client/en/latest/>
 
 Use Cases
 ---------
@@ -159,20 +199,6 @@ API Reference
    api/index
    modules/index
    addmod/index
-
-
-Affiliated projects
--------------------
-
-.. toctree::
-   :maxdepth: 1
-
-   pyobs-weather <https://docs.pyobs.org/projects/pyobs-weather/en/latest/>
-   pyobs-archive <https://docs.pyobs.org/projects/pyobs-archive/en/latest/>
-   pyobs-portal <https://docs.pyobs.org/projects/pyobs-portal/en/latest/>
-   pyobs-web-admin <https://docs.pyobs.org/projects/pyobs-web-admin/en/latest/>
-   pyobs-auth <https://docs.pyobs.org/projects/pyobs-auth/en/latest/>
-   pyobs-pipeline <https://docs.pyobs.org/projects/pyobs-pipeline/en/latest/>
 
 
 Project details

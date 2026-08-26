@@ -105,6 +105,10 @@ API reference
 .. autoclass:: pyobs.vfs.VFSFile
    :members:
 
+.. autoclass:: pyobs.vfs.bufferedfile.BufferedFile
+   :members:
+   :show-inheritance:
+
 .. autoclass:: pyobs.vfs.LocalFile
    :members:
    :show-inheritance:

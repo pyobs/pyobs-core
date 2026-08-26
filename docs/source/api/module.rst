@@ -1,6 +1,8 @@
 Modules (pyobs.modules)
 -----------------------
 
+.. py:module:: pyobs.modules
+
 A :class:`~pyobs.modules.Module` is the building block of a *pyobs* system. Each module represents one
 component of the observatory — a camera, a telescope, a scheduler, a weather monitor, and so on — and runs
 as its own process, configured from a YAML file.
@@ -118,7 +120,7 @@ See :doc:`interfaces` for the full list of available interfaces.
 Communicating between modules
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Modules communicate via the :attr:`~pyobs.object.Object.comm` property, which provides access to the
+Modules communicate via the :attr:`~pyobs.object.PrivateAttrMixin.comm` property, which provides access to the
 :class:`~pyobs.comm.Comm` object. The most common use is obtaining a proxy to another module::
 
     async def open(self) -> None:
@@ -167,3 +169,5 @@ API reference
 .. autoclass:: pyobs.modules.MultiModule
    :members:
    :show-inheritance:
+
+.. autofunction:: pyobs.modules.timeout

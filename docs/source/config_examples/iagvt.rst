@@ -48,8 +48,8 @@ Module for performing a fine-acquisition on the sun
         download: http://localhost:37075/
 
 * The :class:`~pyobs.modules.pointing.Acquisition` class is used for the acquisition module (line 1).
-* It requires the name of the other modules to use, which are :ref:`solartelescope` for the telescope and
-  :ref:`suncamera` for the camera (lines 4-5).
+* It requires the name of the other modules to use, which are :ref:`config_examples/iagvt:solartelescope` for the telescope and
+  :ref:`config_examples/iagvt:suncamera` for the camera (lines 4-5).
 * A log file where all the offsets from the acquisitions are stored, can be useful for checking the pointing model
   (line 8).
 * The (initial) exposure time for the camera (line 11).
@@ -57,14 +57,14 @@ Module for performing a fine-acquisition on the sun
   It fails if the offsets get larger than 7200". 10 moves are allowed (lines 14-16).
 * The pipeline defines steps performed on the images in order to get the offsets for the next step (lines 18-20):
 
-  #. ``DiskOffset`` is a custom class that takes the WCS from the :ref:`suncamera` and calculates offsets to go
+  #. ``DiskOffset`` is a custom class that takes the WCS from the :ref:`config_examples/iagvt:suncamera` and calculates offsets to go
      to the requested position.
   #. ``SunExpTimeEstimator`` is a custom class that tries to estimate a best exposure time for the next image.
 
-* The offsets are applied via ``ApplySiderostatOffsets``, a custom class for offsetting the :ref:`solartelescope`
+* The offsets are applied via ``ApplySiderostatOffsets``, a custom class for offsetting the :ref:`config_examples/iagvt:solartelescope`
   (lines 22-23).
-* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`filecache` HTTP cache server
-  and is used for downloading the images from the :ref:`suncamera` (lines 25-30).
+* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`config_examples/iagvt:filecache` HTTP cache server
+  and is used for downloading the images from the :ref:`config_examples/iagvt:suncamera` (lines 25-30).
 
 
 fibercamera
@@ -156,7 +156,7 @@ Module for copying new images into the archive
         class: pyobs.vfs.LocalFile
         root: /path/to/archive/
 
-* ``FileWatcher`` is just an extension of :class:`pyobs.modules.image.imagewatcher.ImageWatcher`, which copies a few
+* ``FileWatcher`` is just an extension of :class:`~pyobs.modules.image.ImageWatcher`, which copies a few
   extra files (line 1).
 * The path and files to watch are defined as well as that it should be polled every 10 seconds (lines 4-7).
 * A single destination for the files is defined, where they should be copied 10 seconds after first discovery
@@ -174,14 +174,14 @@ Module for operating the Fourier Transform Spectrograph (FTS)
   class: pyobs_iagvt.fts.FTS
   ...
 
-* ``FTS`` is a class deriving from :class:`pyobs.modules.camera.basespectrograph.BaseSpectrograph` to implement
+* ``FTS`` is a class deriving from :class:`~pyobs.modules.camera.BaseSpectrograph` to implement
   the functionality of the spectrograph (line 1).
 * The rest of the config is omitted here, since this class is not freely accessible.
 
 
 gregorycamera
 """""""""""""
-Module for operating a camera that looks at the gregory hole of the :ref:`fibercamera`.
+Module for operating a camera that looks at the gregory hole of the :ref:`config_examples/iagvt:fibercamera`.
 
 .. code-block:: YAML
   :linenos:
@@ -247,21 +247,21 @@ Module for guiding on a given position on the sun
         class: pyobs.vfs.HttpFile
         download: http://localhost:37077/
 
-* The class :class:`~pyobs.modules.pointing.AutoGuiding` performs auto-guiding on images of the :ref:`suncamera`
+* The class :class:`~pyobs.modules.pointing.AutoGuiding` performs auto-guiding on images of the :ref:`config_examples/iagvt:suncamera`
   (line 1).
-* It requires the names of the telescope (:ref:`solartelescope`) and the camera (:ref:`suncamera`) modules (lines 4-5).
+* It requires the names of the telescope (:ref:`config_examples/iagvt:solartelescope`) and the camera (:ref:`config_examples/iagvt:suncamera`) modules (lines 4-5).
 * The initial exposure time of images to use for auto-guiding is defined as well as a min interval in seconds
   between offsets (lines 8-9).
 * The pipeline is defined to calculate offsets, in this case based on (lines 11-13):
 
-  #. ``DiskOffset`` is a custom class that takes the WCS from the :ref:`suncamera` and calculates offsets to go
+  #. ``DiskOffset`` is a custom class that takes the WCS from the :ref:`config_examples/iagvt:suncamera` and calculates offsets to go
      to the requested position.
   #. ``SunExpTimeEstimator`` is a custom class that tries to estimate a best exposure time for the next image.
 
 * The offsets are applied via ``ApplySiderostatOffsets``, a custom class for offsetting the
-  :ref:`solartelescope` (lines 15-19).
-* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`filecache` HTTP cache server
-  and is used for downloading the images from the :ref:`suncamera` (lines 21-29).
+  :ref:`config_examples/iagvt:solartelescope` (lines 15-19).
+* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`config_examples/iagvt:filecache` HTTP cache server
+  and is used for downloading the images from the :ref:`config_examples/iagvt:suncamera` (lines 21-29).
 
 
 robotic
@@ -302,7 +302,7 @@ Module for operating the siderostat
   class: pyobs_iagvt.solartelescope.SolarTelescope
 
 * ``SolarTelescope`` is a custom telescope class, inheriting from
-  :class:`pyobs.modules.telescope.basetelescope.BaseTelescope`, and moves to Heliographic Stonyhurst
+  :class:`~pyobs.modules.telescope.BaseTelescope`, and moves to Heliographic Stonyhurst
   coordinates via :class:`pyobs.interfaces.IPointingHeliographicStonyhurst.IPointingHeliographicStonyhurst`
   (formerly ``IPointingHGS``, briefly repurposed as ``IPointingHeliocentricPolar`` before being
   reintroduced under its own name for this frame); ``pyobs_iagvt`` needs a matching update, tracked
@@ -311,7 +311,7 @@ Module for operating the siderostat
 
 suncamera
 """""""""
-A module for a virtual camera that adds a correct WCS to images from :ref:`fibercamera`
+A module for a virtual camera that adds a correct WCS to images from :ref:`config_examples/iagvt:fibercamera`
 
 .. code-block:: YAML
   :linenos:
@@ -329,10 +329,10 @@ A module for a virtual camera that adds a correct WCS to images from :ref:`fiber
         class: pyobs.vfs.HttpFile
         download: http://localhost:37077/
 
-* ``SunCamera`` is not much more than a proxy, forwarding all calls to :ref:`fibercamera`. But it also uses a disk
+* ``SunCamera`` is not much more than a proxy, forwarding all calls to :ref:`config_examples/iagvt:fibercamera`. But it also uses a disk
   detection to add a correct WCS to the images (line 1).
 * A flat-field to use for the calibration is given (line 2).
-* A VFS is used to grab images from :ref:`fibercamera` and publish new images with the WCS (lines 4-12).
+* A VFS is used to grab images from :ref:`config_examples/iagvt:fibercamera` and publish new images with the WCS (lines 4-12).
 
 
 weather

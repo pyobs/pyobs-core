@@ -40,7 +40,7 @@ instantiated as their concrete type, never dispatched via a ``class:`` key.
 The runtime context (``_comm``, ``_vfs``, ``_observer``, ``_timezone``, ``_location``) is
 populated in two ways:
 
-1. **Via validation context** — when :meth:`~pyobs.object.Object.pyobs_model_validate` is called
+1. **Via validation context** — when :meth:`~pyobs.object.PrivateAttrMixin.pyobs_model_validate` is called
    from within an :class:`~pyobs.object.Object`, it passes the object's context to
    ``model_validate`` explicitly::
 

@@ -16,7 +16,7 @@ class Circle(ImageProcessor):
     This processor uses Pillow to render a circle on a
     :class:`pyobs.images.Image`. The center coordinates ``(x, y)`` and the ``radius``
     can be provided as numbers or strings that are resolved by
-    :class:`pyobs.utils.image.PillowHelper`. If ``wcs=True``, the center coordinates
+    the internal ``PillowHelper``. If ``wcs=True``, the center coordinates
     are interpreted in world coordinates (e.g., sky coordinates) and converted to
     pixel coordinates using the image’s WCS, if available.
 
@@ -37,9 +37,9 @@ class Circle(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
-    - Converts the input image to a Pillow image using :class:`pyobs.utils.image.PillowHelper`.
+    Circle behavior
+    ---------------
+    - Converts the input image to a Pillow image using the internal ``PillowHelper``.
     - Resolves ``x``, ``y`` via ``PillowHelper.position(image, x, y, wcs)`` and ``radius`` via
       ``PillowHelper.value(image, radius)``.
     - Converts ``fill`` and ``outline`` to Pillow-compatible color values via
@@ -49,13 +49,13 @@ class Circle(ImageProcessor):
       ``PillowHelper.to_image(image, im)``.
     - If both ``fill`` and ``outline`` are ``None``, the rendered output will be unchanged.
 
-    Input/Output
-    ------------
+    Circle input/output
+    -------------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` (copied) with the circle drawn onto the pixel data.
 
-    Configuration (YAML)
-    --------------------
+    Circle configuration (YAML)
+    ---------------------------
     Draw a red outlined circle:
 
     .. code-block:: yaml

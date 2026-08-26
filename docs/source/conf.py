@@ -51,8 +51,16 @@ extensions = [
     # "sphinx_autodoc_typehints",
 ]
 
+# Scope autosectionlabel-generated labels to their document -- otherwise every docstring's
+# repeated "Behavior"/"Input/Output"/"Configuration (YAML)" section headings (and, in
+# config_examples/iag50cm.rst specifically, per-host module subsections one level deeper than
+# config_examples/iagvt.rst's) collide across pages. Existing :ref:`...` call sites onto
+# labels this affects are written as :ref:`document/path:label title` accordingly.
+autosectionlabel_prefix_document = True
+
 # intersphinx
 intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
     "pyobs_alpaca": ("https://docs.pyobs.org/projects/pyobs-alpaca/en/latest/", None),
     "pyobs_weather": ("https://docs.pyobs.org/projects/pyobs-weather/en/latest/", None),
     "pyobs_sbig": ("https://docs.pyobs.org/projects/pyobs-sbig/en/latest/", None),
@@ -109,14 +117,43 @@ pygments_style = "sphinx"
 nitpicky = True
 nitpick_ignore_regex = [
     (r"py:.*", r"numpy.*"),
+    (r"py:.*", r"np\..*"),
+    (r"py:.*", r"npt\..*"),
     (r"py:.*", r"datetime.*"),
     (r"py:.*", r"aiohttp.*"),
     (r"py:.*", r"astropy.*"),
     (r"py:.*", r"astroplan.*"),
+    (r"py:.*", r"fits\..*"),  # astropy.io.fits, conventionally imported as `fits`
+    # asyncio primitives report __module__ as their private implementation submodule
+    # (asyncio.locks, asyncio.tasks, the C-accelerated _asyncio), not the public asyncio.* alias
+    # that's actually indexed in CPython's own docs inventory
+    (r"py:.*", r"asyncio\.locks\..*"),
+    (r"py:.*", r"asyncio\.tasks\..*"),
+    (r"py:.*", r"_asyncio\..*"),
     (r"py:.*", r"pandas.*"),
+    (r"py:.*", r"pd\..*"),
+    (r"py:.*", r"scipy.*"),
+    (r"py:.*", r"sep\..*"),
+    (r"py:.*", r"photutils.*"),
+    (r"py:.*", r"pydantic.*"),
+    (r"py:.*", r"annotated_types.*"),
     (r"py:.*", r"collections.*"),
     (r"py:.*", r"enum.*"),
     (r"py:.*", r"inspect.*"),
+    # astropy/astroplan types under their public aliases rather than fully-qualified paths
+    (r"py:class", r"SkyCoord"),
+    (r"py:class", r"EarthLocation"),
+    (r"py:class", r"Observer"),
+    # napoleon/autodoc can't cross-reference a full typing.Annotated[...] expression as one object
+    (r"py:obj", r"typing\.Annotated\[.*"),
+    (r"py:class", r".*Annotated\[.*"),
+    (r"py:class", r".*Unit\.[A-Z_]+.*"),
+    (r"py:class", r".*'seconds'.*"),
+    # pydantic Field(ge=..., le=...) bounds on constrained numeric fields leak into the rendered
+    # signature as bare numeric literals, which autodoc then tries to treat as type names
+    (r"py:class", r"[0-9]+\.[0-9]+"),
+    (r"py:class", r"'?dict\[str.*"),
+    (r"py:class", r"Background"),
 ]
 nitpick_ignore = [
     ("py:exc", "IndexError"),
@@ -125,6 +162,36 @@ nitpick_ignore = [
     ("py:class", "pyobs.object.ObjectClass"),
     ("py:class", "pyobs.object.ProxyType"),
     ("py:class", "pyobs.comm.comm.ProxyType"),
+    # module-local exception classes, not part of the public interfaces/exceptions API surface
+    ("py:exc", "AltitudeLimitError"),
+    ("py:exc", "BodyResolutionError"),
+    ("py:exc", "FocusTimeoutError"),
+    ("py:exc", "InvalidOrbitalElementsError"),
+    ("py:exc", "MissingObserverError"),
+    ("py:exc", "MissingSensorError"),
+    ("py:exc", "Timeout"),
+    ("py:exc", "WeatherDataError"),
+    ("py:exc", "WeatherResponseError"),
+    # TypeVars / type aliases -- not classes, autodoc can't build a page to link to
+    ("py:class", "pyobs.comm.proxy.ProxyType"),
+    ("py:class", "pyobs.object.PydanticModel"),
+    ("py:class", "pyobs.images.image.MetaClass"),
+    ("py:class", "ConfigValue"),
+    # private implementation details not part of the public API surface
+    ("py:class", "pyobs.comm.proxy._ProxyContext"),
+    ("py:class", "pyobs.comm.xmpp.xmppclient.XmppClient"),
+    ("py:class", "pyobs.modules.telescope._DummyTelescopeBase"),
+    ("py:class", "pyobs.robotic.storage.lco._portal.LcoRequest"),
+    # external driver-package classes, documented on that package's own Sphinx site
+    ("py:class", "pyobs_aravis.araviscamera.AravisCamera"),
+    ("py:class", "pyobs_asi.AsiCoolCamera"),
+    # Generic TypeVar bounds rendered by :show-inheritance:, not classes of their own
+    ("py:class", "pyobs.modules.pointing.guidingstatistics.guidingstatistics.IN"),
+    ("py:class", "pyobs.modules.pointing.guidingstatistics.guidingstatistics.OUT"),
+    # malformed self-reference in autodoc's generated bases-list for this class; root cause
+    # not identified, low value to chase further (single occurrence)
+    ("py:class", "pyobs.interfaces.IPointingHeliographicStonyhurst.IPointingHeliographicStonyhurst"),
+    ("py:class", "pyobs.modules.module.F"),
 ]
 
 # -- Options for HTML output -------------------------------------------------

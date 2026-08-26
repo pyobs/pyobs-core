@@ -23,7 +23,7 @@ class TaskSuccess:
 class DataProvider:
     """Data provider for Merit classes.
 
-    The ``@cache``d methods below are only safe to call from a single thread at a time -- they're
+    The methods below decorated with ``@cache`` are only safe to call from a single thread at a time -- they're
     used exclusively from within the scheduler's dedicated single-worker executor
     (`pyobs.robotic.scheduler._executor.run_cpu_bound`), never concurrently from the caller's main
     event loop. A new `DataProvider` is created per `schedule()` call, so cache lifetime is bounded

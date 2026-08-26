@@ -57,13 +57,13 @@ Runtime context: ``comm``, ``vfs``, ``observer``, ``location``, ``timezone``
 
 :class:`~pyobs.object.Object` provides several shared runtime resources as properties:
 
-- :attr:`~pyobs.object.Object.comm` — the :class:`~pyobs.comm.Comm` object for communicating with other modules.
-- :attr:`~pyobs.object.Object.vfs` — the :class:`~pyobs.vfs.VirtualFileSystem` for file access.
-- :attr:`~pyobs.object.Object.observer` — an :class:`astroplan.Observer` built from the configured location and timezone.
-- :attr:`~pyobs.object.Object.location` — the observatory's :class:`~astropy.coordinates.EarthLocation`, read as
+- :attr:`~pyobs.object.PrivateAttrMixin.comm` — the :class:`~pyobs.comm.Comm` object for communicating with other modules.
+- :attr:`~pyobs.object.PrivateAttrMixin.vfs` — the :class:`~pyobs.vfs.VirtualFileSystem` for file access.
+- :attr:`~pyobs.object.PrivateAttrMixin.observer` — an :class:`astroplan.Observer` built from the configured location and timezone.
+- :attr:`~pyobs.object.PrivateAttrMixin.location` — the observatory's :class:`~astropy.coordinates.EarthLocation`, read as
   ``observer.location``. It is not stored separately, so it is always in sync with ``observer`` and does not need
   to be propagated to child objects on its own.
-- :attr:`~pyobs.object.Object.timezone` — the local timezone as a :class:`datetime.tzinfo`.
+- :attr:`~pyobs.object.PrivateAttrMixin.timezone` — the local timezone as a :class:`datetime.tzinfo`.
 
 The constructor still accepts a ``location`` argument (a site name, an ``{longitude, latitude, elevation}`` dict,
 or an :class:`~astropy.coordinates.EarthLocation`), but only uses it to build the default ``observer`` — pass
@@ -117,6 +117,9 @@ API reference
 
 .. autoclass:: pyobs.object.Object
   :members:
+
+.. autoclass:: pyobs.background_task.BackgroundTask
+   :members:
 
 .. autofunction:: pyobs.object.get_object
 

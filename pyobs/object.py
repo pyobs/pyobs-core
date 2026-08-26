@@ -208,29 +208,34 @@ class PrivateAttrMixin:
 
     @property
     def comm(self) -> Comm:
+        """The :class:`~pyobs.comm.Comm` object for communicating with other modules."""
         if self._comm is None:
             raise AttributeError("No comm available.")
         return self._comm
 
     @property
     def vfs(self) -> VirtualFileSystem:
+        """The :class:`~pyobs.vfs.VirtualFileSystem` for file access."""
         if self._vfs is None:
             raise AttributeError("No VFS available.")
         return self._vfs
 
     @property
     def observer(self) -> Observer:
+        """An :class:`astroplan.Observer` built from the configured location and timezone."""
         if self._observer is None:
             raise AttributeError("No Observer available.")
         return self._observer
 
     @property
     def location(self) -> EarthLocation:
-        """Location of the observer, derived from :attr:`observer` (there is no separately stored location)."""
+        """Location of the observer, derived from :attr:`~pyobs.object.PrivateAttrMixin.observer`
+        (there is no separately stored location)."""
         return self.observer.location
 
     @property
     def timezone(self) -> datetime.tzinfo:
+        """The local timezone as a :class:`datetime.tzinfo`."""
         if self._timezone is None:
             raise AttributeError("No timezone available.")
         return self._timezone

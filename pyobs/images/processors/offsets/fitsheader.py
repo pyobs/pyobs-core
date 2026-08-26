@@ -30,25 +30,26 @@ class FitsHeaderOffsets(Offsets):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.offsets.Offsets`.
 
-    Behavior
-    --------
+    Fits Header Offsets behavior
+    ----------------------------
     - Validates at initialization that both ``target`` and ``center`` are 2-tuples.
     - On call:
+
       - Reads the target and center values from the image header.
       - Computes the offset as (target_x − center_x, target_y − center_y).
       - Creates a copy of the input image and attaches the result as
         ``GenericOffset(dx, dy)`` in the image metadata.
       - Returns the modified copy; pixel data and header values are unchanged.
 
-    Input/Output
-    ------------
+    Fits Header Offsets input/output
+    --------------------------------
     - Input: :class:`pyobs.images.Image` with FITS header containing the specified
       target and center keywords, whose values are numeric.
     - Output: :class:`pyobs.images.Image` (copied) with a ``GenericOffset`` metadata
       entry set to the computed (dx, dy).
 
-    Configuration (YAML)
-    --------------------
+    Fits Header Offsets configuration (YAML)
+    ----------------------------------------
     Use default center keys and custom target keys:
 
     .. code-block:: yaml

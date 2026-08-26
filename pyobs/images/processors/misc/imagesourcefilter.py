@@ -41,8 +41,8 @@ class ImageSourceFilter(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Image Source Filter behavior
+    ----------------------------
     - Works on a copy of the input image and its catalog.
     - Removes sources near the borders:
 
@@ -64,16 +64,16 @@ class ImageSourceFilter(ImageProcessor):
       truncating to ``num_stars`` if positive and less than the number of remaining sources.
     - Returns the modified copy with the filtered catalog assigned.
 
-    Input/Output
-    ------------
+    Image Source Filter input/output
+    --------------------------------
     - Input: :class:`pyobs.images.Image` with a source catalog containing at least
       ``x``, ``y``, ``flux``, ``peak``, ``tnpix``, ``ellipticity``, and ``background``.
       The catalog is expected to use pixel coordinates consistent with the image shape.
     - Output: :class:`pyobs.images.Image` (copied) with a filtered catalog. Pixel data
       and headers are unchanged.
 
-    Configuration (YAML)
-    --------------------
+    Image Source Filter configuration (YAML)
+    ----------------------------------------
     Keep 20 high-quality stars, at least 10 pixels each, away from 25-pixel borders:
 
     .. code-block:: yaml

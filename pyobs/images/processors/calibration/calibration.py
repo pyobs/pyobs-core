@@ -22,15 +22,15 @@ class Calibration(ImageProcessor):
     This processor locates appropriate master calibration frames
     (bias, dark, flat) based on the input image metadata, applies calibration to the
     image, and annotates the FITS header with provenance and reduction information.
-    Calibration frames are looked up via an :class:`pyobs.archive.Archive` and are
+    Calibration frames are looked up via an :class:`~pyobs.robotic.utils.archive.Archive` and are
     cached in a class-wide cache to reduce repeated lookups. If required calibration
     frames cannot be found, the original image is returned unchanged.
 
     :param dict | Archive archive: Archive configuration or an already constructed
-                                  :class:`pyobs.archive.Archive` instance used to
+                                  :class:`~pyobs.robotic.utils.archive.Archive` instance used to
                                   locate master calibration frames. If a dictionary
                                   is provided, it is instantiated via
-                                  :func:`pyobs.utils.classes.get_object`.
+                                  :func:`~pyobs.object.get_object`.
     :param int max_cache_size: Maximum number of master frames kept in the shared
                                calibration cache. Default: ``20``.
     :param bool require_bias: If ``True``, a master bias must be found; otherwise
@@ -60,7 +60,7 @@ class Calibration(ImageProcessor):
       and ``DATE-OBS`` must be present.
     - Attempts to retrieve required masters (bias, dark, flat) from a class-wide cache.
       On cache miss, queries the configured archive via
-      :meth:`pyobs.pipeline.Pipeline.find_master`, matching:
+      :meth:`~pyobs.utils.pipeline.Pipeline.find_master`, matching:
 
       - Instrument: exact value of ``INSTRUME``.
       - Binning: string formatted as ``"{XBINNING}x{XBINNING}"`` (square binning assumed).
@@ -69,7 +69,7 @@ class Calibration(ImageProcessor):
 
     - If any required master is missing, logs a warning and returns the original image
       unchanged.
-    - Applies calibration using :class:`pyobs.images.processors.calibration._CCDDataCalibrator`
+    - Applies calibration using the internal ``_CCDDataCalibrator`` helper
       with the found master frames (``None`` for any non-required step to be skipped).
     - Copies provenance into the output FITS header:
 

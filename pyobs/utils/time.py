@@ -24,6 +24,10 @@ class Time(astropy.time.Time):
 
     @classmethod
     def set_offset_to_now(cls, delta: astropy.time.TimeDelta) -> None:
+        """Shifts what :meth:`now` returns by ``delta``, without affecting the system clock.
+
+        For simulation/testing scenarios that need to run at an arbitrary point in time.
+        """
         cls._now_offset = delta
 
     @classmethod

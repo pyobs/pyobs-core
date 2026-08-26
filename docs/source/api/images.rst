@@ -5,7 +5,7 @@ Images (pyobs.images)
 
 The :class:`~pyobs.images.Image` class is the fundamental data structure passed through the entire
 *pyobs* imaging pipeline. Every camera module produces an ``Image``, every
-:class:`~pyobs.images.ImageProcessor` consumes and returns one, and the VFS convenience methods
+:class:`~pyobs.images.processor.ImageProcessor` consumes and returns one, and the VFS convenience methods
 (:meth:`~pyobs.vfs.VirtualFileSystem.read_image`, :meth:`~pyobs.vfs.VirtualFileSystem.write_image`)
 serialise and deserialise them transparently.
 
@@ -123,7 +123,7 @@ The available meta classes are:
 Image processors
 ^^^^^^^^^^^^^^^^
 
-:class:`~pyobs.images.ImageProcessor` is the base class for all pipeline steps. A processor
+:class:`~pyobs.images.processor.ImageProcessor` is the base class for all pipeline steps. A processor
 is an :class:`~pyobs.object.Object` subclass that is callable — it receives an ``Image`` and
 returns a (possibly modified) ``Image``::
 

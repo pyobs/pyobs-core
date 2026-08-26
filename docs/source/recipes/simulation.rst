@@ -2,7 +2,7 @@ Setting up a *pyobs* system with simulated telescope and camera
 ---------------------------------------------------------------
 
 .. note::
-    This recipe requires three accounts on your XMPP server (see :ref:`Setting up ejabberd`): ``telescope``, ``camera``,
+    This recipe requires three accounts on your XMPP server (see :ref:`installing:Setting up ejabberd`): ``telescope``, ``camera``,
     and ``gui``.
 
 .. note::

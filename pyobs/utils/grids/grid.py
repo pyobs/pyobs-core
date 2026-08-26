@@ -93,6 +93,7 @@ class GraticuleSphericalGrid(Grid):
 
     Uses a graticule-like construction for near-uniform sampling over the sphere
     following the approach described by Deserno (2004):
+
       https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
 
     Produces points as (lon_deg, lat_deg) tuples in degrees.

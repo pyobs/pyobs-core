@@ -43,8 +43,8 @@ class AddFitsHeaders(ImageProcessor):
         Whether to overwrite existing keywords when they already exist in the header.
         Default: ``True``.
 
-    Behavior
-    --------
+    Add Fits Headers behavior
+    -------------------------
     - For each specified header card, the processor will add the keyword and value
       to the image's FITS header. If the keyword is already present:
 
@@ -56,13 +56,13 @@ class AddFitsHeaders(ImageProcessor):
     - FITS keyword names should follow FITS conventions (typically up to 8 ASCII
       characters, uppercase) to ensure compatibility with FITS tools.
 
-    Input/Output
-    ------------
+    Add Fits Headers input/output
+    -----------------------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` with updated FITS headers.
 
-    Configuration (YAML)
-    --------------------
+    Add Fits Headers configuration (YAML)
+    -------------------------------------
     Simple mapping:
 
     .. code-block:: yaml

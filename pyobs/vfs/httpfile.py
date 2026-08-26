@@ -35,7 +35,7 @@ class HttpFile(BufferedFile):
             mode: Open mode (r/w).
             download: Base URL for downloading files. If None, no read access possible.
             upload: Base URL for uploading files. If None, no write access possible.
-            token: Shared secret sent as "Authorization: Bearer <token>" to the HTTP server.
+            token: Shared secret sent as an ``Authorization: Bearer <token>`` header to the HTTP server.
             verify_tls: Whether to verify TLS certificates.
             timeout: Timeout in seconds for uploading/downloading files.
         """
@@ -80,7 +80,7 @@ class HttpFile(BufferedFile):
 
     @property
     def headers(self) -> dict[str, str]:
-        """Headers sent with GET/POST requests, e.g. "Authorization: Bearer <token>".
+        """Headers sent with GET/POST requests, e.g. ``Authorization: Bearer <token>``.
 
         Returns a copy; mutating it does not affect this instance's headers.
         """

@@ -61,7 +61,7 @@ Module for performing a fine-acquisition on target
         download: http://localhost:37075/
 
 * The :class:`~pyobs.modules.pointing.Acquisition` class is used for the acquisition module (line 1).
-* It requires the name of the other modules to use, which are :ref:`telescope` for the telescope, :ref:`sbig6303e`
+* It requires the name of the other modules to use, which are :ref:`config_examples/iag50cm:telescope` for the telescope, :ref:`config_examples/iag50cm:sbig6303e`
   for the camera and the same for module for the filter wheel, since it is integrated into the camera (lines 4-6).
 * The camera settings for the acquisition images (lines 9-11).
 * A log file where all the offsets from the acquisitions are stored, can be useful for checking the pointing model
@@ -78,7 +78,7 @@ Module for performing a fine-acquisition on target
 
 * The offsets are applied via :class:`~pyobs.utils.offsets.ApplyRaDecOffsets`. It fails if the total offset gets larger
   than 7200" (lines 27-29).
-* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`filecache` HTTP cache server (lines 31-36)
+* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`config_examples/iag50cm:filecache` HTTP cache server (lines 31-36)
   and is used for downloading the images from the camera.
 
 
@@ -115,13 +115,13 @@ Module for performing an auto-focus series to determine the best focus
         download: http://localhost:37075/
 
 * The :class:`~pyobs.modules.focus.AutoFocusSeries` class is used for the auto focus module (line 1).
-* It requires the name of the other modules to use, which are :ref:`focuser` for the focus unit, :ref:`sbig6303e`
+* It requires the name of the other modules to use, which are :ref:`config_examples/iag50cm:focuser` for the focus unit, :ref:`config_examples/iag50cm:sbig6303e`
   for the camera and the same for module for the filter wheel, since it is integrated into the camera (lines 4-6).
 * The ``offset`` parameter defines, whether absolute focus values are used or offsets from a fixed value (line 9).
 * Image settings (lines 12-13).
 * The actual focus series is done using the helper class :class:`~pyobs.utils.focusseries.ProjectionFocusSeries`
   (lines 16-17).
-* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`filecache` HTTP cache server (lines 31-36)
+* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`config_examples/iag50cm:filecache` HTTP cache server (lines 31-36)
   and is used for downloading the images from the camera.
 
 
@@ -151,8 +151,8 @@ Module operating the dome
 * The :class:`~pyobs_alpaca.AlpacaDome` class is used for the dome module (line 1).
 * IP and port for the connection are set (lines 4-5).
 * The ASCOM device type and number are given (lines 8-9).
-* :class:`~pyobs_alpaca.AlpacaDome` inherits from :class:`~pyobs.mixins.follow.FollowMixin`, so it can automatically
-  follow other devices, in this case the :ref:`telescope`.
+* :class:`~pyobs_alpaca.AlpacaDome` inherits from :class:`~pyobs.mixins.FollowMixin`, so it can automatically
+  follow other devices, in this case the :ref:`config_examples/iag50cm:telescope`.
 
 
 filecache
@@ -218,7 +218,7 @@ Modules used for automatic flat-fielding
         root: /opt/pyobs/storage
 
 * The :class:`~pyobs.modules.flatfield.FlatField` class is used for the flat-field module (line 1).
-* It requires the name of the other modules to use, which are :ref:`telescope` for the telescope, :ref:`sbig6303e`
+* It requires the name of the other modules to use, which are :ref:`config_examples/iag50cm:telescope` for the telescope, :ref:`config_examples/iag50cm:sbig6303e`
   for the camera and the same for module for the filter wheel, since it is integrated into the camera (lines 4-6).
 * A log file is created containing the exposure times, which can help refine the functions for the exposure times
   (line 9).
@@ -229,7 +229,7 @@ Modules used for automatic flat-fielding
   (line 16).
 * The functions for calculating the exposure time as a function of ``h`` (solar elevation in degrees) are defined,
   depending on the given filter and binning (lines 17-27).
-* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`filecache` HTTP cache server (lines 31-36).
+* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`config_examples/iag50cm:filecache` HTTP cache server (lines 31-36).
 
 
 focuser
@@ -282,7 +282,7 @@ Module for copying new images into the archive
         token: ...
 
 * The :class:`~pyobs.modules.image.ImageWatcher` class is used for uploading images to the archive (line 1).
-* The module actively watches a path in the VFS, in which :ref:`imagewriter` writes new images` (line 4).
+* The module actively watches a path in the VFS, in which :ref:`config_examples/iag50cm:imagewriter` writes new images` (line 4).
 * Destination paths in the VFS are provided. Files are only deleted from the watchpath, if they have successfully
   been copied to all ``destinations`` (lines 7-8).
 * The VFS defines the paths for the watchpath and all destinations (lines 10-19).
@@ -290,7 +290,7 @@ Module for copying new images into the archive
 
 imagewriter
 """""""""""
-Module that watches for :class:`~pyobs.events.newimage.NewImageEvent` and writes images to disk
+Module that watches for :class:`~pyobs.events.NewImageEvent` and writes images to disk
 
 .. code-block:: YAML
   :linenos:
@@ -341,12 +341,12 @@ Module that takes images on various position on the sky for creating a pointing 
         class: pyobs.vfs.LocalFile
         root: /opt/pyobs/storage
 
-* The custom class ``pyobs_iag50.Pointing`` (inherits from :class:`~pyobs.modules.robotic.pointing.PointingSeries`) is
+* The custom class ``pyobs_iag50.Pointing`` (inherits from :class:`~pyobs.modules.robotic.PointingSeries`) is
   used for the pointing module (line 1).
 * It requires the name of an acquisition module (line 4).
 * A log file is written, which can directly be used by Autoslew to create a new pointing model (line 7).
 * The grid is defined in ranges, default values are used for the number of points to create, see
-  :class:`~pyobs.modules.robotic.pointing.PointingSeries` for details (lines 10-12).
+  :class:`~pyobs.modules.robotic.PointingSeries` for details (lines 10-12).
 * A VFS is used to store the log file (lines 14-19).
 
 
@@ -436,7 +436,7 @@ Module for full robotic mode
 * It requires a schedule to fetch its tasks from. Since we use the LCO observation portal, an object of type
   :class:`~pyobs.robotic.storage.lco.LcoObservationArchive` is used for this. The parameters given are for the connection to
   the portal (lines 3-7).
-* The actual task runner is :class:`~pyobs.robotic.TaskRunner`, which is based on scripts that handle different kinds
+* The actual task runner is :class:`~pyobs.robotic.taskrunner.TaskRunner`, which is based on scripts that handle different kinds
   of request. For every type a class is given to handle it (mostly ``pyobs.robotic.storage.lco.scripts.LcoDefaultScript``)
   together with all the modules that this class needs to do its job (lines 9-74).
 
@@ -472,7 +472,7 @@ Module for calculating the schedule
     instrument: ...
     instrument_type: ...
 
-* The class :class:`~pyobs.modules.robotic.Scheduler` calculates the schedule to be used by the :ref:`robotic`
+* The class :class:`~pyobs.modules.robotic.Scheduler` calculates the schedule to be used by the :ref:`config_examples/iag50cm:robotic`
   module (line 1).
 * The used definition of twilight is used to determine, in which time frame to actually schedule tasks, can be
   ``nautical`` with sun elevation of -12 degrees or ``astronomical`` at -18 degrees (line 4).
@@ -525,7 +525,7 @@ Module that provides the science frame auto-guiding (sfag)
 
 * The class :class:`~pyobs.modules.pointing.ScienceFrameAutoGuiding` performs auto-guiding on images of the science
   camera (line 1).
-* It requires the names of the telescope (:ref:`telescope`) and the camera (:ref:`sbig6303e`) modules (lines 4-5).
+* It requires the names of the telescope (:ref:`config_examples/iag50cm:telescope`) and the camera (:ref:`config_examples/iag50cm:sbig6303e`) modules (lines 4-5).
 * The maximum exposure time of images to use for auto-guiding is defined as well as a min/max interval in seconds
   between offsets and a maximum offset to go (lines 8-11).
 * A log file is written with all auto-guiding offsets (line 14).
@@ -556,8 +556,8 @@ Module that opens dome and initializes telescope on good weather
 * The class :class:`~pyobs.modules.utils.Trigger` provides a simple trigger on events (line 1).
 * Two triggers are defined:
 
-  * On a :class:`~pyobs.events.GoodWeatherEvent`, the dome is opened via the :ref:`dome` module (lines 4-6).
-  * On a :class:`~pyobs.events.RoofOpenedEvent`, the telescope is initialized via the :ref:`telescope` module
+  * On a :class:`~pyobs.events.GoodWeatherEvent`, the dome is opened via the :ref:`config_examples/iag50cm:dome` module (lines 4-6).
+  * On a :class:`~pyobs.events.RoofOpenedEvent`, the telescope is initialized via the :ref:`config_examples/iag50cm:telescope` module
     (lines 7-9).
 
 telegram
@@ -614,13 +614,13 @@ Module operating the telescope
 * The :class:`~pyobs_alpaca.AlpacaTelescope` class is used for the telescope module (line 1).
 * IP and port for the connection are set (lines 4-5).
 * The ASCOM device type and number are given (lines 8-9).
-* The module waits for the :ref:`dome` module after movements and consults the :ref:`weather` module about the current
+* The module waits for the :ref:`config_examples/iag50cm:dome` module after movements and consults the :ref:`config_examples/iag50cm:weather` module about the current
   weather (lines 12-13).
 * Additional static FITS headers are provided (lines 16-22).
 * FITS namespaces for other modules providing FITS headers are given:
 
-  * The :ref:`sbig6303e` module gets all FITS headers (line 26).
-  * The :ref:`asi071mc` module only gets the listed FITS headers (lines 27-28).
+  * The :ref:`config_examples/iag50cm:sbig6303e` module gets all FITS headers (line 26).
+  * The :ref:`config_examples/iag50cm:asi071mc` module only gets the listed FITS headers (lines 27-28).
 
 
 weather
@@ -735,5 +735,5 @@ Module for operating a ZWO ASI071MC Pro camera
         class: pyobs.vfs.HttpFile
         upload: http://iag50srv:37075/
 
-* Basically the same as the :ref:`sbig6303e` module, but using the :class:`~pyobs_asi.AsiCoolCamera` class for ZWO
+* Basically the same as the :ref:`config_examples/iag50cm:sbig6303e` module, but using the :class:`~pyobs_asi.AsiCoolCamera` class for ZWO
   ASI cameras.

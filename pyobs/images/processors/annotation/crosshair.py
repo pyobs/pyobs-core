@@ -34,9 +34,9 @@ class Crosshair(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
-    - Converts the input to a Pillow image via :class:`pyobs.utils.image.PillowHelper.from_image`.
+    Crosshair behavior
+    ------------------
+    - Converts the input to a Pillow image via ``PillowHelper.from_image``.
     - Resolves the center position with ``PillowHelper.position(image, x, y, wcs)`` and the color
       with ``PillowHelper.color(color)``.
     - Draws:
@@ -47,13 +47,13 @@ class Crosshair(ImageProcessor):
     - Converts the Pillow image back to a :class:`pyobs.images.Image` via
       ``PillowHelper.to_image(image, im)``.
 
-    Input/Output
-    ------------
+    Crosshair input/output
+    ----------------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` (copied) with the crosshair drawn onto the pixel data.
 
-    Configuration (YAML)
-    --------------------
+    Crosshair configuration (YAML)
+    ------------------------------
     Pixel coordinates:
 
     .. code-block:: yaml
@@ -80,7 +80,7 @@ class Crosshair(ImageProcessor):
     - When ``wcs=True``, only ``x`` and ``y`` are interpreted in world coordinates; ``radius``
       is treated as a pixel length.
     - Color representation and supported coordinate/value formats depend on
-      :class:`pyobs.utils.image.PillowHelper`.
+      the internal ``PillowHelper``.
     - The line width scales with radius and is not independently configurable.
     """
 

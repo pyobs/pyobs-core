@@ -29,7 +29,7 @@ class TaskData:
 
     @property
     def resolved_target(self) -> Target | None:
-        """Target for this specific run: the observation's own record if known,
+        """The target for this specific run -- the observation's own record if known,
         otherwise the task's live (possibly shared/reused) target."""
         return self.target if self.target is not None else self.task.target
 

@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c8f05145`
+- Built from commit: `b9f946e1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1888,7 +1888,7 @@ Nodes (9): Run script. Raises: InterruptedError: If interrupted, Future, Any, Se
   specs/design/exception_handling.md · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **691 isolated node(s):** `Open issues (4, checked 2026-08-25)`, `pyobs-core `specs/plans/``, `Design docs still *proposed*`, `Sibling repos`, `pyobs-core` (+686 more)
+- **691 isolated node(s):** `pyobs-core`, `Open issues (4, checked 2026-08-25)`, `pyobs-core `specs/plans/``, `Design docs still *proposed*`, `Sibling repos` (+686 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **95 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -1902,9 +1902,9 @@ _Questions this graph is uniquely positioned to answer:_
 - **What is the exact relationship between `FocusError` and `FocusModel.set_optimal_focus`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
 - **Why does `Time` connect `Time` to `ExposureStatus`, `flatfield/test_scheduler.py`, `RunningState`, `.__init__`, `Observation`, `SchedulerItem`, `Grid`, `Interface`, `SiderealTarget`, `mixins/test_fitsheader.py`, `Event`, `MotionStatus`, `_DummyTelescopeBase`, `test_flatfielder.py`, `DummyMode`, `tests/test_events.py`, `ObservationList`, `Object`, `test_basetelescope.py`, `test_lco_http.py`, `DummySolarTelescope`, `.get_object`, `test_astroplanscheduler.py`, `DummyCamera`, `pyobs/modules/utils/__init__.py`, `ExpTimeEval`, `Proxy`, `.__init__`, `test_dynamictarget.py`, `filters.py`, `Calibration`, `test_lcoscript.py`, `applyoffsets.py`, `FilenameFormatter`, `test_yaml_archives.py`, `.__call__`, `NewImageEvent`, `Task`, `Offsets`, `TaskStartedEvent`, `.now`, `test_proxy.py`, `test_schedulereader.py`, `IPointingAltAz.py`, `Weather`, `_ProxyContext`, `Portal`, `test_acquisition.py`, `Application`, `Scheduler`, `time.py`, `LocalArchive`, `InfluxHandler`, `test_transitimaging.py`, `test_coordinates.py`, `Scheduler`, `LogEvent`, `dummycamera.py`, `WeatherSensors`, `FocusModel`?**
-  _High betweenness centrality (0.192) - this node is a cross-community bridge._
+  _High betweenness centrality (0.190) - this node is a cross-community bridge._
 - **Why does `Image` connect `Image` to `RuntimeError`, `ImageProcessor`, `Image processors index (docs)`, `.open_file`, `._combine_calib_images_async`, `mixins/test_fitsheader.py`, `utils/exceptions.py`, `MotionStatus`, `FitsHeaderEntry`, `test_flatfielder.py`, `CatalogCircularMask`, `_PhotUtilAperturePhotometry`, `AddMask`, `.get_object`, `_SourceCatalog`, `_PhotometryCalculator`, `DummyCamera`, `BrightestStarOffsets`, `SkyOffsets`, `.__init__`, `SepSourceDetection`, `_CalibrationCache`, `test_aperture_photometry.py`, `Calibration`, `FitsHeaderOffsets`, `_ResponseImageWriter`, `applyoffsets.py`, `FilenameFormatter`, `test_basevideo.py`, `.__call__`, `Any`, `FlatFielder`, `Offsets`, `.__call__`, `DummySkyOffsets`, `AstrometryDotNet`, `test_acquisition.py`, `PipelineMixin`, `Ring`, `.__call__`, `test_autoguiding.py`, `Smooth`, `time.py`, `ProjectedOffsets`, `GuidingStatisticsPixelOffset`, `LocalArchive`, `FocusSeries`, `RemoveBackground`, `_DaoBackgroundRemover`, `PixelOffsets`, `_SepAperturePhotometry`, `CreateFilename`, `dummycamera.py`, `AperturePhotometry`, `VFSFile`, `SoftBin`, `ImageSourceFilter`, `Save`?**
-  _High betweenness centrality (0.116) - this node is a cross-community bridge._
+  _High betweenness centrality (0.117) - this node is a cross-community bridge._
 - **Why does `Module` connect `Module` to `ExposureStatus`, `.__init__`, `flatfield/test_scheduler.py`, `RunningState`, `module.py`, `test_dummymode.py`, `MockWeather`, `XmppComm`, `Interface`, `xmpp/rpc.py`, `test_camerasettings.py`, `test_kiosk.py`, `mixins/test_fitsheader.py`, `utils/exceptions.py`, `MotionStatus`, `DummyMode`, `Object`, `.get_object`, `_AbortableModule`, `pyobs/modules/utils/__init__.py`, `PointingSeries`, `test_presence.py`, `HttpFileCache`, `._get_client`, `StandAlone`, `PyobsError`, `WindowCapabilities`, `Script`, `test_basevideo.py`, `GridNode`, `Telegram`, `NewImageEvent`, `IPointingAltAz.py`, `FlatFieldPointing`, `xmppcomm.py`, `Weather`, `Stellarium`, `test_autoguiding.py`, `IModule`, `PipelineMixin`, `test_acquisition.py`, `test_module_state_publishing.py`, `DataCache`, `test_exception_logging.py`, `time.py`, `Kiosk`, `make_proxy_cm`, `LogEvent`, `dummycamera.py`, `WeatherSensors`, `FocusModel`?**
   _High betweenness centrality (0.070) - this node is a cross-community bridge._
 - **Are the 122 inferred relationships involving `Time` (e.g. with `PyobsCLI` and `Proxy`) actually correct?**

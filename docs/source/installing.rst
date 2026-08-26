@@ -17,9 +17,8 @@ Automated setup
 :file:`scripts/xmpp/install-ejabberd.sh` in the *pyobs-core* repository automates steps 1-5 below (and a
 couple of extras: an HTTP API listener for *pyobs-web-admin*, and a raised shaper so a real fleet's
 capability-fetch/state-push bursts don't run into `a known ejabberd bug
-<https://github.com/processone/xmpp>`__ where a throttled connection's socket can fail to be reactivated —
-see :file:`specs/plans/ejabberd-throughput-benchmarking.md` in the repo for the full writeup). It's
-idempotent — safe to re-run, e.g. to add a second vhost::
+<https://github.com/processone/xmpp>`__ where a throttled connection's socket can fail to be reactivated).
+It's idempotent — safe to re-run, e.g. to add a second vhost::
 
     sudo ./scripts/xmpp/install-ejabberd.sh <hostname>
 

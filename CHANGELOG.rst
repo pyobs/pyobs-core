@@ -1,5 +1,8 @@
+v2.0.0 (2026-08-26)
+*******************
+
 v2.0.0.dev98 (2026-08-25)
-*************************
+=========================
 * ``Observation`` gained an ``archive_url`` field (``str | None``, default ``None``), matching the
   computed link pyobs-portal#82 started returning from ``GET /api/observations/`` (a deep link into
   the archive's frontend for terminal observations; always ``None`` for the ``pending``/
@@ -10,11 +13,11 @@ v2.0.0.dev98 (2026-08-25)
   that Mastermind tolerates but never consumes.
 
 v2.0.0.dev97 (2026-08-25)
-*************************
+=========================
 * No pyobs-core code changes -- version bump only.
 
 v2.0.0.dev96 (2026-08-25)
-*************************
+=========================
 * **Breaking:** ``pyobs.robotic.storage.backend`` is renamed to ``pyobs.robotic.storage.portal``,
   and ``BackendTaskArchive``/``BackendObservationArchive`` are renamed to
   ``PortalTaskArchive``/``PortalObservationArchive``, following the ``pyobs-robotic-backend`` ->
@@ -23,7 +26,7 @@ v2.0.0.dev96 (2026-08-25)
   the ``class:`` dotted path in any deployment YAML using the old names before upgrading.
 
 v2.0.0.dev95 (2026-08-25)
-*************************
+=========================
 * Added ``Field(description=...)`` to every field across all ``pyobs.robotic.scripts`` ``Script``
   subclasses and their nested config models (e.g. skyflat priorities) -- pyobs-robotic-backend's
   script builder renders each field's JSON-schema description as form help text, and none had one
@@ -32,7 +35,7 @@ v2.0.0.dev95 (2026-08-25)
   field for a description going forward. Fixes #811. (#812)
 
 v2.0.0.dev94 (2026-08-24)
-*************************
+=========================
 * Fixed broken ``__module__`` overrides on ``PolymorphicBaseModel`` subclasses
   (``SkyFlatsBasePointing``, ``SkyflatPriorities``, ``Archive`` and its subclasses including
   ``LocalArchive``/``PyobsArchive``): a stale short path left over from an earlier
@@ -56,7 +59,7 @@ v2.0.0.dev94 (2026-08-24)
   a duplicate table (pyobs-robotic-backend#98). Fixes #808. (#809)
 
 v2.0.0.dev93 (2026-08-23)
-*************************
+=========================
 * ``ImageWatcher`` no longer blocks the event loop while processing watched files: per-file FITS
   parsing (``astropy.io.fits.HDUList.fromstring``) now runs via ``asyncio.to_thread()``, and all
   blocking ``LocalFile`` I/O (open/read/write/close/remove/find/exists) is routed through the
@@ -75,7 +78,7 @@ v2.0.0.dev93 (2026-08-23)
   issue. Fixes #802.
 
 v2.0.0.dev92 (2026-08-23)
-*************************
+=========================
 * ``BaseVideo`` gained an opt-in ``token`` parameter gating its MJPEG/raw/FITS endpoints behind
   either an ``Authorization: Bearer <token>`` header or an HMAC-signed session cookie issued by a
   new browser ``/login`` page (``/logout`` clears it); ``/ping`` stays open. The cookie is
@@ -86,7 +89,7 @@ v2.0.0.dev92 (2026-08-23)
   private attribute. See ``specs/plans/2026-08-21-basevideo-http-token-auth.md``. (#799)
 
 v2.0.0.dev91 (2026-08-21)
-*************************
+=========================
 * Demoted routine retry/shutdown log messages from WARNING to INFO.
 * Fixed ``BIASSEC``/``TRIMSEC`` FITS-header computation: the old guard fired (and warned) for any
   window not covering the full visible frame on both axes -- exactly the common case of a subframe
@@ -107,7 +110,7 @@ v2.0.0.dev91 (2026-08-21)
   request never reaches the module, the camera is never (re)activated. Now relative.
 
 v2.0.0.dev90 (2026-08-20)
-*************************
+=========================
 * ``BackendTaskArchive`` and ``BackendObservationArchive`` gate their 5s refresh on the backend's
   ``last_task_update``/``last_observation_update`` marker again. The marker is now a DB-derived
   ``Max(updated_at)`` (pyobs-robotic-backend#84) that is truthful across gunicorn workers, so the
@@ -117,7 +120,7 @@ v2.0.0.dev90 (2026-08-20)
   kept as the ``on_tasks_changed`` trigger, so no-op marker bumps never fire a scheduler run.
 
 v2.0.0.dev89 (2026-08-20)
-*************************
+=========================
 * ``DynamicTarget.resolve()`` no longer overwrites its declared ``name`` field with the picked
   star's name. That mutation leaked into ``Task.model_dump()`` (which serializes the static
   target), so ``BackendTaskArchive``'s content comparison saw a "change" on every poll while the
@@ -128,7 +131,7 @@ v2.0.0.dev89 (2026-08-20)
   scheduled observation; the serialized ``name`` stays ``"(dynamic)"``.
 
 v2.0.0.dev88 (2026-08-20)
-*************************
+=========================
 * ``Task`` gained an ``updated_at`` field (``str | None``, default ``None``), matching the field
   pyobs-robotic-backend#84 started returning from ``GET /api/tasks/`` (DB-derived ``updated_at``
   on ``Task``). Without it, the strict ``Task`` model rejected the new key and
@@ -136,7 +139,7 @@ v2.0.0.dev88 (2026-08-20)
   task list.
 
 v2.0.0.dev87 (2026-08-20)
-*************************
+=========================
 * ``BackendTaskArchive`` and ``BackendObservationArchive`` no longer gate their 5s refresh loop on
   the robotic-backend's ``last_task_update``/``last_observation_update`` marker. That marker is
   computed from a per-process Django ``LocMemCache`` and is unreliable across gunicorn workers, so
@@ -154,7 +157,7 @@ v2.0.0.dev87 (2026-08-20)
   pyobs-robotic-backend#82. (#791)
 
 v2.0.0.dev86 (2026-08-19)
-*************************
+=========================
 * Fixed ``FitsHeaderMixin.add_requested_fits_headers()`` letting a misbehaving peer's malformed
   ``IFitsHeaderBefore``/``IFitsHeaderAfter`` response crash the whole exposure: it only caught
   ``exc.RemoteError``, but ``XmppComm.execute()`` only converts ``IqError``/``IqTimeout`` into
@@ -174,7 +177,7 @@ v2.0.0.dev86 (2026-08-19)
   done-callback so any future exception is retrieved and logged normally.
 
 v2.0.0.dev85 (2026-08-19)
-*************************
+=========================
 * ``http_request_paginated()`` now tolerates page drift mid-fetch: DRF's ``page=N`` pagination
   404s with "Invalid page." once ``N`` exceeds the current page count, and on a live-growing
   dataset with non-unique ordering (e.g. ``Observation.Meta.ordering = ["start"]``) a concurrent
@@ -183,13 +186,13 @@ v2.0.0.dev85 (2026-08-19)
   specific error shape, and never on the first page, so other 404s still raise.
 
 v2.0.0.dev84 (2026-08-19)
-*************************
+=========================
 * ``Project`` gained a missing ``users`` field (per-user project visibility), matching the robotic
   backend's ``ProjectSerializer``. With ``extra="forbid"`` enabled (#762), the unmodeled field
   previously raised a validation error instead of being silently dropped.
 
 v2.0.0.dev83 (2026-08-19)
-*************************
+=========================
 * The ``TypeError`` raised when a leftover kwarg reaches ``object.__init__()`` unclaimed (end of
   the cooperative ``super().__init__(**kwargs)`` chain added below) is now re-raised with a
   diagnosable message naming the offending class and the actual unconsumed kwargs -- not
@@ -200,7 +203,7 @@ v2.0.0.dev83 (2026-08-19)
   the generic, class-and-kwarg-less ``object.__init__() takes exactly one argument`` message.
 
 v2.0.0.dev82 (2026-08-19)
-*************************
+=========================
 * ``Object.__init__`` now forwards leftover kwargs cooperatively via ``super().__init__(**kwargs)``
   instead of silently absorbing them, giving mixins listed after ``Module`` in a subclass's MRO
   (``WeatherAwareMixin``, ``MotionStatusMixin``, ``PipelineMixin``, etc.) a real chance to claim
@@ -227,11 +230,11 @@ v2.0.0.dev82 (2026-08-19)
   the GUI applied the wrong Y coordinate.
 
 v2.0.0.dev81 (2026-08-18)
-*************************
+=========================
 * No pyobs-core code changes -- version bump only.
 
 v2.0.0.dev80 (2026-08-18)
-*************************
+=========================
 * ``BaseVideo`` now declares itself a sender of ``NewImageEvent`` via ``comm.register_event()`` in
   ``open()``, matching ``BaseCamera``'s existing registration -- without it, a peer's disco#info-
   driven subscription logic never subscribed (since it skips event types a peer doesn't advertise
@@ -239,7 +242,7 @@ v2.0.0.dev80 (2026-08-18)
   video/FITS grab silently never updated, with no errors on either side.
 
 v2.0.0.dev79 (2026-08-18)
-*************************
+=========================
 * Fixed a TOCTOU race in ``BaseVideo.activate_camera()``/``deactivate_camera()``: two concurrent
   callers (e.g. an incoming video-stream request racing an RPC like ``set_exposure_time``) could
   both observe ``self._active`` as unset and both proceed to open/close the camera,
@@ -248,7 +251,7 @@ v2.0.0.dev79 (2026-08-18)
   serialized with a lock.
 
 v2.0.0.dev78 (2026-08-18)
-*************************
+=========================
 * ``BaseVideo`` gained a raw-frame streaming endpoint (``/video.raw``) alongside the existing MJPEG
   stream: a multipart, event-driven feed of a JSON FITS-keyed meta header plus raw little-endian
   frame bytes, with latest-frame-wins backpressure (a slow client drops stale frames instead of
@@ -276,7 +279,7 @@ v2.0.0.dev78 (2026-08-18)
   fix. Fixes #764. (#765, #768)
 
 v2.0.0.dev77 (2026-08-16)
-*************************
+=========================
 * Every module now logs the versions of loaded ``pyobs-*`` packages at startup, alongside the
   existing IERS-cache priming. Guarded with the same try/except as that priming, so broken
   dist-info metadata on any installed package can't abort startup; an editable install won't show
@@ -291,26 +294,26 @@ v2.0.0.dev77 (2026-08-16)
   call happens via a fire-and-forget background task.
 
 v2.0.0.dev76 (2026-08-15)
-*************************
+=========================
 * ``BaseCamera`` now publishes live ``IExposure`` state (``progress``/``exposure_time_left``) once
   a second while ``EXPOSING``, via a new background task; previously it only published on status
   transitions, so both values stayed frozen at 0 for the whole exposure.
   ``exposure_time_left`` is clamped to ``>= 0``.
 
 v2.0.0.dev75 (2026-08-15)
-*************************
+=========================
 * ``BaseVideo``'s image-cache write now offloads ``image.to_bytes()`` to a worker thread (matching
   the existing ``create_jpeg()`` pattern), instead of serializing a ~5MB FITS frame directly on the
   event loop -- same class of fix as ``Vfs.write_image()``/``write_fits()`` in dev53, applied to a
   different choke point.
 
 v2.0.0.dev74 (2026-08-15)
-*************************
+=========================
 * ``FocusModel``'s coefficient fit (``lmfit.minimize`` plus residual model evaluation) now runs on
   a worker thread instead of directly on the event loop.
 
 v2.0.0.dev71 (2026-08-10)
-*************************
+=========================
 * Added ``OBSNUM``: ``Mastermind`` now assigns a compound ``<night>-<counter>`` observation number
   when a task starts running, persisted via a VFS-cached per-night counter and written to both
   ``Observation.obsnum`` and the ``OBSNUM`` FITS header -- lets frames from possibly-multiple
@@ -318,7 +321,7 @@ v2.0.0.dev71 (2026-08-10)
   ``specs/design/obsnum_fits_header.md``. (#738)
 
 v2.0.0.dev70 (2026-08-10)
-*************************
+=========================
 * Added structured progress reporting to ``Reduction`` (a ``progress_callback`` reporting
   master-calib creation and per-frame science calibration results as they happen, with a cumulative
   whole-night frame total computed via a cheap pre-pass), so a caller (e.g. ``pyobs-pipeline``'s web
@@ -345,7 +348,7 @@ v2.0.0.dev70 (2026-08-10)
   any external tooling consuming them.
 
 v2.0.0.dev68 (2026-08-09)
-*************************
+=========================
 * Renamed ``pyobs.utils.pipeline.Night`` to ``Reduction`` (fits solar telescopes too, not just
   nighttime ones). Replaced ``store_local`` with a single ``output`` param (local path, dict, or
   ``Archive``), so input and output can be different archives. Implemented
@@ -359,7 +362,7 @@ v2.0.0.dev68 (2026-08-09)
   ``Night``, ``store_local``, or ``worker_procs`` directly.
 
 v2.0.0.dev67 (2026-08-06)
-*************************
+=========================
 * Re-landed the ``OnDemandScheduler`` event-loop offload (added in dev53, briefly reverted in
   dev66) unchanged, alongside a prefetch/freeze split for ``ObservationArchiveEvolution``: a new
   ``prefetch()`` fetches every task's observations plus the one real "current" night
@@ -371,7 +374,7 @@ v2.0.0.dev67 (2026-08-06)
   process pool can't share it. See ``specs/plans/scheduler-archive-prefetch-for-process-isolation.md``.
 
 v2.0.0.dev66 (2026-08-05)
-*************************
+=========================
 * Briefly reverted the ``OnDemandScheduler`` event-loop offload added in dev53 while investigating
   the process-isolation groundwork above; re-landed unchanged in dev67, so only a dev66 build itself
   ran evaluation synchronously on the event loop again.
@@ -380,7 +383,7 @@ v2.0.0.dev66 (2026-08-05)
   genuinely unclassified exception still logs loudly.
 
 v2.0.0.dev65 (2026-08-05)
-*************************
+=========================
 * Fixed a scheduler event-loop stall traced live (``py-spy dump``) to the **main** thread, not the
   worker thread the dev53 offload targets: ``ObservationArchiveEvolution.evolve()`` called
   ``Time.now().night_obs()`` directly on the event loop for every scheduled task, redoing an
@@ -395,20 +398,20 @@ v2.0.0.dev65 (2026-08-05)
   deliberate config choice, not an anomaly.
 
 v2.0.0.dev64 (2026-08-05)
-*************************
+=========================
 * Fixed ``ArchiveFile._upload`` referencing ``self._auth``, which was never set (leftover from
   before auth moved to ``self._headers``/token-based auth) -- any actual write to a
   ``pyobs-archive`` backend crashed with ``AttributeError`` before the request was even sent.
 
 v2.0.0.dev63 (2026-08-05)
-*************************
+=========================
 * Downgraded routine no-detection acquisition log lines ("no on-sky distance found", a missed
   sun/star detection) from warning to info -- neither is actionable on its own, since the
   acquisition loop just retries; warning level was noise for something expected to happen
   occasionally.
 
 v2.0.0.dev62 (2026-08-05)
-*************************
+=========================
 * ``ImageFitsHeaderMixin``'s missing-WCS-header warnings (``CDELT1``/``2``, ``CRPIX1``/``2``, the
   CD-matrix) now fire once per module lifetime instead of once per frame, for cameras missing the
   relevant config/header fields.
@@ -424,7 +427,7 @@ v2.0.0.dev62 (2026-08-05)
   Mastermind's background thread with an ``AttributeError``.
 
 v2.0.0.dev61 (2026-08-04)
-*************************
+=========================
 * Added CORS headers to ``HttpFileCache.download_handler`` (previously blocked browser ``fetch()``
   clients like ``pyobs-web-client`` from cross-origin reads) and an opt-in token param, checked via
   constant-time compare, plus the required ``OPTIONS`` preflight handler -- replacing ``HttpFile``'s
@@ -432,12 +435,12 @@ v2.0.0.dev61 (2026-08-04)
   at all. (#725)
 
 v2.0.0.dev60 (2026-08-04)
-*************************
+=========================
 * Moved the ``iers_offline`` warning log after handler setup, so it actually reaches a configured
   log handler instead of firing before one exists.
 
 v2.0.0.dev59 (2026-08-04)
-*************************
+=========================
 * Added an ``iers_offline`` config option: the existing ``PYOBS_IERS_OFFLINE`` env-var check is now
   also reachable via ``Application.__init__(iers_offline=...)`` and wired through
   ``PyobsCLI.GLOBAL_CONFIG_KEYS``, letting ``/etc/pyobs.yaml`` (or a ``--iers-offline`` flag)
@@ -449,14 +452,14 @@ v2.0.0.dev59 (2026-08-04)
   the config file silently had no effect on it.
 
 v2.0.0.dev58 (2026-08-04)
-*************************
+=========================
 * ``pyobsd status``'s CPU measurement is now opt-in (``--cpu-interval SECONDS``, sampling all
   modules over one shared sleep) instead of always-on -- previously every "status" call paid a
   blocking 0.1s per running module, and that short a window is too close to ``/proc``'s tick
   granularity to give a meaningful reading anyway. Uptime/RSS still report instantly.
 
 v2.0.0.dev56 (2026-08-04)
-*************************
+=========================
 * Also prime the leap-second table when warming astropy's IERS cache at startup (see dev55):
   ``IERS_Auto.open()`` only covers UT1-UTC/polar motion, and the leap-second table is a separate
   auto-download that was still landing inside ``basetelescope.py``'s celestial-header task and
@@ -465,7 +468,7 @@ v2.0.0.dev56 (2026-08-04)
 * Exported ``DummyMode`` from ``pyobs.modules.utils``.
 
 v2.0.0.dev55 (2026-08-04)
-*************************
+=========================
 * Astropy's IERS cache is now primed once at startup, off the event loop via an executor, before
   module/comm setup -- left implicit, the first UT1-UTC lookup happened inside
   ``basetelescope.py``'s periodic celestial-header task and triggered astropy's ``auto_download``
@@ -473,7 +476,7 @@ v2.0.0.dev55 (2026-08-04)
   point during normal operation.
 
 v2.0.0.dev54 (2026-08-04)
-*************************
+=========================
 * ``XmppComm``'s disco#info now tags each advertised ``<event>`` element with a ``role``
   attribute (``"send"``, ``"subscribe"``, or ``"send subscribe"``), derived from splitting
   ``Comm._registered_events`` into ``_events_sent``/``_events_subscribed``. Previously the two
@@ -485,7 +488,7 @@ v2.0.0.dev54 (2026-08-04)
   ``specs/plans/event-role-advertising.md``.
 
 v2.0.0.dev53 (2026-08-03)
-*************************
+=========================
 * Offloaded ``OnDemandScheduler``'s per-timestep constraint/merit evaluation
   (``find_next_best_task``/``check_for_better_task``/``can_postpone_task``) onto a dedicated
   single-worker ``ThreadPoolExecutor`` (new ``pyobs/robotic/scheduler/_executor.py``'s
@@ -522,7 +525,7 @@ v2.0.0.dev53 (2026-08-03)
   ``write_bytes()`` instead) no longer need to.
 
 v2.0.0.dev52 (2026-07-29)
-*************************
+=========================
 * Guarded optional WCS/image-type handling against missing capabilities: ``_ResponseImageWriter``
   (astrometry.net response saving) unconditionally deleted ``PC``/``CDELT`` header keywords after a
   solve, raising ``KeyError`` when a header lacked one of them -- now a no-op if the keyword is
@@ -531,7 +534,7 @@ v2.0.0.dev52 (2026-07-29)
   camera without it via ``safe_proxy`` -- now consistent.
 
 v2.0.0.dev51 (2026-07-28)
-*************************
+=========================
 * No pyobs-core code changes -- entirely root-causing and mitigating the ejabberd shaper/
   ``xmpp_socket.erl`` reactivation bug behind the iag50srv capability-fetch timeouts (see
   ``specs/plans/ejabberd-throughput-benchmarking.md``); the shaper fix itself (raising
@@ -539,7 +542,7 @@ v2.0.0.dev51 (2026-07-28)
   production and baked into the new ``scripts/xmpp/install-ejabberd.sh`` for future hosts.
 
 v2.0.0.dev50 (2026-07-28)
-*************************
+=========================
 * Fixed the XMPP wire serializer silently corrupting two more shapes of value: ``Time``-typed
   fields (e.g. ``WeatherState.time``) had no encode/decode support at all and arrived client-side
   as a plain string; and a field declared ``dict[str, str]``/``str`` could arrive as a stray
@@ -551,7 +554,7 @@ v2.0.0.dev50 (2026-07-28)
   well as encode.
 
 v2.0.0.dev49 (2026-07-28)
-*************************
+=========================
 * Fixed ``XmppComm.__init__`` raising a bare, message-less ``ValueError`` on a malformed JID (found
   via a real login-window crash on a saved account with a trailing-slash, no-resource JID). The JID
   regex is now a module-level, properly end-anchored pattern (the previous ``re.match`` wasn't
@@ -567,13 +570,13 @@ v2.0.0.dev49 (2026-07-28)
   comm connection exist at all. Existing config-file callers are unaffected.
 
 v2.0.0.dev48 (2026-07-27)
-*************************
+=========================
 * A module declaring a stateful interface but never publishing it (see the state-publishing
   enforcement below) now logs as an ``error``, not a ``warning`` -- it's a standing per-module
   defect that recurs on every startup, not a transient condition.
 
 v2.0.0.dev47 (2026-07-27)
-*************************
+=========================
 * Every ``Module`` now runs a background watchdog that detects the event loop itself stalling: it
   times its own wakeups against how long it asked to sleep for, so a synchronous blocking call
   anywhere in the module (or a background task) shows up as a logged stall -- once when it starts,
@@ -581,19 +584,19 @@ v2.0.0.dev47 (2026-07-27)
   timing out trying to reach that module.
 
 v2.0.0.dev46 (2026-07-27)
-*************************
+=========================
 * The capability-fetch retry warning now includes the actual exception that caused the retry,
   instead of just noting that one occurred.
 
 v2.0.0.dev45 (2026-07-27)
-*************************
+=========================
 * Fixed ``FocusModel.open()`` skipping its state publish entirely when the weather module wasn't
   reachable yet at startup (a common ordering race), which then always tripped the "declares
   state, but none published" warning; it now falls back to a placeholder ``focus=0.0`` until the
   background update loop replaces it with a real value.
 
 v2.0.0.dev44 (2026-07-27)
-*************************
+=========================
 * ``DummyComm`` now takes a real name instead of a hardcoded ``"module"`` placeholder
   (``Application`` fills it in from the config file's stem for comm-less modules), fixing
   indistinguishable ``PYOBS_MODULE`` log tags and a guaranteed false positive against the
@@ -613,7 +616,7 @@ v2.0.0.dev44 (2026-07-27)
   value is treated as unavailable instead of trusted indefinitely.
 
 v2.0.0.dev43 (2026-07-27)
-*************************
+=========================
 * Added an opt-in ``max_age`` freshness check to ``Proxy.get_state()``/``wait_for_state()``: a
   cached state value past its ``max_age`` is now treated the same as not-yet-published
   (``None``/timeout) instead of trusted forever, even if the publisher's update loop has died or a
@@ -629,7 +632,7 @@ v2.0.0.dev43 (2026-07-27)
   ``unencrypted_plain`` set explicitly before it will attempt PLAIN over a plaintext connection.
 
 v2.0.0.dev42 (2026-07-26)
-*************************
+=========================
 * Removed racy, non-gating ``has_proxy()`` startup checks in ``open()`` (``FlatField``,
   ``BasePointing``/``Acquisition``, ``AutoFocusSeries``, ``FlatFieldScheduler``) -- one-shot,
   no-retry, 5s presence checks that routinely false-positived under any slow/delayed presence
@@ -646,7 +649,7 @@ v2.0.0.dev42 (2026-07-26)
   underscore from the config stem before comparing.
 
 v2.0.0.dev41 (2026-07-26)
-*************************
+=========================
 * ``FlatField.open()`` now publishes ``IFilters`` state unconditionally, instead of only once
   ``set_filter()`` had been called via RPC -- previously the pubsub state node never got created
   on a fresh start, leaving subscribers (e.g. GUI widgets) retrying forever.
@@ -654,13 +657,13 @@ v2.0.0.dev41 (2026-07-26)
   raising, so a genuine mismatch no longer prevents a module from starting at all.
 
 v2.0.0.dev40 (2026-07-25)
-*************************
+=========================
 * A config file starting with an underscore (e.g. a deactivated ``_test.yaml``) is now logged with
   its leading underscores stripped from the module-name tag, instead of tagging log lines with the
   raw filename stem.
 
 v2.0.0.dev39 (2026-07-24)
-*************************
+=========================
 * ``Application`` now refuses to start a non-``MultiModule`` whose config filename doesn't match
   its own comm-derived name, catching a class of drift where background tasks/RPC log lines use
   the real name but everything else falls back to the config file's stem -- silently splitting a
@@ -668,7 +671,7 @@ v2.0.0.dev39 (2026-07-24)
   ``comm`` configuration.
 
 v2.0.0.dev38 (2026-07-21)
-*************************
+=========================
 * Suppressed astropy's ``VerifyWarning`` on FITS header comment truncation in ``Image.writeto()``,
   the single choke point every FITS write funnels through -- expected whenever a header value
   (aggregated from many modules) is long enough to leave no room for its comment within the
@@ -676,7 +679,7 @@ v2.0.0.dev38 (2026-07-21)
   report.
 
 v2.0.0.dev37 (2026-07-21)
-*************************
+=========================
 * ``Comm.get_interfaces()`` now waits briefly for a not-yet-discovered client instead of raising
   ``KeyError`` instantly, tolerating a caller's own startup racing slightly ahead of this module's
   peer discovery (which only populates once ``_got_online`` has processed the peer's presence).
@@ -684,7 +687,7 @@ v2.0.0.dev37 (2026-07-21)
   ``_get_client``'s existing handling, but actually raised ``KeyError``.
 
 v2.0.0.dev36 (2026-07-21)
-*************************
+=========================
 * ``Proxy.wait_for_state()`` now returns ``None`` on timeout instead of letting
   ``asyncio.wait_for``'s ``TimeoutError`` propagate -- every caller (``waitformotion.py``,
   ``weatheraware.py``, ``pyobs-iagvt``'s ``SunCamera``, others) already checked for ``None``
@@ -692,21 +695,21 @@ v2.0.0.dev36 (2026-07-21)
   exception for all of them.
 
 v2.0.0.dev35 (2026-07-21)
-*************************
+=========================
 * Event handler exceptions are now logged properly (with handler and event context) via
   ``log.error()`` instead of surfacing only as asyncio's generic "Task exception was never
   retrieved" warning at garbage-collection time, since ``_send_event_to_module`` dispatches every
   handler as a fire-and-forget background task with nothing checking the result.
 
 v2.0.0.dev34 (2026-07-21)
-*************************
+=========================
 * Added jitter to ``_safe_send``'s retry wait (``send_event``/``_set_state``'s underlying path),
   matching the indefinite-retry jitter added for capability/state-subscribe fetches below --
   without it, many modules' ``_safe_send`` calls retrying around the same moment (e.g. a
   fleet-wide restart) stayed in lockstep instead of spreading out.
 
 v2.0.0.dev33 (2026-07-21)
-*************************
+=========================
 * Capability-fetch and state-subscribe retries (``_get_capabilities``/``_subscribe_with_retry``)
   no longer give up permanently after a fixed attempt budget -- they now retry indefinitely with
   capped exponential backoff and full jitter, stopping only when the peer actually goes offline or
@@ -715,13 +718,13 @@ v2.0.0.dev33 (2026-07-21)
   manual restart.
 
 v2.0.0.dev32 (2026-07-21)
-*************************
+=========================
 * ``XmppComm``'s XEP-0199 keepalive ping interval/timeout is now configurable, instead of a fixed
   30s default that can be shorter than an ejabberd shaper's IQ reply delay under load -- letting a
   deployment tolerate a known-slow server instead of only a genuinely dead connection.
 
 v2.0.0.dev31 (2026-07-21)
-*************************
+=========================
 * Fixed pubsub subscribe retries only catching ``IqError``, not the ``IqTimeout`` that
   ``_safe_send`` also raises once its own internal retries are exhausted -- an uncaught
   ``IqTimeout`` killed the whole 30-attempt subscription retry loop after a single slow response,
@@ -729,13 +732,13 @@ v2.0.0.dev31 (2026-07-21)
   subscribe" warning, with the subscription then permanently abandoned.
 
 v2.0.0.dev30 (2026-07-21)
-*************************
+=========================
 * ``WeatherAwareMixin`` no longer parks on the first weather-check connection hiccup -- a common
   right-after-restart race where XMPP roster/presence for the weather module hasn't settled yet. A
   connection failure now only counts as bad weather after 3 consecutive failed checks.
 
 v2.0.0.dev29 (2026-07-18)
-*************************
+=========================
 * Modules no longer accept RPC calls until they've actually finished starting up. Some drivers
   (e.g. camera modules connecting to hardware) take a while inside ``open()``, but were previously
   reachable over XMPP -- and visible to peer discovery -- the instant they connected to the server,
@@ -754,7 +757,7 @@ v2.0.0.dev29 (2026-07-18)
   :ref:`module-startup-gating`.
 
 v2.0.0.dev28 (2026-07-18)
-*************************
+=========================
 * New ``InvalidArgumentError`` for bad-argument validation on RPC-exposed methods (unknown filter
   name, invalid focus value, invalid config parameter, out-of-range ``grab_sequence`` count/delay,
   ...) -- previously these stayed as plain ``ValueError``, which works fine locally (``LocalComm``,
@@ -916,7 +919,7 @@ v2.0.0.dev28 (2026-07-18)
   ``DESIGN_exception_handling.md`` (tracks #446).
 
 v2.0.0.dev27 (2026-07-16)
-*************************
+=========================
 * Fixed ``PhotometryFocusSeries`` systematically underreporting its focus error by a factor of its
   own square root: ``fit_hyperbola`` returns ``(focus, variance)``, not ``(focus, error)``.
 * ``curve_fit`` (``pyobs.utils.curvefit.fit_hyperbola``) now passes ``absolute_sigma=True``, so the
@@ -928,7 +931,7 @@ v2.0.0.dev27 (2026-07-16)
   the 8-char keyword limit).
 
 v2.0.0.dev26 (2026-07-16)
-*************************
+=========================
 * ``ICamera``/``ISpectrograph`` no longer inherit ``IExposure`` -- they're now pure ``IData``
   identity interfaces ("this module produces images/spectra"), not "...and has an exposure
   clock." ``BaseCamera`` and ``BaseSpectrograph`` (which push real ``ExposureState``) now declare
@@ -982,14 +985,14 @@ v2.0.0.dev26 (2026-07-16)
   ``image.mask`` -- it now sets (OR's) ``image.mask`` and leaves the underlying data untouched.
 
 v2.0.0.dev24 (2026-07-15)
-*************************
+=========================
 * ``Comm``'s proxy capability fetch (previously a single blocking disco#info query with no retry)
   now runs as a background task retried up to 3 times, mirroring the existing state-pubsub race
   fix, plus a new ``Proxy.wait_for_capabilities()`` for callers that need a guaranteed value; a
   peer that hadn't finished starting up no longer produces a permanent missing-capability warning.
 
 v2.0.0.dev23 (2026-07-15)
-*************************
+=========================
 * Added ``IDataSequence`` (``grab_sequence()``/``abort_sequence()``, pushed ``DataSequenceState``)
   for taking a counted sequence of grabs in one call instead of driving a client-side loop of
   ``grab_data()`` calls. Implemented by ``BaseCamera``. ``grab_sequence()`` returns immediately and
@@ -1026,19 +1029,19 @@ v2.0.0.dev23 (2026-07-15)
   max exposure-time increase factor instead. (#481)
 
 v2.0.0.dev21 (2026-07-15)
-*************************
+=========================
 * Bounded ``XmppComm._safe_send`` with its own 15s ``asyncio.wait_for()`` timeout, instead of
   relying entirely on slixmpp's internal IQ timeout (default 120s, which could fail to fire even on
   a healthy connection) -- an unbounded hang here could freeze the calling module, including inside
   ``open()``, which blocks the whole event loop. (#664)
 
 v2.0.0.dev20 (2026-07-15)
-*************************
+=========================
 * Internal only: fixed the remaining deprecated ``self._xmpp[...]``-style slixmpp plugin-subscript
   access in ``XmppComm``, following up on the earlier migration to ``client.plugin[...]``.
 
 v2.0.0.dev19 (2026-07-15)
-*************************
+=========================
 * Reintroduced the old ``IPointingHGS`` lon/lat contract as ``IPointingHeliographicStonyhurst``, now
   a separate interface from ``IPointingHeliocentricPolar`` instead of a repurposing of it -- drivers
   needing Heliographic Stonyhurst tracking (e.g. ``pyobs_iagvt``'s ``SolarTelescope``) should
@@ -1113,7 +1116,7 @@ v2.0.0.dev19 (2026-07-15)
   serialization.
 
 v2.0.0.dev18 (2026-07-12)
-*************************
+=========================
 * Fixed ``DummyTelescope.set_focus_offset`` silently logging an error instead of raising, which made
   remote callers see a false success; its M1/M2 temperatures now drift like ``DummyCamera``'s sensors
   instead of staying static after startup.
@@ -1123,12 +1126,12 @@ v2.0.0.dev18 (2026-07-12)
   filtered to the module's journal fields.
 
 v2.0.0.dev17 (2026-07-11)
-*************************
+=========================
 * Added a ``/ping`` health-check endpoint to ``HttpFileCache`` and ``BaseVideo``, for verifying HTTP
   connectivity without touching the file/image cache.
 
 v2.0.0.dev16 (2026-07-10)
-*************************
+=========================
 * Added ``IStructuredConfig``, letting a module push/apply its whole config dataclass as a unit
   (schema auto-derived via ``dataclass_to_schema``), complementing ``IConfig``'s per-field get/set.
 * Added ``pydantic_to_schema``, the Pydantic-model counterpart to ``dataclass_to_schema``, for module
@@ -1138,12 +1141,12 @@ v2.0.0.dev16 (2026-07-10)
   frame's Tx/Ty (arcsec) directly instead of a radial (psi/delta) representation.
 
 v2.0.0.dev15 (2026-07-10)
-*************************
+=========================
 * Fixed ``HttpFileCache`` rejecting uploads with "413 Request Entity Too Large" because
   ``client_max_size`` was never passed through to configure the upload limit.
 
 v2.0.0.dev14 (2026-07-09)
-*************************
+=========================
 * Fixed ``Scheduler``, ``Trigger``, ``Kiosk``, ``PointingSeries``, ``Weather``, ``MockWeather``, and
   ``Mastermind`` never publishing their advertised ``IRunning`` state, leaving subscribers retrying
   indefinitely.
@@ -1151,11 +1154,11 @@ v2.0.0.dev14 (2026-07-09)
   ``BackendObservationArchive``.
 
 v2.0.0.dev13 (2026-07-09)
-*************************
+=========================
 * Internal fixes only: resolved the remaining pyrefly type-check errors blocking CI.
 
 v2.0.0.dev12 (2026-07-09)
-*************************
+=========================
 * Added ``HelioprojectiveRadialTarget`` for solar coordinate scheduling.
 * Added ``MockWeather``, a deterministic in-memory ``IWeather`` implementation for tests and
   simulations.
@@ -1180,7 +1183,7 @@ v2.0.0.dev12 (2026-07-09)
 * Added a "What's New in pyobs 2.0" docs page tracking user-facing changes for the 2.0 release.
 
 v2.0.0.dev11 (2026-07-05)
-*************************
+=========================
 * Implemented access control (ACLs) for module RPC calls, via an ``acl:`` config block next to
   ``comm:`` (``allow``/``deny`` policy, ``enforce``/``log`` mode, ``IModule.get_permitted_methods()``).
 * Completed the ``Unit`` annotation rollout across all applicable interface signatures.
@@ -1204,7 +1207,7 @@ v2.0.0.dev11 (2026-07-05)
   addition to a module's own config file.
 
 v2.0.0.dev10 (2026-07-02)
-*************************
+=========================
 * Interface features are now version-tagged in service discovery, giving a diagnostic for
   mixed-version fleets.
 * ``IAutoFocus.auto_focus()`` now returns ``AutoFocusResult`` instead of a tuple; added live
@@ -1216,19 +1219,19 @@ v2.0.0.dev10 (2026-07-02)
 * Removed the old XML-RPC cast pipeline (``pyobs.utils.types``).
 
 v2.0.0.dev9 (2026-07-01)
-************************
+========================
 * Linked all ``pyobs-*`` module docs, now hosted on docs.pyobs.org.
 
 v2.0.0.dev8 (2026-07-01)
-************************
+========================
 * Documented optional extras and CLI tools in the README.
 
 v2.0.0.dev7 (2026-07-01)
-************************
+========================
 * Minor internal fixes (Dependabot configuration, import scoping in ``DummyCamera``).
 
 v2.0.0.dev6 (2026-06-30)
-************************
+========================
 * Renamed the ``state``/``capabilities`` proxy accessor methods to ``get_state``/``get_capabilities``
   for clarity; both are now also available directly on ``Interface``.
 * Added IERS offline mode support via the ``PYOBS_IERS_OFFLINE`` environment variable.
@@ -1236,15 +1239,15 @@ v2.0.0.dev6 (2026-06-30)
 * Added ``astropy-iers-data`` as a direct dependency.
 
 v2.0.0.dev5 (2026-06-30)
-************************
+========================
 * Refactored ``capabilities`` handling for consistency across interfaces.
 
 v2.0.0.dev4 (2026-06-29)
-************************
+========================
 * Interface ``State`` classes are now module-level dataclasses rather than nested classes.
 
 v2.0.0.dev3 (2026-06-29)
-************************
+========================
 * Removed ``pyobs.utils.simulation`` (``SimWorld``/``SimTelescope``/``SimCamera``) with no
   replacement.
 * Added ``DummyVideo`` for simulated video streaming.
@@ -1252,7 +1255,7 @@ v2.0.0.dev3 (2026-06-29)
 * Added an optional ``sender`` attribute to ``LogEvent``.
 
 v2.0.0.dev2 (2026-06-29)
-************************
+========================
 * Rolled out live state to (almost) all state-bearing interfaces; removed the corresponding
   ``get_*``/``is_*`` RPC methods project-wide in favor of subscribing to state.
 * Added a shared XML serializer for both RPC and state payloads
@@ -1266,7 +1269,7 @@ v2.0.0.dev2 (2026-06-29)
 * Removed ``ILatLon`` and the never-implemented ``DbusComm`` backend.
 
 v2.0.0.dev1 (2026-06-22)
-************************
+========================
 * Added ``version`` (default ``1``) to ``Interface`` and ``Event``.
 * ``Proxy`` is now obtained via ``async with self.proxy(...) as x:`` only; the long-lived
   ``await self.proxy(...)`` pattern and the ``cache_proxies`` option are removed. Added

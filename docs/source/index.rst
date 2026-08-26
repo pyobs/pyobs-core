@@ -1,6 +1,9 @@
 Welcome to *pyobs* |release|!
 ==============================
 
+.. seealso::
+   New here or upgrading? See :doc:`whatsnew-2.0` for what changed in *pyobs* 2.0.
+
 Overview
 --------
 
@@ -74,25 +77,8 @@ The pyobs organization on GitHub hosts a family of repositories, grouped by role
 - **pyobs-web-client** — Web client for pyobs using XMPP.
 
 Together, these components form a complete, extensible observatory control system. See
-`Affiliated projects`_ below for links to each web service's and client's own documentation.
-
-.. _Affiliated projects:
-
-Affiliated projects
---------------------
-
-.. toctree::
-   :maxdepth: 1
-
-   pyobs-weather <https://docs.pyobs.org/projects/pyobs-weather/en/latest/>
-   pyobs-archive <https://docs.pyobs.org/projects/pyobs-archive/en/latest/>
-   pyobs-portal <https://docs.pyobs.org/projects/pyobs-portal/en/latest/>
-   pyobs-web-admin <https://docs.pyobs.org/projects/pyobs-web-admin/en/latest/>
-   pyobs-auth <https://docs.pyobs.org/projects/pyobs-auth/en/latest/>
-   pyobs-pipeline <https://docs.pyobs.org/projects/pyobs-pipeline/en/latest/>
-   pyobs-astrometry <https://docs.pyobs.org/projects/pyobs-astrometry/en/latest/>
-   pyobs-polaris <https://docs.pyobs.org/projects/pyobs-polaris/en/latest/>
-   pyobs-web-client <https://docs.pyobs.org/projects/pyobs-web-client/en/latest/>
+`Affiliated projects`_ further down for links to each web service's and client's own
+documentation.
 
 Use Cases
 ---------
@@ -146,67 +132,78 @@ Further Reading
 - Documentation: https://docs.pyobs.org/
 - Scientific reference: *Frontiers in Astronomy and Space Sciences* (2022), “pyobs: A Modular Control System for Astronomical Observatories”
 
-Introduction
-------------
+Getting Started
+---------------
 
 .. toctree::
    :maxdepth: 1
+   :caption: Getting Started
 
-   whatsnew-2.0
    quickstart
    installing
-   development
    overview
    cli
 
-Robotic Mode
-------------
+Guides
+------
 
 .. toctree::
    :maxdepth: 1
+   :caption: Guides
+
+   recipes/robotic
+   recipes/simulation
+   recipes/jupyter
+   recipes/xmpp-diagnostics
+   recipes/full-observatory-stack
+   config_examples/iag50cm
+   config_examples/iagvt
+
+Reference
+---------
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
 
    api/robotic/index
    api/robotic/scheduling
    api/robotic/scripts
    api/robotic/serialization
-   recipes/robotic
-
-Recipes
--------
-
-.. toctree::
-   :maxdepth: 1
-
-   recipes/simulation
-   recipes/jupyter
-   recipes/xmpp-diagnostics
-
-Config Examples
----------------
-
-.. toctree::
-   :maxdepth: 1
-
-   config_examples/iag50cm
-   config_examples/iagvt
-
-API Reference
--------------
-
-.. toctree::
-   :maxdepth: 2
-
    api/index
    modules/index
    addmod/index
 
 
-Project details
----------------
+.. _Affiliated projects:
+
+Affiliated projects
+--------------------
 
 .. toctree::
    :maxdepth: 1
+   :caption: Affiliated projects
 
+   pyobs-weather <https://docs.pyobs.org/projects/pyobs-weather/en/latest/>
+   pyobs-archive <https://docs.pyobs.org/projects/pyobs-archive/en/latest/>
+   pyobs-portal <https://docs.pyobs.org/projects/pyobs-portal/en/latest/>
+   pyobs-web-admin <https://docs.pyobs.org/projects/pyobs-web-admin/en/latest/>
+   pyobs-auth <https://docs.pyobs.org/projects/pyobs-auth/en/latest/>
+   pyobs-pipeline <https://docs.pyobs.org/projects/pyobs-pipeline/en/latest/>
+   pyobs-astrometry <https://docs.pyobs.org/projects/pyobs-astrometry/en/latest/>
+   pyobs-polaris <https://docs.pyobs.org/projects/pyobs-polaris/en/latest/>
+   pyobs-web-client <https://docs.pyobs.org/projects/pyobs-web-client/en/latest/>
+
+
+Project
+-------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Project
+
+   whatsnew-2.0
+   development
    project/changelog
    Team <https://www.pyobs.org/team/>
    project/license

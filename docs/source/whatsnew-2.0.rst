@@ -324,8 +324,8 @@ Other renamed/removed utilities
 * ``pyobs.robotic.storage.backend`` is renamed to ``pyobs.robotic.storage.portal``, and
   ``BackendTaskArchive``/``BackendObservationArchive`` to ``PortalTaskArchive``/
   ``PortalObservationArchive``, following the ``pyobs-robotic-backend`` → ``pyobs-portal``
-  rename (see ADR 0013, ``specs/adrs/0013-renaming-pyobs-robotic-backend.md``). No deprecation
-  shim, update the ``class:`` dotted path in any deployment YAML using the old names.
+  rename. No deprecation shim, update the ``class:`` dotted path in any deployment YAML
+  using the old names.
 * ``pyobs.utils.pipeline.Night`` is renamed to ``Reduction`` (the class covers solar reductions
   too, not just nighttime ones). ``store_local`` is replaced by a single ``output`` parameter
   (a local path, a dict, or an ``Archive``), so input and output archives can differ. The dead
@@ -413,7 +413,7 @@ once), ejabberd's stock default ``shaper.normal`` (``rate: 3000``, ``burst_size:
 low enough to trip — which exposes a genuine ejabberd bug in ``xmpp_socket.erl``: a
 throttled connection's read isn't re-armed afterwards, stalling that connection's IQ
 throughput (capability fetches, state publication) indefinitely rather than just delaying
-it (not yet reported upstream; see ``specs/plans/ejabberd-throughput-benchmarking.md``).
+it (not yet reported upstream).
 Raise the shaper limits in ``ejabberd.yml``:
 
 .. code-block:: yaml

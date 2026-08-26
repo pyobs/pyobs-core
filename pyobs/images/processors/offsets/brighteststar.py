@@ -32,8 +32,8 @@ class BrightestStarOffsets(Offsets):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.offsets.Offsets`.
 
-    Behavior
-    --------
+    Brightest Star Offsets behavior
+    -------------------------------
     - If the image has no catalog or the catalog is empty, logs a warning and returns
       the image unchanged.
     - Selects the brightest star as the catalog row with the largest "flux" value
@@ -53,8 +53,8 @@ class BrightestStarOffsets(Offsets):
 
     - Returns the same image object with updated metadata.
 
-    Input/Output
-    ------------
+    Brightest Star Offsets input/output
+    -----------------------------------
     - Input: :class:`pyobs.images.Image` with:
 
       - a source catalog containing "x", "y", and "flux" columns
@@ -63,8 +63,8 @@ class BrightestStarOffsets(Offsets):
 
     - Output: :class:`pyobs.images.Image` with PixelOffsets and OnSkyDistance set in metadata.
 
-    Configuration (YAML)
-    --------------------
+    Brightest Star Offsets configuration (YAML)
+    -------------------------------------------
     Use CRPIX center:
 
     .. code-block:: yaml

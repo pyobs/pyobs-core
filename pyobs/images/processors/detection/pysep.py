@@ -49,8 +49,8 @@ class SepSourceDetection(SourceDetection):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.detection.SourceDetection`.
 
-    Behavior
-    --------
+    Sep Source Detection behavior
+    -----------------------------
     - If the input image has no data (``image.safe_data is None``), a warning is logged
       and the image is returned unchanged.
     - A mask is obtained from ``image.mask`` if available; otherwise a zero-valued
@@ -64,9 +64,9 @@ class SepSourceDetection(SourceDetection):
       ``deblend_nthresh=self.deblend_nthresh``, ``deblend_cont=self.deblend_cont``,
       ``clean=self.clean``, ``clean_param=self.clean_param``, and the computed mask.
       Extraction is offloaded to a thread executor to avoid blocking the event loop.
-    - The resulting array is converted to a pyobs :class:`_SourceCatalog`, initial
+    - The resulting array is converted using the internal ``_SourceCatalog`` helper, initial
       detection flags are filtered, and additional SEP-based measurements are computed
-      via :class:`PySepStatsCalculator`. The detector gain is taken from the FITS
+      via ``PySepStatsCalculator``. The detector gain is taken from the FITS
       header key ``DET-GAIN`` if present; otherwise gain-dependent metrics may be
       limited or use defaults.
     - Post-processing includes filtering by detection flags, wrapping rotation angles
@@ -76,14 +76,14 @@ class SepSourceDetection(SourceDetection):
       ``["x", "y", "peak", "flux", "fwhm", "a", "b", "theta", "ellipticity", "tnpix", "kronrad", "fluxrad25",
       "fluxrad50", "fluxrad75", "xwin", "ywin"]``.
 
-    Input/Output
-    ------------
+    Sep Source Detection input/output
+    ---------------------------------
     - Input: :class:`pyobs.images.Image` with 2D pixel data; optional mask and header.
     - Output: :class:`pyobs.images.Image` with a source catalog attached. Pixel data
       are unchanged; the FITS header may be read for gain (``DET-GAIN``).
 
-    Configuration (YAML)
-    --------------------
+    Sep Source Detection configuration (YAML)
+    -----------------------------------------
     Minimal example:
 
     .. code-block:: yaml
@@ -113,7 +113,7 @@ class SepSourceDetection(SourceDetection):
     - Background parameters (``bw``, ``bh``, ``fw``, ``fh``) are fixed in this wrapper;
       adjust here if you need finer control for highly structured backgrounds.
     - If ``DET-GAIN`` is absent, gain-dependent uncertainties and radii may be limited
-      or use defaults in :class:`PySepStatsCalculator`.
+      or use defaults in ``PySepStatsCalculator``.
     """
 
     __module__ = "pyobs.images.processors.detection"

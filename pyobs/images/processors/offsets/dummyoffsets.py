@@ -29,22 +29,22 @@ class DummyOffsets(Offsets):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.offsets.Offsets`.
 
-    Behavior
-    --------
+    Dummy Offsets behavior
+    ----------------------
     - Resolves ``offset_class`` to a class object using
-      :func:`pyobs.utils.classes.get_class_from_string`.
+      :func:`~pyobs.object.get_class_from_string`.
     - Instantiates the class with ``(offset, offset)`` and attaches the resulting
       object to the image via ``image.set_meta(...)``.
     - Returns the same image object; pixel data and FITS headers remain unchanged.
 
-    Input/Output
-    ------------
+    Dummy Offsets input/output
+    --------------------------
     - Input: :class:`pyobs.images.Image`.
     - Output: :class:`pyobs.images.Image` with a metadata entry set to the instantiated
       offset object.
 
-    Configuration (YAML)
-    --------------------
+    Dummy Offsets configuration (YAML)
+    ----------------------------------
     Set dummy pixel offsets of +1 pixel on both axes:
 
     .. code-block:: yaml

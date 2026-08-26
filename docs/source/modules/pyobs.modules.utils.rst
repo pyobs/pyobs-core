@@ -10,6 +10,13 @@ FluentLogger
    :members:
    :show-inheritance:
 
+HttpFileCache
+^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.modules.utils.HttpFileCache
+   :members:
+   :show-inheritance:
+
 Kiosk
 ^^^^^
 

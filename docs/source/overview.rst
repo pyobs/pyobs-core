@@ -39,7 +39,7 @@ repeatedly at a given interval. Its implementation looks like this::
                 log.info(self._message)
                 await asyncio.sleep(self._interval)
 
-The constructor calls :meth:`Module.__init__ <pyobs.modules.Module.__init__>` (forwarding ``**kwargs`` so
+The constructor calls ``Module.__init__`` (forwarding ``**kwargs`` so
 that ``comm``, ``vfs``, and other shared parameters are handled automatically) and registers a background
 task using :meth:`~pyobs.object.Object.add_background_task`. Background tasks are async coroutines that
 run concurrently while the module is open. The task here loops indefinitely, logging the message and
@@ -77,8 +77,8 @@ at the top level of any module configuration file::
       elevation: 1798.
 
 From these values, *pyobs* automatically builds an :class:`~astroplan.Observer` object, which is available
-inside any module via the :attr:`~pyobs.object.Object.observer` property. The location itself is accessible
-via :attr:`~pyobs.object.Object.location`, and the timezone via :attr:`~pyobs.object.Object.timezone`::
+inside any module via the :attr:`~pyobs.object.PrivateAttrMixin.observer` property. The location itself is accessible
+via :attr:`~pyobs.object.PrivateAttrMixin.location`, and the timezone via :attr:`~pyobs.object.PrivateAttrMixin.timezone`::
 
     async def open(self) -> None:
         await Module.open(self)

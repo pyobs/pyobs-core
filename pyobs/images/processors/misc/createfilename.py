@@ -14,7 +14,7 @@ class CreateFilename(ImageProcessor):
     """
     Format and set a filename for the image using a pattern, storing it in the FNAME header.
 
-    This processor uses a :class:`pyobs.utils.filenames.FilenameFormatter`
+    This processor uses a :class:`~pyobs.utils.fits.FilenameFormatter`
     to render a filename string from image metadata and writes it into the FITS header
     key ``FNAME`` on a copy of the image. If no pattern is provided, a built-in default
     pattern is used.
@@ -26,7 +26,7 @@ class CreateFilename(ImageProcessor):
     ``XXYY-CAM-20240130-0007-L101.fits``
 
     :param str | None pattern: A filename pattern understood by
-                               :class:`pyobs.utils.filenames.FilenameFormatter`. If
+                               :class:`~pyobs.utils.fits.FilenameFormatter`. If
                                ``None``, a default pattern is used. The pattern is a
                                template with placeholders of the form ``{KEY}`` or
                                ``{KEY|filter:params}``, where KEY is usually a FITS
@@ -45,25 +45,25 @@ class CreateFilename(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
-    - Creates a :class:`FilenameFormatter` from the given pattern during initialization
+    Create Filename behavior
+    ------------------------
+    - Creates a :class:`~pyobs.utils.fits.FilenameFormatter` from the given pattern during initialization
       (or from the built-in default pattern if none was provided).
     - On call, creates a copy of the input image and invokes
-      :meth:`Image.format_filename(formatter)` to compute the filename and store it in
+      :meth:`~pyobs.images.Image.format_filename` to compute the filename and store it in
       the FITS header under ``FNAME``.
     - Returns the modified copy; pixel data and other metadata remain unchanged.
 
-    Input/Output
-    ------------
+    Create Filename input/output
+    ----------------------------
     - Input: :class:`pyobs.images.Image` with FITS header fields referenced by the
       chosen pattern (e.g., ``SITEID``, ``TELID``, ``INSTRUME``, ``DAY-OBS`` or
       ``DATE-OBS``, ``FRAMENUM``, ``IMAGETYP``).
     - Output: :class:`pyobs.images.Image` (copied) with the ``FNAME`` header set to
       the formatted filename.
 
-    Configuration (YAML)
-    --------------------
+    Create Filename configuration (YAML)
+    ------------------------------------
     Use the default pattern:
 
     .. code-block:: yaml
@@ -83,7 +83,7 @@ class CreateFilename(ImageProcessor):
     - Ensure the FITS header contains all keywords required by the pattern; otherwise
       the formatter may raise an error or leave fields empty, depending on its behavior.
     - The exact syntax and capabilities of filters (``date``, ``string``, ``type``,
-      etc.) are defined by :class:`FilenameFormatter`.
+      etc.) are defined by :class:`~pyobs.utils.fits.FilenameFormatter`.
     """
 
     __module__ = "pyobs.images.processors.misc"

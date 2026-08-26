@@ -34,8 +34,8 @@ class AddMask(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Add Mask behavior
+    -----------------
     - Builds an internal lookup of masks during initialization:
 
       - If a value is a NumPy array, it is stored as-is.
@@ -52,15 +52,15 @@ class AddMask(ImageProcessor):
 
     - Returns a copy of the input image; pixel data are not modified.
 
-    Input/Output
-    ------------
+    Add Mask input/output
+    ---------------------
     - Input: :class:`pyobs.images.Image` with FITS header keys ``INSTRUME``,
       ``XBINNING``, and ``YBINNING``.
     - Output: :class:`pyobs.images.Image` (copied) with ``mask`` set when available;
       pixel data and other headers are unchanged.
 
-    Configuration (YAML)
-    --------------------
+    Add Mask configuration (YAML)
+    -----------------------------
     Provide masks for multiple instruments and binning modes, mixing arrays and files:
 
     .. code-block:: yaml

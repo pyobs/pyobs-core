@@ -151,8 +151,8 @@ class SpilledLightGuiding(Offsets):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.offsets.Offsets`.
 
-    Behavior
-    --------
+    Spilled Light Guiding behavior
+    ------------------------------
     - Retrieve fiber geometry:
 
       - Acquires fiber pixel position (x, y) and inner radius from the IMultiFiber
@@ -180,10 +180,9 @@ class SpilledLightGuiding(Offsets):
         - Determines the brightest direction (default: brightest section).
         - Computes a relative shift from the brightness ratio of the brightest and
           opposite sections using a logistic mapping, capped at 1.
-        - Converts to pixel offset: total_offset = relative_shift × inner_radius,
-          with components
-            x = total_offset × sin(angle_deg),
-            y = − total_offset × cos(angle_deg).
+        - Converts to pixel offset: ``total_offset = relative_shift × inner_radius``,
+          with components ``x = total_offset × sin(angle_deg)`` and
+          ``y = -total_offset × cos(angle_deg)``.
 
     - Metadata:
 
@@ -191,16 +190,16 @@ class SpilledLightGuiding(Offsets):
 
     - Returns the same image object; note that image.data has been mean-subtracted.
 
-    Input/Output
-    ------------
+    Spilled Light Guiding input/output
+    ----------------------------------
     - Input: :class:`pyobs.images.Image` with:
       - FITS header key DET-BIN1 (integer binning factor),
       - access to an IMultiFiber module named by fibers.
     - Output: :class:`pyobs.images.Image` with PixelOffsets set in metadata.
       Pixel data are modified in place by global mean subtraction.
 
-    Configuration (YAML)
-    --------------------
+    Spilled Light Guiding configuration (YAML)
+    ------------------------------------------
     Example with default ring parameters:
 
     .. code-block:: yaml

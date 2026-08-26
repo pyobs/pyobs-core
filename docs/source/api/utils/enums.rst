@@ -38,6 +38,20 @@ MotionStatus
    :members:
    :undoc-members:
 
+OffsetFrame
+^^^^^^^^^^^
+
+.. autoclass:: pyobs.utils.enums.OffsetFrame
+   :members:
+   :undoc-members:
+
+Unit
+^^^^
+
+.. autoclass:: pyobs.utils.enums.Unit
+   :members:
+   :undoc-members:
+
 WeatherSensors
 ^^^^^^^^^^^^^^
 

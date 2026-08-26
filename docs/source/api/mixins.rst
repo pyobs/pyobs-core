@@ -45,6 +45,13 @@ MotionStatusMixin
    :members:
    :private-members:
 
+PipelineMixin
+^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.mixins.pipeline.PipelineMixin
+   :members:
+   :private-members:
+
 SpectrumFitsHeaderMixin
 ^^^^^^^^^^^^^^^^^^^^^^^
 

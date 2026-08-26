@@ -19,8 +19,8 @@ class AstrometryDotNet(Astrometry):
     This processor submits sources extracted from a
     :class:`pyobs.images.Image` to an astrometry.net service, obtains a WCS solution,
     and writes it back to the image’s FITS header. The solver endpoint is configured
-    via ``url`` and the request content is built by
-    :class:`pyobs.images.processors.astrometry._DotNetRequestBuilder`.
+    via ``url`` and the request content is built by the internal ``_DotNetRequestBuilder``
+    helper.
 
     :param str url: Base URL of the astrometry.net service endpoint.
     :param int source_count: Number of detected sources to include in the request
@@ -45,14 +45,14 @@ class AstrometryDotNet(Astrometry):
 
     Behavior
     --------
-    - Constructs a request from the input image using
-      :class:`pyobs.images.processors.astrometry._DotNetRequestBuilder(source_count, radius)`.
-    - Logs request metadata via :class:`pyobs.images.processors.astrometry._RequestLogger`.
+    - Constructs a request from the input image using the internal
+      ``_DotNetRequestBuilder(source_count, radius)``.
+    - Logs request metadata via the internal ``_RequestLogger``.
     - Sends the request to the configured service with ``request.send(url, timeout)``.
     - On success, receives solver output and writes the resulting WCS into a copy of
-      the input image using :class:`pyobs.images.processors.astrometry._ResponseImageWriter`.
+      the input image using the internal ``_ResponseImageWriter``.
     - Logs the outcome, including WCS information, and returns the result image.
-    - On failure, raises the underlying :class:`pyobs.images.exceptions.ImageError`. When run as
+    - On failure, raises the underlying :class:`~pyobs.utils.exceptions.ImageError`. When run as
       a pipeline step with ``on_error="error"``, the pipeline calls ``handle_error``, which sets
       ``WCSERR=1`` in the FITS header, logs a warning, and returns the original image unchanged.
 

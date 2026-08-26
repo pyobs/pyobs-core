@@ -38,8 +38,8 @@ class AstrometryOffsets(Offsets):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.offsets.Offsets`.
 
-    Behavior
-    --------
+    Astrometry Offsets behavior
+    ---------------------------
     - Copies the input image and constructs a :class:`astropy.wcs.WCS` from its header.
     - Reads sky coordinates (in degrees, ICRS frame):
       - Reference: CRVAL1/CRVAL2 (the WCS reference world coordinates).
@@ -54,15 +54,15 @@ class AstrometryOffsets(Offsets):
       - OnSkyDistance(angle)
     - Returns the modified copy of the image; pixel data and FITS headers are unchanged.
 
-    Input/Output
-    ------------
+    Astrometry Offsets input/output
+    -------------------------------
     - Input: :class:`pyobs.images.Image` with a valid WCS in the header and the
       keywords CRVAL1, CRVAL2, TEL-RA, TEL-DEC present (in degrees, ICRS).
     - Output: :class:`pyobs.images.Image` (copied) with metadata entries for
       PixelOffsets and OnSkyDistance set.
 
-    Configuration (YAML)
-    --------------------
+    Astrometry Offsets configuration (YAML)
+    ---------------------------------------
     Run after astrometric calibration to attach pixel offsets:
 
     .. code-block:: yaml

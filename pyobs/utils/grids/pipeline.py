@@ -11,6 +11,7 @@ class GridPipeline(GridNode):
     The pipeline expects a list of steps where the first element constructs a
     GridNode (e.g., a Grid) and subsequent elements construct GridNode filters
     that wrap the previous step. Each step can be either:
+
       - An instance of GridNode, or
       - A dict specification understood by Object.get_object() to construct a GridNode.
 

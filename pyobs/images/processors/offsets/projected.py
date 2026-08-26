@@ -31,8 +31,8 @@ class ProjectedOffsets(Offsets):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.offsets.Offsets`.
 
-    Behavior
-    --------
+    Projected Offsets behavior
+    --------------------------
     - Reference initialization:
 
       - If no reference is set, processes the input image to obtain sky-subtracted
@@ -64,15 +64,15 @@ class ProjectedOffsets(Offsets):
         - Fits a spline (UnivariateSpline) through these bin medians and subtracts
           the fitted continuum from the projection.
 
-    Input/Output
-    ------------
+    Projected Offsets input/output
+    ------------------------------
     - Input: :class:`pyobs.images.Image` with 2D pixel data; optional TRIMSEC header
       for cropping prior to projection.
     - Output: :class:`pyobs.images.Image` with PixelOffsets(dx, dy) set in metadata
       after the reference is initialized; otherwise unchanged.
 
-    Configuration (YAML)
-    --------------------
+    Projected Offsets configuration (YAML)
+    --------------------------------------
     Initialize on first frame, then report offsets on subsequent frames:
 
     .. code-block:: yaml

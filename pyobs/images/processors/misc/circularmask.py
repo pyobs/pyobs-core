@@ -30,8 +30,8 @@ class CircularMask(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Circular Mask behavior
+    ----------------------
     - Reads the circle center from ``image.header[center[0]]`` and
       ``image.header[center[1]]``.
     - Builds a boolean mask on the 2D pixel grid that is ``True`` outside the circle
@@ -41,15 +41,15 @@ class CircularMask(ImageProcessor):
     - Returns a copy of the image with the updated mask; pixel data, header, and
       catalog are not changed.
 
-    Input/Output
-    ------------
+    Circular Mask input/output
+    --------------------------
     - Input: :class:`pyobs.images.Image` with 2D pixel data and FITS header containing
       the specified center keywords.
     - Output: :class:`pyobs.images.Image` (copied) with pixels outside the circle
       marked in ``mask``; pixel data are unchanged.
 
-    Configuration (YAML)
-    --------------------
+    Circular Mask configuration (YAML)
+    ----------------------------------
     Keep only pixels within a 500-pixel radius around CRPIX:
 
     .. code-block:: yaml

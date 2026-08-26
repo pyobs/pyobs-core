@@ -13,7 +13,7 @@ def pre_process_yaml(config: str) -> str:
     Args:
         config: directory of the main YAML file
     Returns:
-        content: modified version of the input config file with replaced include-blocks.
+        Modified version of the input config file with replaced include-blocks.
     """
     path = os.path.dirname(os.path.abspath(config))
 

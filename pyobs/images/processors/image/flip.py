@@ -30,16 +30,16 @@ class Flip(ImageProcessor):
          ``x -> (width - 1 - x)`` when ``flip_x`` is ``True`` and
          ``y -> (height - 1 - y)`` when ``flip_y`` is ``True``.
 
-    Input/Output
-    ------------
+    Flip input/output
+    -----------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` with pixel data flipped according to the configured axes.
       The output image has the same shape and dtype as the input. Header metadata (including WCS)
       are preserved and not modified by this processor; workflows relying on orientation-sensitive
       metadata may need to update them downstream.
 
-    Configuration (YAML)
-    --------------------
+    Flip configuration (YAML)
+    -------------------------
     Instantiate and configure via YAML, for example:
 
     .. code-block:: yaml

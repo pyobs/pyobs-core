@@ -169,7 +169,10 @@ Affiliated projects
 
    pyobs-weather <https://docs.pyobs.org/projects/pyobs-weather/en/latest/>
    pyobs-archive <https://docs.pyobs.org/projects/pyobs-archive/en/latest/>
+   pyobs-portal <https://docs.pyobs.org/projects/pyobs-portal/en/latest/>
    pyobs-web-admin <https://docs.pyobs.org/projects/pyobs-web-admin/en/latest/>
+   pyobs-auth <https://docs.pyobs.org/projects/pyobs-auth/en/latest/>
+   pyobs-pipeline <https://docs.pyobs.org/projects/pyobs-pipeline/en/latest/>
 
 
 Project details

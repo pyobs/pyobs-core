@@ -23,8 +23,8 @@ class SoftBin(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Soft Bin behavior
+    -----------------
     - Creates a copy of the input image. If no data are present (``safe_data is None``),
       logs a warning and returns the original image unchanged.
     - Reshapes the 2D array into blocks of size ``(binning, binning)`` and computes the mean
@@ -54,13 +54,13 @@ class SoftBin(ImageProcessor):
       (e.g., electrons per pixel) and you wish to conserve total flux, consider summing blocks
       instead of averaging. Averaging changes the per-pixel scaling and reduces summed flux.
 
-    Input/Output
-    ------------
+    Soft Bin input/output
+    ---------------------
     - Input: :class:`pyobs.images.Image` (2D data).
     - Output: :class:`pyobs.images.Image` (copied) with binned data and updated headers.
 
-    Configuration (YAML)
-    --------------------
+    Soft Bin configuration (YAML)
+    -----------------------------
     Bin by a factor of 2:
 
     .. code-block:: yaml

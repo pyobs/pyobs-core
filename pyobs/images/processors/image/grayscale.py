@@ -27,22 +27,22 @@ class Grayscale(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
-    - Calls :meth:`pyobs.images.Image.to_grayscale(r, g, b)` on the input image and returns
+    Grayscale behavior
+    ------------------
+    - Calls :meth:`~pyobs.images.Image.to_grayscale` on the input image and returns
       the resulting image.
     - The weights need not sum to 1.0; they are used as provided for a linear combination.
     - Header metadata are preserved by the underlying conversion method.
     - Typical input layout for color images is channel-first ``(C, H, W)`` with ``C=3`` (RGB).
 
-    Input/Output
-    ------------
+    Grayscale input/output
+    ----------------------
     - Input: :class:`pyobs.images.Image` (color image with 3 channels).
     - Output: :class:`pyobs.images.Image` (single-channel grayscale image, shape dependent
-      on the implementation of :meth:`to_grayscale`).
+      on the implementation of :meth:`~pyobs.images.Image.to_grayscale`).
 
-    Configuration (YAML)
-    --------------------
+    Grayscale configuration (YAML)
+    ------------------------------
     Default Rec. 709 weights:
 
     .. code-block:: yaml

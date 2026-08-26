@@ -33,8 +33,8 @@ class SimpleDisk(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Simple Disk behavior
+    --------------------
     - Chooses the image plane: uses the first channel (``image.data[0, :, :]``) if the
       image is color, otherwise uses the full 2D array.
     - Creates a binary mask with ``mask = data > threshold``.
@@ -49,14 +49,14 @@ class SimpleDisk(ImageProcessor):
       - ``keyword_x`` = x (column index, zero-based)
       - ``keyword_radius`` = radius (float, pixels)
 
-    Input/Output
-    ------------
+    Simple Disk input/output
+    ------------------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` (copied) with new FITS header entries for
       center coordinates and radius; pixel data are unchanged.
 
-    Configuration (YAML)
-    --------------------
+    Simple Disk configuration (YAML)
+    --------------------------------
     Basic detection with a custom threshold:
 
     .. code-block:: yaml

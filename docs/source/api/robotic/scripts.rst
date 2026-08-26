@@ -87,7 +87,7 @@ Scripts have access to the same runtime properties as :class:`~pyobs.object.Obje
 - ``self.timezone`` — :class:`~datetime.tzinfo`
 
 These are injected automatically when the script is created via
-:meth:`~pyobs.object.Object.pyobs_model_validate`. They are never set during ``__init__`` or
+:meth:`~pyobs.object.PrivateAttrMixin.pyobs_model_validate`. They are never set during ``__init__`` or
 pydantic validation — they are only available when the script is instantiated at runtime from
 within an :class:`~pyobs.object.Object` context.
 

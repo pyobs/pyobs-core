@@ -30,18 +30,38 @@ environment variables, migrations).
     :doc:`/recipes/robotic` for a minimal robotic-mode setup you can point at a portal instead of
     local files.
 
+    .. image:: /_static/screenshots/portal-task-editor.jpg
+       :alt: Task editor showing target fields and a Constraints panel with Airmass, Moon
+             Separation, and Solar Elevation constraints.
+       :width: 80%
+
 `pyobs-archive installation <https://docs.pyobs.org/projects/pyobs-archive/en/latest/installation.html>`_
     Webservice for an archive of astronomical images, implementing most of the
     `Las Cumbres Observatory archive interfaces <https://developers.lco.global/#archive>`_. A
     *pyobs* fleet talks to it via :class:`~pyobs.robotic.utils.archive.PyobsArchive`. Can
     optionally restrict frame access to project members through a pyobs-portal connection.
 
+    .. image:: /_static/screenshots/archive-frame-list.jpg
+       :alt: Frame browser showing a filter sidebar and a sortable table of BIAS, DARK, SKYFLAT,
+             and EXPOSE frames.
+       :width: 80%
+
 `pyobs-web-admin installation <https://docs.pyobs.org/projects/pyobs-web-admin/en/latest/installation.html>`_
     Web GUI for monitoring and managing the modules in a running fleet.
+
+    .. image:: /_static/screenshots/web-admin-dashboard.jpg
+       :alt: Dashboard showing modules grouped under Stopped and Deactivated headings, with
+             summary tiles and per-row quick-action buttons.
+       :width: 80%
 
 `pyobs-pipeline installation <https://docs.pyobs.org/projects/pyobs-pipeline/en/latest/installation.html>`_
     Web-based monitoring and configuration for *pyobs* data-reduction pipelines: status, logs,
     retriggering reduction periods, and a guided builder for pipeline steps.
+
+    .. image:: /_static/screenshots/pipeline-dashboard.jpg
+       :alt: Dashboard showing two site cards with last period, next trigger, and input/output
+             status, plus a table of recent reduction periods.
+       :width: 80%
 
 `pyobs-weather installation <https://docs.pyobs.org/projects/pyobs-weather/en/latest/installation.html>`_
     Weather data aggregator. A *pyobs* fleet talks to it via

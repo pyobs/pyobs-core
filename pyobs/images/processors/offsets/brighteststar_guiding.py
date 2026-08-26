@@ -34,8 +34,8 @@ class BrightestStarGuiding(Offsets):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.offsets.Offsets`.
 
-    Behavior
-    --------
+    Brightest Star Guiding behavior
+    -------------------------------
     - If the image has no catalog or the catalog is empty, logs a warning and returns
       the image unchanged.
     - Initialization:
@@ -46,8 +46,8 @@ class BrightestStarGuiding(Offsets):
     - Guiding update:
 
       - Selects the brightest star in the current catalog and computes pixel offsets
-        relative to the stored reference:
-          dx = x_current - x_ref, dy = y_current - y_ref
+        relative to the stored reference: ``dx = x_current - x_ref``,
+        ``dy = y_current - y_ref``.
       - Stores PixelOffsets(dx, dy) in the image metadata.
       - Computes Alt/Az offsets:
 
@@ -61,8 +61,8 @@ class BrightestStarGuiding(Offsets):
 
     - Returns the same image object with updated metadata.
 
-    Input/Output
-    ------------
+    Brightest Star Guiding input/output
+    -----------------------------------
     - Input: :class:`pyobs.images.Image` with
 
       - a source catalog containing "x", "y", and "flux" columns,
@@ -75,8 +75,8 @@ class BrightestStarGuiding(Offsets):
       - PixelOffsets(dx, dy) after reference initialization,
       - AltAzOffsets(dAlt_arcsec, dAz_arcsec) likewise.
 
-    Configuration (YAML)
-    --------------------
+    Brightest Star Guiding configuration (YAML)
+    -------------------------------------------
     Initialize guiding on first frame, then report offsets on subsequent frames:
 
     .. code-block:: yaml
@@ -87,6 +87,7 @@ class BrightestStarGuiding(Offsets):
     Notes
     -----
     - Offset sign convention:
+
       - PixelOffsets are star minus reference (positive dx means the star is to the
         right of the reference; positive dy means above, in the usual image axis sense).
       - AltAzOffsets are returned as (dAlt, dAz) in arcseconds; positive dAlt means

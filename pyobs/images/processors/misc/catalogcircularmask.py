@@ -34,8 +34,8 @@ class CatalogCircularMask(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Catalog Circular Mask behavior
+    ------------------------------
     - If the image has no catalog (``image.safe_catalog is None``), the image is returned
       unchanged.
     - Determines the circle center:
@@ -53,16 +53,16 @@ class CatalogCircularMask(ImageProcessor):
     - Returns the original image object with a filtered catalog; pixel data and header
       are unchanged.
 
-    Input/Output
-    ------------
+    Catalog Circular Mask input/output
+    ----------------------------------
     - Input: :class:`pyobs.images.Image` with a source catalog containing ``x`` and
       ``y`` columns, and optionally header keys for the center if ``center`` is given
       as strings.
     - Output: :class:`pyobs.images.Image` with its catalog filtered by the circular
       criterion. Pixel data are unchanged.
 
-    Configuration (YAML)
-    --------------------
+    Catalog Circular Mask configuration (YAML)
+    ------------------------------------------
     Keep sources within 300 pixels of CRPIX center:
 
     .. code-block:: yaml

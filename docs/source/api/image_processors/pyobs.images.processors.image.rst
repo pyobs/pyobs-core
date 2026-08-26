@@ -11,6 +11,9 @@ AddFitsHeaders
    :undoc-members:
    :class-doc-from: class
 
+.. autoclass:: pyobs.images.processors.image.addfitsheaders.Keyword
+   :members:
+
 Download
 ^^^^^^^^
 

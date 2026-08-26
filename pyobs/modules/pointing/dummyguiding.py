@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 class DummyAutoGuiding(Module, IAutoGuiding):
     """An auto-guiding system."""
 
-    __module__ = "pyobs.modules.guiding"
+    __module__ = "pyobs.modules.pointing"
 
     def __init__(self, exposure_time: float = 1.0, interval: float = 2.0, **kwargs: Any):
         """Create a new dummy auto-guiding system.

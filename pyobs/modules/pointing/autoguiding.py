@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 class AutoGuiding(BaseGuiding, CameraSettingsMixin):
     """An auto-guiding system."""
 
-    __module__ = "pyobs.modules.guiding"
+    __module__ = "pyobs.modules.pointing"
 
     def __init__(self, exposure_time: float = 1.0, broadcast: bool = False, **kwargs: Any):
         """Initializes a new auto guiding system.

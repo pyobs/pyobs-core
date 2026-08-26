@@ -12,6 +12,7 @@ Utilities (pyobs.utils)
    exceptions
    fits
    focusseries
+   grids
    http
    offsets
    parallel

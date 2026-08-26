@@ -21,7 +21,7 @@ event loop running. If the following code returns ``False`` you will
 need to upgrade your Jupyter version, as older versions don’t support
 ``asyncio``.
 
-.. code:: ipython3
+.. code:: python
 
     import asyncio
     asyncio.get_event_loop().is_running()
@@ -30,7 +30,7 @@ Before we start with the actual setup, we have to redirect the loggin
 output to ``stdout``, so that is displayed inside the cell output. If
 you want to disable error/warning messages, you can skip this step.
 
-.. code:: ipython3
+.. code:: python
 
     import logging
     import sys
@@ -47,12 +47,12 @@ config file containing the credentials can be added to the
 ``.gitignore`` file. In the case of Jupyter notebooks I recommend using
 ``.env`` files, which can be simmilarly excluded from the repo by adding
 them to the ``.gitignore`` file. This also allow you to share the
-credentials between multiple notebooks in the same probject.
+credentials between multiple notebooks in the same project.
 
 For this to work, simply add a ``.env`` file to your project root and
 add the following lines:
 
-.. code:: env
+.. code:: text
 
    COMM_JID = "[USERNAME]@iag50srv.astro.physik.uni-goettingen.de"
    COMM_PWD = "[PASSWORD]"
@@ -62,14 +62,14 @@ if you are not at the IAG, replace the address after the ``@`` with the
 one of your institute. After adding this, the ``load_dotenv()`` below,
 shoud return ``True``
 
-.. code:: ipython3
+.. code:: python
 
     import os
     from dotenv import load_dotenv
     
     load_dotenv()
 
-.. code:: ipython3
+.. code:: python
 
     COMM_JID = os.getenv('COMM_JID')
     COMM_PWD = os.getenv('COMM_PWD')
@@ -84,7 +84,7 @@ production environment, XMPP is used for this communication, so a
 ``XmppComm`` module is created with the credentials, that where
 previously loaded.
 
-.. code:: ipython3
+.. code:: python
 
     from pyobs.comm.xmpp import XmppComm
     comm = XmppComm(jid=COMM_JID, password=COMM_PWD, use_tls=True)
@@ -97,14 +97,14 @@ Open Comms
 By opening the comm module, we connect it to the pyobs network, so that
 we can communicate with the other modules on the network.
 
-.. code:: ipython3
+.. code:: python
 
     await comm.open()
 
 If everything works and if other modules are connected to the network,
 the following command should return the names of these modules:
 
-.. code:: ipython3
+.. code:: python
 
     comm.clients
 
@@ -115,7 +115,7 @@ At the end of a session, the comm module should be closed again. This
 signals to the rest of the network, that the module is not longer
 available.
 
-.. code:: ipython3
+.. code:: python
 
     await comm.close()
 
@@ -128,7 +128,7 @@ filesystem <https://docs.pyobs.org/en/latest/overview.html#virtual-file-system>`
 Again if you are not at the IAG, you will need to replace the download
 address below, with your own address.
 
-.. code:: ipython3
+.. code:: python
 
     from pyobs.vfs import VirtualFileSystem
     vfs = VirtualFileSystem(
@@ -154,7 +154,7 @@ resolved just before use is guaranteed to be the current one.
 Telescope
 ~~~~~~~~~
 
-.. code:: ipython3
+.. code:: python
 
     from pyobs.interfaces import ITelescope, IPointingRaDec, IPointingAltAz
 
@@ -165,7 +165,7 @@ fetched via a method call. ``wait_for_state`` returns the last known
 value immediately if one has already arrived, otherwise it waits (up
 to a timeout) for the first update.
 
-.. code:: ipython3
+.. code:: python
 
     async with comm.proxy(TELESCOPE_NAME, ITelescope) as telescope:
         radec = await telescope.wait_for_state(IPointingRaDec)
@@ -175,14 +175,14 @@ to a timeout) for the first update.
 
 and to move it in altaz coordinates…
 
-.. code:: ipython3
+.. code:: python
 
     async with comm.proxy(TELESCOPE_NAME, ITelescope) as telescope:
         await telescope.move_altaz(alt=60, az=180)
 
 or radec coordiantes (both in degrees).
 
-.. code:: ipython3
+.. code:: python
 
     async with comm.proxy(TELESCOPE_NAME, ITelescope) as telescope:
         await telescope.move_radec(ra=60, dec=25)
@@ -197,7 +197,7 @@ against the same resolved proxy, so this all lives in one cell.
 ``grab_data`` returns the path to the image in the virtual filesystem,
 which is then supplied to the ``vfs`` module to retrieve the image.
 
-.. code:: ipython3
+.. code:: python
 
     from pyobs.interfaces import ICamera, IExposureTime, IImageType
     from pyobs.utils.enums import ImageType
@@ -217,13 +217,13 @@ which is then supplied to the ``vfs`` module to retrieve the image.
 
 Now we can look at the header…
 
-.. code:: ipython3
+.. code:: python
 
     img.header
 
 and at the image itself.
 
-.. code:: ipython3
+.. code:: python
 
     import matplotlib.pyplot as plt
     
@@ -232,6 +232,6 @@ and at the image itself.
 
 We can also save the image as a file.
 
-.. code:: ipython3
+.. code:: python
 
     img.writeto("image_test.fits")

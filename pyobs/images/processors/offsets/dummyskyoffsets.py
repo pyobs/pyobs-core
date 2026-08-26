@@ -16,11 +16,11 @@ class DummySkyOffsets(Offsets):
     """
     Attach a precomputed sky-coordinate offset to image metadata for testing or simple workflows.
 
-    This processor constructs a :class:`SkyOffsets` object from two sky
+    This processor constructs a :class:`~pyobs.images.meta.SkyOffsets` object from two sky
     coordinates and attaches a copy of it to the image metadata via ``image.set_meta``.
     Coordinates can be provided directly as :class:`astropy.coordinates.SkyCoord`
     instances or as configuration dictionaries that are instantiated via
-    :func:`pyobs.utils.classes.get_object`. Pixel data and FITS headers are not
+    :func:`~pyobs.object.get_object`. Pixel data and FITS headers are not
     modified.
 
     :param SkyCoord | dict coord0: The reference sky position. Either a SkyCoord
@@ -32,23 +32,23 @@ class DummySkyOffsets(Offsets):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.offsets.Offsets`.
 
-    Behavior
-    --------
+    Dummy Sky Offsets behavior
+    --------------------------
     - Resolves ``coord0`` and ``coord1`` to :class:`SkyCoord` objects using
-      :func:`get_object` if dictionaries are provided.
-    - Constructs a :class:`SkyOffsets` instance representing the offset from
+      :func:`~pyobs.object.get_object` if dictionaries are provided.
+    - Constructs a :class:`~pyobs.images.meta.SkyOffsets` instance representing the offset from
       ``coord0`` to ``coord1``.
     - Attaches a shallow copy of this SkyOffsets object to the image metadata with
       ``image.set_meta(...)``.
     - Returns the same image object; pixel data and header entries are unchanged.
 
-    Input/Output
-    ------------
+    Dummy Sky Offsets input/output
+    ------------------------------
     - Input: :class:`pyobs.images.Image`.
     - Output: :class:`pyobs.images.Image` with a ``SkyOffsets`` metadata entry set.
 
-    Configuration (YAML)
-    --------------------
+    Dummy Sky Offsets configuration (YAML)
+    --------------------------------------
     Provide coordinates as configuration dicts:
 
     .. code-block:: yaml

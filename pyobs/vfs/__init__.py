@@ -46,9 +46,10 @@ Currently supported are these types of file access:
     - :class:`~pyobs.vfs.HttpFile`: File on a HTTP server.
     - :class:`~pyobs.vfs.MemoryFile`: File in memory.
     - :class:`~pyobs.vfs.SSHFile`: File on different machine that is accessible via SSH.
-    - :class:`~pyobs.vfs.TarFile`: Wrapper for a dynamically created TAR file. Can only be read from.
+    - :class:`~pyobs.vfs.SFTPFile`: File on different machine that is accessible via SFTP.
+    - :class:`~pyobs.vfs.SMBFile`: File on a Windows/Samba share.
     - :class:`~pyobs.vfs.TempFile`: Temporary file that will be deleted after being closed.
-    - :class:`~pyobs.vfs.ArchiveFile`: Wrapper for a file in the :ref:`pyobs-archive` image archive.
+    - :class:`~pyobs.vfs.ArchiveFile`: Wrapper for a file in the ``pyobs-archive`` image archive.
 
 The base class for all of these classes is :class:`~pyobs.vfs.VFSFile`.
 

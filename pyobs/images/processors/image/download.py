@@ -71,8 +71,8 @@ class Download(ImageProcessor):
     :param kwargs:
         Additional keyword arguments forwarded to :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Download behavior
+    -----------------
     - Performs an HTTP GET request to ``url`` using :class:`aiohttp.ClientSession`.
     - If the URL ends with ``.fits``, the image is constructed with :meth:`pyobs.images.Image.from_bytes`,
       preserving existing FITS headers.
@@ -82,13 +82,13 @@ class Download(ImageProcessor):
       - The processor sets ``DATE-OBS`` to the current ISO timestamp and ``EXPTIME`` to ``0`` in the header.
     - The input parameter ``image`` to ``__call__`` is ignored (no-op); a new image object is returned.
 
-    Input/Output
-    ------------
+    Download input/output
+    ---------------------
     - Input: :class:`pyobs.images.Image` (ignored).
     - Output: :class:`pyobs.images.Image` constructed from the downloaded bytes.
 
-    Configuration (YAML)
-    --------------------
+    Download configuration (YAML)
+    -----------------------------
     .. code-block:: yaml
 
        class: pyobs.images.processors.image.Download

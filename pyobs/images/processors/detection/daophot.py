@@ -47,12 +47,12 @@ class DaophotSourceDetection(SourceDetection):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processors.detection.SourceDetection`.
 
-    Behavior
-    --------
+    Daophot Source Detection behavior
+    ---------------------------------
     - If the input image has no data (``image.safe_data is None``), a warning is logged
       and the image is returned unchanged.
     - Background is estimated and subtracted using
-      :class:`pyobs.images.processors.detection._DaoBackgroundRemover`
+      the internal ``_DaoBackgroundRemover`` helper
       with the configured ``bkg_sigma``, ``bkg_box_size``, and ``bkg_filter_size``.
     - Robust statistics are computed on the background-corrected data via
       :func:`astropy.stats.sigma_clipped_stats` (with ``sigma=3.0``) to obtain
@@ -63,18 +63,18 @@ class DaophotSourceDetection(SourceDetection):
     - DAOStarFinder execution is offloaded to a thread executor to avoid blocking
       the event loop.
     - The resulting :class:`astropy.table.Table` is converted to a pyobs
-      :class:`pyobs.images.catalog._SourceCatalog`, FITS 1-based origin convention is
+      the internal ``_SourceCatalog`` helper, FITS 1-based origin convention is
       applied to coordinates, and the catalog is attached to the image with the keys
       ``["x", "y", "flux", "peak"]``.
 
-    Input/Output
-    ------------
+    Daophot Source Detection input/output
+    -------------------------------------
     - Input: :class:`pyobs.images.Image` with 2D pixel data.
     - Output: :class:`pyobs.images.Image` with a source catalog attached. Pixel data
       are unchanged; catalog entries typically include positions and flux measures.
 
-    Configuration (YAML)
-    --------------------
+    Daophot Source Detection configuration (YAML)
+    ---------------------------------------------
     Minimal example:
 
     .. code-block:: yaml
@@ -101,7 +101,7 @@ class DaophotSourceDetection(SourceDetection):
       noise; very low values may increase false positives.
     - The background remover’s exact behavior (e.g., clipping strategy, box tiling,
       and filtering) is defined by
-      :class:`pyobs.images.processors.detection._DaoBackgroundRemover`.
+      the internal ``_DaoBackgroundRemover`` helper.
     - Very bright/saturated sources or artifacts (cosmic rays, bleed trails) may
       produce spurious detections; consider pre-masking if necessary.
     """

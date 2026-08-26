@@ -15,15 +15,15 @@ class Save(ImageProcessor):
     Save an image to the virtual file system and optionally broadcast a NewImageEvent.
 
     This processor formats a destination filename using a
-    :class:`pyobs.utils.formatter.FilenameFormatter` (configured via ``filename``),
+    :class:`~pyobs.utils.fits.FilenameFormatter` (configured via ``filename``),
     writes the image to the pyobs virtual file system (``vfs``), and, if enabled,
-    broadcasts a :class:`NewImageEvent` via the communication interface (``comm``).
+    broadcasts a :class:`~pyobs.events.NewImageEvent` via the communication interface (``comm``).
     The original image is returned unchanged.
 
     :param str filename: Filename template for saving the image. The actual path is produced by
-                         :meth:`pyobs.images.Image.format_filename` using a
-                         :class:`FilenameFormatter`. Default: ``"/pyobs/image.fits"``.
-    :param bool broadcast: If ``True``, broadcast a :class:`NewImageEvent` after saving the image.
+                         :meth:`~pyobs.images.Image.format_filename` using a
+                         :class:`~pyobs.utils.fits.FilenameFormatter`. Default: ``"/pyobs/image.fits"``.
+    :param bool broadcast: If ``True``, broadcast a :class:`~pyobs.events.NewImageEvent` after saving the image.
                            Default: ``False``.
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
@@ -34,18 +34,19 @@ class Save(ImageProcessor):
     - Broadcasting requires a communication interface (``self.comm``) and successful registration
       of ``NewImageEvent`` in ``open()``.
     - The broadcasted event’s ``image_type`` is derived from the FITS header key ``IMAGETYP``.
-      This key must be present and convertible to :class:`ImageType`; otherwise, an exception may be raised.
+      This key must be present and convertible to :class:`~pyobs.utils.enums.ImageType`;
+      otherwise, an exception may be raised.
 
-    Input/Output
-    ------------
+    Save input/output
+    -----------------
     - Input: :class:`pyobs.images.Image`
     - Output: :class:`pyobs.images.Image` (unchanged), with side effects:
 
       - Image is saved to the virtual file system.
       - Optional event broadcast after saving.
 
-    Configuration (YAML)
-    --------------------
+    Save configuration (YAML)
+    -------------------------
     Save and broadcast new images:
 
     .. code-block:: yaml
@@ -66,7 +67,7 @@ class Save(ImageProcessor):
     -----
     - Ensure the image header contains a valid ``IMAGETYP`` if broadcasting is enabled.
     - The actual filename may include formatted components depending on your
-      :class:`FilenameFormatter` and :meth:`pyobs.images.Image.format_filename` implementation.
+      :class:`~pyobs.utils.fits.FilenameFormatter` and :meth:`~pyobs.images.Image.format_filename` implementation.
     - Errors raised by the virtual file system (e.g., write failures) or communication subsystem
       (e.g., event dispatch errors) propagate to the caller.
     """

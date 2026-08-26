@@ -18,7 +18,7 @@ class RemoveBackground(ImageProcessor):
     from the image, producing a background-corrected result. The background is
     estimated on a grid with sigma-clipping and optional smoothing, then subtracted
     from the pixel data. The implementation delegates to
-    :class:`pyobs.images.processors.detection._DaoBackgroundRemover`.
+    the internal ``_DaoBackgroundRemover`` helper.
 
     :param float sigma: Sigma for kappa–sigma clipping used in background estimation.
                         Default: ``3.0``.
@@ -29,20 +29,20 @@ class RemoveBackground(ImageProcessor):
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
 
-    Behavior
-    --------
+    Remove Background behavior
+    --------------------------
     - Builds a background model using kappa–sigma clipping within tiles of size
       ``box_size`` and smooths the model with a filter of size ``filter_size``.
     - Subtracts the estimated background from the image data.
     - Returns the background-corrected image; header and catalog are unchanged.
 
-    Input/Output
-    ------------
+    Remove Background input/output
+    ------------------------------
     - Input: :class:`pyobs.images.Image` with 2D pixel data.
     - Output: :class:`pyobs.images.Image` with background subtracted from its pixel data.
 
-    Configuration (YAML)
-    --------------------
+    Remove Background configuration (YAML)
+    --------------------------------------
     Basic background removal:
 
     .. code-block:: yaml

@@ -1575,20 +1575,20 @@ v1.13.0 (2023-12-28)
 * Added unit tests for ``BackgroundTask`` and ``Object``.
 
 v1.12.0 (2023-12-28)
-*******************
+********************
 * Added `list` command for `pyobsd`, which outputs all configurations.
 * Added bash auto-complete script `pyobsd`.
 * Added timeouts (to be defined in the config) for `ScriptRunner` modules.
 
 
 v1.11.0 (2023-12-25)
-*******************
+********************
 * Acquisition and AutoFocus both got a `broadcast` option to disable broadcast of images.
 * AutoFocus got a `final_image` parameter to take a final image at optimal focus.
 
 
 v1.10.0 (2023-12-24)
-*******************
+********************
 * Added CallModule script.
 * Changed ScriptRunner module so that it can run a script multiple times.
 

@@ -2210,8 +2210,8 @@
     "semantic_hash": ""
   },
   "pyproject.toml": {
-    "mtime": 1787740363.2351744,
-    "ast_hash": "08fdc7322a076e13360a690d906e5c30",
+    "mtime": 1787744619.4215639,
+    "ast_hash": "ff023904109954e5737a9f16efb5763a",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -4585,8 +4585,28 @@
     "semantic_hash": ""
   },
   "docs/source/recipes/full-observatory-stack.rst": {
-    "mtime": 1787741195.2022746,
-    "ast_hash": "ef01b1486a0b338f695c8237e0b82075",
+    "mtime": 1787744491.993577,
+    "ast_hash": "1df7efe00f725a86630d5a1f8e3ab33d",
+    "semantic_hash": ""
+  },
+  "docs/source/_static/screenshots/archive-frame-list.jpg": {
+    "mtime": 1787744332.7515934,
+    "ast_hash": "60aa9bf7b250a3b67107720b8424693e",
+    "semantic_hash": ""
+  },
+  "docs/source/_static/screenshots/pipeline-dashboard.jpg": {
+    "mtime": 1787744332.7140229,
+    "ast_hash": "d16f521c2456cfebd3af8234ca5fb453",
+    "semantic_hash": ""
+  },
+  "docs/source/_static/screenshots/portal-task-editor.jpg": {
+    "mtime": 1787744332.7341537,
+    "ast_hash": "c34b76c735e6c4f5f9457a205715b683",
+    "semantic_hash": ""
+  },
+  "docs/source/_static/screenshots/web-admin-dashboard.jpg": {
+    "mtime": 1787744332.7695868,
+    "ast_hash": "303d9b5b04be357b4fde9b596889e7c3",
     "semantic_hash": ""
   }
 }

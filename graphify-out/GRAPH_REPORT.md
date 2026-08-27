@@ -1,7 +1,7 @@
 # Graph Report - pyobs-core  (2026-08-26)
 
 ## Corpus Check
-- 814 files · ~465,036 words
+- 814 files · ~475,564 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ea712992`
+- Built from commit: `1a868534`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

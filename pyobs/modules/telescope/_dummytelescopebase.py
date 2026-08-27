@@ -183,6 +183,14 @@ class _DummyTelescopeBase(
                     ddec = vdec / length * self._speed * u.deg
                     await self._sim_change_status(MotionStatus.SLEWING)
                     self._position = SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
+                    await self.comm.set_state(
+                        IPointingRaDec,
+                        RaDecState(
+                            ra=float(self._position.ra.degree),
+                            dec=float(self._position.dec.degree),
+                        ),
+                    )
+                    await self._publish_altaz()
             else:
                 if self._tracking_rate != (0.0, 0.0):
                     dra = self._tracking_rate[0] * u.arcsec / np.cos(np.radians(self._position.dec.degree))

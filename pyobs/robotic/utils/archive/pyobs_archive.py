@@ -189,7 +189,14 @@ class PyobsArchive(Archive):
         async with aiohttp.ClientSession() as session:
             data = aiohttp.FormData()
             async with session.get(self.url, headers=self._headers) as response:
-                token = response.cookies["csrftoken"].value
+                # the cookie name depends on the server's CSRF_COOKIE_NAME setting
+                # (pyobs apps use project-specific names like archive_csrftoken, portal_csrftoken)
+                token = next(
+                    (cookie.value for name, cookie in response.cookies.items() if name.endswith("csrftoken")),
+                    None,
+                )
+                if token is None:
+                    raise ValueError("No CSRF token cookie found in response from archive.")
                 data.add_field("csrfmiddlewaretoken", token)
             for i, img in enumerate(images, 1):
                 filename = img.header["FNAME"]

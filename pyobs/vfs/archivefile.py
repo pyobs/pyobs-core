@@ -41,9 +41,16 @@ class ArchiveFile(HttpFile):
 
         # open session
         async with aiohttp.ClientSession() as session:
-            # do some initial GET request for getting the csrftoken
+            # do some initial GET request for getting the csrftoken; the cookie name
+            # depends on the server's CSRF_COOKIE_NAME setting (pyobs apps use
+            # project-specific names like archive_csrftoken, portal_csrftoken)
             async with session.get(self._url, headers=self._headers) as response:
-                token = response.cookies["csrftoken"].value
+                token = next(
+                    (cookie.value for name, cookie in response.cookies.items() if name.endswith("csrftoken")),
+                    None,
+                )
+                if token is None:
+                    raise ValueError("No CSRF token cookie found in response from archive.")
 
             # define list of files and url
             url = self._url + "frames/create/"

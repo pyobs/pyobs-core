@@ -262,7 +262,8 @@ async def test_download_headers_handles_missing_results_key(mocker) -> None:
 @pytest.mark.asyncio
 async def test_upload_frames_success(mocker) -> None:
     archive = make_archive()
-    get_response = MockResponse(cookies={"csrftoken": mocker.MagicMock(value="csrf-token")})
+    # pyobs-archive uses a project-specific CSRF cookie name
+    get_response = MockResponse(cookies={"archive_csrftoken": mocker.MagicMock(value="csrf-token")})
     post_response = MockResponse(json={"created": 1})
     mocker.patch("aiohttp.ClientSession.get", return_value=get_response)
     mocker.patch("aiohttp.ClientSession.post", return_value=post_response)

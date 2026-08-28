@@ -22,7 +22,7 @@ One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#824](https://github.com/pyobs/pyobs-core/issues/824) | `_retry_delay` overflows after 1024 attempts and permanently kills the event subscription | *bug* — cap applied after exponentiation, so attempt ≥ 1024 raises `OverflowError` (reported on 2.0.2); fix: cap the exponent before computing |
+| pyobs-core | [#824](https://github.com/pyobs/pyobs-core/issues/824) | `_retry_delay` overflows after 1024 attempts and permanently kills the event subscription | *bug* — cap applied after exponentiation, so attempt ≥ 1024 raises `OverflowError` (reported on 2.0.2); fix: cap the exponent before computing; plan `2026-08-28-precreate-pubsub-nodes.md` below (node pre-creation + retry hardening) |
 | pyobs-core | [#823](https://github.com/pyobs/pyobs-core/issues/823) | Centralized authorization via Keycloak groups/roles (no per-service activation) | design + plan proposed, see plans below (ADR `0014`) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
@@ -59,6 +59,10 @@ One row per issue — same layout for every repo.
   *proposed* (observation-portal, pyobs-auth). Attach observation-portal (MONET fork) to Keycloak
   as a `pyobs-auth` client, additive next to local username/password auth; supersedes Section 0 of
   the 2026-08-12 shared-auth plan.
+- [2026-08-28-precreate-pubsub-nodes.md](../plans/2026-08-28-precreate-pubsub-nodes.md) — *proposed*
+  (#824). Pre-create pubsub event/state nodes at module startup (XEP-0060 `create_node`) so
+  subscriptions can land before the first publish; plus #824 retry hardening (`_retry_delay`
+  exponent clamp, stuck-key cleanup in both retry loops).
 
 ### Design docs still *proposed*
 

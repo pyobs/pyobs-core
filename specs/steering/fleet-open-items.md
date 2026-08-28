@@ -1,6 +1,6 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — checked on 2026-08-28.
+Status: standing snapshot — checked on 2026-08-28 (19:40 CEST).
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -16,19 +16,21 @@ and remove closed items outright, never annotate them.** Only open items live he
 
 Repos: the whole pyobs fleet.
 
-## Open issues (13, checked 2026-08-28)
+## Open issues (15, checked 2026-08-28 19:40 CEST)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#824](https://github.com/pyobs/pyobs-core/issues/824) | `_retry_delay` overflows after 1024 attempts and permanently kills the event subscription | *bug* — cap applied after exponentiation, so attempt ≥ 1024 raises `OverflowError` (reported on 2.0.2); fix: cap the exponent before computing; plan `2026-08-28-precreate-pubsub-nodes.md` below (node pre-creation + retry hardening) |
+| pyobs-core | [#825](https://github.com/pyobs/pyobs-core/issues/825) | Robotic module widgets: `IRobotic` (executor) + `IRoboticScheduler` (planner) interfaces and GUI widgets | design doc `irobotic.md` below (*proposed*); no plan yet |
+| pyobs-core | [#824](https://github.com/pyobs/pyobs-core/issues/824) | `_retry_delay` overflows after 1024 attempts and permanently kills the event subscription | *bug, assigned: thusser* — cap applied after exponentiation, so attempt ≥ 1024 raises `OverflowError` (reported on 2.0.2); fix: cap the exponent before computing; plan `2026-08-28-precreate-pubsub-nodes.md` below (node pre-creation + retry hardening) |
 | pyobs-core | [#823](https://github.com/pyobs/pyobs-core/issues/823) | Centralized authorization via Keycloak groups/roles (no per-service activation) | design + plan proposed, see plans below (ADR `0014`) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-brot | [#60](https://github.com/pyobs/pyobs-brot/issues/60) | Bump astropy pin to allow 8.x | *assigned: thusser* — `astropy<8` pin forces a downgrade alongside astropy-8 packages (e.g. in the south/monet portal image) |
-| pyobs-gui | [#150](https://github.com/pyobs/pyobs-gui/issues/150) | Main widgets vs. sidebar widgets — automatic tab pages for multi-widget modules | *assigned: thusser* — split widget concept into main vs. sidebar categories; affects page assembly |
+| pyobs-gui | [#154](https://github.com/pyobs/pyobs-gui/issues/154) | Add generic `IStructuredConfig` widget — schema-driven form auto-built from `ConfigSchema` | *enhancement* — one generic widget covers every `IStructuredConfig` module (schema-driven editors + live `ConfigAppliedState` + `set_config()`); plan `2026-08-28-structuredconfig-widget.md` below (*proposed*) |
+| pyobs-gui | [#150](https://github.com/pyobs/pyobs-gui/issues/150) | Main widgets vs. sidebar widgets — automatic tab pages for multi-widget modules | *assigned: thusser* — split widget concept into main vs. sidebar categories; affects page assembly; draft plan `2026-08-28-gui-main-vs-sidebar-widgets.md` (pyobs-gui specs, below) |
 | pyobs-portal | [#119](https://github.com/pyobs/pyobs-portal/issues/119) | Update `get_module_classes()` for fleet-aggregated `api_module_classes` response shape | follow-up to pyobs-web-admin #68 — portal's `pyobs_portal/api/webadmin.py` expects the flat shape the fleet-aggregated endpoint will replace |
 | pyobs-portal | [#116](https://github.com/pyobs/pyobs-portal/issues/116) | Add instrument config app for script builder (camera/telescope capabilities) | *assigned: thusser* — static instrument capability data so the script builder works without live modules |
 | pyobs-web-admin | [#74](https://github.com/pyobs/pyobs-web-admin/issues/74) | Add fullscreen button for logs | *assigned: thusser* — both log views render at a fixed height with no enlarge option |
@@ -71,6 +73,8 @@ One row per issue — same layout for every repo.
 - [interface_versioning.md](../design/interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.
+- [irobotic.md](../design/irobotic.md) — `IRobotic` (executor) / `IRoboticScheduler` (planner)
+  interfaces plus `RoboticWidget` / `ScheduleWidget` in pyobs-gui (#825). Proposed; no plan yet.
 - [shared-authz-keycloak.md](../design/shared-authz-keycloak.md) — centralized authorization via
   Keycloak groups/roles (#823). Proposed; decision recorded in ADR `0014`; plan
   `2026-08-28-shared-authz-keycloak.md` above.
@@ -79,6 +83,10 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
+- **pyobs-gui** — [2026-08-28-gui-main-vs-sidebar-widgets.md](../../pyobs-gui/specs/2026-08-28-gui-main-vs-sidebar-widgets.md) —
+  main vs. sidebar widget split, automatic tab pages for multi-widget modules (#150) (*draft*)
+- **pyobs-gui** — [2026-08-28-structuredconfig-widget.md](../../pyobs-gui/specs/2026-08-28-structuredconfig-widget.md) —
+  generic schema-driven `IStructuredConfig` form widget (#154) (*proposed*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
 - **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —

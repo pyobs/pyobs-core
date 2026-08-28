@@ -94,6 +94,10 @@ dependency, no per-request round trip.
   is resolved, so the existing `IsAdminUser`/`is_superuser`-gated endpoints keep working without
   rewriting them. The settings-configured `ADMIN_USERNAME` account (admin_sync) is untouched —
   it's a local password account, not a Keycloak user.
+- Locally-created users are unaffected: `createsuperuser` / Django-admin accounts authenticate
+  via Django's `ModelBackend` with local passwords and never pass through the claims gate (the
+  gate lives only in `KeycloakAuthentication` and `CallbackView`). The user-facing SSO login stays
+  Keycloak-only, so a local-only user's reach is Django admin / session-based access.
 - Web-admin: gate on its group like any other service; its Django admin stops being the
   activation UI (there is nothing to activate anymore). The Keycloak admin console becomes the
   people-management surface.

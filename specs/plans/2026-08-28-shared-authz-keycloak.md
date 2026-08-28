@@ -33,6 +33,21 @@ Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin
       `enforce_local_active` interplay); docs (`docs/source/configuration.rst`, README).
 - [ ] Release (per repo conventions).
 
+Deployment note — keeping today's behavior (Keycloak auth only, manual `is_active` activation):
+`ENFORCE_LOCAL_ACTIVE=True` + `REQUIRED_GROUPS`/`REQUIRED_ROLES` unset + the service resolver keeps
+minting `is_active=False` reproduces the pre-authz flow exactly (first login mints an inactive
+user, admin activates in Django admin, then login works). Minting active + `ENFORCE_LOCAL_ACTIVE=True`
+instead gives kill-switch semantics (everyone active by default, admins can locally deactivate
+individuals). Locally-created users (`createsuperuser`, Django admin) authenticate via Django's
+`ModelBackend` and never pass through the claims gate in either flavor.
+
+Failure mode to avoid — a code-only upgrade (new pyobs-auth, no settings change) silently drops the
+`is_active` gate: `ENFORCE_LOCAL_ACTIVE` defaults to False and unset `REQUIRED_*` means no claims
+gate, so every authenticating Keycloak user is authorized. Sites relying on the old activation gate
+must set `ENFORCE_LOCAL_ACTIVE=True` (or complete section 0's group config) as part of the upgrade.
+The reverse failure mode is setting `REQUIRED_GROUPS` before assigning groups to existing users
+(sections 0/3), which locks everyone out.
+
 ## 2. Service cutovers (per service; each lands together with its config)
 
 pyobs-archive:

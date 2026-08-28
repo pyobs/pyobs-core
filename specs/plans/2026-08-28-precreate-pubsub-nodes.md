@@ -61,7 +61,10 @@ attempt.
   an empty node delivers nothing until the first publish, and a late subscriber still
   gets only the latest item.
 - **Out of scope**: module-less comms (GUI, admin tools) create no nodes — they only
-  subscribe; their own publish set is not part of this plan.
+  subscribe; their own publish set is not part of this plan. Capabilities are deliberately
+  absent too: they are served over disco#info (`_get_disco_info`, `xmppcomm.py:1139`) and
+  fetched via `xep_0030.get_info` (`_get_capabilities`, `xmppcomm.py:1194`) — there is no
+  pubsub node for them, so there is nothing to pre-create.
 - **Bonus side-effect**: `_get_derived_events` expansion (`comm.py:437`) means peers
   subscribe to every `role="send"`-advertised node (`xmppcomm.py:740-746`), including
   derived classes that may never be published; pre-creating the full declared set removes
@@ -70,6 +73,25 @@ attempt.
 
 The retry loops stay as a backstop: a subscriber that starts *before* the publisher's
 startup finishes creating nodes, or while the publisher is offline, still needs them.
+
+### Relationship to the "publish state early" convention (2026-07-22)
+
+The enforce-state-publishing plan (`2026-07-22-enforce-state-publishing.md`) made every stateful
+module publish a (possibly placeholder) value synchronously in `open()` — originally so the
+pubsub nodes exist (`dummysolartelescope.py` comment: "publish the disk centre as a placeholder
+so the pubsub nodes exist"). Pre-creation supersedes that *node-existence* purpose; the
+convention's second purpose — an initial value so `wait_for_state()` and GUI consumers don't
+wait for the first real publish — remains, since a pre-created-but-empty node delivers nothing
+until the first publish.
+
+State nodes are still pre-created even though modules publish placeholders at startup: it makes
+node existence unconditional (independent of a module following the convention — that plan found
+three production violations), closes the subscribe-before-publisher-start window entirely, and is
+what would allow relaxing the convention later to placeholders only where a fail-safe value is
+semantically meaningful (e.g. `good=False` weather), not mechanically "so the node exists". The
+`Module.startup()` "no state has been published for it yet" check (`module.py:391-394`) keeps its
+regression-detection value but loses urgency — a severity downgrade from `log.error` is a
+possible follow-up, not part of this plan.
 
 ### Phase 2 — harden the retry machinery (issue #824)
 

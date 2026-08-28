@@ -146,3 +146,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   instead of per-service `is_active` activation (design: `specs/design/shared-authz-keycloak.md`,
   ADR `0014`). **proposed** (issue #823; Repos: pyobs-auth, pyobs-archive, pyobs-portal,
   pyobs-web-admin)
+- [2026-08-28-observation-portal-keycloak-auth.md](2026-08-28-observation-portal-keycloak-auth.md) —
+  attach observation-portal (MONET fork) to Keycloak as a `pyobs-auth` client: Keycloak login on
+  the portal login page + Keycloak bearer tokens on its API, additive next to local
+  username/password auth; supersedes Section 0 (portal brokered behind Keycloak) of the
+  2026-08-12 plan. **proposed** (Repos: observation-portal, pyobs-auth)

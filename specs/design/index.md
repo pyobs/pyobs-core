@@ -19,6 +19,8 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   closed* (#548)
 - [image_trim.md](image_trim.md) — unify the three TRIMSEC implementations into `Image.trim()`.
   *implemented, closed* (#342)
+- [irobotic.md](irobotic.md) — `IRobotic` (executor) / `IRoboticScheduler` (planner) interfaces
+  and GUI widgets for robotic modules. *proposed* (#825; Repos: pyobs-core, pyobs-gui)
 - [istructuredconfig.md](istructuredconfig.md) — `IStructuredConfig` bulk structured config.
   *implemented* (pyobs-core `IStructuredConfig.py` + `config_schema.py`, 2026-07-10; consumer:
   pyobs-iagvt's FTS module — see doc status for the pydantic/consumer evolutions)

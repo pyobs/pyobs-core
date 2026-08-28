@@ -37,3 +37,7 @@ Short decision records for choices that had genuine considered-and-rejected alte
   `Portal*Archive`). *accepted*, execution tracked in
   `specs/plans/2026-08-24-rename-robotic-backend-to-portal.md` (Repos:
   pyobs-portal, pyobs-auth, pyobs-archive, pyobs-web-admin)
+- [0014-centralized-authorization-via-keycloak-groups.md](0014-centralized-authorization-via-keycloak-groups.md) —
+  centralize authorization in Keycloak groups/roles instead of per-service local activation.
+  *accepted* (issue #823; design `specs/design/shared-authz-keycloak.md`; Repos: pyobs-core,
+  pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin)

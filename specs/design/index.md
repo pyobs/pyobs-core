@@ -33,3 +33,7 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [shared-auth-keycloak.md](shared-auth-keycloak.md) — shared auth across pyobs web projects via
   Keycloak. *implemented* (plan `2026-08-12-shared-auth-keycloak.md` closed 2026-08-19;
   Repos: pyobs-archive, pyobs-portal)
+- [shared-authz-keycloak.md](shared-authz-keycloak.md) — centralized authorization via Keycloak
+  groups/roles; replaces per-service local activation with token-claim gates. *proposed*
+  (issue #823; ADR `0014`; plan `2026-08-28-shared-authz-keycloak.md`;
+  Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin)

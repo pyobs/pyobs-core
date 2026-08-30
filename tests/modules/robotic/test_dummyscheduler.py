@@ -52,7 +52,7 @@ def test_generate_schedule_produces_contiguous_sorted_tasks() -> None:
 async def test_open_publishes_state(mocker) -> None:
     from pyobs.modules import Module
 
-    scheduler = make_scheduler()
+    scheduler = make_scheduler(schedule_size=4)
     scheduler._comm.set_state = AsyncMock()
     mocker.patch.object(Module, "open", AsyncMock())
 
@@ -60,8 +60,11 @@ async def test_open_publishes_state(mocker) -> None:
 
     state = _state_for(scheduler._comm.set_state, IRunning)
     assert state.running is True
+    # open() generates the first schedule synchronously (not left to the worker's first tick),
+    # so get_schedule() has something to return immediately -- last_reschedule is already set
     state = _state_for(scheduler._comm.set_state, IRoboticScheduler)
-    assert state.last_reschedule is None
+    assert state.last_reschedule is not None
+    assert len(scheduler._schedule) == 4
 
 
 @pytest.mark.asyncio
@@ -201,3 +204,22 @@ async def test_get_schedule_marks_current_task_in_progress() -> None:
     result = await scheduler.get_schedule()
 
     assert result[0].state == "in_progress"
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_does_not_mutate_stored_tasks() -> None:
+    scheduler = make_scheduler(schedule_size=1, min_duration=100, max_duration=100)
+    scheduler._generate_schedule()
+    scheduler._schedule[0].start = Time.now() - 10 * u.second
+    scheduler._schedule[0].end = Time.now() + 90 * u.second
+
+    await scheduler.get_schedule()
+
+    assert scheduler._schedule[0].state == "pending"  # unchanged -- get_schedule returned a copy
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_rejects_non_int_limit() -> None:
+    scheduler = make_scheduler()
+    with pytest.raises(ValueError):
+        await scheduler.get_schedule(limit="20")  # type: ignore[arg-type]

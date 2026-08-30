@@ -43,6 +43,9 @@ def test_robotic_state_roundtrip_with_current_and_next() -> None:
 
     # Time round-trips through isot text on the wire, which drops sub-millisecond precision --
     # compare that text form rather than the Time objects themselves.
+    assert restored.current is not None
+    assert current.start is not None and current.end is not None
+    assert restored.current.start is not None and restored.current.end is not None
     assert restored.current.start.isot == current.start.isot
     assert restored.current.end.isot == current.end.isot
     restored.current.start = restored.current.end = current.start = current.end = None
@@ -70,6 +73,8 @@ def test_scheduler_state_roundtrip() -> None:
     xml = _dataclass_to_xml(state, ns)
     restored = _xml_to_dataclass(xml, SchedulerState)
 
+    assert restored.last_reschedule is not None
+    assert state.last_reschedule is not None
     assert restored.last_reschedule.isot == state.last_reschedule.isot
 
 
@@ -105,3 +110,22 @@ def test_robotic_task_from_observation() -> None:
     assert rt.priority == 3.0
     assert isinstance(rt.start, Time)
     assert isinstance(rt.end, Time)
+
+
+def test_robotic_task_from_observation_with_resolved_target() -> None:
+    from pyobs.robotic.scheduler.targets.siderealtarget import SiderealTarget
+
+    task = Task(id="t1", name="task1")
+    target = SiderealTarget(name="M31", ra=10.68, dec=41.27)
+    obs = Observation(
+        id=1,
+        task=task,
+        start="2026-08-30T10:00:00",
+        end="2026-08-30T10:05:00",
+        state=ObservationState.PENDING,
+        target=target,
+    )
+
+    rt = RoboticTask.from_observation(obs)
+
+    assert rt.target == "M31"

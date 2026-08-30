@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import astropy.units as u
 import pytest
@@ -440,3 +440,137 @@ async def test_mastermind_publishes_cant_run_reason(mocker) -> None:
     assert mm._cant_run_reason == "weather bad"
     assert mm._next_observation is not None
     assert any(s.cant_run_reason == "weather bad" and s.next is not None for s in states)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_publishes_robotic_state_on_open(mocker) -> None:
+    """comm.set_state(IRobotic, ...) fires on open(), even with no task running yet."""
+    from pyobs.modules import Module
+
+    obs_archive = make_obs_archive()
+    mm = make_mastermind(obs_archive)
+
+    states = []
+    original_set_state = mm.comm.set_state
+
+    async def tracking_set_state(interface, state):
+        if interface is IRobotic:
+            states.append(state)
+        return await original_set_state(interface, state)
+
+    mm.comm.set_state = tracking_set_state
+    mocker.patch.object(Module, "open", AsyncMock())
+
+    await mm.open()
+
+    assert len(states) == 1
+    assert states[0].current is None
+    assert states[0].next is None
+    assert states[0].cant_run_reason is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_publishes_robotic_state_on_start_and_stop() -> None:
+    """comm.set_state(IRobotic, ...) fires on start() and stop() too."""
+    obs_archive = make_obs_archive()
+    mm = make_mastermind(obs_archive)
+
+    states = []
+    original_set_state = mm.comm.set_state
+
+    async def tracking_set_state(interface, state):
+        if interface is IRobotic:
+            states.append(state)
+        return await original_set_state(interface, state)
+
+    mm.comm.set_state = tracking_set_state
+
+    await mm.start()
+    await mm.stop()
+
+    assert len(states) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_does_not_republish_unchanged_cant_run_reason(mocker) -> None:
+    """No repeated comm.set_state(IRobotic, ...) call while stuck on the same block with the
+    same reason -- the anti-spam dedup in _track_next_observation."""
+    obs_archive = make_obs_archive()
+    mm = make_mastermind(obs_archive, runner=BlockedRunner())
+    await obs_archive.add_observations(ObservationList([make_obs()]))
+
+    states = []
+    original_set_state = mm.comm.set_state
+
+    async def tracking_set_state(interface, state):
+        if interface is IRobotic:
+            states.append(state)
+        return await original_set_state(interface, state)
+
+    mm.comm.set_state = tracking_set_state
+
+    call_count = 0
+    real_sleep = asyncio.sleep
+
+    async def fake_sleep(t: float) -> None:
+        nonlocal call_count
+        call_count += 1
+        if call_count >= 5:  # several iterations of the "cannot run" branch
+            raise asyncio.CancelledError()
+        await real_sleep(0)
+
+    mocker.patch("pyobs.modules.robotic.mastermind.asyncio.sleep", side_effect=fake_sleep)
+
+    with patch("pyobs.utils.time.Time.now", return_value=NIGHT):
+        with pytest.raises(asyncio.CancelledError):
+            await mm._run_thread()
+
+    # same blocked observation + same reason every iteration -- exactly one publish, not one
+    # per loop iteration
+    assert len(states) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mastermind_publishes_late_start_skip() -> None:
+    """comm.set_state(IRobotic, ...) keeps the skipped observation visible as `next` while a
+    task is repeatedly skipped for starting too late, instead of leaving a stale publish."""
+    obs_archive = make_obs_archive()
+    runner = QuickRunner()
+    mm = make_mastermind(obs_archive, runner=runner)
+    mm._allowed_late_start = 0
+    # window opened well in the past (immediately "too late" with allowed_late_start=0) but is
+    # still active at NIGHT, so get_next_observation() actually returns it
+    obs = make_obs(duration=60.0)
+    obs.start = NIGHT - TimeDelta(3600 * u.second)
+    obs.end = NIGHT + TimeDelta(60 * u.second)
+    await obs_archive.add_observations(ObservationList([obs]))
+
+    states = []
+    original_set_state = mm.comm.set_state
+
+    async def tracking_set_state(interface, state):
+        if interface is IRobotic:
+            states.append(state)
+        return await original_set_state(interface, state)
+
+    mm.comm.set_state = tracking_set_state
+
+    with patch("pyobs.utils.time.Time.now", return_value=NIGHT):
+        task_handle = asyncio.create_task(mm._run_thread())
+        try:
+            await asyncio.sleep(6)  # clear the initial 5s startup delay
+        finally:
+            await mm.stop()
+            task_handle.cancel()
+            try:
+                await task_handle
+            except (asyncio.CancelledError, Exception):
+                pass
+
+    assert mm._task is None  # never actually started
+    assert mm._next_observation is not None
+    assert any(s.next is not None for s in states)

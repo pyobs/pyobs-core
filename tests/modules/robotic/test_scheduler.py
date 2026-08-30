@@ -683,7 +683,8 @@ async def test_get_schedule_sorts_by_start_time() -> None:
 
     result = await scheduler.get_schedule()
 
-    assert [r.start.isot for r in result] == [earlier.start.isot, later.start.isot]
+    assert all(r.start is not None for r in result)
+    assert [r.start.isot for r in result if r.start is not None] == [earlier.start.isot, later.start.isot]
 
 
 @pytest.mark.asyncio
@@ -704,16 +705,25 @@ async def test_get_schedule_respects_limit() -> None:
 async def test_get_schedule_caps_limit_at_hard_ceiling() -> None:
     scheduler = make_scheduler()
     task = DummyTask(id=1, name="t1", duration=100)
+    base = Time("2024-01-01T00:00:00")
     obs_list = ObservationList(
-        [make_obs(task, f"2024-01-01T00:{i:02d}:00", f"2024-01-01T00:{i:02d}:05") for i in range(5)]
+        [
+            Observation(
+                task=task,
+                start=base + i * u.minute,
+                end=base + (i + 1) * u.minute,
+                state=ObservationState.PENDING,
+            )
+            for i in range(scheduler._MAX_SCHEDULE_LIMIT + 10)
+        ]
     )
     scheduler._schedule.get_schedule = AsyncMock(return_value=obs_list)
 
+    # more candidates exist than the hard ceiling, so the clamp -- not just the sheer count
+    # requested -- is what determines the result size
     result = await scheduler.get_schedule(limit=10_000)
 
-    # would return all 5 either way, so pin the clamp itself rather than the outcome
-    assert scheduler._MAX_SCHEDULE_LIMIT < 10_000
-    assert len(result) == 5
+    assert len(result) == scheduler._MAX_SCHEDULE_LIMIT
 
 
 @pytest.mark.asyncio
@@ -721,6 +731,35 @@ async def test_get_schedule_rejects_negative_limit() -> None:
     scheduler = make_scheduler()
     with pytest.raises(ValueError):
         await scheduler.get_schedule(limit=-1)
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_resolves_unresolved_task() -> None:
+    """PortalObservationArchive.get_schedule() returns `task` as a bare id -- get_schedule()
+    must resolve it via the task archive before mapping to RoboticTask."""
+    scheduler = make_scheduler()
+    resolved = DummyTask(id=42, name="resolved", duration=100)
+    unresolved_obs = Observation(task=42, start="2024-01-01T00:00:00", end="2024-01-01T00:05:00", state="pending")
+    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([unresolved_obs]))
+    scheduler._task_archive.get_task = AsyncMock(return_value=resolved)
+
+    result = await scheduler.get_schedule()
+
+    scheduler._task_archive.get_task.assert_awaited_once_with(42)
+    assert len(result) == 1
+    assert result[0].name == "resolved"
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_skips_unresolvable_task() -> None:
+    scheduler = make_scheduler()
+    unresolved_obs = Observation(task=99, start="2024-01-01T00:00:00", end="2024-01-01T00:05:00", state="pending")
+    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([unresolved_obs]))
+    scheduler._task_archive.get_task = AsyncMock(return_value=None)
+
+    result = await scheduler.get_schedule()
+
+    assert result == []
 
 
 # ── SchedulerState publishing ────────────────────────────────────────────────

@@ -17,9 +17,7 @@ from pyobs.events import (
     TaskFinishedEvent,
     TaskStartedEvent,
 )
-from pyobs.interfaces import IRoboticScheduler, IRunnable, IRunning
-from pyobs.interfaces.IRobotic import RoboticTask
-from pyobs.interfaces.IRoboticScheduler import SchedulerState
+from pyobs.interfaces import IRoboticScheduler, IRunnable, IRunning, RoboticTask, SchedulerState
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.object import get_class_from_string
@@ -378,7 +376,19 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
             (obs for obs in schedule if obs.state in (ObservationState.PENDING, ObservationState.IN_PROGRESS)),
             key=lambda obs: obs.start,
         )
-        return [RoboticTask.from_observation(obs) for obs in pending[:limit]]
+
+        tasks = []
+        for obs in pending[:limit]:
+            # PortalObservationArchive.get_schedule() (unlike get_next_observation /
+            # get_current_observation) returns observations with `task` as a bare FK id, not a
+            # resolved Task -- fetch_task() is a no-op for backends that already store a full
+            # Task (memory/filesystem/LCO).
+            await obs.fetch_task(self._task_archive)
+            if obs.task is None:
+                log.error("Could not resolve task for observation %s, skipping.", obs.id)
+                continue
+            tasks.append(RoboticTask.from_observation(obs))
+        return tasks
 
     async def _on_task_started(self, event: Event, sender: str) -> bool:
         """Re-schedule when task has started and we can predict its end.

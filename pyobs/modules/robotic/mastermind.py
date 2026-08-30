@@ -5,8 +5,15 @@ from typing import Any
 import astropy.units as u
 
 from pyobs.events import TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
-from pyobs.interfaces import FitsHeaderEntry, IAutonomous, IFitsHeaderBefore, IRobotic, IRunning
-from pyobs.interfaces.IRobotic import RoboticState, RoboticTask
+from pyobs.interfaces import (
+    FitsHeaderEntry,
+    IAutonomous,
+    IFitsHeaderBefore,
+    IRobotic,
+    IRunning,
+    RoboticState,
+    RoboticTask,
+)
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.robotic import (
@@ -150,6 +157,27 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
             IRobotic, RoboticState(current=current, next=next_task, cant_run_reason=self._cant_run_reason)
         )
 
+    async def _track_next_observation(self, observation: Observation, reason: str | None) -> bool:
+        """Update self._next_observation/_cant_run_reason and publish, but only if either
+        actually changed since the last publish -- avoids spamming a state update every loop
+        iteration while stuck on the same block (cannot-run, or late-start skip).
+
+        Returns:
+            Whether anything had changed (and was therefore published).
+        """
+        changed = (
+            reason != self._cant_run_reason
+            or self._next_observation is None
+            or self._next_observation.task.id != observation.task.id
+            or self._next_observation.start != observation.start
+            or self._next_observation.end != observation.end
+        )
+        if changed:
+            self._cant_run_reason = reason
+            self._next_observation = observation
+            await self._publish_robotic_state()
+        return changed
+
     async def _run_thread(self) -> None:
         # wait a little
         await asyncio.sleep(5)
@@ -183,19 +211,8 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
 
             if not await self._task_runner.can_run(observation.task, observation.target):
                 reason = self._task_runner.cant_run_reason(observation.task)
-                # publish (and log) only when the next task or its reason actually changed --
-                # avoids spamming a state update every 10s while stuck on the same block
-                changed = (
-                    reason != self._cant_run_reason
-                    or self._next_observation is None
-                    or self._next_observation.task.id != observation.task.id
-                )
-                if changed:
-                    if reason is not None:
-                        log.info("Task %s cannot run: %s", observation.task.name, reason)
-                    self._cant_run_reason = reason
-                    self._next_observation = observation
-                    await self._publish_robotic_state()
+                if await self._track_next_observation(observation, reason) and reason is not None:
+                    log.info("Task %s cannot run: %s", observation.task.name, reason)
                 await asyncio.sleep(10)
                 continue
 
@@ -215,6 +232,10 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
                             self._allowed_late_start,
                         )
                     first_late_start_warning = False
+
+                    # keep the skipped observation visible as `next` rather than leaving
+                    # whatever was last published stale for as long as this repeats
+                    await self._track_next_observation(observation, None)
 
                     # sleep a little and skip
                     await asyncio.sleep(10)

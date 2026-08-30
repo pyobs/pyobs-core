@@ -52,7 +52,7 @@ class TaskStartedEvent(Event):
             eta = Time(d["eta"])
 
         # get obsnum
-        obsnum: str | None = d.get("obsnum")
+        obsnum: str | None = d["obsnum"] if isinstance(d.get("obsnum"), str) else None
 
         # return object
         return TaskStartedEvent(name=name, id=id, eta=eta, obsnum=obsnum)

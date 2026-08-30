@@ -18,7 +18,7 @@ class TaskFailedEvent(Event):
         """Initializes a new task failed event.
 
         Args:
-            name: Name of task that just finished
+            name: Name of task that just failed
             id: Unique identifier for task
             obsnum: Per-night observation number of the run that just failed, e.g. "20260810-001"
         """

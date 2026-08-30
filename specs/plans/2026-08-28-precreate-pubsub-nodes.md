@@ -1,6 +1,8 @@
 # Plan: pre-create pubsub event nodes at module startup
 
-Status: **proposed**
+Status: **implemented** (`precreate-pubsub-event-nodes` branch; unit suite and lint/type-check
+green; live-ejabberd integration suite still being confirmed on a clean container as of this
+commit -- see PR for the latest status)
 
 Tracks #824. Repos: pyobs-core.
 
@@ -137,23 +139,28 @@ Small, separable from Phase 1, but they are what make the backstop trustworthy:
 
 ### Phase 1: node pre-creation
 
-- [ ] `_create_node(node)` helper on `XmppComm`: `_safe_send(xep_0060.create_node, ...)`,
+- [x] `_create_node(node)` helper on `XmppComm`: `_safe_send(xep_0060.create_node, ...)`,
       `IqError` → debug log, never raise.
-- [ ] Event nodes: `XmppComm._register_events` handler-`None` branch, guarded on
+- [x] Event nodes: `XmppComm._register_events` handler-`None` branch, guarded on
       `self._module is not None`.
-- [ ] Confirm local events still bypass pubsub entirely (they never reach `_register_events`).
-- [ ] Unit test: `_event_node` naming unchanged.
+- [x] Confirm local events still bypass pubsub entirely (they never reach `_register_events`).
+- [x] Unit test: `_event_node` naming unchanged.
 - [ ] Integration test: publisher starts and never publishes → event node exists server-side
-      (subscribe succeeds / `get_nodes` shows it).
+      (subscribe succeeds / `get_nodes` shows it). Test written
+      (`test_event_node_precreated_before_first_publish`); passing on an isolated run, but not
+      yet confirmed clean as part of the full suite against a freshly-started ejabberd container
+      -- see PR.
 
 ### Phase 2: retry hardening (#824)
 
-- [ ] `_retry_delay` exponent clamp (`xmppcomm.py:60`).
-- [ ] `_subscribe_event_with_retry`: discard key on abnormal exit, re-raise.
-- [ ] `_subscribe_with_retry`: drop `_state_node_handlers` entry on abnormal exit, re-raise.
-- [ ] Unit tests: `_retry_delay(1024)` / `_retry_delay(10**6)` return a float in `[0, cap]`
+- [x] `_retry_delay` exponent clamp (`xmppcomm.py:60`).
+- [x] `_subscribe_event_with_retry`: discard key on abnormal exit, re-raise.
+- [x] `_subscribe_with_retry`: drop `_state_node_handlers` entry on abnormal exit, re-raise.
+- [x] Unit tests: `_retry_delay(1024)` / `_retry_delay(10**6)` return a float in `[0, cap]`
       (would overflow before the fix).
-- [ ] Integration regression: simulated retry-task failure leaves the pair re-subscribable.
+- [ ] Integration regression: simulated retry-task failure leaves the pair re-subscribable. Test
+      written (`test_824_regression_fresh_registration_resubscribes_after_abnormal_failure`), same
+      caveat as above.
 
 ## Testing / validation (`tests/xmpp/docker-compose.yml` harness)
 

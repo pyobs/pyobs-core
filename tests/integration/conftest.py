@@ -155,3 +155,12 @@ async def make_xmpp_comm(xmpp_config: XmppConfig, make_unopened_comm):
             await comm.close()
         except Exception:
             pass
+    # Give ejabberd a moment to actually reap the closed session server-side before the next
+    # test reconnects with the same fixed resource ("pyobs", XmppComm's default) -- confirmed via
+    # a live repro that XmppComm.close()/slixmpp's own disconnect(wait=2.0) returning is not
+    # sufficient by itself: a same-resource reconnect landing in that gap gets treated as a
+    # resource conflict and the *new* session is kicked with a mid-stream <stream:error/>, which
+    # is a connection-level failure (not an IqError/IqTimeout _safe_send already retries around).
+    # This was previously masked because nothing sent a wire IQ this early after connecting for a
+    # handler-less register_event() call; _create_node's create_node IQ now does.
+    await asyncio.sleep(2.0)

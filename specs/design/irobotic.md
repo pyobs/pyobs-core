@@ -1,6 +1,8 @@
 # `IRobotic` / `IRoboticScheduler`: executor and planner widgets for robotic modules
 
-Status: proposed (issue #825).
+Status: partially implemented (issue #825). pyobs-core side (interfaces, `Mastermind`,
+`Scheduler`) landed in [pyobs-core#826](https://github.com/pyobs/pyobs-core/pull/826);
+pyobs-gui widgets not yet started.
 
 Repos: pyobs-core (interfaces, `Mastermind`, `Scheduler`), pyobs-gui (`RoboticWidget`,
 `ScheduleWidget`).
@@ -38,7 +40,7 @@ role-owned data differs:
 
 | | Mastermind (executor) | Scheduler (planner) |
 |---|---|---|
-| owns | the task it is executing right now (in-memory `_task`, `_task_target`, `_obsnum`, ETA) and **why a task can't run** (`TaskRunner.cant_run_reason`, tracked as `_last_cant_run_reason`) | the **plan** it computed and the action to **recompute it** (`IRunnable.run()`) |
+| owns | the task it is executing right now (in-memory `_task`, `_task_target`, `_obsnum`, ETA) and **why a task can't run** (`TaskRunner.cant_run_reason`, tracked alongside the blocked/skipped observation as `_cant_run_reason`/`_next_observation`) | the **plan** it computed and the action to **recompute it** (`IRunnable.run()`) |
 | additionally knows | the immediate next observation it will pick up (`ObservationArchive.get_next_observation` every loop) | — |
 | must not expose | the full schedule (shared data; would duplicate the planner tab) | current-task execution detail (only knows task IDs from `TaskStartedEvent`) |
 
@@ -88,13 +90,17 @@ class IRobotic(IStartStop, metaclass=ABCMeta):
   `ObservationArchive.get_next_observation()`, which does a live portal HTTP call for
   `LcoObservationArchive` — an RPC-triggered pull would turn a GUI refresh into a network
   request that can hang or fail if the portal is slow or down.
-- `cant_run_reason` must be computed fresh at publish time from the *current* `next`
-  observation (`self._task_runner.cant_run_reason(next.task)` if `next` is not `None`, else
-  `None`). It must **not** be read off `Mastermind._last_cant_run_reason` — that field is a
-  `dict[task_id, str]` used only to dedupe repeated log lines in `_run_thread`, keyed by
-  whichever tasks have recently failed `can_run()`; entries for tasks that stop being "next"
-  are never cleared, so it can hold several stale reasons at once and has no defined mapping
-  to a single scalar.
+- `cant_run_reason` is tracked as a scalar pair with `next` — `Mastermind._cant_run_reason` /
+  `_next_observation` — updated together via a single `_track_next_observation(observation,
+  reason)` helper, not read off a per-task dict. (An earlier draft of this field kept a
+  `dict[task_id, str]` purely to dedupe repeated log lines; that had no defined mapping to a
+  single scalar and is gone — the scalar pair now serves both the log dedup and the published
+  state.) The helper republishes only when the observation (by task id, `start`, `end`) or the
+  reason actually changed since the last publish, so `_run_thread`'s ~10s poll doesn't spam a
+  state update while stuck on the same block. It's called from both places `_run_thread` can be
+  stuck without transitioning: the "cannot run" branch (real `cant_run_reason`) and the
+  late-start-skip branch (`cant_run_reason=None` — `TaskRunner.cant_run_reason()` was never
+  consulted for that failure mode, so the field stays honest about what it actually reflects).
 - `next` is the immediate next observation the executor will start — deliberately *not* the
   full schedule; it pairs with `cant_run_reason` to answer "what's next and why are we
   waiting?".
@@ -130,23 +136,30 @@ class IRoboticScheduler(IStartStop, metaclass=ABCMeta):
 ### `Mastermind`
 
 `class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore)`. Publish `IRobotic`
-state on `open()`, `start()`, `stop()`, and on every task transition in `_run_thread`
-(started / finished / failed):
+state on `open()`, `start()`, `stop()`, on every task transition in `_run_thread`
+(started / finished / failed), and — via `_track_next_observation()` — whenever the tracked
+`next` observation or `cant_run_reason` actually changes while nothing is transitioning (stuck
+on a "cannot run" block, or repeatedly skipping the same observation for starting too late):
 
 - `current` ← `self._task`, `self._task_target`, `self._obsnum` (+ ETA from `task.duration`);
   already in memory, no extra query.
-- `next` ← `self._observation_archive.get_next_observation(now, self._task_archive)` — **not**
-  free: for `LcoObservationArchive` this is a live portal HTTP call. Only call it from inside
+- `next` ← `self._next_observation`, set from whatever `_run_thread` last got back from
+  `self._observation_archive.get_next_observation(now, self._task_archive)` — **not** free: for
+  `LcoObservationArchive` this is a live portal HTTP call. Only call it from inside
   `_run_thread`, where it already runs every loop iteration regardless; never re-derive it on
   an RPC path (there is no `get_status()` — see above).
-- `cant_run_reason` ← computed at publish time as `self._task_runner.cant_run_reason(next.task)`
-  if `next` is not `None`, else `None`. Do not read `self._last_cant_run_reason` for this —
-  it's a private log-dedup cache (`dict[task_id, str]`), not a snapshot of "why can't the next
-  task run right now".
+- `cant_run_reason` ← `self._cant_run_reason`, set alongside `_next_observation` by
+  `_track_next_observation`: `self._task_runner.cant_run_reason(next.task)` when blocked, or
+  `None` on a late-start skip (see the note above — that failure mode isn't sourced from
+  `TaskRunner.cant_run_reason()`).
 
 ### `Scheduler`
 
-`class Scheduler(Module, IStartStop, IRunnable, IRoboticScheduler)`. Publish `SchedulerState`
+`class Scheduler(Module, IRunnable, IRoboticScheduler)` — **not** `IStartStop` too: `IRoboticScheduler`
+already inherits it, and listing it explicitly *before* a subclass of it is an invalid MRO (Python
+raises `TypeError: Cannot create a consistent method resolution order`, confirmed against the real
+`IRunnable`/`IAbortable`/`IStartStop` chain). Same reasoning as `Mastermind` not listing `IStartStop`
+alongside `IAutonomous`/`IRobotic`. Publish `SchedulerState`
 on `open()`, `start()`, `stop()`, and after each `_schedule_worker` pass (`last_reschedule`).
 `get_schedule()` delegates to `self._schedule.get_schedule()`, maps observations to
 `RoboticTask`, filters to pending/in-progress, trims to `limit`.
@@ -196,11 +209,19 @@ ACLs via `self.permitted(...)` (see `pyobs-gui/specs/plans/2026-07-29-gui-acl-aw
 
 ## What a plan would need to cover
 
-1. Interface files + exports + dataclass serialization (round-trip tests).
-2. `Mastermind` state publishing (transitions in `_run_thread`, `cant_run_reason` derived fresh
-   from `next` at publish time — not from `_last_cant_run_reason`).
-3. `Scheduler` state publishing and `get_schedule` trimming + hard server-side cap.
-4. Add `obsnum: str | None` to `TaskStartedEvent` / `TaskFinishedEvent` / `TaskFailedEvent`.
-5. `RoboticWidget` + `ScheduleWidget` implementations and `DEFAULT_WIDGETS` registration.
-6. Tests: state round-trip, publish transitions, schedule trimming, `get_schedule` cap; GUI
-   fake-comm tests per `pyobs-gui/tests/test_mainwindow_startup.py` patterns.
+pyobs-core side (1–4, and the pyobs-core half of 6) implemented in
+[pyobs-core#826](https://github.com/pyobs/pyobs-core/pull/826):
+
+1. ~~Interface files + exports + dataclass serialization (round-trip tests).~~ Done.
+2. ~~`Mastermind` state publishing (transitions in `_run_thread`, plus `_track_next_observation`
+   republishing on change while stuck without transitioning).~~ Done.
+3. ~~`Scheduler` state publishing and `get_schedule` trimming + hard server-side cap.~~ Done
+   (`get_schedule()` also resolves bare-FK-id tasks via `TaskArchive` for
+   `PortalObservationArchive`, whose `get_schedule()` doesn't resolve them itself).
+4. ~~Add `obsnum: str | None` to `TaskStartedEvent` / `TaskFinishedEvent` / `TaskFailedEvent`.~~
+   Done.
+5. `RoboticWidget` + `ScheduleWidget` implementations and `DEFAULT_WIDGETS` registration —
+   pyobs-gui, not yet started.
+6. ~~Tests: state round-trip, publish transitions, schedule trimming, `get_schedule` cap.~~
+   pyobs-core half done. GUI fake-comm tests per
+   `pyobs-gui/tests/test_mainwindow_startup.py` patterns — not yet started.

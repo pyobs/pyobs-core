@@ -24,6 +24,9 @@ class DummyMastermind(Module, IAutonomous, IRobotic):
     "can't run" wait beforehand and an occasional failure, so `RoboticWidget` has real state
     transitions to develop against without needing a real `ObservationArchive`/`TaskRunner`.
     Independent of `DummyScheduler` -- the two don't share any synthetic data.
+
+    `RoboticState.next` is only populated during a simulated "can't run" wait, same as the real
+    `Mastermind` -- raise `blocked_probability` to exercise the next-up panel more often.
     """
 
     __module__ = "pyobs.modules.robotic"
@@ -65,6 +68,8 @@ class DummyMastermind(Module, IAutonomous, IRobotic):
         self._running = False
         self._task_ids = itertools.count(1)
         self._task: RoboticTask | None = None  # currently running
+        self._obsnum_night: str | None = None
+        self._obsnum_counter = 0
 
         self.add_background_task(self._run_thread, True)
 
@@ -93,6 +98,16 @@ class DummyMastermind(Module, IAutonomous, IRobotic):
         self._running = False
         await self.comm.set_state(IRunning, RunningState(running=self._running))
         await self._publish()
+
+    def _next_obsnum(self) -> str:
+        """Per-night observation counter, e.g. "20260810-001" -- in-memory only, unlike the
+        real Mastermind's persisted cache; a dummy doesn't need to survive restarts."""
+        night = Time.now().datetime.strftime("%Y%m%d")
+        if night != self._obsnum_night:
+            self._obsnum_night = night
+            self._obsnum_counter = 0
+        self._obsnum_counter += 1
+        return f"{night}-{self._obsnum_counter:03d}"
 
     def _make_task(self) -> RoboticTask:
         return RoboticTask(
@@ -132,10 +147,13 @@ class DummyMastermind(Module, IAutonomous, IRobotic):
             next_task.start = start
             next_task.end = end
             next_task.state = "in_progress"
+            next_task.obsnum = self._next_obsnum()
             self._task = next_task
 
             log.info("Running task %s...", next_task.name)
-            await self.comm.send_event(TaskStartedEvent(name=next_task.name, id=next_task.id, eta=end))
+            await self.comm.send_event(
+                TaskStartedEvent(name=next_task.name, id=next_task.id, eta=end, obsnum=next_task.obsnum)
+            )
             await self._publish()
 
             await asyncio.sleep(duration)
@@ -143,11 +161,15 @@ class DummyMastermind(Module, IAutonomous, IRobotic):
             if random.random() < self._fail_probability:
                 self._task.state = "failed"
                 log.info("Task %s failed.", next_task.name)
-                await self.comm.send_event(TaskFailedEvent(name=next_task.name, id=next_task.id))
+                await self.comm.send_event(
+                    TaskFailedEvent(name=next_task.name, id=next_task.id, obsnum=next_task.obsnum)
+                )
             else:
                 self._task.state = "completed"
                 log.info("Finished task %s.", next_task.name)
-                await self.comm.send_event(TaskFinishedEvent(name=next_task.name, id=next_task.id))
+                await self.comm.send_event(
+                    TaskFinishedEvent(name=next_task.name, id=next_task.id, obsnum=next_task.obsnum)
+                )
 
             self._task = None
             await self._publish()

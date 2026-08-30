@@ -43,6 +43,28 @@ def test_make_task_produces_unique_increasing_ids() -> None:
     assert t1.id < t2.id
 
 
+def test_next_obsnum_increments_within_a_night() -> None:
+    mm = make_mastermind()
+    first = mm._next_obsnum()
+    second = mm._next_obsnum()
+    night = first.split("-")[0]
+    assert first == f"{night}-001"
+    assert second == f"{night}-002"
+
+
+def test_next_obsnum_resets_on_night_change(mocker) -> None:
+    from pyobs.utils.time import Time
+
+    mm = make_mastermind()
+    mocker.patch.object(Time, "now", return_value=Time("2026-08-30T10:00:00"))
+    first = mm._next_obsnum()
+    mocker.patch.object(Time, "now", return_value=Time("2026-08-31T10:00:00"))
+    second = mm._next_obsnum()
+
+    assert first == "20260830-001"
+    assert second == "20260831-001"
+
+
 # ── open / start / stop ───────────────────────────────────────────────────────
 
 
@@ -129,6 +151,10 @@ async def test_run_thread_starts_and_finishes_a_task(mocker) -> None:
     # the *last* one, since a fast, unmocked-random loop may already be mid-way through a
     # second cycle by the time cancellation lands
     assert any(s.current is None for s in states)
+
+    # obsnum is assigned before the task starts and carried on both events
+    assert all(e.obsnum is not None for e in started)
+    assert all(e.obsnum is not None for e in finished)
 
 
 @pytest.mark.asyncio

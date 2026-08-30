@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import itertools
 import logging
 import random
@@ -63,6 +64,13 @@ class DummyScheduler(Module, IRunnable, IRoboticScheduler):
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
+
+        # generate the first schedule synchronously, rather than waiting for the worker's first
+        # tick, so get_schedule() has something to return immediately on startup
+        self._generate_schedule()
+        self._last_reschedule = Time.now()
+        self._need_update = False
+
         await self.comm.set_state(IRunning, RunningState(running=self._running))
         await self.comm.set_state(IRoboticScheduler, SchedulerState(last_reschedule=self._last_reschedule))
 
@@ -127,19 +135,19 @@ class DummyScheduler(Module, IRunnable, IRoboticScheduler):
             requested.
 
         Raises:
-            ValueError: If limit is negative.
+            ValueError: If limit is not an int, or is negative.
         """
-        if limit < 0:
-            raise ValueError("limit must be >= 0.")
+        if not isinstance(limit, int) or limit < 0:
+            raise ValueError("limit must be a non-negative int.")
         limit = min(limit, self._MAX_SCHEDULE_LIMIT)
 
         now = Time.now()
         upcoming = []
-        for task in self._schedule:
+        for task in sorted(self._schedule, key=lambda t: t.start or now):
             if task.end is not None and task.end < now:
                 continue  # already elapsed
-            task.state = "in_progress" if task.start is not None and task.start <= now else "pending"
-            upcoming.append(task)
+            state = "in_progress" if task.start is not None and task.start <= now else "pending"
+            upcoming.append(dataclasses.replace(task, state=state))
 
         return upcoming[:limit]
 

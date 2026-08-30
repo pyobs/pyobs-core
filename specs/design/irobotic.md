@@ -68,19 +68,33 @@ class RoboticTask:
 
 @dataclass
 class RoboticState:
-    running: bool
     current: RoboticTask | None = None
     next: RoboticTask | None = None             # immediate next observation to run
-    cant_run_reason: str | None = None          # from TaskRunner.cant_run_reason()
+    cant_run_reason: str | None = None          # from TaskRunner.cant_run_reason(), for `next`
     time: Time = field(default_factory=Time.now)
 
 class IRobotic(IStartStop, metaclass=ABCMeta):
     state = RoboticState
-
-    @abstractmethod
-    async def get_status(self, **kwargs: Any) -> RoboticState: ...
 ```
 
+- No `running` field: `IRobotic` already inherits `IRunning`'s `RunningState.running` via
+  `IStartStop`; a second `running` bool here would be a second source of truth that a future
+  transition can update one of and not the other. Widgets read the running flag from the
+  `IRunning` state, same as they would for any other `IStartStop` module.
+- No `get_status()` pull RPC: `RoboticState` is pushed via `comm.set_state` on every
+  transition, and a subscriber gets the last-pushed value immediately on `subscribe_state`
+  (XMPP pubsub delivers the last item, `max_items=1`, to a new subscriber). A bespoke pull
+  method would duplicate that path for no benefit, and — since `next` is populated from
+  `ObservationArchive.get_next_observation()`, which does a live portal HTTP call for
+  `LcoObservationArchive` — an RPC-triggered pull would turn a GUI refresh into a network
+  request that can hang or fail if the portal is slow or down.
+- `cant_run_reason` must be computed fresh at publish time from the *current* `next`
+  observation (`self._task_runner.cant_run_reason(next.task)` if `next` is not `None`, else
+  `None`). It must **not** be read off `Mastermind._last_cant_run_reason` — that field is a
+  `dict[task_id, str]` used only to dedupe repeated log lines in `_run_thread`, keyed by
+  whichever tasks have recently failed `can_run()`; entries for tasks that stop being "next"
+  are never cleared, so it can hold several stale reasons at once and has no defined mapping
+  to a single scalar.
 - `next` is the immediate next observation the executor will start — deliberately *not* the
   full schedule; it pairs with `cant_run_reason` to answer "what's next and why are we
   waiting?".
@@ -92,7 +106,6 @@ class IRobotic(IStartStop, metaclass=ABCMeta):
 ```python
 @dataclass
 class SchedulerState:
-    running: bool
     last_reschedule: Time | None = None
     time: Time = field(default_factory=Time.now)
 
@@ -103,8 +116,12 @@ class IRoboticScheduler(IStartStop, metaclass=ABCMeta):
     async def get_schedule(self, limit: int = 20, **kwargs: Any) -> list[RoboticTask]: ...
 ```
 
+- No `running` field, same reasoning as `RoboticState` above — read it from the inherited
+  `IRunning` state.
 - `get_schedule()` returns pending/in-progress entries only, trimmed to `limit`; the full
-  `ObservationList` must not go over the wire.
+  `ObservationList` must not go over the wire. `limit` defaults to 20, and the implementation
+  enforces a hard server-side ceiling regardless of what a client requests — a client-supplied
+  default alone doesn't stop a client from asking for everything.
 - Re-schedule stays on the existing `IRunnable.run()` — no new method, the GUI calls it via
   proxy.
 
@@ -114,14 +131,18 @@ class IRoboticScheduler(IStartStop, metaclass=ABCMeta):
 
 `class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore)`. Publish `IRobotic`
 state on `open()`, `start()`, `stop()`, and on every task transition in `_run_thread`
-(started / finished / failed). All fields are already in memory:
+(started / finished / failed):
 
 - `current` ← `self._task`, `self._task_target`, `self._obsnum` (+ ETA from `task.duration`);
-- `next` ← `self._observation_archive.get_next_observation(now, self._task_archive)`;
-- `cant_run_reason` ← `self._last_cant_run_reason` (latest reason from
-  `TaskRunner.cant_run_reason`).
-
-`get_status()` assembles the same values on demand (initial load / refresh).
+  already in memory, no extra query.
+- `next` ← `self._observation_archive.get_next_observation(now, self._task_archive)` — **not**
+  free: for `LcoObservationArchive` this is a live portal HTTP call. Only call it from inside
+  `_run_thread`, where it already runs every loop iteration regardless; never re-derive it on
+  an RPC path (there is no `get_status()` — see above).
+- `cant_run_reason` ← computed at publish time as `self._task_runner.cant_run_reason(next.task)`
+  if `next` is not `None`, else `None`. Do not read `self._last_cant_run_reason` for this —
+  it's a private log-dedup cache (`dict[task_id, str]`), not a snapshot of "why can't the next
+  task run right now".
 
 ### `Scheduler`
 
@@ -142,9 +163,10 @@ Two widgets in `pyobs-gui/pyobs_gui/`, following the `BaseWidget` pattern
 - **`ScheduleWidget`** (registered on `IRoboticScheduler`): schedule table (start, end, task,
   target, state, priority), "Re-schedule now" button (proxy → `run()`), Start/Stop.
 
-Data flow: `subscribe_state(module, <interface>, ...)` for steady state,
-`register_event(TaskStartedEvent/TaskFinishedEvent/TaskFailedEvent)` for instant updates,
-proxy calls for `start` / `stop` / `get_status` / `get_schedule` / `run`. Buttons gated by
+Data flow: `subscribe_state(module, <interface>, ...)` for steady state — a new subscriber
+gets the last-pushed value immediately, so this also covers initial load / refresh, no
+separate pull RPC needed — `register_event(TaskStartedEvent/TaskFinishedEvent/TaskFailedEvent)`
+for instant updates, proxy calls for `start` / `stop` / `get_schedule` / `run`. Buttons gated by
 ACLs via `self.permitted(...)` (see `pyobs-gui/specs/plans/2026-07-29-gui-acl-aware-widget-gating.md`).
 
 ## Out of scope
@@ -155,21 +177,30 @@ ACLs via `self.permitted(...)` (see `pyobs-gui/specs/plans/2026-07-29-gui-acl-aw
 - Migrating `mainwindow._check_warnings` to the new state; the `IAutonomous`-keyed warning
   label stays as-is for now.
 
-## Open questions
+## Resolved questions
 
-1. Interface names: `IRobotic` / `IRoboticScheduler` vs alternatives (`IRoboticExecutor`,
-   `IScheduleRunner`, ...).
-2. `get_schedule(limit)` default and hard cap (wire-size concern).
-3. Extend `TaskFinishedEvent` / `TaskFailedEvent` with the obsnum, so a history view can link
-   to the archive.
-4. State publish cadence: transitions only, or a slow heartbeat so a dead module is
-   distinguishable from an idle one.
+1. **Interface names**: keeping `IRobotic` / `IRoboticScheduler` — no alternative considered
+   was clearly better.
+2. **`get_schedule(limit)` default and cap**: default 20; implementation additionally enforces
+   a hard server-side ceiling independent of the client-supplied `limit`, so a client can't
+   request the full unbounded schedule.
+3. **Obsnum on `TaskFinishedEvent`/`TaskFailedEvent`**: doing it now, not as a follow-up.
+   `Mastermind._obsnum` is already computed before `TaskStartedEvent` fires
+   (`pyobs/modules/robotic/mastermind.py:188` precedes the `send_event` at `:195`), so adding
+   it to all three task events costs nothing extra.
+4. **State publish cadence**: transitions only, no heartbeat. `Comm` already has a
+   presence mechanism for module liveness independent of RPC/state
+   (`set_presence`/`subscribe_presence`, `pyobs/comm/comm.py:544-673`, XMPP-backed), generic
+   across every module. A widget-level heartbeat would duplicate that for these two modules
+   only.
 
 ## What a plan would need to cover
 
 1. Interface files + exports + dataclass serialization (round-trip tests).
-2. `Mastermind` state publishing (transitions in `_run_thread`) and `get_status`.
-3. `Scheduler` state publishing and `get_schedule` trimming.
-4. `RoboticWidget` + `ScheduleWidget` implementations and `DEFAULT_WIDGETS` registration.
-5. Tests: state round-trip, publish transitions, schedule trimming; GUI fake-comm tests per
-   `pyobs-gui/tests/test_mainwindow_startup.py` patterns.
+2. `Mastermind` state publishing (transitions in `_run_thread`, `cant_run_reason` derived fresh
+   from `next` at publish time — not from `_last_cant_run_reason`).
+3. `Scheduler` state publishing and `get_schedule` trimming + hard server-side cap.
+4. Add `obsnum: str | None` to `TaskStartedEvent` / `TaskFinishedEvent` / `TaskFailedEvent`.
+5. `RoboticWidget` + `ScheduleWidget` implementations and `DEFAULT_WIDGETS` registration.
+6. Tests: state round-trip, publish transitions, schedule trimming, `get_schedule` cap; GUI
+   fake-comm tests per `pyobs-gui/tests/test_mainwindow_startup.py` patterns.

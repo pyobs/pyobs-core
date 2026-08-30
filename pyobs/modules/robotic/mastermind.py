@@ -5,7 +5,8 @@ from typing import Any
 import astropy.units as u
 
 from pyobs.events import TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
-from pyobs.interfaces import FitsHeaderEntry, IAutonomous, IFitsHeaderBefore, IRunning
+from pyobs.interfaces import FitsHeaderEntry, IAutonomous, IFitsHeaderBefore, IRobotic, IRunning
+from pyobs.interfaces.IRobotic import RoboticState, RoboticTask
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.robotic import (
@@ -23,7 +24,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
+class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
     """Mastermind for a full robotic mode."""
 
     __module__ = "pyobs.modules.robotic"
@@ -52,7 +53,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._allowed_overrun = allowed_overrun
         self._running = False
         self._after_task_sleep = after_task_sleep
-        self._last_cant_run_reason: dict[Any, str] = {}
+        self._cant_run_reason: str | None = None
+        self._next_observation: Observation | None = None
 
         # add thread func
         self.add_background_task(self._run_thread, True)
@@ -66,6 +68,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._task: Task | None = None
         self._task_target: Target | None = None
         self._obsnum: str | None = None
+        self._task_start: Time | None = None
+        self._task_eta: Time | None = None
 
         # per-night observation counter
         self._obsnum_cache = f"/pyobs/modules/{self.name}/obsnum.yaml"
@@ -110,18 +114,41 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         # start
         self._running = True
         await self.comm.set_state(IRunning, RunningState(running=self._running))
+        await self._publish_robotic_state()
 
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
         log.info("Starting robotic system...")
         self._running = True
         await self.comm.set_state(IRunning, RunningState(running=self._running))
+        await self._publish_robotic_state()
 
     async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         log.info("Stopping robotic system...")
         self._running = False
         await self.comm.set_state(IRunning, RunningState(running=self._running))
+        await self._publish_robotic_state()
+
+    async def _publish_robotic_state(self) -> None:
+        """Publish IRobotic state: current task (from self._task/...), and self._next_observation
+        / self._cant_run_reason as last updated by _run_thread."""
+        current = None
+        if self._task is not None:
+            current = RoboticTask(
+                id=self._task.id,
+                name=self._task.name,
+                target=self._task_target.name if self._task_target is not None else None,
+                start=self._task_start,
+                end=self._task_eta,
+                obsnum=self._obsnum,
+                state=ObservationState.IN_PROGRESS.value,
+                priority=self._task.priority,
+            )
+        next_task = RoboticTask.from_observation(self._next_observation) if self._next_observation else None
+        await self.comm.set_state(
+            IRobotic, RoboticState(current=current, next=next_task, cant_run_reason=self._cant_run_reason)
+        )
 
     async def _run_thread(self) -> None:
         # wait a little
@@ -146,21 +173,35 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 now, self._task_archive
             )
             if observation is None:
+                # nothing scheduled at all -- publish once when this changes, not every loop
+                if self._next_observation is not None or self._cant_run_reason is not None:
+                    self._next_observation = None
+                    self._cant_run_reason = None
+                    await self._publish_robotic_state()
                 await asyncio.sleep(10)
                 continue
 
             if not await self._task_runner.can_run(observation.task, observation.target):
                 reason = self._task_runner.cant_run_reason(observation.task)
-                if reason is not None:
-                    last = self._last_cant_run_reason.get(observation.task.id)
-                    if last != reason:
+                # publish (and log) only when the next task or its reason actually changed --
+                # avoids spamming a state update every 10s while stuck on the same block
+                changed = (
+                    reason != self._cant_run_reason
+                    or self._next_observation is None
+                    or self._next_observation.task.id != observation.task.id
+                )
+                if changed:
+                    if reason is not None:
                         log.info("Task %s cannot run: %s", observation.task.name, reason)
-                        self._last_cant_run_reason[observation.task.id] = reason
+                    self._cant_run_reason = reason
+                    self._next_observation = observation
+                    await self._publish_robotic_state()
                 await asyncio.sleep(10)
                 continue
 
             # task can run — clear stored reason
-            self._last_cant_run_reason.pop(observation.task.id, None)
+            self._cant_run_reason = None
+            self._next_observation = None
 
             # starting too late?
             if not observation.task.can_start_late:
@@ -190,14 +231,19 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             # ETA
             now = Time.now()
             eta = now + self._task.duration * u.second
+            self._task_start = now
+            self._task_eta = eta
 
             # send event and change state
-            await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
+            await self.comm.send_event(
+                TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta, obsnum=self._obsnum)
+            )
             observation.state = ObservationState.IN_PROGRESS
             observation.start = now
             observation.end = eta
             observation.obsnum = self._obsnum
             await self._observation_archive.update_observation(observation)
+            await self._publish_robotic_state()
 
             # run task in thread
             log.info("Running task %s...", self._task.name)
@@ -215,14 +261,17 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 observation.end = Time.now()
                 observation.state = ObservationState.FAILED
                 await self._observation_archive.update_observation(observation)
-                await self.comm.send_event(TaskFailedEvent(name=self._task.name, id=self._task.id))
+                await self.comm.send_event(TaskFailedEvent(name=self._task.name, id=self._task.id, obsnum=self._obsnum))
                 self._task = None
                 self._task_target = None
                 self._obsnum = None
+                self._task_start = None
+                self._task_eta = None
+                await self._publish_robotic_state()
                 continue
 
             # send event and change state
-            await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
+            await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id, obsnum=self._obsnum))
             observation.end = Time.now()
             observation.state = ObservationState.COMPLETED
             await self._observation_archive.update_observation(observation)
@@ -232,6 +281,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             self._task = None
             self._task_target = None
             self._obsnum = None
+            self._task_start = None
+            self._task_eta = None
+            await self._publish_robotic_state()
 
             # sleep?
             await asyncio.sleep(self._after_task_sleep)

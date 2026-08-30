@@ -12,6 +12,7 @@ class DataType(TypedDict):
     name: str
     id: Any
     eta: str | None
+    obsnum: str | None
 
 
 class TaskStartedEvent(Event):
@@ -19,16 +20,17 @@ class TaskStartedEvent(Event):
 
     __module__ = "pyobs.events"
 
-    def __init__(self, name: str, id: Any, eta: Time | None = None, **kwargs: Any):
+    def __init__(self, name: str, id: Any, eta: Time | None = None, obsnum: str | None = None, **kwargs: Any):
         """Initializes a new task started event.
 
         Args:
             name: Name of task that just started
             id: Unique identifier for task
             eta: Predicted ETA for when the task will finish
+            obsnum: Per-night observation number assigned to this run, e.g. "20260810-001"
         """
         Event.__init__(self)
-        self.data: DataType = {"name": name, "id": id, "eta": None if eta is None else eta.isot}
+        self.data: DataType = {"name": name, "id": id, "eta": None if eta is None else eta.isot, "obsnum": obsnum}
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Event:
@@ -49,8 +51,11 @@ class TaskStartedEvent(Event):
         if "eta" in d and isinstance(d["eta"], str):
             eta = Time(d["eta"])
 
+        # get obsnum
+        obsnum: str | None = d.get("obsnum")
+
         # return object
-        return TaskStartedEvent(name=name, id=id, eta=eta)
+        return TaskStartedEvent(name=name, id=id, eta=eta, obsnum=obsnum)
 
     @property
     def name(self) -> str:
@@ -65,6 +70,10 @@ class TaskStartedEvent(Event):
         from pyobs.utils.time import Time
 
         return Time(self.data["eta"]) if self.data["eta"] is not None else None
+
+    @property
+    def obsnum(self) -> str | None:
+        return self.data["obsnum"]
 
 
 __all__ = ["TaskStartedEvent"]

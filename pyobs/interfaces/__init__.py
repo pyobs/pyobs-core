@@ -52,6 +52,8 @@ from .IPointingOrbitalElements import IPointingOrbitalElements, OrbitalElements
 from .IPointingRaDec import IPointingRaDec, RaDecState
 from .IPointingSeries import IPointingSeries
 from .IReady import IReady, ReadyState
+from .IRobotic import IRobotic, RoboticState, RoboticTask
+from .IRoboticScheduler import IRoboticScheduler, SchedulerState
 from .IRoof import IRoof
 from .IRotation import IRotation, RotationState
 from .IRunnable import IRunnable
@@ -149,6 +151,11 @@ __all__ = [
     "IPointingSeries",
     "IReady",
     "ReadyState",
+    "IRobotic",
+    "RoboticTask",
+    "RoboticState",
+    "IRoboticScheduler",
+    "SchedulerState",
     "IRoof",
     "IRotation",
     "RotationState",

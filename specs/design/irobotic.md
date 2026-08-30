@@ -146,7 +146,11 @@ state on `open()`, `start()`, `stop()`, and on every task transition in `_run_th
 
 ### `Scheduler`
 
-`class Scheduler(Module, IStartStop, IRunnable, IRoboticScheduler)`. Publish `SchedulerState`
+`class Scheduler(Module, IRunnable, IRoboticScheduler)` — **not** `IStartStop` too: `IRoboticScheduler`
+already inherits it, and listing it explicitly *before* a subclass of it is an invalid MRO (Python
+raises `TypeError: Cannot create a consistent method resolution order`, confirmed against the real
+`IRunnable`/`IAbortable`/`IStartStop` chain). Same reasoning as `Mastermind` not listing `IStartStop`
+alongside `IAutonomous`/`IRobotic`. Publish `SchedulerState`
 on `open()`, `start()`, `stop()`, and after each `_schedule_worker` pass (`last_reschedule`).
 `get_schedule()` delegates to `self._schedule.get_schedule()`, maps observations to
 `RoboticTask`, filters to pending/in-progress, trims to `limit`.

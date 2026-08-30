@@ -57,7 +57,7 @@ def _retry_delay(attempt: int, cap: float = 30.0, base: float = 1.0) -> float:
     retries stay in lockstep across all of them, repeatedly hammering the server at the same
     instants; jitter decorrelates that so retries spread out over time instead.
     """
-    return random.uniform(0, min(cap, base * (2**attempt)))
+    return random.uniform(0, min(cap, base * (2 ** min(attempt, 60))))
 
 
 def _log_task_exception(task: asyncio.Task[Any]) -> None:
@@ -743,7 +743,8 @@ class XmppComm(Comm):
                 continue
             if (ev.__name__, ev.version) not in peer_sent_events:
                 continue
-            asyncio.create_task(self._subscribe_event_with_retry(module_name, ev))
+            task = asyncio.create_task(self._subscribe_event_with_retry(module_name, ev))
+            task.add_done_callback(_log_task_exception)
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
@@ -904,7 +905,13 @@ class XmppComm(Comm):
                     if (ev.__name__, ev.version) not in self._peer_sent_events.get(peer_jid, set()):
                         continue
                     peer_module = peer_jid[: peer_jid.index("@")]
-                    asyncio.create_task(self._subscribe_event_with_retry(peer_module, ev))
+                    task = asyncio.create_task(self._subscribe_event_with_retry(peer_module, ev))
+                    task.add_done_callback(_log_task_exception)
+            elif self._module is not None:
+                # send-only declaration -- pre-create the node now, before this module announces
+                # presence, so peers reacting to it in _got_online land their subscribe on the
+                # first attempt instead of falling back to the retry loop (see #824).
+                await self._create_node(self._event_node(self._module.name, ev))
 
         # update caps and send presence
         await self._safe_send(self.client.plugin["xep_0115"].update_caps)
@@ -939,6 +946,20 @@ class XmppComm(Comm):
             return parts[2]
         return None
 
+    async def _create_node(self, node: str) -> None:
+        """Pre-create a pubsub node so a subscriber doesn't have to wait for the first publish.
+
+        The realistic error here is <conflict/> on restart (nodes persist server-side), and a
+        permission denial should degrade gracefully to today's lazy auto-create, never block
+        startup -- so IqError is swallowed. IqTimeout is already retried inside _safe_send; if it
+        still runs out, a dead server shouldn't hang open() any longer than that existing budget,
+        so it's swallowed here too rather than propagating.
+        """
+        try:
+            await self._safe_send(self.client.plugin["xep_0060"].create_node, self._pubsub_service, node)
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout) as e:
+            log.debug("Could not pre-create pubsub node %s (%s), will lazy-create on first publish.", node, e)
+
     async def _subscribe_event_with_retry(self, peer_module: str, event_class: type[Event]) -> None:
         """Subscribe to a peer's event node, retrying until the node exists.
 
@@ -952,20 +973,28 @@ class XmppComm(Comm):
             return
         self._event_subscriptions.add(key)
         node = self._event_node(peer_module, event_class)
-        attempt = 0
-        while key in self._event_subscriptions:
-            try:
-                await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
-                return
-            except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
-                attempt += 1
-                if attempt == 30:
-                    log.warning(
-                        "Still failing to subscribe to event node %s after %d attempts, will keep retrying",
-                        node,
-                        attempt,
-                    )
-                await asyncio.sleep(_retry_delay(attempt))
+        try:
+            attempt = 0
+            while key in self._event_subscriptions:
+                try:
+                    await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
+                    return
+                except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                    attempt += 1
+                    if attempt == 30:
+                        log.warning(
+                            "Still failing to subscribe to event node %s after %d attempts, will keep retrying",
+                            node,
+                            attempt,
+                        )
+                    await asyncio.sleep(_retry_delay(attempt))
+        except Exception:
+            # an unexpected (non-IqError/IqTimeout) failure must not leave key permanently
+            # marking (peer_module, event_class) as subscribed while nothing is subscribed and
+            # nothing is retrying -- discard it so a later register_event()/_got_online()
+            # re-subscribes from scratch instead of short-circuiting on the stale key (#824).
+            self._event_subscriptions.discard(key)
+            raise
 
     def _handle_event_sync(self, msg: Any) -> None:
         """Synchronous entry point for the MatchXMLMask Callback.
@@ -1302,40 +1331,51 @@ class XmppComm(Comm):
         which exits the loop into the else clause (not the break path) and returns.
         Once subscribed, fetches the current value and dispatches it.
         """
-        attempt = 0
-        while node in self._state_node_handlers:
-            try:
-                await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
-                break
-            except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
-                attempt += 1
-                if attempt == 30:
-                    log.warning(
-                        "Still failing to subscribe to state node %s after %d attempts, will keep retrying",
-                        node,
-                        attempt,
-                    )
-                await asyncio.sleep(_retry_delay(attempt))
-        else:
-            return
-
-        # Fetch current value immediately after subscribing
         try:
-            result = await self._safe_send(
-                self.client.plugin["xep_0060"].get_items, self._pubsub_service, node, max_items=1
-            )
-            pubsub_ns = "http://jabber.org/protocol/pubsub"
-            pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
-            items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
-            item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
-            payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
-            if payload is not None and node in self._state_node_handlers and interface.state is not None:
-                _, callbacks = self._state_node_handlers[node]
-                state_obj = _xml_to_dataclass(payload, interface.state)
-                for cb in callbacks:
-                    cb(state_obj)
-        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
-            pass
+            attempt = 0
+            while node in self._state_node_handlers:
+                try:
+                    await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
+                    break
+                except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                    attempt += 1
+                    if attempt == 30:
+                        log.warning(
+                            "Still failing to subscribe to state node %s after %d attempts, will keep retrying",
+                            node,
+                            attempt,
+                        )
+                    await asyncio.sleep(_retry_delay(attempt))
+            else:
+                return
+
+            # Fetch current value immediately after subscribing
+            try:
+                result = await self._safe_send(
+                    self.client.plugin["xep_0060"].get_items, self._pubsub_service, node, max_items=1
+                )
+                pubsub_ns = "http://jabber.org/protocol/pubsub"
+                pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
+                items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
+                item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
+                payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
+                if payload is not None and node in self._state_node_handlers and interface.state is not None:
+                    _, callbacks = self._state_node_handlers[node]
+                    state_obj = _xml_to_dataclass(payload, interface.state)
+                    for cb in callbacks:
+                        cb(state_obj)
+            except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                pass
+        except Exception:
+            # an unexpected failure must not leave a _state_node_handlers entry behind forever --
+            # that would permanently short-circuit _subscribe_state (see its "already subscribed"
+            # branch) while nothing is actually subscribed and nothing is retrying (#824). A later
+            # _subscribe_state call starts a fresh subscribe from scratch instead; note it only
+            # carries the callback that triggered that fresh call, not any earlier ones -- accepted
+            # as strictly better than permanent silent loss for this catastrophic, unexpected case.
+            log.exception("Unexpected failure subscribing to state node %s, dropping stale subscription state.", node)
+            self._state_node_handlers.pop(node, None)
+            raise
 
     async def _subscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
         node = self._state_node(module, interface)
@@ -1349,7 +1389,8 @@ class XmppComm(Comm):
             # Subscribe in a background task so _get_client() returns immediately.
             # The retry loop handles the case where the publisher hasn't created
             # the node yet (e.g. GUI connects before camera's first publish).
-            asyncio.create_task(self._subscribe_with_retry(node, interface))
+            task = asyncio.create_task(self._subscribe_with_retry(node, interface))
+            task.add_done_callback(_log_task_exception)
 
         # Initial value is fetched in _subscribe_with_retry after the subscribe IQ succeeds
 

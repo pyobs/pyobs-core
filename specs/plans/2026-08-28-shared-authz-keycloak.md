@@ -29,8 +29,18 @@ Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin
       `is_active` check applies only when `enforce_local_active` is set. Refusal message
       "not authorized" (distinct from the old "pending activation").
 - [ ] `CallbackView`: same gate after validating the access token; error page for refused users.
+- [ ] `CallbackView`: store `refresh_token` from the token response alongside `id_token`
+      (currently discarded — only `access_token`/`id_token` are kept).
+- [ ] New middleware: once the access token's `exp` has passed, call `KeycloakClient.refresh()`
+      (exists in `client.py`, currently unused outside its own unit test), re-validate the
+      resulting claims, and re-run `authorize()`; end the session (force logout) if it now fails.
+      Without this a browser session never re-contacts Keycloak after login and revocation is
+      bounded only by `SESSION_COOKIE_AGE`, not by any token lifetime — see the design doc's
+      "Revocation model and freshness".
 - [ ] Tests for both paths (claims present/absent, both settings, no-settings passthrough,
-      `enforce_local_active` interplay); docs (`docs/source/configuration.rst`, README).
+      `enforce_local_active` interplay) plus the refresh path (expired access token triggers
+      refresh, refresh failure ends the session, `authorize()` re-run picks up a
+      newly-revoked group/role); docs (`docs/source/configuration.rst`, README).
 - [ ] Release (per repo conventions).
 
 Deployment note — keeping today's behavior (Keycloak auth only, manual `is_active` activation):
@@ -65,6 +75,9 @@ pyobs-portal:
 - [ ] `resolve_user`: mint active; sync `is_superuser` from the `portal-admin` client role at
       resolve time (frontend `_is_superuser` and `IsAdminUser` API views keep working); the
       `ADMIN_USERNAME` synced account must not be clobbered (admin_sync re-applies on migrate).
+      Sync sets `is_superuser` only — do **not** also set `is_staff`, which would additionally
+      unlock the raw Django admin backend (`admin_sync.py`'s `ADMIN_USERNAME` account sets both
+      deliberately; the Keycloak-derived sync must not copy that pattern).
 - [ ] Tests; release.
 
 pyobs-web-admin:

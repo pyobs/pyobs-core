@@ -42,23 +42,35 @@ checked in `KeycloakAuthentication` and `CallbackView`). Services stop gating on
 `is_active` (resolvers mint active users; the local `User` stays as per-service data). An opt-in
 `ENFORCE_LOCAL_ACTIVE` preserves a Keycloak-independent kill switch for deployments that want the
 old property; the default is fully centralized. Local privilege flags (portal/archive
-`is_superuser`) re-derive from client roles at resolve time, so existing permission-gated
-endpoints keep working. Granting/revoking is one Keycloak admin action per person, effective
-before the user's first login. Design: `specs/design/shared-authz-keycloak.md`.
+`is_superuser`) re-derive from client roles at resolve time — but only `is_superuser`, never also
+`is_staff`, which would separately unlock the raw Django admin backend — so existing
+permission-gated endpoints keep working without widening past what they check today.
+Granting/revoking is one Keycloak admin action per person, effective before the user's first
+login, and made to actually apply within one access-token lifetime by having `CallbackView` keep
+the refresh token and a new middleware silently refresh + re-authorize before it expires (this
+machinery doesn't exist in `pyobs-auth` today and is new work, not a settings change). Design:
+`specs/design/shared-authz-keycloak.md`.
 
 ### Consequences
 
 * Good — access is granted/revoked in one central place, effective before first login; no
   per-service activation anywhere.
-* Good — stays stateless: the JWKS-validated token already carries the claims; no new network
-  dependency, no coupling of service availability to Keycloak at request time.
+* Good — stays effectively stateless at request time: the JWKS-validated token already carries
+  the claims; no new network dependency per request, no coupling of service availability to
+  Keycloak at request time (the refresh call happens lazily, off the request hot path, at most
+  once per access-token lifetime).
 * Good — consistent for every service via one library change; future services get the same gate
   for free.
 * Good — preserves the shared-auth design doc's kill-switch property as opt-in
   (`ENFORCE_LOCAL_ACTIVE`) rather than silently dropping it.
-* Neutral — revocation is not instant: browser sessions pick up changes at next login, API
-  tokens at next issuance. Accepted at this scale; per-request Admin REST checks remain a
-  documented per-endpoint option.
+* Neutral — revocation is not instant: it lands within one access-token lifetime plus the
+  refresh-check interval, not at next request. Accepted at this scale; per-request Admin REST
+  checks remain a documented per-endpoint option.
+* Neutral — service-level privilege sync (e.g. portal's `is_superuser` from `portal-admin`) has
+  to be scoped deliberately: syncing `is_staff` alongside it would be a natural but wrong copy of
+  the pattern the local `ADMIN_USERNAME` account uses, since `is_staff` grants raw Django
+  admin-site access, a bigger and separate thing from the business-logic superuser checks it's
+  standing in for.
 * Neutral — the Keycloak admin console becomes the people-management surface; web-admin's Django
   admin loses its activation role.
 * Bad — one-time migration: existing users must be assigned their groups in Keycloak, and

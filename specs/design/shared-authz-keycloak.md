@@ -83,6 +83,13 @@ dependency, no per-request round trip.
 - The local `is_active` check remains only behind an opt-in `ENFORCE_LOCAL_ACTIVE` (default
   False), preserving the shared-auth design doc's "Keycloak-independent kill switch" property for
   deployments that want it — while the default moves the whole decision to Keycloak.
+- Session refresh: `CallbackView` currently discards the `refresh_token` from the token response
+  (only `access_token` and `id_token` are kept). It must instead store `refresh_token` alongside
+  `id_token`, and new middleware must call `KeycloakClient.refresh()` once the access token's
+  `exp` has passed, re-validate the resulting claims, and re-run the authorization gate —
+  ending the session if it now fails. Without this, a browser session never re-contacts Keycloak
+  after login, and revocation is bounded only by `SESSION_COOKIE_AGE` (whatever each service has
+  it set to), not by any token lifetime. See "Revocation model and freshness" below.
 
 ### Per-service changes
 
@@ -92,8 +99,12 @@ dependency, no per-request round trip.
 - Claim → local permission sync where a service has local privilege flags: portal syncs
   `is_superuser` from the `portal-admin` client role (archive from its analogue) each time a user
   is resolved, so the existing `IsAdminUser`/`is_superuser`-gated endpoints keep working without
-  rewriting them. The settings-configured `ADMIN_USERNAME` account (admin_sync) is untouched —
-  it's a local password account, not a Keycloak user.
+  rewriting them. This sync must set `is_superuser` only, **not** `is_staff` — `is_staff` is the
+  separate flag that unlocks the raw, unscoped Django admin backend (`/admin/`, every registered
+  model, no scoping), a bigger grant than portal's own business-logic superuser checks.
+  `admin_sync.py`'s `ADMIN_USERNAME` account sets both together deliberately (it's a local
+  password account meant to be a full admin, not a Keycloak user); the Keycloak-derived sync must
+  not copy that pattern. The `ADMIN_USERNAME` account itself is untouched by this change.
 - Locally-created users are unaffected: `createsuperuser` / Django-admin accounts authenticate
   via Django's `ModelBackend` with local passwords and never pass through the claims gate (the
   gate lives only in `KeycloakAuthentication` and `CallbackView`). The user-facing SSO login stays
@@ -104,18 +115,25 @@ dependency, no per-request round trip.
 
 ## Revocation model and freshness
 
-JWKS validation is stateless: claims are only as fresh as the token/session that carried them.
+JWKS validation is stateless: claims are only as fresh as the token/session that carried them. A
+plain Django session, once established, has no further contact with Keycloak until logout or the
+session cookie expires — "next login" is not by itself a meaningful bound, since a session can
+live for a full `SESSION_COOKIE_AGE` (whatever each service has that set to) with zero
+re-validation in between. pyobs-auth must actively re-check, not just check once at login:
 
-- **Browser sessions**: the login flow evaluates claims once at login and then holds a Django
-  session (the access token is not retained). Group/role changes take effect at the user's next
-  login (or when the Keycloak SSO session is re-established), and — for synced local flags like
-  `is_superuser` — on their next resolve.
+- **Browser sessions**: `CallbackView` stores the refresh token (alongside the existing
+  `id_token`) and new middleware silently refreshes the access token via
+  `KeycloakClient.refresh()` once it expires, re-validates the resulting claims, and re-runs the
+  authorization gate — ending the session if it now fails. This bounds revocation to one
+  access-token lifetime plus the refresh-check interval, not one `SESSION_COOKIE_AGE`. Synced
+  local flags like `is_superuser` are re-derived on the same refresh cycle.
 - **API bearer tokens**: changes take effect at the next token issuance; short access-token
   lifetimes make this minutes, not days.
 
-Accepted for this fleet: revocation within one login/token lifetime is fine at institute scale,
-and it buys statelessness plus no new runtime dependency. If hard revocation is ever needed for a
-specific endpoint, a per-request group check against the Keycloak Admin REST API
+Accepted for this fleet: revocation within one access-token lifetime is fine at institute scale,
+and it buys statelessness plus no new runtime dependency (the refresh call happens lazily, off
+the request hot path, not once per request). If hard revocation is ever needed for a specific
+endpoint, a per-request group check against the Keycloak Admin REST API
 (`GET /admin/realms/{realm}/users/{id}/groups`) is a documented, service-local option —
 explicitly not adopted now.
 

@@ -152,6 +152,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   username/password auth; supersedes Section 0 (portal brokered behind Keycloak) of the
   2026-08-12 plan. **proposed** (Repos: observation-portal, pyobs-auth)
 - [2026-08-28-precreate-pubsub-nodes.md](2026-08-28-precreate-pubsub-nodes.md) — pre-create pubsub
-  event/state nodes at module startup so subscriptions can land before the first publish
-  (XEP-0060 `create_node`); plus the #824 retry hardening (`_retry_delay` exponent clamp,
-  stuck-key cleanup in both retry loops). **proposed** (issue #824; Repos: pyobs-core)
+  event nodes (not state — enforce-state-publishing already narrows that gap) at module startup
+  so subscriptions can land before the first publish (XEP-0060 `create_node`); plus the #824 retry
+  hardening (`_retry_delay` exponent clamp, stuck-key cleanup in both retry loops). **proposed**
+  (issue #824; Repos: pyobs-core)

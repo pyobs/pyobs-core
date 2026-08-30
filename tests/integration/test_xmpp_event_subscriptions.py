@@ -418,9 +418,13 @@ async def test_handler_receives_event_from_send_only_peer(make_xmpp_comm, make_u
 
 
 async def _pubsub_node_ids(comm) -> set[str]:
-    """Node ids currently existing on comm's pubsub service, via disco#items."""
+    """Node ids currently existing on comm's pubsub service, via disco#items.
+
+    iq["disco_items"]["items"] yields plain (jid, node, name) tuples in the real slixmpp
+    return, not stanza or dict-like objects.
+    """
     result = await comm._safe_send(comm.client.plugin["xep_0060"].get_nodes, jid=comm._pubsub_service)
-    return {item["node"] for item in result["disco_items"]["items"]}
+    return {item[1] for item in result["disco_items"]["items"]}
 
 
 async def test_event_node_precreated_before_first_publish(make_xmpp_comm, make_unopened_comm):

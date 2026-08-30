@@ -1,4 +1,4 @@
-# Plan: pre-create pubsub event/state nodes at module startup
+# Plan: pre-create pubsub event nodes at module startup
 
 Status: **proposed**
 
@@ -51,10 +51,7 @@ attempt.
   puts the class into `_events_sent`); module `_open()`s call it after `comm.open()`
   (e.g. `basecamera.py:126`, `weather.py:92`) and before `startup()` announces presence.
   Local events never reach `_register_events` (`comm.py:455`), so nothing changes there.
-- **State nodes** — in `XmppComm.open()` (`xmppcomm.py:276`), next to the disco-feature
-  loop that already knows the exact set (`xmppcomm.py:352-356`): for each `i` in
-  `self._module.interfaces` with `i.has_own_state()`, create
-  `self._state_node(self._module.name, i)`.
+- **State nodes are out of scope** — see the discussion below. Only event nodes are pre-created.
 - **No config form**: pre-created nodes inherit the server's `default_node_config`, the
   same settings auto-created nodes get today (test ejabberd.yml: `max_items: 1`,
   `persist_items: true`, `deliver_payloads: true`), so effective behavior is identical —
@@ -64,7 +61,8 @@ attempt.
   subscribe; their own publish set is not part of this plan. Capabilities are deliberately
   absent too: they are served over disco#info (`_get_disco_info`, `xmppcomm.py:1139`) and
   fetched via `xep_0030.get_info` (`_get_capabilities`, `xmppcomm.py:1194`) — there is no
-  pubsub node for them, so there is nothing to pre-create.
+  pubsub node for them, so there is nothing to pre-create. State nodes are out of scope too —
+  see below.
 - **Bonus side-effect**: `_get_derived_events` expansion (`comm.py:437`) means peers
   subscribe to every `role="send"`-advertised node (`xmppcomm.py:740-746`), including
   derived classes that may never be published; pre-creating the full declared set removes
@@ -74,24 +72,41 @@ attempt.
 The retry loops stay as a backstop: a subscriber that starts *before* the publisher's
 startup finishes creating nodes, or while the publisher is offline, still needs them.
 
-### Relationship to the "publish state early" convention (2026-07-22)
+### Why state nodes are excluded (decided in review, 2026-08-30)
 
-The enforce-state-publishing plan (`2026-07-22-enforce-state-publishing.md`) made every stateful
-module publish a (possibly placeholder) value synchronously in `open()` — originally so the
-pubsub nodes exist (`dummysolartelescope.py` comment: "publish the disk centre as a placeholder
-so the pubsub nodes exist"). Pre-creation supersedes that *node-existence* purpose; the
-convention's second purpose — an initial value so `wait_for_state()` and GUI consumers don't
-wait for the first real publish — remains, since a pre-created-but-empty node delivers nothing
-until the first publish.
+Originally this plan pre-created state nodes too, alongside event nodes. Dropped after review:
 
-State nodes are still pre-created even though modules publish placeholders at startup: it makes
-node existence unconditional (independent of a module following the convention — that plan found
-three production violations), closes the subscribe-before-publisher-start window entirely, and is
-what would allow relaxing the convention later to placeholders only where a fail-safe value is
-semantically meaningful (e.g. `good=False` weather), not mechanically "so the node exists". The
-`Module.startup()` "no state has been published for it yet" check (`module.py:391-394`) keeps its
-regression-detection value but loses urgency — a severity downgrade from `log.error` is a
-possible follow-up, not part of this plan.
+- The enforce-state-publishing plan (`2026-07-22-enforce-state-publishing.md`) already makes
+  every stateful module publish a (possibly placeholder) value synchronously in `open()`
+  (`dummysolartelescope.py` comment: "publish the disk centre as a placeholder so the pubsub
+  nodes exist"). That means the window where a state node doesn't exist yet is only the handful
+  of awaited round-trips between `XmppComm.open()`'s connection finishing and the module's own
+  `open()` reaching its `set_state()` calls — normally sub-second, and already served fine by
+  the existing capped-backoff retry loop.
+- The failure mode Phase 2 actually fixes (#824 — thousands of retries, `_retry_delay`
+  overflowing at attempt 1024) needs a node that is *permanently* missing, not briefly slow to
+  appear. For state, permanently-missing only happens via an enforce-state-publishing violation
+  — a real but rare, separately-monitored bug class (three known instances: `DummyCamera`,
+  `FocusModel`, `BrotRaDecTelescope`). `Module.startup()`'s "no state has been published for it
+  yet" check (`module.py:391-394`) still catches that class regardless of node pre-creation,
+  since it watches `_published_state`, not node existence.
+- Events have no equivalent convention: `_get_derived_events` expansion (`comm.py:437`) means a
+  module's declared-send set routinely includes event classes it may never actually fire in a
+  given run, or ever, for a given deployment (see "Bonus side-effect" above). A peer subscribing
+  to one of those is retrying against a node that may legitimately never be created — the normal
+  case for events, not an edge case. That's the shape #824 is actually about.
+- Pre-creating state nodes also has a real implementation cost events don't: the natural
+  anchor point (next to the disco-feature loop, `xmppcomm.py:352-356`) is inside `_connect()`,
+  which runs *before* the XMPP connection is established (`await self._xmpp.connect()` is at
+  `xmppcomm.py:384`) — so a `create_node` call placed there would have no live stream to send
+  over. Fixing that means picking a different anchor and deciding whether it should re-run on
+  every `_connect()` (i.e. every reconnect, not just first `open()`). Not worth solving for a
+  gap that's already narrow and already covered.
+
+Net effect: Phase 2's retry hardening still applies to state regardless of this decision — a
+state subscriber that hits the pathological (violation-class) case gets a working, if
+occasionally slow, retry loop instead of a permanently stuck one. Nothing is lost by not
+pre-creating; the narrow gap that's left is already covered.
 
 ### Phase 2 — harden the retry machinery (issue #824)
 
@@ -126,11 +141,9 @@ Small, separable from Phase 1, but they are what make the backstop trustworthy:
       `IqError` → debug log, never raise.
 - [ ] Event nodes: `XmppComm._register_events` handler-`None` branch, guarded on
       `self._module is not None`.
-- [ ] State nodes: `XmppComm.open()` next to the disco-feature loop (`xmppcomm.py:352-356`),
-      for `has_own_state()` interfaces.
 - [ ] Confirm local events still bypass pubsub entirely (they never reach `_register_events`).
-- [ ] Unit test: `_event_node`/`_state_node` naming unchanged.
-- [ ] Integration test: publisher starts and never publishes → node exists server-side
+- [ ] Unit test: `_event_node` naming unchanged.
+- [ ] Integration test: publisher starts and never publishes → event node exists server-side
       (subscribe succeeds / `get_nodes` shows it).
 
 ### Phase 2: retry hardening (#824)

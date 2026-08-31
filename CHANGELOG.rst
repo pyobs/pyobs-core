@@ -1,4 +1,4 @@
-v2.0.1.dev1 (2026-08-30)
+v2.0.3.dev1 (2026-08-30)
 *************************
 * ``XmppComm`` now pre-creates a module's own event pubsub nodes at the moment it declares them
   (send-only ``register_event()``), instead of relying on the server's lazy auto-create-on-first-

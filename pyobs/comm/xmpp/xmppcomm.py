@@ -56,6 +56,11 @@ def _retry_delay(attempt: int, cap: float = 30.0, base: float = 1.0) -> float:
     every module reconnecting to ejabberd simultaneously after a mass restart). Fixed-interval
     retries stay in lockstep across all of them, repeatedly hammering the server at the same
     instants; jitter decorrelates that so retries spread out over time instead.
+
+    The `min(attempt, 60)` doesn't affect real backoff behavior -- with the defaults, `cap`
+    already clamps the delay from attempt 5 onward. It only exists so `2 ** attempt` can't grow
+    past what a float can hold for retry loops with no attempt limit (#824: attempt 1024 raised
+    OverflowError here and killed the retrying task).
     """
     return random.uniform(0, min(cap, base * (2 ** min(attempt, 60))))
 
@@ -910,7 +915,11 @@ class XmppComm(Comm):
             elif self._module is not None:
                 # send-only declaration -- pre-create the node now, before this module announces
                 # presence, so peers reacting to it in _got_online land their subscribe on the
-                # first attempt instead of falling back to the retry loop (see #824).
+                # first attempt instead of falling back to the retry loop (see #824). Sequential
+                # and awaited inside open(): each _create_node can burn up to ~90s against an
+                # unresponsive pubsub service (_safe_send's 5 x 15s timeout budget plus jittered
+                # waits between attempts), times the number of send-only events this module
+                # declares. Accepted since connect fails anyway in that scenario.
                 await self._create_node(self._event_node(self._module.name, ev))
 
         # update caps and send presence
@@ -1087,11 +1096,7 @@ class XmppComm(Comm):
         Args:
             method: Method to call.
             *args: Parameters for method.
-            **kwargs: Parameters for method.        except slixmpp.exceptions.IqError:
-            raise RemoteException("Could not send command.")
-        except slixmpp.exceptions.IqTimeout:
-            raise exc()
-
+            **kwargs: Parameters for method.
 
         Returns:
             Return value from method.
@@ -1348,34 +1353,39 @@ class XmppComm(Comm):
                     await asyncio.sleep(_retry_delay(attempt))
             else:
                 return
-
-            # Fetch current value immediately after subscribing
-            try:
-                result = await self._safe_send(
-                    self.client.plugin["xep_0060"].get_items, self._pubsub_service, node, max_items=1
-                )
-                pubsub_ns = "http://jabber.org/protocol/pubsub"
-                pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
-                items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
-                item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
-                payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
-                if payload is not None and node in self._state_node_handlers and interface.state is not None:
-                    _, callbacks = self._state_node_handlers[node]
-                    state_obj = _xml_to_dataclass(payload, interface.state)
-                    for cb in callbacks:
-                        cb(state_obj)
-            except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
-                pass
         except Exception:
-            # an unexpected failure must not leave a _state_node_handlers entry behind forever --
-            # that would permanently short-circuit _subscribe_state (see its "already subscribed"
-            # branch) while nothing is actually subscribed and nothing is retrying (#824). A later
-            # _subscribe_state call starts a fresh subscribe from scratch instead; note it only
-            # carries the callback that triggered that fresh call, not any earlier ones -- accepted
-            # as strictly better than permanent silent loss for this catastrophic, unexpected case.
-            log.exception("Unexpected failure subscribing to state node %s, dropping stale subscription state.", node)
+            # an unexpected failure in the subscribe loop itself must not leave a
+            # _state_node_handlers entry behind forever -- that would permanently short-circuit
+            # _subscribe_state (see its "already subscribed" branch) while nothing is actually
+            # subscribed and nothing is retrying (#824). A later _subscribe_state call starts a
+            # fresh subscribe from scratch instead; note it only carries the callback that
+            # triggered that fresh call, not any earlier ones -- accepted as strictly better than
+            # permanent silent loss for this catastrophic, unexpected case. Logged by the task's
+            # _log_task_exception done-callback, not here, to avoid printing the traceback twice.
             self._state_node_handlers.pop(node, None)
             raise
+
+        # Fetch current value immediately after subscribing. Deliberately outside the block
+        # above: a bad payload (_xml_to_dataclass) or a raising callback here must not be treated
+        # as a failed subscription -- the server-side subscription is live either way, so
+        # discarding the handler would just recreate #824's permanent-silent-loss failure via a
+        # different trigger while making it look like a subscribe failure.
+        try:
+            result = await self._safe_send(
+                self.client.plugin["xep_0060"].get_items, self._pubsub_service, node, max_items=1
+            )
+            pubsub_ns = "http://jabber.org/protocol/pubsub"
+            pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
+            items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
+            item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
+            payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
+            if payload is not None and node in self._state_node_handlers and interface.state is not None:
+                _, callbacks = self._state_node_handlers[node]
+                state_obj = _xml_to_dataclass(payload, interface.state)
+                for cb in callbacks:
+                    cb(state_obj)
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+            pass
 
     async def _subscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
         node = self._state_node(module, interface)

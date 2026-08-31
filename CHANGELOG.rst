@@ -1,5 +1,14 @@
-v2.0.3.dev1 (2026-08-30)
-*************************
+v2.1.0 (2026-08-31)
+********************
+* Added ``IRobotic`` (executor) / ``IRoboticScheduler`` (planner) interfaces, wired into
+  ``Mastermind`` and ``Scheduler`` respectively (issue #825). ``IRobotic`` pushes ``RoboticState``
+  (current task, next-up, ``cant_run_reason``) on every transition; ``IRoboticScheduler`` adds
+  ``get_schedule(limit)``, returning pending/in-progress entries only, capped server-side
+  regardless of the requested limit. ``TaskStartedEvent``/``TaskFinishedEvent``/``TaskFailedEvent``
+  now also carry ``obsnum``. See ``specs/design/irobotic.md``.
+* Added ``DummyMastermind``/``DummyScheduler`` (``pyobs.modules.robotic``), simulating a robotic
+  schedule so pyobs-gui's new ``RoboticWidget``/``ScheduleWidget`` have real state transitions to
+  develop and test against without live hardware.
 * ``XmppComm`` now pre-creates a module's own event pubsub nodes at the moment it declares them
   (send-only ``register_event()``), instead of relying on the server's lazy auto-create-on-first-
   publish. Closes the window where a peer connecting before a module's first publish could never
@@ -10,6 +19,10 @@ v2.0.3.dev1 (2026-08-30)
   high attempt counts (e.g. attempt 1024), and both event/state subscribe-retry background tasks
   now discard their tracked key/handler on an unexpected failure instead of leaving a permanently
   stuck "subscribed" marker behind with nothing actually subscribed and nothing retrying.
+* Fixes issue #829: ``DummyCamera`` exposures were broken under the pinned photutils 3.0 --
+  ``make_model_image`` looks up source positions by the model's own parameter names (``x_0``/
+  ``y_0`` for ``Moffat2D``), not by the sources table's column names (``x_mean``/``y_mean``); now
+  passes ``params_map`` to bridge the two.
 
 v2.0.0 (2026-08-26)
 *******************

@@ -1,3 +1,9 @@
+v2.1.1.dev1 (2026-08-31)
+*************************
+* Fixes issue #830: ``http_request_with_retries`` no longer logs a WARNING on every failed retry
+  attempt. Retries now stay quiet for the first 60s a URL has been failing (covering a typical
+  short pyobs-portal restart), then warn at most once per minute until the request succeeds again.
+
 v2.1.0 (2026-08-31)
 ********************
 * Added ``IRobotic`` (executor) / ``IRoboticScheduler`` (planner) interfaces, wired into

@@ -1,10 +1,11 @@
 import asyncio
 import logging
+import time
 from typing import Any, cast
 
 import aiohttp
 from tenacity import (
-    before_sleep_log,
+    RetryCallState,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
@@ -12,6 +13,16 @@ from tenacity import (
 )
 
 log = logging.getLogger(__name__)
+
+# Per-URL (first-failure time, last-warned time) for throttling retry warnings, see
+# _before_sleep. A URL is only present here while it is currently failing; a successful
+# request clears its entry.
+_failure_state: dict[str, tuple[float, float | None]] = {}
+
+# Retries stay quiet for this long after the first failure (an in-progress deploy of the
+# remote service typically resolves within this window), then warn at most this often.
+_WARN_AFTER_SECONDS = 60.0
+_WARN_INTERVAL_SECONDS = 60.0
 
 
 class InvalidResponseError(RuntimeError):
@@ -24,11 +35,25 @@ class InvalidResponseError(RuntimeError):
         super().__init__(f"Invalid response from server: HTTP {status}")
 
 
+def _before_sleep(retry_state: RetryCallState) -> None:
+    url = cast(str, retry_state.kwargs.get("url", retry_state.args[1] if len(retry_state.args) > 1 else None))
+    now = time.monotonic()
+    first_failure, last_warned = _failure_state.setdefault(url, (now, None))
+
+    exc = retry_state.outcome.exception() if retry_state.outcome else None
+    elapsed = now - first_failure
+    if elapsed >= _WARN_AFTER_SECONDS and (last_warned is None or now - last_warned >= _WARN_INTERVAL_SECONDS):
+        log.warning("Still failing to reach %s after %.0fs: %s: %s", url, elapsed, type(exc).__name__, exc)
+        _failure_state[url] = (first_failure, now)
+    else:
+        log.debug("Retrying %s: %s: %s", url, type(exc).__name__, exc)
+
+
 @retry(
     retry=retry_if_exception_type((aiohttp.ClientError, asyncio.TimeoutError, RuntimeError)),
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
-    before_sleep=before_sleep_log(log, logging.WARNING),
+    before_sleep=_before_sleep,
     reraise=True,
 )
 async def http_request_with_retries(
@@ -42,6 +67,7 @@ async def http_request_with_retries(
             except (aiohttp.ContentTypeError, ValueError):
                 pass
             raise InvalidResponseError(response.status, body)
+        _failure_state.pop(url, None)
         return cast(dict[str, Any], await response.json())
 
 

@@ -1,6 +1,7 @@
 # Plan: Attach observation-portal to Keycloak via generic OIDC (mozilla-django-oidc)
 
-Our self-hosted `observation-portal` (the MONET fork of the OCS
+Our self-hosted `observation-portal` ([thusser/observation-portal](https://github.com/thusser/observation-portal),
+the MONET fork of the OCS
 [observatorycontrolsystem/observation-portal](https://github.com/observatorycontrolsystem/observation-portal)
 project) currently authenticates entirely against its own local Django user database. This plan
 gives it OIDC login (Keycloak in our deployment, any OIDC provider in general) using

@@ -4,7 +4,6 @@ from typing import Any
 
 import slixmpp
 import slixmpp.xmlstream
-from slixmpp.xmlstream import StanzaBase
 
 from pyobs.comm.xmpp.xep_0009.rpc import XEP_0009
 from pyobs.comm.xmpp.xep_0009_timeout import XEP_0009_timeout
@@ -71,7 +70,6 @@ class XmppClient(slixmpp.ClientXMPP):
         self.add_event_handler("failed_auth", lambda ev: self._auth(False))
         self.add_event_handler("failed_all_auth", self.failed_all_auth)
         self.add_event_handler("stream_error", self._stream_error)
-        self.add_filter("in", self._filter_messages)
 
     def send_presence(self, *args: Any, **kwargs: Any) -> Any:
         """Override slixmpp's send_presence to hold back every presence broadcast -- the initial
@@ -111,13 +109,6 @@ class XmppClient(slixmpp.ClientXMPP):
         forever. Leaving reconnection solely to XmppComm avoids that.
         """
         return self.disconnect(0.0, reason=reason)
-
-    def _filter_messages(self, stanza: StanzaBase) -> StanzaBase | None:
-        # if a user with same JID is already connected, we get a conflict
-        if '<conflict xmlns="urn:ietf:params:xml:ns:xmpp-stanzas" />' in str(stanza):
-            self._jid_conflict = True
-            return None
-        return stanza
 
     def _stream_error(self, error: Any) -> None:
         """Called when the server sends a <stream:error/>, e.g. when this connection gets

@@ -1,254 +1,295 @@
-# Plan: Attach observation-portal to Keycloak via `pyobs-auth`
+# Plan: Attach observation-portal to Keycloak via generic OIDC (mozilla-django-oidc)
 
 Our self-hosted `observation-portal` (the MONET fork of the OCS
 [observatorycontrolsystem/observation-portal](https://github.com/observatorycontrolsystem/observation-portal)
 project) currently authenticates entirely against its own local Django user database. This plan
-makes it a first-class `pyobs-auth` client like pyobs-archive / pyobs-portal / pyobs-web-admin:
-the portal's login page gains a Keycloak login button and its API accepts Keycloak bearer tokens —
-**additive and env-gated** on top of the existing local username/password auth, with
-`KEYCLOAK_SERVER_URL` unset disabling Keycloak entirely.
+gives it OIDC login (Keycloak in our deployment, any OIDC provider in general) using
+`mozilla-django-oidc` — **not** `pyobs-auth`, specifically so the feature has no pyobs dependency
+and is realistic to submit upstream to OCS. It's **additive and config-gated** on top of the
+existing local username/password auth: `OIDC_ENABLED` unset/false ⇒ portal behaves exactly as
+today.
 
-Status: proposed, 2026-08-28. No GitHub issue filed yet — file one before implementation if the
-repo convention wants it.
+Status: proposed, 2026-08-31 (revised from 2026-08-28 — see "Direction change" below). No GitHub
+issue filed yet.
 
-Repos: observation-portal (MONET fork), pyobs-auth.
+Repos: observation-portal (MONET fork). No pyobs-auth/pyobs-core dependency — this plan does not
+touch pyobs-auth.
 
-## Relationship to prior auth work (direction change)
+## Direction change from the 2026-08-28 version
 
-- **ADR 0011** (parallel Keycloak + "odin" backends) was superseded 2026-08-19 by the brokering
-  design; not relevant here.
-- **`specs/design/shared-auth-keycloak.md` + `specs/plans/2026-08-12-shared-auth-keycloak.md`
-  (Section 0)** — the original direction was to *broker* observation-portal **behind** Keycloak:
-  enable OIDC on the portal's own `django-oauth-toolkit` provider, register the portal in Keycloak
-  as an upstream Identity Provider (pure Keycloak admin config, tracked in #748, still open).
-  **This plan changes that direction**: the portal becomes a *relying party* (client) of Keycloak
-  instead, exactly like the other pyobs services. Users then log into the portal with Keycloak
-  identities directly, which makes brokering the portal behind Keycloak unnecessary for the MONET
-  deployment — Section 0 is superseded. The design doc's "observation-portal is brokered behind
-  Keycloak" stance gets a status note (section 10) when this lands.
-- **`specs/plans/2026-08-21-keycloak-idp-hint-login.md`** — `pyobs-auth >= 2.0.0.dev9` ships
-  `IDP_HINT`/`kc_idp_hint`; the portal adopts the same dual-button login-page pattern as
-  archive/portal/web-admin.
-- **Single-issuer stance is unaffected**: `pyobs_auth.authentication.KeycloakAuthentication`
-  validates Keycloak tokens only; the portal's own OAuth2 provider role (`oauth2_provider`,
-  `OAUTH_CLIENT_APPS_BASE_URLS`, `OAUTH_SERVER_KEY`) and its tokens keep working unchanged
-  (stacking-safety: KeycloakAuthentication defers on non-matching issuers, section 5).
+The original version of this plan ported the pyobs-auth integration pattern (`PYOBS_AUTH` settings
+dict, `pyobs_auth.authentication.KeycloakAuthentication`, `pyobs_auth.urls`) used by
+pyobs-archive/pyobs-portal/pyobs-web-admin, and required a Django 4.2 → 5.2 upgrade first
+(`pyobs-auth` pins `Django>=5.2,<7`).
+
+That's dropped. Reasoning:
+
+- `pyobs-auth` is a pyobs-specific package (our conventions, our IDP_HINT pattern) — a PR adding a
+  dependency on it would never be accepted into `observatorycontrolsystem/observation-portal`
+  upstream.
+- `mozilla-django-oidc` (checked 2026-08-31, current release 5.0.2) declares
+  `Requires-Dist: Django>=4.2` and `Requires-Python: >=3.10`, both of which the portal already
+  satisfies (Django 4.2.30, Python 3.10/3.11). **The Django 5.2 upgrade is not a prerequisite for
+  this plan** — it may still be worth doing for other reasons, but nothing here gates on it.
+
+This still supersedes Section 0 of `specs/plans/2026-08-12-shared-auth-keycloak.md` (brokering the
+portal *behind* Keycloak as an upstream IdP) for the same reason as before: the portal becomes a
+relying party of Keycloak directly, which makes brokering unnecessary for MONET. The design doc's
+"observation-portal is brokered behind Keycloak" stance still gets the Section 10 status note.
+
+`specs/plans/2026-08-21-keycloak-idp-hint-login.md`'s dual-button login pattern
+(`IDP_HINT`/`kc_idp_hint`) is **not directly reusable** — it's a `pyobs-auth` feature. Section 6
+below reimplements the equivalent behavior generically.
 
 ## Problem
 
-The portal today (`observation_portal/`):
+Unchanged from the original survey of `observation_portal/`:
 
-- **Login**: session-based `CustomLoginView` (username/email + password,
-  `accounts/views.py:132`) + JSON `ApiLoginView` (`accounts/views.py:174`); self-registration via
-  `django-registration-redux` (`accounts/urls.py:15`, `CustomRegistrationView`).
+- **Login**: session-based `CustomLoginView` (`accounts/views.py:132`) + JSON `ApiLoginView`
+  (`accounts/views.py:174`); self-registration via `django-registration-redux`
+  (`accounts/urls.py:15`).
 - **Backends** (`settings.py:205`): `EmailOrUsernameModelBackend`, Django `ModelBackend`,
   `oauth2_provider.backends.OAuth2Backend` (portal-issued tokens only).
 - **DRF auth** (`settings.py:303`): Session, Token (`rest_framework.authtoken`), and
   `oauth2_provider.contrib.rest_framework.OAuth2Authentication`.
-- **Users**: standard `django.contrib.auth.User` + a required `Profile` (`accounts/models.py:18`)
+- **Users**: standard `django.contrib.auth.User` + a required `Profile` (`accounts/models.py:18`),
   created by the registration flow — **not** by a signal, so any user minted outside registration
-  (which is what `resolve_user` will do) must create its Profile explicitly.
-- **Dependencies**: Django 4.2.30 (`poetry.lock`), Python 3.10/3.11 (Dockerfile
-  `python:3.10-slim`, CI matrix `.github/workflows/build.yaml`).
+  must create its `Profile` explicitly.
 
-No shared identity: a user authenticated against any pyobs web service has no way to be
-recognized by the portal, and vice versa — the gap this plan closes, consistent with the
-shared-auth design.
+No shared identity: a user authenticated against any pyobs web service, or any other OIDC-fronted
+system, has no way to be recognized by the portal.
 
 ## Approach
 
-Port the pyobs-portal integration (2026-08-12 plan section 3) into the portal's existing
-`observation_portal.accounts` app, using pyobs-archive's user-mapping shape
-(`Profile.keycloak_sub`, section 3). Everything is additive: local username/password login,
-self-registration, the portal's OAuth2 *provider* role for downstream LCO apps, and DRF token auth
-all stay. `KEYCLOAK_SERVER_URL` unset ⇒ portal behaves exactly as today.
+Two layers, deliberately kept separable:
 
-## 0. Prerequisite: Django 5.2 upgrade (gating)
+- **Part A — generic, upstream-submittable.** Standard `mozilla-django-oidc` wiring: login/callback/
+  logout views, a custom `OIDCAuthenticationBackend` subclass for user resolution, DRF bearer-token
+  auth via `mozilla_django_oidc.contrib.drf`, everything gated by one `OIDC_ENABLED` flag and
+  generic `OIDC_*` settings. Nothing in this layer names Keycloak, MONET, or pyobs. This is the part
+  a PR to `observatorycontrolsystem/observation-portal` would contain.
+- **Part B — MONET deployment config.** The actual `OIDC_OP_*` endpoint values, client
+  ID/secret, and realm for our Keycloak instance. Lives in MONET's private site-config repo /
+  deployment env files, never in this repo or any public one
+  ([[feedback_no_internal_names_in_public_repos]]).
 
-`pyobs-auth` requires `Django>=5.2,<7` and `Python>=3.11`; the portal is on Django 4.2.30 /
-Python 3.10+. This is the only hard external prerequisite and the biggest chunk of the plan —
-**recommend running it as its own track/plan first** if it balloons.
+## Part A: generic OIDC support in observation-portal
 
-- [ ] `pyproject.toml`: `django = "^4"` → `^5.2` (or 6.x, within pyobs-auth's `<7` pin);
-      `python = ">=3.9,<3.12"` → `>=3.11`.
-- [ ] Dockerfile (`python:3.10-slim` → 3.11/3.12-slim) and CI matrix (drop 3.10).
-- [ ] Dependency audit for Django 5.2:
-      - `django-oauth-toolkit ^2` → `^3` (DOT 3.0 supports Django 5.2; needed for the portal's
-        OIDC provider role).
-      - `django-registration-redux ^2.9` → `>=2.13`.
-      - `drf-yasg ^1.20` → `>=1.21.10`.
-      - Verify/`bump`: `django-filter`, `django-bootstrap4 <4.0` (effectively unmaintained — real
-        risk for the Django-5 upgrade; fallback `django-bootstrap5` or drop if unused beyond the
-        login/registration templates), `django-storages`, `django-extensions`, `django-cors-headers`,
-        `django-dramatiq`, `django-health-check`, `django-object-actions`.
-- [ ] Settings sweep for removed/renamed Django 5 APIs (concrete hits already in
-      `observation_portal/settings.py`):
-      - `USE_L10N` (line 240) — removed in Django 5.0, delete.
-      - `STATICFILES_STORAGE` / `DEFAULT_FILE_STORAGE` (lines 261, 265) — removed in Django 5.1,
-        migrate to the `STORAGES` dict.
-      - grep for deprecated `django.utils.timezone.utc` / other 4.x deprecations; run
-        `manage.py check --deploy` and the test suite to surface the rest.
+### A0. Dependency + settings gate
 
-## 1. Dependency + app wiring
-
-- [ ] `pyproject.toml`: add `pyobs-auth>=2.0.0.dev9` (pin whatever dev version is current at
-      implementation, per `do-python-release` conventions).
-- [ ] `observation_portal/settings.py` `INSTALLED_APPS`: add `'pyobs_auth'` (no new local app —
-      resolver/model/context-processor live in the existing `observation_portal.accounts`,
-      mirroring pyobs-archive rather than pyobs-portal's separate `authentication` app).
-
-## 2. `PYOBS_AUTH` settings (env-driven)
-
-- [ ] `observation_portal/settings.py`: add the `PYOBS_AUTH` dict, matching the other services:
-
+- [ ] `pyproject.toml`: add `mozilla-django-oidc[drf]` (pin latest stable — 5.0.2 as of
+      2026-08-31; re-check at implementation time).
+- [ ] `observation_portal/settings.py`: single toggle,
       ```python
-      PYOBS_AUTH = {
-          "SERVER_URL": os.getenv("KEYCLOAK_SERVER_URL", ""),
-          "REALM": os.getenv("KEYCLOAK_REALM", "pyobs"),
-          "CLIENT_ID": os.getenv("KEYCLOAK_CLIENT_ID", "observation-portal"),
-          "CLIENT_SECRET": os.getenv("KEYCLOAK_CLIENT_SECRET", ""),
-          "REDIRECT_URI": os.getenv("KEYCLOAK_REDIRECT_URI", ""),
-          "POST_LOGOUT_REDIRECT_URI": os.getenv("KEYCLOAK_POST_LOGOUT_REDIRECT_URI", ""),
-          "IDP_HINT": os.getenv("KEYCLOAK_IDP_HINT", ""),
-          "IDP_LABEL": os.getenv("KEYCLOAK_IDP_LABEL", ""),
-          "USER_RESOLVER": "observation_portal.accounts.keycloak.resolve_user",
-      }
+      OIDC_ENABLED = os.getenv("OIDC_ENABLED", "False").lower() == "true"
       ```
+      Everything below (`AUTHENTICATION_BACKENDS` entry, DRF authenticator, URL include, context
+      processor) is added conditionally on this flag, at settings/urls load time — **this is the
+      literal config option**: false ⇒ zero behavioral change from today, no new code path
+      executes, no network calls to any OIDC provider happen.
+- [ ] Generic `OIDC_*` env vars, read only when `OIDC_ENABLED` (mirrors mozilla-django-oidc's own
+      naming, not Keycloak-specific):
+      ```python
+      if OIDC_ENABLED:
+          OIDC_RP_CLIENT_ID = os.environ["OIDC_RP_CLIENT_ID"]
+          OIDC_RP_CLIENT_SECRET = os.environ["OIDC_RP_CLIENT_SECRET"]
+          OIDC_OP_AUTHORIZATION_ENDPOINT = os.environ["OIDC_OP_AUTHORIZATION_ENDPOINT"]
+          OIDC_OP_TOKEN_ENDPOINT = os.environ["OIDC_OP_TOKEN_ENDPOINT"]
+          OIDC_OP_USER_ENDPOINT = os.environ["OIDC_OP_USER_ENDPOINT"]
+          OIDC_OP_JWKS_ENDPOINT = os.environ["OIDC_OP_JWKS_ENDPOINT"]
+          OIDC_RP_SIGN_ALGO = os.getenv("OIDC_RP_SIGN_ALGO", "RS256")
+          OIDC_OP_LOGOUT_ENDPOINT = os.getenv("OIDC_OP_LOGOUT_ENDPOINT", "")  # optional, see A6
+          AUTHENTICATION_BACKENDS = AUTHENTICATION_BACKENDS + [
+              "observation_portal.accounts.oidc.ObservationPortalOIDCBackend",
+          ]
+      ```
+      **Explicit endpoints, not discovery-URL auto-fetch.** `mozilla-django-oidc` doesn't do
+      `.well-known/openid-configuration` discovery itself. We could add a small helper that fetches
+      it once at settings-load time from `OIDC_OP_ISSUER` — deliberately *not* doing that: it turns
+      "app fails to start" into a new failure mode whenever the OIDC provider is briefly
+      unreachable during a deploy/restart. Four explicit endpoint env vars is more typing but keeps
+      Django startup independent of the OIDC provider's uptime.
+- [ ] Document the `OIDC_*` env vars in `README.md`'s environment-variable table.
 
-      Unset `SERVER_URL` disables Keycloak entirely (pyobs-auth's `get_settings()` raises only on
-      first use — harmless while nothing presents a Keycloak token or hits the login views).
-- [ ] Document the `KEYCLOAK_*` env vars in `README.md`'s environment-variable table and in
-      `deploy/.env` / `k8s/envs/local/settings.env` (next to the existing auth-related vars).
+### A1. User mapping — `Profile.oidc_sub` + custom backend
 
-## 3. User mapping — `Profile.keycloak_sub` + `resolve_user`
+- [ ] `observation_portal/accounts/models.py`: add `oidc_sub = models.CharField(max_length=255,
+      unique=True, blank=True, null=True)` to `Profile` + migration. (Generic name — not
+      `keycloak_sub` — since Part A doesn't know it's Keycloak.)
+- [ ] New `observation_portal/accounts/oidc.py`:
+      ```python
+      from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
-Mirror pyobs-archive's implemented pattern (`Profile.keycloak_sub` migration + resolver), not
-pyobs-portal's separate `KeycloakIdentity` model — the portal already has a `Profile`
-(`accounts/models.py:18`).
+      class ObservationPortalOIDCBackend(OIDCAuthenticationBackend):
+          def filter_users_by_claims(self, claims):
+              sub = claims.get("sub")
+              if sub:
+                  matches = self.UserModel.objects.filter(profile__oidc_sub=sub)
+                  if matches.exists():
+                      return matches
+              return super().filter_users_by_claims(claims)  # falls back to email match
 
-- [ ] `observation_portal/accounts/models.py`: add `keycloak_sub = models.CharField(max_length=255,
-      unique=True, blank=True, null=True)` to `Profile` + migration. Keycloak's `sub` claim is the
-      join key (stable; email/username can change), per the design doc.
-- [ ] New `observation_portal/accounts/keycloak.py` with `resolve_user(claims) -> User`, shaped like
-      `pyobs_portal.authentication.keycloak.resolve_user`:
-      - `sub` → `Profile.keycloak_sub` lookup first;
-      - else match existing `User` by email, falling back to username (use `.first()` — Django's
-        `User.email` is not unique, duplicates exist in practice);
-      - else mint `User(username=..., email=..., is_active=False)` **and** a `Profile` with
-        `institution=''`, `title=''` (non-blank CharFields; no auto-creation signal exists — the
-        registration flow creates Profiles today). Note: `Profile` post-save fires
-        `update_or_create_client_applications_user` (`accounts/signals/handlers.py:22`) — harmless,
-        it no-ops without `OAUTH_CLIENT_APPS_BASE_URLS`.
-      - store/refresh `Profile.keycloak_sub`; refuse/inactive users are handled by pyobs-auth
-        (new accounts minted inactive ⇒ per-portal activation gate, unchanged from the design).
-- [ ] Decision to confirm (open question below): auto-link existing portal users by email on first
-      Keycloak login (design-doc default, what archive/portal do) vs. requiring an explicit
-      admin-side link. Recommended: auto-link by email.
+          def verify_claims(self, claims):
+              if not super().verify_claims(claims):
+                  return False
+              # mozilla-django-oidc does NOT verify the `aud` claim by default
+              # (jwt.decode(..., options={"verify_aud": False}) in _verify_jws) —
+              # verify it explicitly against our client id.
+              aud = claims.get("aud")
+              if isinstance(aud, str):
+                  aud = [aud]
+              return self.OIDC_RP_CLIENT_ID in (aud or [])
 
-## 4. URLs — mount `pyobs_auth.urls`
+          def create_user(self, claims):
+              user = super().create_user(claims)
+              user.is_active = False  # per-portal activation gate, unchanged from today
+              user.save(update_fields=["is_active"])
+              Profile.objects.create(
+                  user=user, institution="", title="", oidc_sub=claims.get("sub", ""),
+              )
+              return user
 
-- [ ] `observation_portal/urls.py`: add `path('accounts/keycloak/', include('pyobs_auth.urls'))`
-      **before** `re_path(r'^accounts/', include(accounts_urls))` (line 119). Ordering matters:
-      `accounts/urls.py` ends in the catch-all
-      `re_path(r'', include('registration.backends.default.urls'))`, which would swallow
-      `accounts/keycloak/...` and 404 it.
-- [ ] Resulting endpoints: `/accounts/keycloak/login/`, `/callback/`, `/logout/`
-      (`pyobs_auth.urls`). No change to the portal's own `/accounts/login/` etc.
+          def update_user(self, user, claims):
+              profile = user.profile
+              sub = claims.get("sub", "")
+              if sub and profile.oidc_sub != sub:
+                  profile.oidc_sub = sub
+                  profile.save(update_fields=["oidc_sub"])
+              return user
+      ```
+      `Profile` post-save fires `update_or_create_client_applications_user`
+      (`accounts/signals/handlers.py:22`) — harmless, no-ops without `OAUTH_CLIENT_APPS_BASE_URLS`,
+      same as the original plan noted.
+- [ ] Auto-link by email is the effective default (`filter_users_by_claims` falls through to the
+      base class's email match) — same recommendation as the 2026-08-28 version, same
+      non-unique-email caveat (base class uses `.filter()`, not `.first()` — check whether multiple
+      matches should raise or pick one; mozilla-django-oidc's base `get_or_create_user` raises
+      `SuspiciousOperation` on multiple matches, which is stricter than the original plan's
+      `.first()` — decide whether that's acceptable or needs overriding).
 
-## 5. DRF authentication — stack `KeycloakAuthentication`
+### A2. URLs
 
-- [ ] `observation_portal/settings.py` `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']`: append
-      `'pyobs_auth.authentication.KeycloakAuthentication'` after
-      `'oauth2_provider.contrib.rest_framework.OAuth2Authentication'`. Safe to stack:
-      KeycloakAuthentication returns `None` (defers) for any Bearer token whose issuer isn't the
-      Keycloak realm, so portal-minted OAuth2 tokens still authenticate via the oauth2_provider
-      class.
-- [ ] No `AUTHENTICATION_BACKENDS` change — the redirect-based OIDC flow is handled by
-      `pyobs_auth.views`, not a backend class (see design doc).
+- [ ] `observation_portal/urls.py`:
+      ```python
+      if settings.OIDC_ENABLED:
+          urlpatterns = [path("oidc/", include("mozilla_django_oidc.urls"))] + urlpatterns
+      ```
+      Prepend (not append) for the same reason as the original plan's ordering note: the portal's
+      `accounts/urls.py` ends in a catch-all `re_path(r'', include('registration.backends...'))`
+      that would otherwise swallow `oidc/...`.
+- [ ] Resulting endpoints when enabled: `/oidc/authenticate/`, `/oidc/callback/`, `/oidc/logout/`.
 
-## 6. Login page + context processor
+### A3. DRF authentication — bearer tokens
 
-- [ ] New `observation_portal/accounts/context_processors.py` with `keycloak(request)` exposing
-      `keycloak_login_enabled`, `keycloak_idp_hint`, `keycloak_idp_label` (mirror
-      `pyobs_portal/frontend/context_processors.py`); register it in
-      `settings.py` `TEMPLATES['OPTIONS']['context_processors']`.
-- [ ] `observation_portal/accounts/templates/registration/login.html`: add the Keycloak buttons
-      behind `{% if keycloak_login_enabled %}` — dual-button pattern when `IDP_HINT` is configured
-      ("Log in with {{ keycloak_idp_label }}" via `{% url 'pyobs_auth:login' %}` and "Log in with
-      local Keycloak account" via `?idp_hint=`), single button otherwise; **preserve `next` with
-      `|urlencode`** on every link (and fix the existing unescaped `next` in the local form while
-      the file is open). The local username/password form stays as-is.
+- [ ] `observation_portal/settings.py`, conditionally on `OIDC_ENABLED`, append
+      `"mozilla_django_oidc.contrib.drf.OIDCAuthentication"` to
+      `REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]`, **after**
+      `OAuth2Authentication` — ordering here is load-bearing in a way it wasn't in the original
+      plan (see the open question below).
 
-## 7. Logout
+### A4. Login page + context processor
 
-- [ ] The portal has no user-facing logout URL today (`accounts/urls.py` only wires login/register/
-      password views; logout is admin-only). Wire the site's logout action to POST
-      `{% url 'pyobs_auth:logout' %}` (pyobs-auth's RP-Initiated Logout ends the Keycloak SSO
-      session for Keycloak-originated sessions, and does an ordinary local logout otherwise), or
-      add a plain `django.contrib.auth.urls` logout include as the non-Keycloak fallback.
+- [ ] New `observation_portal/accounts/context_processors.py`: `oidc(request)` exposing
+      `oidc_login_enabled` (= `settings.OIDC_ENABLED`) and an `oidc_login_url` (reverse of
+      `oidc_authentication_init`, preserving `next`); register in `TEMPLATES['OPTIONS']
+      ['context_processors']`.
+- [ ] `templates/registration/login.html`: single "Log in with OIDC" / provider-labeled button
+      behind `{% if oidc_login_enabled %}`, `next` preserved via `|urlencode` (and fix the existing
+      unescaped `next` in the local form while the file is open). No dual-button/IDP-hint pattern
+      here — that's Keycloak-specific UX (multiple upstream IdPs behind one realm), doesn't belong
+      in the generic layer. If MONET wants it, it's a Part B template override, not upstream code.
 
-## 8. Interplay with existing portal features
+### A5. Logout
 
-- [ ] Self-registration (`CustomRegistrationView`, `registration.backends.default.urls`) untouched —
-      local accounts remain a first-class path.
-- [ ] `password_expiration` (`CustomLoginView.get_success_url`, `ApiLoginView`) applies to
-      local-password logins only; Keycloak sessions bypass those views entirely — no change.
-- [ ] Portal's OAuth2 provider role (`/o/` endpoints, `OAUTH2_PROVIDER` OIDC settings,
-      `OAUTH_CLIENT_APPS_BASE_URLS`, `OAUTH_SERVER_KEY`) untouched — this plan does not enable OIDC
-      on the portal's own provider, so Section 0's Keycloak-admin items are not needed either.
-- [ ] `LimitAnonymousAccessMiddleware` / throttles / `ApiLoginView` unchanged.
+- [ ] `mozilla_django_oidc.urls` gives `/oidc/logout/`, which by default only ends the local Django
+      session. RP-initiated logout at the OP (ending its SSO session too) needs
+      `OIDC_OP_LOGOUT_URL_METHOD` pointed at a function that builds the provider's end-session URL
+      (`id_token_hint` + `post_logout_redirect_uri`) — generic in shape (reads
+      `OIDC_OP_LOGOUT_ENDPOINT` from settings, which is why A0 declares it optional), but the
+      function itself still has to be written; add it in `accounts/oidc.py` alongside the backend.
 
-## 9. Tests
+### A6. Interplay with existing portal features
 
-- [ ] `resolve_user`: first-login links existing user by email and by username; mints
-      User+Profile (inactive) with empty-string profile fields; re-login resolves via `sub`;
-      duplicate-email case resolves deterministically.
-- [ ] DRF: `KeycloakAuthentication` authenticates a valid Keycloak token; defers (returns `None`)
-      on a foreign-issuer token; refuses an inactive user.
-- [ ] Stacking: a portal-minted oauth2 access token still authenticates with both
-      `OAuth2Authentication` and `KeycloakAuthentication` registered.
-- [ ] Context processor / template: `keycloak_login_enabled` false ⇒ login page identical to today.
+Same as the original plan, unchanged: self-registration, `password_expiration` (local-password
+logins only), the portal's own OAuth2 *provider* role, `LimitAnonymousAccessMiddleware` — none of
+these are touched.
 
-## 10. Docs (pyobs-core)
+### A7. Tests
 
-- [ ] `specs/design/shared-auth-keycloak.md`: status note — observation-portal is attached as a
-      `pyobs-auth` client (relying party) rather than brokered behind Keycloak; Section 0 of the
-      2026-08-12 plan is superseded.
-- [ ] `specs/plans/index.md`: this plan's entry.
+- [ ] `ObservationPortalOIDCBackend`: sub-match on repeat login, email-fallback match on first
+      login, inactive-user creation with empty Profile fields, `verify_claims` rejects a token with
+      the wrong `aud`.
+- [ ] DRF: `OIDCAuthentication` authenticates a valid userinfo response; a portal-issued OAuth2
+      token still authenticates (via `OAuth2Authentication`, first in the list) without ever
+      reaching the OIDC authenticator.
+- [ ] `OIDC_ENABLED=False` (the default): login page identical to today, no `AUTHENTICATION_BACKENDS`
+      /DRF-authenticator/URL changes — importing `settings.py` and `urls.py` must not require any
+      `OIDC_*` env var to be set.
+
+## Part B: MONET deployment config (not upstream)
+
+- [ ] Concrete `OIDC_RP_CLIENT_ID`/secret, endpoint URLs, and `OIDC_ENABLED=true` in MONET's
+      private site-config repo / `deploy/.env` — not this repo, not the OCS fork's public
+      `README.md` example values ([[feedback_no_internal_names_in_public_repos]]).
+- [ ] If MONET wants the dual-button "GWDG SSO vs. local Keycloak account" UX from
+      `2026-08-21-keycloak-idp-hint-login.md`: a template override of `login.html` in the private
+      config (or a documented extension point in A4's template, e.g. a block tag) rather than
+      baking `kc_idp_hint` into the upstream login flow. Worth deciding at implementation time
+      whether this is worth the extra complexity for one deployment.
+- [ ] Keycloak admin config: register `observation-portal` as a client, redirect URIs — operational,
+      outside repo code, same as the original plan's "Not in this plan" item.
+
+## Docs (pyobs-core)
+
+- [ ] `specs/design/shared-auth-keycloak.md` Section 10: status note — observation-portal attaches
+      via generic OIDC (`mozilla-django-oidc`), not `pyobs-auth`; Section 0 of the 2026-08-12 plan
+      is superseded, same as the original plan intended.
+- [ ] `specs/plans/index.md`: update this entry's one-liner (currently describes the `pyobs-auth`
+      approach — needs to say generic OIDC / no pyobs-auth dependency / upstream-submittable).
 
 ## Verification
 
 - [ ] Full portal test suite green (existing + new).
-- [ ] Regression: `KEYCLOAK_SERVER_URL` unset ⇒ login page renders exactly today's form; API
-      behavior unchanged. (Verifiable from a checkout.)
-- [ ] Live browser E2E against the running Keycloak (operational — not verifiable from a repo
-      checkout): Keycloak login button → GWDG SSO (with `IDP_HINT`) / local Keycloak account →
-      callback → `resolve_user` → portal session; logout ends both the portal and the Keycloak SSO
-      session; a Keycloak bearer token authenticates a portal API call.
+- [ ] Regression: `OIDC_ENABLED` unset ⇒ login page renders exactly today's form; settings/urls
+      import cleanly with zero `OIDC_*` env vars present. (Verifiable from a checkout.)
+- [ ] Live E2E against real Keycloak (operational, not verifiable from a checkout): login button →
+      Keycloak → callback → backend resolves user → portal session; logout ends both sessions; a
+      Keycloak-issued bearer token authenticates a portal API call; a portal-issued OAuth2 token
+      still authenticates unaffected.
 
 ## Not in this plan
 
-- **Brokering the portal behind Keycloak** (Section 0 of the 2026-08-12 plan) — superseded by this
-  direction. A deployment that wants Keycloak to federate the portal's own users can still do it as
-  optional Keycloak admin config (enable OIDC on the portal's provider, register it as upstream
-  IdP), independent of this plan.
+- **Upstreaming itself** — Part A is *written* to be upstream-submittable (no pyobs dependency,
+  generic naming, config-gated), but actually filing the PR against
+  `observatorycontrolsystem/observation-portal`, engaging with their maintainers, and carrying any
+  review-driven rework is a separate decision/step, not automatic once Part A lands in the fork.
 - **Service-to-service auth** — the portal's OAuth2 provider for downstream LCO apps, and
-  pyobs-core's static-token calls to portal (`Authorization: Token`), both stay as-is; Keycloak
-  client-credentials remains optional (see design doc).
-- **Upstreaming the changes to `observatorycontrolsystem/observation-portal`** — the changes are
-  additive and env-gated, so upstreaming is feasible, but it's a separate decision (the OCS project
-  is the upstream; the MONET fork is the vehicle here).
-- **Keycloak admin/deployment config** for the MONET realm (registering an
-  `observation-portal` client, redirect URIs) — operational, outside repo code.
+  pyobs-core's static-token calls to the portal, stay as-is.
+- **Django 5.2 upgrade** — not gating this plan (see "Direction change"); may still be worth doing
+  independently.
 
 ## Open questions
 
-- **Django target**: 5.2 LTS vs 6.x for the prerequisite upgrade (pyobs-auth allows `<7`).
-- **`keycloak_sub` on `Profile` vs a separate `KeycloakIdentity` model** — recommended:
-  `Profile.keycloak_sub` (mirrors pyobs-archive, no new app).
-- **Auto-linking existing portal users by email on first Keycloak login** vs explicit admin-side
-  linking — recommended: auto-link by email (design-doc default), acknowledging the
-  non-unique-email caveat (`.first()`).
-- **Post-login redirect for Keycloak sessions**: pyobs-auth defaults `next` to `/`; the portal's
-  local login redirects to `/accounts/loggedinstate/` — decide whether the Keycloak button should
-  pass `next=/accounts/loggedinstate/` to keep the post-login landing consistent.
+- **DRF authenticator cost/deferral semantics.** `pyobs_auth.authentication.KeycloakAuthentication`
+  (the original plan) checks the token's `iss` claim locally and defers (returns `None`) for
+  non-matching issuers — cheap, no network call for foreign tokens.
+  `mozilla_django_oidc.contrib.drf.OIDCAuthentication` instead calls
+  `backend.get_or_create_user(access_token, ...)`, which hits `OIDC_OP_USER_ENDPOINT` (the OIDC
+  provider's userinfo endpoint) over the network for **every** bearer token it's asked to
+  authenticate, and only works correctly here because `OAuth2Authentication` (checked first) claims
+  portal-issued tokens before OIDC's class is ever reached. Any bearer token that is neither a valid
+  portal OAuth2 token nor a valid OIDC access token costs a live call to the OIDC provider before
+  failing. Options: (a) accept it — simplest, standard mozilla-django-oidc DRF pattern, provider
+  must be reachable for the API to reject foreign tokens promptly; (b) write a custom DRF
+  authenticator that verifies the JWT locally via `OIDC_OP_JWKS_ENDPOINT` and checks `iss` to decide
+  whether to defer, closer to `pyobs-auth`'s behavior, more code. Recommend (a) for the upstream PR
+  (simpler, uses the library as intended) unless portal API latency/availability under a
+  flaky-or-down OIDC provider turns out to matter.
+- **Multiple-email-match behavior**: mozilla-django-oidc's base `filter_users_by_claims`/
+  `get_or_create_user` raises `SuspiciousOperation` on multiple email matches; the original plan
+  assumed silent `.first()`-style resolution. Decide which behavior is wanted for the portal's known
+  duplicate-email accounts before implementation.
+- **Discovery-URL vs. explicit endpoints** (A0): explicit is recommended above; revisit if the
+  number of env vars becomes a real deployment annoyance.
+- **Dual-button IDP-hint UX** (Part B): worth it for one deployment, or is a single generic button
+  acceptable for MONET too?

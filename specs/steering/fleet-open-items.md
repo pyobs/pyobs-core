@@ -1,6 +1,6 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — checked on 2026-08-28 (19:40 CEST).
+Status: standing snapshot — checked on 2026-08-31.
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -16,14 +16,16 @@ and remove closed items outright, never annotate them.** Only open items live he
 
 Repos: the whole pyobs fleet.
 
-## Open issues (15, checked 2026-08-28 19:40 CEST)
+## Open issues (18, checked 2026-08-31)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#830](https://github.com/pyobs/pyobs-core/issues/830) | `http_request_with_retries`: only warn on a failed connection after a minute or so, not on every retry | warn-throttling for retry loops |
+| pyobs-core | [#829](https://github.com/pyobs/pyobs-core/issues/829) | DummyCamera cannot take an exposure with the pinned photutils 3.0: table columns (`x_mean`) don't match Moffat2D params (`x_0`) | |
 | pyobs-core | [#825](https://github.com/pyobs/pyobs-core/issues/825) | Robotic module widgets: `IRobotic` (executor) + `IRoboticScheduler` (planner) interfaces and GUI widgets | design doc `irobotic.md` below (*proposed*); no plan yet |
-| pyobs-core | [#824](https://github.com/pyobs/pyobs-core/issues/824) | `_retry_delay` overflows after 1024 attempts and permanently kills the event subscription | *bug, assigned: thusser* — cap applied after exponentiation, so attempt ≥ 1024 raises `OverflowError` (reported on 2.0.2); fix: cap the exponent before computing; plan `2026-08-28-precreate-pubsub-nodes.md` below (node pre-creation + retry hardening) |
+| pyobs-core | [#824](https://github.com/pyobs/pyobs-core/issues/824) | `_retry_delay` overflows after 1024 attempts and permanently kills the event subscription | *bug, assigned: thusser* — cap applied after exponentiation, so attempt ≥ 1024 raises `OverflowError` (reported on 2.0.2); fix: cap the exponent before computing |
 | pyobs-core | [#823](https://github.com/pyobs/pyobs-core/issues/823) | Centralized authorization via Keycloak groups/roles (no per-service activation) | design + plan proposed, see plans below (ADR `0014`) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
@@ -35,6 +37,7 @@ One row per issue — same layout for every repo.
 | pyobs-portal | [#116](https://github.com/pyobs/pyobs-portal/issues/116) | Add instrument config app for script builder (camera/telescope capabilities) | *assigned: thusser* — static instrument capability data so the script builder works without live modules |
 | pyobs-web-admin | [#74](https://github.com/pyobs/pyobs-web-admin/issues/74) | Add fullscreen button for logs | *assigned: thusser* — both log views render at a fixed height with no enlarge option |
 | pyobs-web-admin | [#68](https://github.com/pyobs/pyobs-web-admin/issues/68) | `api_module_classes` has no fleet-aggregating counterpart (external callers only see one host) | *bug* — design + work-plan live in the issue body itself (no separate plan file); not yet implemented; downstream update tracked as pyobs-portal #119 |
+| pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
 | pyobs-astrometry | [#1](https://github.com/pyobs/pyobs-astrometry/issues/1) | No version tracking (no pyproject.toml) | *assigned: thusser* — nothing to tell what version is deployed; minimal `pyproject.toml` (or `VERSION` file) wanted |
 
@@ -57,14 +60,13 @@ One row per issue — same layout for every repo.
   services gate on token claims instead of per-service `is_active` activation (design:
   `specs/design/shared-authz-keycloak.md`, ADR `0014`; Repos: pyobs-auth, pyobs-archive,
   pyobs-portal, pyobs-web-admin).
+- [2026-08-24-rename-robotic-backend-to-portal.md](../plans/2026-08-24-rename-robotic-backend-to-portal.md) —
+  *in progress* (pyobs-portal + fleet). Code merged everywhere 2026-08-25; deployment to
+  iagvt/monet not yet safe (Step 5 warning).
 - [2026-08-28-observation-portal-keycloak-auth.md](../plans/2026-08-28-observation-portal-keycloak-auth.md) —
-  *proposed* (observation-portal, pyobs-auth). Attach observation-portal (MONET fork) to Keycloak
-  as a `pyobs-auth` client, additive next to local username/password auth; supersedes Section 0 of
-  the 2026-08-12 shared-auth plan.
-- [2026-08-28-precreate-pubsub-nodes.md](../plans/2026-08-28-precreate-pubsub-nodes.md) — *proposed*
-  (#824). Pre-create pubsub event/state nodes at module startup (XEP-0060 `create_node`) so
-  subscriptions can land before the first publish; plus #824 retry hardening (`_retry_delay`
-  exponent clamp, stuck-key cleanup in both retry loops).
+  *proposed* (observation-portal, pyobs-auth; revised 2026-08-31 — see "Direction change").
+  Attach observation-portal (MONET fork) to Keycloak as a `pyobs-auth` client, additive next to
+  local username/password auth; supersedes Section 0 of the 2026-08-12 shared-auth plan.
 
 ### Design docs still *proposed*
 

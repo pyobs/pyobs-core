@@ -16,7 +16,7 @@ and remove closed items outright, never annotate them.** Only open items live he
 
 Repos: the whole pyobs fleet.
 
-## Open issues (17, checked 2026-08-31)
+## Open issues (16, checked 2026-08-31)
 
 One row per issue — same layout for every repo.
 
@@ -33,7 +33,6 @@ One row per issue — same layout for every repo.
 | pyobs-brot | [#60](https://github.com/pyobs/pyobs-brot/issues/60) | Bump astropy pin to allow 8.x | *assigned: thusser* — `astropy<8` pin forces a downgrade alongside astropy-8 packages (e.g. in the south/monet portal image) |
 | pyobs-gui | [#154](https://github.com/pyobs/pyobs-gui/issues/154) | Add generic `IStructuredConfig` widget — schema-driven form auto-built from `ConfigSchema` | *enhancement* — one generic widget covers every `IStructuredConfig` module (schema-driven editors + live `ConfigAppliedState` + `set_config()`); plan `2026-08-28-structuredconfig-widget.md` below (*proposed*) |
 | pyobs-gui | [#150](https://github.com/pyobs/pyobs-gui/issues/150) | Main widgets vs. sidebar widgets — automatic tab pages for multi-widget modules | *assigned: thusser* — split widget concept into main vs. sidebar categories; affects page assembly; draft plan `2026-08-28-gui-main-vs-sidebar-widgets.md` (pyobs-gui specs, below) |
-| pyobs-portal | [#119](https://github.com/pyobs/pyobs-portal/issues/119) | Update `get_module_classes()` for fleet-aggregated `api_module_classes` response shape | pyobs-web-admin #68 shipped and is live-verified across a real hub pair (`south/monet` + `south/frontend`, both on `v2.1.0`) — portal's `pyobs_portal/api/webadmin.py` still expects the old flat `{module_name: class}` shape and needs updating for `{"modules": [...], "unreachable_hosts": [...]}`. Not started. |
 | pyobs-portal | [#116](https://github.com/pyobs/pyobs-portal/issues/116) | Add instrument config app for script builder (camera/telescope capabilities) | *assigned: thusser* — static instrument capability data so the script builder works without live modules |
 | pyobs-web-admin | [#74](https://github.com/pyobs/pyobs-web-admin/issues/74) | Add fullscreen button for logs | *assigned: thusser* — both log views render at a fixed height with no enlarge option |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
@@ -88,8 +87,8 @@ One line per plan — same layout for every repo.
   main vs. sidebar widget split, automatic tab pages for multi-widget modules (#150) (*draft*)
 - **pyobs-web-admin** — [2026-08-25-module-classes-fleet-aggregation.md](../../pyobs-web-admin/specs/plans/2026-08-25-module-classes-fleet-aggregation.md) —
   fleet-aggregate `api_module_classes` (#68, closed). Shipped in `v2.1.0`, live-verified
-  2026-08-31 across `south/monet` + `south/frontend`; only portal-side update
-  (pyobs-portal #119) still open
+  2026-08-31 across `south/monet` + `south/frontend`. Portal-side update (#119, closed) shipped
+  in the same `v2.1.0` release; not separately confirmed as deployed in production
 - **pyobs-gui** — [2026-08-28-structuredconfig-widget.md](../../pyobs-gui/specs/2026-08-28-structuredconfig-widget.md) —
   generic schema-driven `IStructuredConfig` form widget (#154) (*proposed*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —

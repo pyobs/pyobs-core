@@ -180,7 +180,8 @@ Data flow: `subscribe_state(module, <interface>, ...)` for steady state — a ne
 gets the last-pushed value immediately, so this also covers initial load / refresh, no
 separate pull RPC needed — `register_event(TaskStartedEvent/TaskFinishedEvent/TaskFailedEvent)`
 for instant updates, proxy calls for `start` / `stop` / `get_schedule` / `run`. Buttons gated by
-ACLs via `self.permitted(...)` (see `pyobs-gui/specs/plans/2026-07-29-gui-acl-aware-widget-gating.md`).
+ACLs via `self.permitted(...)` (see `specs/plans/2026-07-29-gui-acl-aware-widget-gating.md`, this
+repo — implemented, closed).
 
 ## Out of scope
 

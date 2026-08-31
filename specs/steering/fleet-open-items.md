@@ -87,8 +87,15 @@ One line per plan — same layout for every repo.
   main vs. sidebar widget split, automatic tab pages for multi-widget modules (#150) (*draft*)
 - **pyobs-web-admin** — [2026-08-25-module-classes-fleet-aggregation.md](../../pyobs-web-admin/specs/plans/2026-08-25-module-classes-fleet-aggregation.md) —
   fleet-aggregate `api_module_classes` (#68, closed). Shipped in `v2.1.0`, live-verified
-  2026-08-31 across `south/monet` + `south/frontend`. Portal-side update (#119, closed) shipped
-  in the same `v2.1.0` release; not separately confirmed as deployed in production
+  2026-08-31 across `south/monet` + `south/frontend` (25 + 2 modules merged, `unreachable_hosts`
+  empty) and across `iagvtsrv` + `astro159` (15 + 3 modules). Portal-side update (pyobs-portal
+  #119, closed) confirmed deployed and working against both `south/monet` (portal `v2.1.0`) and
+  `iagvtsrv` (portal `v2.0.0`, has the fix but a minor version behind `main`). While at it, found
+  and fixed `south/frontend` running a stale pre-#65 web-admin (`v2.0.0.dev11`, 2026-08-20); every
+  other web-admin instance fleet-wide (`iag50srv`, `iag50cam`, `iagvtsrv`, `astro159`) was already
+  on `v2.1.0`. Topology docs updated: `pyobs-monet/specs/design/monets-service-topology.md`,
+  `pyobs-iagvt/specs/design/pyobs-service-topology.md`,
+  `pyobs-iag50/specs/design/pyobs-service-topology.md`.
 - **pyobs-gui** — [2026-08-28-structuredconfig-widget.md](../../pyobs-gui/specs/2026-08-28-structuredconfig-widget.md) —
   generic schema-driven `IStructuredConfig` form widget (#154) (*proposed*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import aiohttp
 import pytest
@@ -203,6 +203,88 @@ async def test_paginated_does_not_swallow_invalid_page_on_first_request(monkeypa
 
     with pytest.raises(RuntimeError, match="HTTP 404"):
         await http_request_paginated(session, "http://example.com/api")
+
+
+# ── retry-warning throttling ────────────────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _clear_failure_state() -> None:
+    """_failure_state is module-level and keyed by URL, so tests must not leak into each other."""
+    httpmod._failure_state.clear()
+
+
+def make_retry_state(url: str, exception: Exception, args_has_url: bool = True) -> Mock:
+    outcome = Mock()
+    outcome.exception = Mock(return_value=exception)
+    state = Mock()
+    state.kwargs = {} if args_has_url else {"url": url}
+    state.args = (Mock(), url) if args_has_url else (Mock(),)
+    state.outcome = outcome
+    return state
+
+
+def test_before_sleep_stays_quiet_before_threshold(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level("DEBUG", logger="pyobs.utils.http")
+    state = make_retry_state("http://example.com/api", aiohttp.ClientError("down"))
+
+    httpmod._before_sleep(state)
+
+    assert not any(r.levelname == "WARNING" for r in caplog.records)
+    assert any(r.levelname == "DEBUG" for r in caplog.records)
+
+
+def test_before_sleep_warns_once_past_threshold(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level("DEBUG", logger="pyobs.utils.http")
+    url = "http://example.com/api"
+    exc = aiohttp.ClientError("down")
+
+    t = [1000.0]
+    monkeypatch.setattr(httpmod.time, "monotonic", lambda: t[0])
+
+    httpmod._before_sleep(make_retry_state(url, exc))  # first failure, t=1000
+    t[0] += httpmod._WARN_AFTER_SECONDS  # t=1060, past the threshold
+    httpmod._before_sleep(make_retry_state(url, exc))
+
+    assert sum(1 for r in caplog.records if r.levelname == "WARNING") == 1
+
+
+def test_before_sleep_throttles_repeated_warnings(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level("DEBUG", logger="pyobs.utils.http")
+    url = "http://example.com/api"
+    exc = aiohttp.ClientError("down")
+
+    t = [1000.0]
+    monkeypatch.setattr(httpmod.time, "monotonic", lambda: t[0])
+
+    httpmod._before_sleep(make_retry_state(url, exc))  # t=1000, first failure
+    t[0] += httpmod._WARN_AFTER_SECONDS  # t=1060, warns
+    httpmod._before_sleep(make_retry_state(url, exc))
+    t[0] += 1  # t=1061, still within the throttle window
+    httpmod._before_sleep(make_retry_state(url, exc))
+
+    assert sum(1 for r in caplog.records if r.levelname == "WARNING") == 1
+
+    t[0] += httpmod._WARN_INTERVAL_SECONDS  # past the throttle window again
+    httpmod._before_sleep(make_retry_state(url, exc))
+
+    assert sum(1 for r in caplog.records if r.levelname == "WARNING") == 2
+
+
+@pytest.mark.asyncio
+async def test_success_clears_failure_state() -> None:
+    url = "http://example.com/api"
+    httpmod._failure_state[url] = (0.0, None)
+
+    response = make_response(200, {"ok": True})
+    session = make_session(response)
+    await http_request_with_retries.__wrapped__(session, url)
+
+    assert url not in httpmod._failure_state
 
 
 @pytest.mark.asyncio

@@ -14,15 +14,41 @@ from tenacity import (
 
 log = logging.getLogger(__name__)
 
-# Per-URL (first-failure time, last-warned time) for throttling retry warnings, see
-# _before_sleep. A URL is only present here while it is currently failing; a successful
-# request clears its entry.
-_failure_state: dict[str, tuple[float, float | None]] = {}
 
-# Retries stay quiet for this long after the first failure (an in-progress deploy of the
-# remote service typically resolves within this window), then warn at most this often.
-_WARN_AFTER_SECONDS = 60.0
-_WARN_INTERVAL_SECONDS = 60.0
+class LogThrottle:
+    """Escalates a repeated failure from quiet to a louder log level, without spamming on every
+    occurrence.
+
+    Tracks, per key, when a failure streak started and when it was last escalated. A key stays
+    quiet for ``quiet_for`` seconds after its first failure, then :meth:`should_escalate` returns
+    ``True`` at most once every ``interval`` seconds. :meth:`clear` must be called on success, or
+    a key's state (and thus memory) is retained forever -- callers are responsible for using a
+    bounded/stable set of keys (e.g. a fixed URL, not one that varies per call), since each
+    distinct key gets its own independent streak and never expires on its own.
+    """
+
+    def __init__(self, quiet_for: float = 60.0, interval: float = 60.0) -> None:
+        self._quiet_for = quiet_for
+        self._interval = interval
+        self._state: dict[str, tuple[float, float | None]] = {}
+
+    def should_escalate(self, key: str) -> bool:
+        now = time.monotonic()
+        first_failure, last_escalated = self._state.setdefault(key, (now, None))
+        if now - first_failure >= self._quiet_for and (
+            last_escalated is None or now - last_escalated >= self._interval
+        ):
+            self._state[key] = (first_failure, now)
+            return True
+        return False
+
+    def clear(self, key: str) -> None:
+        self._state.pop(key, None)
+
+
+# Retries stay quiet for this long after the first failure to a given URL (an in-progress deploy
+# of the remote service typically resolves within this window), then warn at most this often.
+_retry_throttle = LogThrottle(quiet_for=60.0, interval=60.0)
 
 
 class InvalidResponseError(RuntimeError):
@@ -36,15 +62,12 @@ class InvalidResponseError(RuntimeError):
 
 
 def _before_sleep(retry_state: RetryCallState) -> None:
-    url = cast(str, retry_state.kwargs.get("url", retry_state.args[1] if len(retry_state.args) > 1 else None))
-    now = time.monotonic()
-    first_failure, last_warned = _failure_state.setdefault(url, (now, None))
+    url = retry_state.kwargs.get("url") or (retry_state.args[1] if len(retry_state.args) > 1 else None)
+    assert isinstance(url, str), "http_request_with_retries must be called with a url"
 
     exc = retry_state.outcome.exception() if retry_state.outcome else None
-    elapsed = now - first_failure
-    if elapsed >= _WARN_AFTER_SECONDS and (last_warned is None or now - last_warned >= _WARN_INTERVAL_SECONDS):
-        log.warning("Still failing to reach %s after %.0fs: %s: %s", url, elapsed, type(exc).__name__, exc)
-        _failure_state[url] = (first_failure, now)
+    if _retry_throttle.should_escalate(url):
+        log.warning("Still failing to reach %s: %s: %s", url, type(exc).__name__, exc)
     else:
         log.debug("Retrying %s: %s: %s", url, type(exc).__name__, exc)
 
@@ -67,7 +90,7 @@ async def http_request_with_retries(
             except (aiohttp.ContentTypeError, ValueError):
                 pass
             raise InvalidResponseError(response.status, body)
-        _failure_state.pop(url, None)
+        _retry_throttle.clear(url)
         return cast(dict[str, Any], await response.json())
 
 

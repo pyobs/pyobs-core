@@ -3,6 +3,10 @@ v2.1.1.dev1 (2026-08-31)
 * Fixes issue #830: ``http_request_with_retries`` no longer logs a WARNING on every failed retry
   attempt. Retries now stay quiet for the first 60s a URL has been failing (covering a typical
   short pyobs-portal restart), then warn at most once per minute until the request succeeds again.
+  ``PortalTaskArchive``/``PortalObservationArchive``'s poll loops got the same treatment for their
+  ``log.error`` calls: the first failure still logs immediately at ERROR, but repeats during the
+  same outage are throttled to at most once per minute instead of once per ~20s poll cycle. Both
+  reuse a new ``pyobs.utils.http.LogThrottle`` helper.
 
 v2.1.0 (2026-08-31)
 ********************

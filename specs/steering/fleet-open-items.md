@@ -16,18 +16,19 @@ and remove closed items outright, never annotate them.** Only open items live he
 
 Repos: the whole pyobs fleet.
 
-## Open issues (13, checked 2026-08-31)
+## Open issues (14, checked 2026-08-31)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#836](https://github.com/pyobs/pyobs-core/issues/836) | Unify astropy version pin across the fleet (`>=7.0.1,<9`) | broadened from pyobs-brot#60; static audit found 11 repos capping `<8`, 3 already at the `>=7.0.1,<9` target, 3 with no upper bound at all — per-repo bump needed, test suite gate each |
 | pyobs-core | [#832](https://github.com/pyobs/pyobs-core/issues/832) | Dark masters per exposure time: match science frames by exptime, scale only a reference (600s) dark | *assigned: thusser* — reduction half of #831: per-exptime master darks (filename/cache/progress carry `exptime`), match-or-scale-reference-only-or-error policy at calibration time; open question on `dark_scale_exptime` default flagged for an ADR |
 | pyobs-core | [#831](https://github.com/pyobs/pyobs-core/issues/831) | Take morning darks at the exposure times used for science frames during the night | *assigned: thusser* — robotic/observing half (reduction half is #832): archive API needs an `exptime` field/filter (`FrameInfo`, `PyobsArchive`, `LocalArchive`), plus a helper to derive the previous night's science exposure times and a `DarkBiasScript` option to take darks at each one |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-brot | [#60](https://github.com/pyobs/pyobs-brot/issues/60) | Bump astropy pin to allow 8.x | *assigned: thusser* — `astropy<8` pin forces a downgrade alongside astropy-8 packages (e.g. in the south/monet portal image) |
+| pyobs-brot | [#60](https://github.com/pyobs/pyobs-brot/issues/60) | Bump astropy pin to allow 8.x | *assigned: thusser* — `astropy<8` pin forces a downgrade alongside astropy-8 packages (e.g. in the south/monet portal image); kept narrow, fleet-wide version alignment broadened out to #836 |
 | pyobs-gui | [#154](https://github.com/pyobs/pyobs-gui/issues/154) | Add generic `IStructuredConfig` widget — schema-driven form auto-built from `ConfigSchema` | *enhancement* — one generic widget covers every `IStructuredConfig` module (schema-driven editors + live `ConfigAppliedState` + `set_config()`); plan `2026-08-28-structuredconfig-widget.md` below (*proposed*) |
 | pyobs-gui | [#150](https://github.com/pyobs/pyobs-gui/issues/150) | Main widgets vs. sidebar widgets — automatic tab pages for multi-widget modules | *assigned: thusser* — split widget concept into main vs. sidebar categories; affects page assembly; draft plan `2026-08-28-gui-main-vs-sidebar-widgets.md` (pyobs-gui specs, below) |
 | pyobs-portal | [#116](https://github.com/pyobs/pyobs-portal/issues/116) | Add instrument config app for script builder (camera/telescope capabilities) | *assigned: thusser* — static instrument capability data so the script builder works without live modules |

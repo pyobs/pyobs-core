@@ -7,7 +7,7 @@ import aiohttp
 
 from pyobs.robotic.storage.taskarchive import TaskArchive
 from pyobs.robotic.task import Project, Task
-from pyobs.utils.http import http_request_paginated, http_request_with_retries
+from pyobs.utils.http import LogThrottle, http_request_paginated, http_request_with_retries
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -31,6 +31,9 @@ class PortalTaskArchive(TaskArchive):
         self._last_marker: Time | None = None
         self._projects: list[Project] = list()
         self._tasks: list[Task] = list()
+        # First failure logs immediately at ERROR (someone should know right away); repeats
+        # during the same outage are throttled to at most one ERROR per minute.
+        self._poll_error_throttle = LogThrottle(quiet_for=0.0, interval=60.0)
 
         if auto_update:
             self.add_background_task(self._check_for_changes)
@@ -58,8 +61,12 @@ class PortalTaskArchive(TaskArchive):
         while True:
             try:
                 await self._poll()
+                self._poll_error_throttle.clear("poll")
             except Exception as e:
-                log.error("Failed to update tasks from portal: %s", e)
+                if self._poll_error_throttle.should_escalate("poll"):
+                    log.error("Failed to update tasks from portal: %s", e)
+                else:
+                    log.debug("Failed to update tasks from portal: %s", e)
             await asyncio.sleep(5)
 
     async def _poll(self) -> None:

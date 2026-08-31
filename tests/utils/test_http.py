@@ -205,21 +205,79 @@ async def test_paginated_does_not_swallow_invalid_page_on_first_request(monkeypa
         await http_request_paginated(session, "http://example.com/api")
 
 
+# ── LogThrottle ──────────────────────────────────────────────────────────────
+
+
+def test_log_throttle_quiet_before_threshold() -> None:
+    throttle = httpmod.LogThrottle(quiet_for=60.0, interval=60.0)
+    assert not throttle.should_escalate("key")
+
+
+def test_log_throttle_escalates_once_past_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
+    throttle = httpmod.LogThrottle(quiet_for=60.0, interval=60.0)
+    t = [1000.0]
+    monkeypatch.setattr(httpmod.time, "monotonic", lambda: t[0])
+
+    assert not throttle.should_escalate("key")  # t=1000, first failure
+    t[0] += 60.0  # t=1060, past the threshold
+    assert throttle.should_escalate("key")
+
+
+def test_log_throttle_throttles_repeated_escalation(monkeypatch: pytest.MonkeyPatch) -> None:
+    throttle = httpmod.LogThrottle(quiet_for=60.0, interval=60.0)
+    t = [1000.0]
+    monkeypatch.setattr(httpmod.time, "monotonic", lambda: t[0])
+
+    throttle.should_escalate("key")  # t=1000, first failure
+    t[0] += 60.0  # t=1060, escalates
+    assert throttle.should_escalate("key")
+    t[0] += 1  # t=1061, still within the throttle window
+    assert not throttle.should_escalate("key")
+    t[0] += 60.0  # past the throttle window again
+    assert throttle.should_escalate("key")
+
+
+def test_log_throttle_zero_quiet_for_escalates_immediately() -> None:
+    """quiet_for=0.0 is the caller-error-loop policy: alert on the first failure, then throttle."""
+    throttle = httpmod.LogThrottle(quiet_for=0.0, interval=60.0)
+    assert throttle.should_escalate("key")
+    assert not throttle.should_escalate("key")
+
+
+def test_log_throttle_clear_resets_the_streak(monkeypatch: pytest.MonkeyPatch) -> None:
+    throttle = httpmod.LogThrottle(quiet_for=60.0, interval=60.0)
+    t = [1000.0]
+    monkeypatch.setattr(httpmod.time, "monotonic", lambda: t[0])
+
+    throttle.should_escalate("key")  # t=1000, first failure
+    t[0] += 60.0
+    assert throttle.should_escalate("key")
+
+    throttle.clear("key")
+    assert not throttle.should_escalate("key")  # fresh streak, quiet again
+
+
+def test_log_throttle_keys_are_independent() -> None:
+    throttle = httpmod.LogThrottle(quiet_for=0.0, interval=60.0)
+    assert throttle.should_escalate("a")
+    assert throttle.should_escalate("b")  # not throttled by "a"'s escalation
+
+
 # ── retry-warning throttling ────────────────────────────────────────────────
 
 
 @pytest.fixture(autouse=True)
-def _clear_failure_state() -> None:
-    """_failure_state is module-level and keyed by URL, so tests must not leak into each other."""
-    httpmod._failure_state.clear()
+def _clear_retry_throttle() -> None:
+    """_retry_throttle is module-level and keyed by URL, so tests must not leak into each other."""
+    httpmod._retry_throttle._state.clear()
 
 
-def make_retry_state(url: str, exception: Exception, args_has_url: bool = True) -> Mock:
+def make_retry_state(url: str, exception: Exception, via_kwargs: bool = False) -> Mock:
     outcome = Mock()
     outcome.exception = Mock(return_value=exception)
     state = Mock()
-    state.kwargs = {} if args_has_url else {"url": url}
-    state.args = (Mock(), url) if args_has_url else (Mock(),)
+    state.kwargs = {"url": url} if via_kwargs else {}
+    state.args = (Mock(),) if via_kwargs else (Mock(), url)
     state.outcome = outcome
     return state
 
@@ -234,6 +292,16 @@ def test_before_sleep_stays_quiet_before_threshold(caplog: pytest.LogCaptureFixt
     assert any(r.levelname == "DEBUG" for r in caplog.records)
 
 
+def test_before_sleep_extracts_url_from_kwargs(caplog: pytest.LogCaptureFixture) -> None:
+    """url can also arrive as a kwarg (retry_state.kwargs), not just positionally."""
+    caplog.set_level("DEBUG", logger="pyobs.utils.http")
+    state = make_retry_state("http://example.com/api", aiohttp.ClientError("down"), via_kwargs=True)
+
+    httpmod._before_sleep(state)
+
+    assert "http://example.com/api" in httpmod._retry_throttle._state
+
+
 def test_before_sleep_warns_once_past_threshold(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -245,7 +313,7 @@ def test_before_sleep_warns_once_past_threshold(
     monkeypatch.setattr(httpmod.time, "monotonic", lambda: t[0])
 
     httpmod._before_sleep(make_retry_state(url, exc))  # first failure, t=1000
-    t[0] += httpmod._WARN_AFTER_SECONDS  # t=1060, past the threshold
+    t[0] += httpmod._retry_throttle._quiet_for  # t=1060, past the threshold
     httpmod._before_sleep(make_retry_state(url, exc))
 
     assert sum(1 for r in caplog.records if r.levelname == "WARNING") == 1
@@ -262,14 +330,14 @@ def test_before_sleep_throttles_repeated_warnings(
     monkeypatch.setattr(httpmod.time, "monotonic", lambda: t[0])
 
     httpmod._before_sleep(make_retry_state(url, exc))  # t=1000, first failure
-    t[0] += httpmod._WARN_AFTER_SECONDS  # t=1060, warns
+    t[0] += httpmod._retry_throttle._quiet_for  # t=1060, warns
     httpmod._before_sleep(make_retry_state(url, exc))
     t[0] += 1  # t=1061, still within the throttle window
     httpmod._before_sleep(make_retry_state(url, exc))
 
     assert sum(1 for r in caplog.records if r.levelname == "WARNING") == 1
 
-    t[0] += httpmod._WARN_INTERVAL_SECONDS  # past the throttle window again
+    t[0] += httpmod._retry_throttle._interval  # past the throttle window again
     httpmod._before_sleep(make_retry_state(url, exc))
 
     assert sum(1 for r in caplog.records if r.levelname == "WARNING") == 2
@@ -278,13 +346,13 @@ def test_before_sleep_throttles_repeated_warnings(
 @pytest.mark.asyncio
 async def test_success_clears_failure_state() -> None:
     url = "http://example.com/api"
-    httpmod._failure_state[url] = (0.0, None)
+    httpmod._retry_throttle._state[url] = (0.0, None)
 
     response = make_response(200, {"ok": True})
     session = make_session(response)
     await http_request_with_retries.__wrapped__(session, url)
 
-    assert url not in httpmod._failure_state
+    assert url not in httpmod._retry_throttle._state
 
 
 @pytest.mark.asyncio

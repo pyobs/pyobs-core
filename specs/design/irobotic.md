@@ -1,8 +1,10 @@
 # `IRobotic` / `IRoboticScheduler`: executor and planner widgets for robotic modules
 
-Status: partially implemented (issue #825). pyobs-core side (interfaces, `Mastermind`,
-`Scheduler`) landed in [pyobs-core#826](https://github.com/pyobs/pyobs-core/pull/826);
-pyobs-gui widgets not yet started.
+Status: implemented, closed (issue #825). pyobs-core side (interfaces, `Mastermind`,
+`Scheduler`) landed in [pyobs-core#826](https://github.com/pyobs/pyobs-core/pull/826), shipped in
+`v2.1.0`. pyobs-gui side (`RoboticWidget`, `ScheduleWidget`) landed in
+[pyobs-gui#155](https://github.com/pyobs/pyobs-gui/pull/155) — see
+`pyobs-gui/specs/2026-08-31-irobotic-widgets.md`.
 
 Repos: pyobs-core (interfaces, `Mastermind`, `Scheduler`), pyobs-gui (`RoboticWidget`,
 `ScheduleWidget`).
@@ -221,8 +223,9 @@ pyobs-core side (1–4, and the pyobs-core half of 6) implemented in
    `PortalObservationArchive`, whose `get_schedule()` doesn't resolve them itself).
 4. ~~Add `obsnum: str | None` to `TaskStartedEvent` / `TaskFinishedEvent` / `TaskFailedEvent`.~~
    Done.
-5. `RoboticWidget` + `ScheduleWidget` implementations and `DEFAULT_WIDGETS` registration —
-   pyobs-gui, not yet started.
-6. ~~Tests: state round-trip, publish transitions, schedule trimming, `get_schedule` cap.~~
-   pyobs-core half done. GUI fake-comm tests per
-   `pyobs-gui/tests/test_mainwindow_startup.py` patterns — not yet started.
+5. ~~`RoboticWidget` + `ScheduleWidget` implementations and `DEFAULT_WIDGETS` registration.~~
+   Done in [pyobs-gui#155](https://github.com/pyobs/pyobs-gui/pull/155).
+6. ~~Tests: state round-trip, publish transitions, schedule trimming, `get_schedule` cap.~~ Done
+   both sides — pyobs-core half in #826; pyobs-gui half (`tests/test_roboticwidget.py`,
+   `tests/test_schedulewidget.py`, a `FakeComm` pattern rather than
+   `test_mainwindow_startup.py`'s) in #155.

@@ -17,13 +17,14 @@ from pyobs.events import (
     TaskFinishedEvent,
     TaskStartedEvent,
 )
-from pyobs.interfaces import IRunnable, IRunning, IStartStop
+from pyobs.interfaces import IRoboticScheduler, IRunnable, IRunning, RoboticTask, SchedulerState
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.modules import Module
 from pyobs.object import get_class_from_string
 from pyobs.robotic import (
     ObservationArchive,
     ObservationList,
+    ObservationState,
     Project,
     Task,
     TaskArchive,
@@ -66,10 +67,13 @@ def _class_accepts_param(config: dict[str, Any] | Any, param_name: str) -> bool:
     return False
 
 
-class Scheduler(Module, IStartStop, IRunnable):
+class Scheduler(Module, IRunnable, IRoboticScheduler):
     """Scheduler."""
 
     __module__ = "pyobs.modules.robotic"
+
+    # hard ceiling on get_schedule()'s limit, regardless of what a client requests
+    _MAX_SCHEDULE_LIMIT = 100
 
     def __init__(
         self,
@@ -128,6 +132,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # time to start next schedule from
         self._schedule_start: Time = Time.now()
+        self._last_reschedule: Time | None = None
 
         # ID of currently running task, and current (or last if finished) block
         self._current_task_id = None
@@ -152,16 +157,19 @@ class Scheduler(Module, IStartStop, IRunnable):
             await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
         await self.comm.set_state(IRunning, RunningState(running=self._running))
+        await self.comm.set_state(IRoboticScheduler, SchedulerState(last_reschedule=self._last_reschedule))
 
     async def start(self, **kwargs: Any) -> None:
         """Start scheduler."""
         self._running = True
         await self.comm.set_state(IRunning, RunningState(running=self._running))
+        await self.comm.set_state(IRoboticScheduler, SchedulerState(last_reschedule=self._last_reschedule))
 
     async def stop(self, **kwargs: Any) -> None:
         """Stop scheduler."""
         self._running = False
         await self.comm.set_state(IRunning, RunningState(running=self._running))
+        await self.comm.set_state(IRoboticScheduler, SchedulerState(last_reschedule=self._last_reschedule))
 
     async def _update_schedule(self) -> None:
         # get schedulable tasks and sort them
@@ -312,6 +320,10 @@ class Scheduler(Module, IStartStop, IRunnable):
                     # clean up
                     del scheduled_tasks
 
+                    # record + publish
+                    self._last_reschedule = Time.now()
+                    await self.comm.set_state(IRoboticScheduler, SchedulerState(last_reschedule=self._last_reschedule))
+
                 except asyncio.CancelledError:
                     return
 
@@ -341,6 +353,42 @@ class Scheduler(Module, IStartStop, IRunnable):
     async def run(self, **kwargs: Any) -> None:
         """Trigger a re-schedule."""
         self._need_update = True
+
+    async def get_schedule(self, limit: int = 20, **kwargs: Any) -> list[RoboticTask]:
+        """Return the upcoming (pending/in-progress) schedule, most imminent first.
+
+        Args:
+            limit: Maximum number of entries to return.
+
+        Returns:
+            Up to `limit` scheduled tasks, capped at `_MAX_SCHEDULE_LIMIT` regardless of what's
+            requested.
+
+        Raises:
+            ValueError: If limit is negative.
+        """
+        if limit < 0:
+            raise ValueError("limit must be >= 0.")
+        limit = min(limit, self._MAX_SCHEDULE_LIMIT)
+
+        schedule = await self._schedule.get_schedule()
+        pending = sorted(
+            (obs for obs in schedule if obs.state in (ObservationState.PENDING, ObservationState.IN_PROGRESS)),
+            key=lambda obs: obs.start,
+        )
+
+        tasks = []
+        for obs in pending[:limit]:
+            # PortalObservationArchive.get_schedule() (unlike get_next_observation /
+            # get_current_observation) returns observations with `task` as a bare FK id, not a
+            # resolved Task -- fetch_task() is a no-op for backends that already store a full
+            # Task (memory/filesystem/LCO).
+            await obs.fetch_task(self._task_archive)
+            if obs.task is None:
+                log.error("Could not resolve task for observation %s, skipping.", obs.id)
+                continue
+            tasks.append(RoboticTask.from_observation(obs))
+        return tasks
 
     async def _on_task_started(self, event: Event, sender: str) -> bool:
         """Re-schedule when task has started and we can predict its end.

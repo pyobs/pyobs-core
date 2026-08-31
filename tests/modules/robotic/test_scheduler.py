@@ -6,7 +6,7 @@ import pytest
 
 from pyobs.comm import Comm
 from pyobs.events import GoodWeatherEvent, TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
-from pyobs.interfaces import IRunning
+from pyobs.interfaces import IRoboticScheduler, IRunning
 from pyobs.modules.robotic import Scheduler
 from pyobs.modules.robotic.scheduler import _class_accepts_param
 from pyobs.robotic import ObservationArchive, Task, TaskArchive
@@ -652,3 +652,160 @@ async def test_abort_is_noop() -> None:
     scheduler = make_scheduler()
     # should not raise
     await scheduler.abort()
+
+
+# ── get_schedule ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_filters_to_pending_and_in_progress() -> None:
+    scheduler = make_scheduler()
+    task = DummyTask(id=1, name="t1", duration=100)
+    pending = make_obs(task, "2024-01-01T00:00:00", "2024-01-01T00:05:00")
+    in_progress = make_obs(task, "2024-01-01T00:05:00", "2024-01-01T00:10:00")
+    in_progress.state = ObservationState.IN_PROGRESS
+    completed = make_obs(task, "2024-01-01T00:10:00", "2024-01-01T00:15:00")
+    completed.state = ObservationState.COMPLETED
+    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([completed, pending, in_progress]))
+
+    result = await scheduler.get_schedule()
+
+    assert [r.state for r in result] == ["pending", "in_progress"]
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_sorts_by_start_time() -> None:
+    scheduler = make_scheduler()
+    task = DummyTask(id=1, name="t1", duration=100)
+    later = make_obs(task, "2024-01-01T01:00:00", "2024-01-01T01:05:00")
+    earlier = make_obs(task, "2024-01-01T00:00:00", "2024-01-01T00:05:00")
+    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([later, earlier]))
+
+    result = await scheduler.get_schedule()
+
+    assert all(r.start is not None for r in result)
+    assert [r.start.isot for r in result if r.start is not None] == [earlier.start.isot, later.start.isot]
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_respects_limit() -> None:
+    scheduler = make_scheduler()
+    task = DummyTask(id=1, name="t1", duration=100)
+    obs_list = ObservationList(
+        [make_obs(task, f"2024-01-01T{i:02d}:00:00", f"2024-01-01T{i:02d}:05:00") for i in range(5)]
+    )
+    scheduler._schedule.get_schedule = AsyncMock(return_value=obs_list)
+
+    result = await scheduler.get_schedule(limit=2)
+
+    assert len(result) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_caps_limit_at_hard_ceiling() -> None:
+    scheduler = make_scheduler()
+    task = DummyTask(id=1, name="t1", duration=100)
+    base = Time("2024-01-01T00:00:00")
+    obs_list = ObservationList(
+        [
+            Observation(
+                task=task,
+                start=base + i * u.minute,
+                end=base + (i + 1) * u.minute,
+                state=ObservationState.PENDING,
+            )
+            for i in range(scheduler._MAX_SCHEDULE_LIMIT + 10)
+        ]
+    )
+    scheduler._schedule.get_schedule = AsyncMock(return_value=obs_list)
+
+    # more candidates exist than the hard ceiling, so the clamp -- not just the sheer count
+    # requested -- is what determines the result size
+    result = await scheduler.get_schedule(limit=10_000)
+
+    assert len(result) == scheduler._MAX_SCHEDULE_LIMIT
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_rejects_negative_limit() -> None:
+    scheduler = make_scheduler()
+    with pytest.raises(ValueError):
+        await scheduler.get_schedule(limit=-1)
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_resolves_unresolved_task() -> None:
+    """PortalObservationArchive.get_schedule() returns `task` as a bare id -- get_schedule()
+    must resolve it via the task archive before mapping to RoboticTask."""
+    scheduler = make_scheduler()
+    resolved = DummyTask(id=42, name="resolved", duration=100)
+    unresolved_obs = Observation(task=42, start="2024-01-01T00:00:00", end="2024-01-01T00:05:00", state="pending")
+    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([unresolved_obs]))
+    scheduler._task_archive.get_task = AsyncMock(return_value=resolved)
+
+    result = await scheduler.get_schedule()
+
+    scheduler._task_archive.get_task.assert_awaited_once_with(42)
+    assert len(result) == 1
+    assert result[0].name == "resolved"
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_skips_unresolvable_task() -> None:
+    scheduler = make_scheduler()
+    unresolved_obs = Observation(task=99, start="2024-01-01T00:00:00", end="2024-01-01T00:05:00", state="pending")
+    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([unresolved_obs]))
+    scheduler._task_archive.get_task = AsyncMock(return_value=None)
+
+    result = await scheduler.get_schedule()
+
+    assert result == []
+
+
+# ── SchedulerState publishing ────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_open_publishes_scheduler_state(mocker) -> None:
+    from pyobs.modules import Module
+
+    scheduler = make_scheduler()
+    scheduler._comm.register_event = AsyncMock()
+    scheduler._comm.set_state = AsyncMock()
+    mocker.patch.object(Module, "open", AsyncMock())
+
+    await scheduler.open()
+
+    state = _state_for(scheduler._comm.set_state, IRoboticScheduler)
+    assert state.last_reschedule is None
+
+
+@pytest.mark.asyncio
+async def test_schedule_worker_publishes_last_reschedule(mocker) -> None:
+    scheduler = make_scheduler(min_safety_time=1.0)
+    scheduler._need_update = True
+    scheduler._initial_update_done = True
+    scheduler._schedule.get_current_observation = AsyncMock(return_value=None)
+    scheduler._schedule.clear_schedule = AsyncMock()
+    scheduler._schedule.add_observations = AsyncMock()
+    scheduler._comm.set_state = AsyncMock()
+
+    task = DummyTask(id=1, name="t1", duration=100)
+    obs1 = make_obs(task, "2024-01-01T00:00:00", "2024-01-01T00:05:00")
+    scheduler._scheduler.schedule = make_async_gen([obs1])
+
+    call_count = 0
+
+    async def fake_sleep(t: float) -> None:
+        nonlocal call_count
+        call_count += 1
+        if call_count >= 2:
+            raise asyncio.CancelledError()
+
+    mocker.patch("pyobs.modules.robotic.scheduler.asyncio.sleep", side_effect=fake_sleep)
+
+    with pytest.raises(asyncio.CancelledError):
+        await scheduler._schedule_worker()
+
+    state = _state_for(scheduler._comm.set_state, IRoboticScheduler)
+    assert state.last_reschedule is not None

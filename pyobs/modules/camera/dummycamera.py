@@ -212,7 +212,9 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
                     & (sources["y_mean"] < shape[0])
                 ]
                 model = models.Moffat2D()
-                data += make_model_image(shape, model, sources, model_shape=(15, 15))
+                data += make_model_image(
+                    shape, model, sources, model_shape=(15, 15), params_map={"x_0": "x_mean", "y_0": "y_mean"}
+                )
 
         data[data > 65535] = 65535
         return data.astype(np.uint16)

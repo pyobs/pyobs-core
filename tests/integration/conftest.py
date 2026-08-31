@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import uuid
 from dataclasses import dataclass
 
 import pytest
@@ -73,8 +74,17 @@ def xmpp_config() -> XmppConfig:
 def make_unopened_comm(xmpp_config: XmppConfig):
     """Factory fixture: ``make_unopened_comm(user)`` returns an unopened XmppComm
     for ``<user>@<domain>``, for constructor-injecting into a module (real or
-    stub) before anything is opened or connected."""
+    stub) before anything is opened or connected.
+
+    Each call to this fixture (i.e. each test) gets its own resource instead of XmppComm's
+    fixed default ("pyobs") -- so a same-user comm from an earlier test can never collide with
+    this test's, even if ejabberd hasn't reaped the old session yet by the time this one
+    connects. See make_xmpp_comm's teardown for the failure mode a shared resource used to need
+    a heuristic sleep to avoid.
+    """
     from pyobs.comm.xmpp.xmppcomm import XmppComm
+
+    resource = f"pyobs-test-{uuid.uuid4().hex[:8]}"
 
     def _factory(user: str) -> XmppComm:
         return XmppComm(
@@ -84,6 +94,7 @@ def make_unopened_comm(xmpp_config: XmppConfig):
             server=f"{xmpp_config.host}:{xmpp_config.port}",
             use_tls=xmpp_config.use_tls,
             ignore_cert_errors=xmpp_config.ignore_cert_errors,
+            resource=resource,
         )
 
     return _factory
@@ -155,3 +166,11 @@ async def make_xmpp_comm(xmpp_config: XmppConfig, make_unopened_comm):
             await comm.close()
         except Exception:
             pass
+    # No teardown wait needed here: make_unopened_comm gives every test its own resource, so a
+    # same-user reconnect from a later test can never race this session's server-side reap --
+    # a fixed sleep was tried first (confirmed via a live repro that XmppComm.close()/slixmpp's
+    # own disconnect(wait=2.0) returning is not sufficient by itself: a same-resource reconnect
+    # landing in the reap gap gets treated as a resource conflict and the *new* session is kicked
+    # with a mid-stream <stream:error/>, a connection-level failure _safe_send's IqError/IqTimeout
+    # retries don't cover) but a heuristic delay on every test is worse than removing the
+    # collision outright.

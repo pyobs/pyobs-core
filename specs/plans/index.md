@@ -141,3 +141,18 @@ Implementation plans, checklist-style. Newest at the bottom.
   tag `Script` module-name fields (`ImagingScript.camera`, etc.) with required `pyobs.interfaces`
   via `typing.Annotated`, for pyobs-portal's module dropdowns. **implemented, closed**
   (closed #808, PR #809)
+- [2026-08-28-shared-authz-keycloak.md](2026-08-28-shared-authz-keycloak.md) — centralized
+  authorization: Keycloak groups/roles become the source of truth; services gate on token claims
+  instead of per-service `is_active` activation (design: `specs/design/shared-authz-keycloak.md`,
+  ADR `0014`). **proposed** (issue #823; Repos: pyobs-auth, pyobs-archive, pyobs-portal,
+  pyobs-web-admin)
+- [2026-08-28-observation-portal-keycloak-auth.md](2026-08-28-observation-portal-keycloak-auth.md) —
+  attach observation-portal (MONET fork) to OIDC via generic `mozilla-django-oidc` (no pyobs-auth
+  dependency, upstream-submittable), config-gated via `OIDC_ENABLED`, additive next to local
+  username/password auth; supersedes Section 0 (portal brokered behind Keycloak) of the
+  2026-08-12 plan. **proposed, revised 2026-08-31** (Repos: observation-portal)
+- [2026-08-28-precreate-pubsub-nodes.md](2026-08-28-precreate-pubsub-nodes.md) — pre-create pubsub
+  event nodes (not state — enforce-state-publishing already narrows that gap) at module startup
+  so subscriptions can land before the first publish (XEP-0060 `create_node`); plus the #824 retry
+  hardening (`_retry_delay` exponent clamp, stuck-key cleanup in both retry loops). **proposed**
+  (issue #824; Repos: pyobs-core)

@@ -1,6 +1,18 @@
 # Plan: pre-create pubsub event nodes at module startup
 
-Status: **proposed**
+Status: **implemented, closed** (`precreate-pubsub-event-nodes` branch, PR #828). Unit suite,
+lint, and type-check green. Live-ejabberd integration suite green (14/14 in isolation; 12/14 in
+one full sequential run against a never-reset container, both failures reproduced as pre-existing
+`persist_items`/`send_last_published_item` cross-test pollution, not a regression -- see PR).
+
+Also fixed a genuine pre-existing bug found while validating this plan: `XmppClient._filter_messages`
+(`xmppclient.py`) did a naive substring search for `<conflict xmlns="urn:ietf:params:xml:ns:xmpp-stanzas" />`
+across every incoming stanza and silently dropped any match -- including an ordinary XEP-0060
+"node already exists" IQ error, which is exactly what `_create_node`'s restart-tolerance produces
+and depends on receiving. Without this fix, any module restart where an event node already existed
+server-side would hang `open()` for `_safe_send`'s full retry budget instead of degrading
+gracefully. Removed in favor of the already-correct, more specific `_stream_error`/`stream_error`
+event handler (added later, in `7adbcd94`, for the same original purpose).
 
 Tracks #824. Repos: pyobs-core.
 
@@ -137,23 +149,25 @@ Small, separable from Phase 1, but they are what make the backstop trustworthy:
 
 ### Phase 1: node pre-creation
 
-- [ ] `_create_node(node)` helper on `XmppComm`: `_safe_send(xep_0060.create_node, ...)`,
+- [x] `_create_node(node)` helper on `XmppComm`: `_safe_send(xep_0060.create_node, ...)`,
       `IqError` → debug log, never raise.
-- [ ] Event nodes: `XmppComm._register_events` handler-`None` branch, guarded on
+- [x] Event nodes: `XmppComm._register_events` handler-`None` branch, guarded on
       `self._module is not None`.
-- [ ] Confirm local events still bypass pubsub entirely (they never reach `_register_events`).
-- [ ] Unit test: `_event_node` naming unchanged.
-- [ ] Integration test: publisher starts and never publishes → event node exists server-side
-      (subscribe succeeds / `get_nodes` shows it).
+- [x] Confirm local events still bypass pubsub entirely (they never reach `_register_events`).
+- [x] Unit test: `_event_node` naming unchanged.
+- [x] Integration test: publisher starts and never publishes → event node exists server-side
+      (subscribe succeeds / `get_nodes` shows it). `test_event_node_precreated_before_first_publish`,
+      passing.
 
 ### Phase 2: retry hardening (#824)
 
-- [ ] `_retry_delay` exponent clamp (`xmppcomm.py:60`).
-- [ ] `_subscribe_event_with_retry`: discard key on abnormal exit, re-raise.
-- [ ] `_subscribe_with_retry`: drop `_state_node_handlers` entry on abnormal exit, re-raise.
-- [ ] Unit tests: `_retry_delay(1024)` / `_retry_delay(10**6)` return a float in `[0, cap]`
+- [x] `_retry_delay` exponent clamp (`xmppcomm.py:60`).
+- [x] `_subscribe_event_with_retry`: discard key on abnormal exit, re-raise.
+- [x] `_subscribe_with_retry`: drop `_state_node_handlers` entry on abnormal exit, re-raise.
+- [x] Unit tests: `_retry_delay(1024)` / `_retry_delay(10**6)` return a float in `[0, cap]`
       (would overflow before the fix).
-- [ ] Integration regression: simulated retry-task failure leaves the pair re-subscribable.
+- [x] Integration regression: simulated retry-task failure leaves the pair re-subscribable.
+      `test_824_regression_fresh_registration_resubscribes_after_abnormal_failure`, passing.
 
 ## Testing / validation (`tests/xmpp/docker-compose.yml` harness)
 

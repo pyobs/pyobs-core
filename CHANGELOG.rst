@@ -1,3 +1,16 @@
+v2.0.3.dev1 (2026-08-30)
+*************************
+* ``XmppComm`` now pre-creates a module's own event pubsub nodes at the moment it declares them
+  (send-only ``register_event()``), instead of relying on the server's lazy auto-create-on-first-
+  publish. Closes the window where a peer connecting before a module's first publish could never
+  complete a subscribe (``item-not-found``) and had to fall back to an indefinitely retrying
+  background task. State nodes are explicitly out of scope (see
+  ``specs/plans/2026-08-28-precreate-pubsub-nodes.md``'s "Why state nodes are excluded" section).
+* Fixes issue #824: ``_retry_delay``'s exponential backoff no longer raises ``OverflowError`` at
+  high attempt counts (e.g. attempt 1024), and both event/state subscribe-retry background tasks
+  now discard their tracked key/handler on an unexpected failure instead of leaving a permanently
+  stuck "subscribed" marker behind with nothing actually subscribed and nothing retrying.
+
 v2.0.0 (2026-08-26)
 *******************
 

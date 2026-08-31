@@ -16,17 +16,14 @@ and remove closed items outright, never annotate them.** Only open items live he
 
 Repos: the whole pyobs fleet.
 
-## Open issues (16, checked 2026-08-31)
+## Open issues (13, checked 2026-08-31)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#830](https://github.com/pyobs/pyobs-core/issues/830) | `http_request_with_retries`: only warn on a failed connection after a minute or so, not on every retry | warn-throttling for retry loops |
-| pyobs-core | [#829](https://github.com/pyobs/pyobs-core/issues/829) | DummyCamera cannot take an exposure with the pinned photutils 3.0: table columns (`x_mean`) don't match Moffat2D params (`x_0`) | |
-| pyobs-core | [#825](https://github.com/pyobs/pyobs-core/issues/825) | Robotic module widgets: `IRobotic` (executor) + `IRoboticScheduler` (planner) interfaces and GUI widgets | design doc `irobotic.md` below (*proposed*); no plan yet |
-| pyobs-core | [#824](https://github.com/pyobs/pyobs-core/issues/824) | `_retry_delay` overflows after 1024 attempts and permanently kills the event subscription | *bug, assigned: thusser* — cap applied after exponentiation, so attempt ≥ 1024 raises `OverflowError` (reported on 2.0.2); fix: cap the exponent before computing |
-| pyobs-core | [#823](https://github.com/pyobs/pyobs-core/issues/823) | Centralized authorization via Keycloak groups/roles (no per-service activation) | design + plan proposed, see plans below (ADR `0014`) |
+| pyobs-core | [#830](https://github.com/pyobs/pyobs-core/issues/830) | `http_request_with_retries`: only warn on a failed connection after a minute or so, not on every retry | warn-throttling for retry loops — checked 2026-08-31, still unaddressed: `before_sleep_log` still warns on every retry attempt (`pyobs/utils/http.py:27-33`) |
+| pyobs-core | [#825](https://github.com/pyobs/pyobs-core/issues/825) | Robotic module widgets: `IRobotic` (executor) + `IRoboticScheduler` (planner) interfaces and GUI widgets | *core side done* (17968cb8, on `develop`, unreleased): interfaces implemented, wired into Mastermind/Scheduler, `DummyMastermind`/`DummyScheduler` added for pyobs-gui dev. GUI side (`RoboticWidget`/`ScheduleWidget`) not started |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
@@ -53,11 +50,6 @@ One row per issue — same layout for every repo.
   `2.0.0.dev0`/`pyobs-core>=2.0.0.dev93`; actual code migration (grid-API rewrite, `self.proxy()`
   async-context-manager change, missing-await fixes) not yet done, three open questions need
   Tim's input.
-- [2026-08-28-shared-authz-keycloak.md](../plans/2026-08-28-shared-authz-keycloak.md) —
-  *proposed* (#823). Centralized authorization: Keycloak groups/roles become the source of truth;
-  services gate on token claims instead of per-service `is_active` activation (design:
-  `specs/design/shared-authz-keycloak.md`, ADR `0014`; Repos: pyobs-auth, pyobs-archive,
-  pyobs-portal, pyobs-web-admin).
 - [2026-08-24-rename-robotic-backend-to-portal.md](../plans/2026-08-24-rename-robotic-backend-to-portal.md) —
   *in progress* (pyobs-portal + fleet). Code merged everywhere 2026-08-25; deployment to
   iagvt/monet not yet safe (Step 5 warning).
@@ -74,10 +66,9 @@ One row per issue — same layout for every repo.
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.
 - [irobotic.md](../design/irobotic.md) — `IRobotic` (executor) / `IRoboticScheduler` (planner)
-  interfaces plus `RoboticWidget` / `ScheduleWidget` in pyobs-gui (#825). Proposed; no plan yet.
-- [shared-authz-keycloak.md](../design/shared-authz-keycloak.md) — centralized authorization via
-  Keycloak groups/roles (#823). Proposed; decision recorded in ADR `0014`; plan
-  `2026-08-28-shared-authz-keycloak.md` above.
+  interfaces plus `RoboticWidget` / `ScheduleWidget` in pyobs-gui (#825). *Partially implemented*:
+  pyobs-core side (interfaces, Mastermind/Scheduler) done on `develop`; pyobs-gui widgets not
+  started.
 
 ### Sibling repos
 

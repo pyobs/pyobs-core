@@ -1,8 +1,8 @@
 # Centralized authorization across pyobs web projects via Keycloak groups/roles
 
-Status: proposed — the decision is recorded in ADR
-`0014-centralized-authorization-via-keycloak-groups.md`; implementation tracked in
-`specs/plans/2026-08-28-shared-authz-keycloak.md` (issue #823).
+Status: implemented — shipped and released (`v2.1.0`) across all four repos, live-verified
+2026-08-31. Decision recorded in ADR `0014-centralized-authorization-via-keycloak-groups.md`;
+checklist in `specs/plans/2026-08-28-shared-authz-keycloak.md` (issue #823, closed).
 Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin
 
 ## Problem

@@ -17,13 +17,14 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (13, checked 2026-09-01 11:14 CEST)
+## Open issues (14, checked 2026-09-01 11:14 CEST)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
 | pyobs-core | [#832](https://github.com/pyobs/pyobs-core/issues/832) | Dark masters per exposure time: match science frames by exptime, scale only a reference (600s) dark | *assigned: thusser* — reduction half of #831; scaling-policy question resolved by ADR `0015-dark-master-strict-exptime-matching-reference-scale-down-only.md` (strict default, reference scales down only); plan `2026-09-01-per-exptime-dark-masters.md` below (*proposed*); pyobs-pipeline#13 is the downstream consumer of the new `Calibration`/`Reduction` config knobs + `MasterCalibCreated.exptime` |
+| pyobs-core | [#831](https://github.com/pyobs/pyobs-core/issues/831) | Take morning darks at the exposure times used for science frames during the night | *assigned: thusser* — robotic/observing half (reduction half is #832); plan `2026-09-01-morning-darks-match-science-exptimes.md` below (*proposed*) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-pipeline | [#13](https://github.com/pyobs/pyobs-pipeline/issues/13) | Support per-exposure-time dark masters: config knobs + exposure time in period UI | *enhancement, assigned: thusser* — app-side support for pyobs-core #831/#832: builder form fields for the new `Calibration`/`Reduction` options, exposure time shown in the period-detail calibs list; blocked on a pyobs-core rev containing #831/#832 (pin bump or temporary editable-path override) |
@@ -41,10 +42,14 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
+- [2026-09-01-morning-darks-match-science-exptimes.md](../plans/2026-09-01-morning-darks-match-science-exptimes.md) —
+  *proposed* (#831). Archive API needs an `exptime` field/filter (`FrameInfo`, `PyobsArchive`,
+  `LocalArchive`), a helper to derive the previous night's science exposure times, and a
+  `DarkBiasScript` option to take darks at each one.
 - [2026-09-01-per-exptime-dark-masters.md](../plans/2026-09-01-per-exptime-dark-masters.md) —
-  *proposed* (#832, depends on #831 — implemented). Per-exptime master darks
-  (filename/cache/progress carry `exptime`), match-or-scale-reference-only-or-error policy at
-  calibration time per ADR `0015`.
+  *proposed* (#832, depends on #831 above). Per-exptime master darks (filename/cache/progress
+  carry `exptime`), match-or-scale-reference-only-or-error policy at calibration time per ADR
+  `0015`.
 - [2026-09-01-portal-instrument-config-app.md](../plans/2026-09-01-portal-instrument-config-app.md) —
   *proposed* (pyobs-portal#116). New `instruments` Django app for pyobs-portal: per-type
   capability models (camera/telescope/filter wheels), admin-editable via a scoped
@@ -78,8 +83,8 @@ One row per issue — same layout for every repo.
 One line per plan — same layout for every repo.
 
 - **pyobs-gui** — [2026-09-01-gui-video-widget-split.md](../../pyobs-gui/specs/2026-09-01-gui-video-widget-split.md) —
-  split `VideoWidget` into a main widget + paired sidebar widget, follow-up to #150 D6
-  (*draft*)
+  split `VideoWidget` into a main widget + paired sidebar widget, D6 follow-up to the (now landed,
+  see pyobs-gui's own `specs/index.md`) main-vs-sidebar-widgets plan (#150) (*draft, unblocked*)
 - **pyobs-gui** — [2026-08-28-structuredconfig-widget.md](../../pyobs-gui/specs/2026-08-28-structuredconfig-widget.md) —
   generic schema-driven `IStructuredConfig` form widget (#154) (*proposed*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —

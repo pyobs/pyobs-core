@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any, cast
 
+import astropy.units as u
+
 from pyobs.images import Image
 from pyobs.images.processor import ImageProcessor
 from pyobs.images.processors.calibration._calibration_cache import _CalibrationCache
@@ -256,9 +258,13 @@ class Calibration(ImageProcessor):
         1. An exact match (within dark_exptime_tolerance) -- used unscaled.
         2. No exact match and EXPTIME < dark_min_exptime -- bias-only, not an error.
         3. No exact match, EXPTIME >= dark_min_exptime, and a reference master with
-           EXPTIME <= dark_scale_exptime exists -- used scaled down to the science exptime.
+           EXPTIME <= dark_scale_exptime *and* EXPTIME >= science_exptime exists -- used
+           scaled down to the science exptime. The second condition is what actually
+           enforces "scaled down only": without it, a site whose longest master happens to be
+           shorter than the science exptime would otherwise get that master scaled *up*.
         4. allow_unmatched_dark_scale=True -- fall back to today's always-scale-whatever-is-
-           nearest behavior.
+           nearest behavior. A candidate with no EXPTIME at all (a legacy master) can't be
+           scaled either way, so it's used unscaled (dark_scale=False) rather than skipped.
         5. Otherwise -- ValueError, caught by __call__ like any other missing-master case.
 
         Returns:
@@ -284,25 +290,27 @@ class Calibration(ImageProcessor):
         if self._dark_min_exptime is not None and science_exptime < self._dark_min_exptime:
             return None, False
 
-        # (3) reference master, scaled down only (never up). The tolerance band means a science
-        # exptime up to ~dark_scale_exptime*(1+tolerance) is accepted here even though it's
-        # technically above the reference -- and _find_dark_at's own exptime_max ceiling for the
-        # reference lookup uses the same band, so the master found is never more than that
-        # ~1% above dark_scale_exptime either. Never scales *up* in practice; the band is a
-        # deliberate width-of-a-hair looseness, not a policy hole.
+        # (3) reference master, scaled down only (never up). exptime_max=dark_scale_exptime only
+        # bounds the reference search from above; a site with no master anywhere near
+        # dark_scale_exptime (e.g. only a 45s one) could otherwise get that shorter master back
+        # as the "reference" and have it scaled UP to a longer science exptime -- exactly the
+        # direction ADR 0015 forbids. Guard against that explicitly: reject a candidate whose
+        # own exptime doesn't cover science_exptime (within tolerance), falling through instead.
         if self._dark_scale_exptime is not None and science_exptime <= self._dark_scale_exptime * (
             1 + self._dark_exptime_tolerance
         ):
             reference = await self._find_dark_at(
                 image, self._dark_scale_exptime, self._max_days_dark, exptime_max=self._dark_scale_exptime
             )
-            if reference is not None:
+            if reference is not None and self._covers_scale_down(reference, science_exptime):
                 return reference, True
 
         # (4) opt back into today's always-scale-whatever-is-nearest behavior
         if self._allow_unmatched_dark_scale:
             fallback = await self._find_master(image, ImageType.DARK, max_days=self._max_days_dark)
-            return fallback, True
+            # a legacy master with no EXPTIME at all can't be scaled -- ccd_process needs the
+            # dark's own exposure time to compute the scale factor (see _CCDDataCalibrator)
+            return fallback, "EXPTIME" in fallback.header
 
         # (5) strict -- no usable dark master under the configured policy
         ceiling = (
@@ -320,15 +328,34 @@ class Calibration(ImageProcessor):
             + f"); available master exptimes: {available if available else 'none'}."
         )
 
+    def _covers_scale_down(self, reference: Image, science_exptime: float) -> bool:
+        """Whether `reference`'s own exptime is long enough to be scaled *down* to
+        science_exptime -- ADR 0015 forbids the reverse. False (not usable as a reference) for
+        a master shorter than science_exptime, or one with no EXPTIME to check at all (a legacy
+        master -- direction can't be verified, so it's rejected rather than assumed safe)."""
+        if "EXPTIME" not in reference.header:
+            return False
+        return float(reference.header["EXPTIME"]) >= science_exptime * (1 - self._dark_exptime_tolerance)
+
     async def _available_dark_exptimes(self, image: Image) -> list[float]:
-        """Best-effort list of exptimes among this instrument/binning's archived DARK masters,
-        for the strict-policy error message only (ADR 0015 asks that it name what's available).
-        Never raises -- an archive issue here shouldn't mask the real ValueError being raised."""
+        """Best-effort list of exptimes among this instrument/binning's archived DARK masters
+        near the science image's DATE-OBS, for the strict-policy error message only (ADR 0015
+        asks that it name what's available). Bounded to max_days_dark (falling back to a wide
+        30-day window if unset) so this doesn't scan an archive's entire DARK history on every
+        strict-failure frame. Never raises -- an archive issue here shouldn't mask the real
+        ValueError being raised."""
         try:
             instrument = image.header["INSTRUME"]
             binning = "{0}x{0}".format(image.header["XBINNING"])  # noqa: UP031
+            time = Time(image.header["DATE-OBS"])
+            max_days = self._max_days_dark if self._max_days_dark is not None else 30.0
             infos = await self._archive.list_frames(
-                instrument=instrument, image_type=ImageType.DARK, binning=binning, rlevel=1
+                start=time - max_days * u.day,
+                end=time + max_days * u.day,
+                instrument=instrument,
+                image_type=ImageType.DARK,
+                binning=binning,
+                rlevel=1,
             )
         except Exception:
             return []

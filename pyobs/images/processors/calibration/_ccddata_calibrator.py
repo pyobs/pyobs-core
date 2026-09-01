@@ -30,7 +30,10 @@ class _CCDDataCalibrator:
 
         self._ccd_data = self._image.to_ccddata()
 
-        if dark is not None:
+        # only read EXPTIME when it's actually needed -- an unscaled exact-match dark
+        # (dark_scale=False) doesn't require it, and a legacy master combined from raw frames
+        # with no EXPTIME at all (see Reduction._create_master_darks' fallback) doesn't have it
+        if dark is not None and dark_scale:
             self._dark_exp_time = dark.header["EXPTIME"]
 
     @staticmethod

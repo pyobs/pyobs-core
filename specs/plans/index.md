@@ -178,8 +178,10 @@ Implementation plans, checklist-style. Newest at the bottom.
   drop `Scheduler._update_schedule()`'s "was it scheduled?" gate, which is unconditionally wrong
   for `PortalObservationArchive` (permanently empty cache by construction) and stalls
   rescheduling when a portal task is deactivated/deleted; plus mastermind self-heals an
-  unresolvable observation by marking it canceled instead of looping forever. **proposed** (issue
-  #847; Repos: pyobs-core)
+  unresolvable *pending* observation by marking it canceled instead of looping forever (review on
+  PR #852 caught and fixed a non-nullable-FK payload bug, a startup-race false-cancel, and scoped
+  the self-heal off `get_current_observation()`). **implemented** (issue #847; PR #852; Repos:
+  pyobs-core)
 - [2026-09-01-scheduler-reschedule-on-project-and-task-changes.md](2026-09-01-scheduler-reschedule-on-project-and-task-changes.md) —
   `Scheduler._update_schedule()`'s change-detection is task-ID-only, so a project priority change
   or a same-ID task content change never triggers a reschedule; adds project/task content-diff

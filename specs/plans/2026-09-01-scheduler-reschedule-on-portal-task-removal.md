@@ -1,6 +1,6 @@
 # Plan: Reschedule on portal task removal instead of gating on an empty schedule cache
 
-Status: proposed
+Status: implemented (PR #852; part 2 revised in review — see below)
 Repos: pyobs-core
 Issue: pyobs-core#847
 
@@ -83,18 +83,24 @@ last successfully-polled task list — it never raises on network errors (those 
 background poller and leave the last-known-good list in place), so `None` means "genuinely not in
 the current active list," not "transient hiccup."
 
-In `PortalObservationArchive` (`observationarchive.py`), factor the shared "fetch task, and if
-unresolved, cancel" logic and use it from both `get_next_observation()` and
-`get_current_observation()`:
+In `PortalObservationArchive` (`observationarchive.py`), add `_resolve_or_cancel_pending()`, used
+only from `get_next_observation()`'s pending-observation path (**not** `get_current_observation()`
+— see revision below):
 
 ```python
-async def _resolve_or_cancel(self, obs: Observation, task_archive: TaskArchive) -> bool:
-    """Resolve obs.task; if the portal no longer has the task, mark obs canceled so it
-    stops being retried. Returns True if obs is usable."""
+async def _resolve_or_cancel_pending(self, obs: Observation, task_archive: TaskArchive) -> bool:
+    """Resolve a pending obs.task; if the task archive has polled at least once and the portal
+    no longer has the task, mark obs canceled so it stops being retried. Returns True if obs is
+    usable."""
+    task_id = obs.task
     await obs.fetch_task(task_archive)
     if obs.task is not None:
         return True
+    if await task_archive.last_changed() is None:
+        log.error("Could not resolve task for observation %s, skipping.", obs.id)
+        return False
     log.error("Could not resolve task for observation %s, marking canceled.", obs.id)
+    obs.task = task_id  # portal's task FK is non-nullable -- keep the id for the PUT payload
     obs.state = ObservationState.CANCELED
     try:
         await self.update_observation(obs)
@@ -103,16 +109,46 @@ async def _resolve_or_cancel(self, obs: Observation, task_archive: TaskArchive) 
     return False
 ```
 
-Update both call sites to use it in place of the current inline `fetch_task()` +
-`if obs.task is None: continue` block. Mutating `obs.state` in place (not just the remote PUT)
-matters: `self._observations` is the same list both methods iterate, so without the local
-mutation the same observation gets re-fetched-and-relogged on every call within the same poll
-cycle, not just every 10 s poll.
+Mutating `obs.state` in place (not just the remote PUT) matters: `self._observations` is the same
+list `get_next_observation()` iterates, so without the local mutation the same observation gets
+re-fetched-and-relogged on every call within the same poll cycle, not just every 10 s poll.
 
 Swallow (log, don't raise) a failed `update_observation()` PUT — a portal hiccup here shouldn't
-crash the mastermind's poll loop; state will resync on the next successful update, and if the
-task is genuinely gone the observation will also disappear from the next `_get_schedule()` fetch
-regardless (state filter is `[PENDING, IN_PROGRESS]`).
+crash the mastermind's poll loop; state will resync on the next successful update.
+
+**Revision from review (before merge):** the initial draft of this section had three bugs, all
+caught in PR #852's review and fixed before merge:
+
+1. **Cancel payload never persisted.** `obs.fetch_task()` leaves `obs.task = None` on a miss;
+   `update_observation()` → `model_dump(use_task_id=True)` only overrides `data["task"]` when
+   `isinstance(self.task, Task)` (`observation.py:86`), so with `task=None` it serialized the raw
+   field — `task: null`. The portal's `Observation.task` FK is non-nullable, so the PUT was
+   rejected every time; the exception was caught and logged as designed, but the cancel never
+   landed, and the escape hatch this plan originally cited ("the observation will also disappear
+   from the next `_get_schedule()` fetch regardless") doesn't hold either — the portal's
+   observation filter is state/time-only, not task-activity-aware, and deactivation doesn't
+   cascade. Net effect: a *permanent*, now double-noisy (two ERROR lines/poll), failed-cancel
+   loop. Fixed by saving `obs.task` before calling `fetch_task()` and restoring it onto `obs`
+   before building the cancel payload.
+2. **Startup race could wrongfully cancel.** `PortalTaskArchive.get_task()` returns `None` both
+   for "genuinely not in the active list" and for "task archive has never completed a poll yet"
+   (e.g. the observation archive's first poll lands before the task archive's, at module
+   startup) — indistinguishable from inside `get_task()` alone. Once (1) is fixed, that
+   would mean a real cancel PUT on a task that's actually fine. Guarded via
+   `task_archive.last_changed()`, which is `None` until the first successful poll (existing
+   behavior on `PortalTaskArchive`) — skip canceling while true, keep the original log-and-skip.
+3. **`get_current_observation()` must not cancel.** An in-progress observation's task going
+   unresolvable mid-run (deactivated while the mastermind is executing it) shouldn't flip the
+   portal record to `canceled` out from under a running task — that produces two divergent state
+   views. Reverted `get_current_observation()` to its original inline log-and-skip; only
+   `get_next_observation()`'s pending path self-heals. (This path was already unreachable in
+   practice pre-fix-1 anyway, since the scheduler's own archive cache is always empty and the
+   mastermind never calls it with a task_archive that would trigger the bug — but the intent is
+   now explicit in the code, not just true by accident.)
+
+Also added a per-observation `LogThrottle` (`self._cancel_error_throttle`, same pattern as the
+existing `self._poll_error_throttle`) around the "failed to mark canceled" log line, so a
+persistent portal outage during the cancel PUT doesn't re-log an ERROR every ~5 s poll.
 
 ### Out of scope
 
@@ -136,12 +172,19 @@ this plan).
 
 `tests/robotic/storage/portal/test_portal_archives.py`:
 
-- `get_next_observation()` / `get_current_observation()`: when `task_archive.get_task()` returns
-  `None` for the pending/in-progress observation's task ID, assert the method returns `None`
-  (or the next usable observation, if testing with two), `update_observation()` was called with
-  the same observation now carrying `state=CANCELED`, and `obs.state` is mutated in the archive's
-  own `_observations` list (a second call in the same poll cycle doesn't re-invoke
-  `fetch_task()`/`update_observation()` for the same observation).
+- `get_next_observation()`: when `task_archive.get_task()` returns `None` for the pending
+  observation's task ID (and `last_changed()` returns non-`None`, i.e. the task archive has
+  polled), assert the method returns `None`, `update_observation()` was called with the same
+  observation now carrying `state=CANCELED` **and `task` still set to the original id** (the
+  payload bug's regression test — `call_args[1]["json"]["task"] == 99`), and `obs.state` is
+  mutated in the archive's own `_observations` list (a second call in the same poll cycle doesn't
+  re-invoke `fetch_task()`/`update_observation()` for the same observation).
+- `get_next_observation()` with `task_archive.last_changed()` returning `None` (never polled):
+  assert the observation stays `PENDING` and `update_observation()` is not called — the
+  startup-race guard.
+- `get_current_observation()` with an unresolvable task: assert it still just logs-and-skips
+  (`state` stays `IN_PROGRESS`, no PUT) — locks in that this path was deliberately *not* changed
+  to self-heal.
 - `update_observation()` raising inside the cancel path is caught and logged, not propagated —
   `get_next_observation()` still returns `None` cleanly rather than raising out of the mastermind's
   poll loop.

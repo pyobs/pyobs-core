@@ -17,7 +17,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (12, checked 2026-09-01)
+## Open issues (11, checked 2026-09-01)
 
 One row per issue — same layout for every repo.
 
@@ -25,14 +25,13 @@ One row per issue — same layout for every repo.
 |---|---|---|---|
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
-| pyobs-pipeline | [#13](https://github.com/pyobs/pyobs-pipeline/issues/13) | Support per-exposure-time dark masters: config knobs + exposure time in period UI | *enhancement, assigned: thusser* — app-side support for pyobs-core #831/#832: builder form fields for the new `Calibration`/`Reduction` options, exposure time shown in the period-detail calibs list; both prerequisites (#831, #832) landed on `develop` 2026-09-01 — just needs a pyobs-core pin bump (or temporary editable-path override) to pick them up |
+| pyobs-core | [#844](https://github.com/pyobs/pyobs-core/issues/844) | Reduction: make min-frames-per-exptime-group threshold for dark masters configurable | *enhancement, assigned: thusser* — `_create_master_darks` hardcodes a minimum of 3 raw frames per exptime group; add a `min_darks_per_group` param matching the existing `min_flats`. Surfaced while closing out pyobs-pipeline #13/#14 |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-brot | [#60](https://github.com/pyobs/pyobs-brot/issues/60) | Bump astropy pin to allow 8.x | *assigned: thusser* — pin (`astropy<8,>=7.0.1`) forces a downgrade when installed alongside pyobs-portal (locked to `astropy==8.0.1`); on south/monet's portal image, `uv run`'s re-sync undoes the downgrade on every container start (multi-minute startup tax, re-fetches astropy over the network). Needs test-suite check before widening to `<9` |
-| pyobs-gui | [#154](https://github.com/pyobs/pyobs-gui/issues/154) | Add generic `IStructuredConfig` widget — schema-driven form auto-built from `ConfigSchema` | *enhancement* — one generic widget covers every `IStructuredConfig` module (schema-driven editors + live `ConfigAppliedState` + `set_config()`); plan `2026-08-28-structuredconfig-widget.md` below (*proposed*) |
-| pyobs-portal | [#128](https://github.com/pyobs/pyobs-portal/issues/128) | Script builder: nested scripts in a `SequentialRunner` show as raw-YAML textareas, not forms | *bug* — nested polymorphic scripts (`SequentialRunner.scripts`, `ParallelRunner.scripts`, `ConditionalRunner.true`/`.false`, `CasesRunner.cases`) skip the class-dropdown + nested-form control when stored under a re-exported short class path; `ScriptBuilder._resolveClass()` (`$aliases`) only canonicalizes the root script class. Fix direction: apply `$aliases` resolution to nested classes too (in `buildPolymorphicControl` or canonicalize on load) + regression test with an aliased nested class |
 | pyobs-portal | [#116](https://github.com/pyobs/pyobs-portal/issues/116) | Add instrument config app for script builder (camera/telescope capabilities) | *assigned: thusser* — static instrument capability data so the script builder works without live modules; plan `2026-09-01-portal-instrument-config-app.md` below (*proposed*) |
+| pyobs-web-admin | [#79](https://github.com/pyobs/pyobs-web-admin/issues/79) | Add "update all" button to packages page | |
 | pyobs-web-admin | [#74](https://github.com/pyobs/pyobs-web-admin/issues/74) | Add fullscreen button for logs | *assigned: thusser* — both log views render at a fixed height with no enlarge option |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
+| pyobs-weather | [#31](https://github.com/pyobs/pyobs-weather/issues/31) | develop is 12 commits behind master (through v1.2.0..v2.0.0.dev3) | repo-hygiene — `develop` needs merging/fast-forwarding to catch up |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
 | pyobs-astrometry | [#1](https://github.com/pyobs/pyobs-astrometry/issues/1) | No version tracking (no pyproject.toml) | *assigned: thusser* — nothing to tell what version is deployed; minimal `pyproject.toml` (or `VERSION` file) wanted |
 
@@ -75,8 +74,6 @@ One line per plan — same layout for every repo.
 - **pyobs-gui** — [2026-09-01-gui-video-widget-split.md](../../pyobs-gui/specs/2026-09-01-gui-video-widget-split.md) —
   split `VideoWidget` into a main widget + paired sidebar widget, D6 follow-up to the (now landed,
   see pyobs-gui's own `specs/index.md`) main-vs-sidebar-widgets plan (#150) (*draft, unblocked*)
-- **pyobs-gui** — [2026-08-28-structuredconfig-widget.md](../../pyobs-gui/specs/2026-08-28-structuredconfig-widget.md) —
-  generic schema-driven `IStructuredConfig` form widget (#154) (*proposed*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
 - **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —

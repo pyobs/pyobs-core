@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated, Self
+from typing import TYPE_CHECKING, Annotated, ClassVar, Self
 
 from pydantic import Field, model_validator
 
@@ -26,6 +26,11 @@ log = logging.getLogger(__name__)
 
 class DarkBiasScript(Script):
     """Script for running darks or biases."""
+
+    # Placeholder used by estimate_duration() for match_science_exptimes when nothing is cached
+    # yet -- ADR 0015's default reference dark exptime, a closer approximation to a real series
+    # than the always-0 self.exptime this mode is validated to carry.
+    _FALLBACK_MATCH_EXPTIME: ClassVar[float] = 600.0
 
     camera: Annotated[str, IData, IBinning, IWindow, IExposureTime, IImageType] = Field(
         description="Name of the camera module to expose with."
@@ -60,6 +65,11 @@ class DarkBiasScript(Script):
             raise ValueError("exptimes and match_science_exptimes are mutually exclusive.")
         if modes_set == 1 and self.exptime != 0:
             raise ValueError("exptime cannot be combined with exptimes or match_science_exptimes.")
+        if self.exptimes is not None and 0 in self.exptimes:
+            raise ValueError(
+                "exptimes cannot include 0 -- bias is always its own single series (exptime=0), "
+                "run as a separate DarkBiasScript."
+            )
         return self
 
     def _resolve_night(self) -> str | None:
@@ -70,6 +80,21 @@ class DarkBiasScript(Script):
         if self._observer is not None:
             return Time.now().night_obs(self._observer).isoformat()
         return None
+
+    def _binning_str(self) -> str:
+        return f"{self.binning[0]}x{self.binning[1]}"
+
+    def _flatten_matching_exptimes(self, by_combo: dict[tuple[str, str], list[float]]) -> list[float]:
+        """Narrows science_exptimes_for_night's per-(instrument, binning) result to this
+        script's own binning, and unions across instruments at that binning.
+
+        This script exposes at one binning (self.binning) for one camera; unioning across
+        every instrument/binning combination indiscriminately would hand it exptimes no science
+        frame at its own binning ever used. Filtering by instrument too isn't possible here --
+        the archive's INSTRUME code isn't available as a DarkBiasScript config field.
+        """
+        binning = self._binning_str()
+        return sorted({e for (_, b), values in by_combo.items() if b == binning for e in values}, reverse=True)
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
@@ -118,9 +143,13 @@ class DarkBiasScript(Script):
             if night is None:
                 raise ValueError("No observer configured to derive the night from.")
             by_combo = await science_exptimes_for_night(self.archive, self.site, night)
-            exptimes = sorted({e for values in by_combo.values() for e in values}, reverse=True)
+            exptimes = self._flatten_matching_exptimes(by_combo)
             if not exptimes:
-                log.warning("No science exptimes found for night %s; nothing to expose.", night)
+                log.warning(
+                    "No science exptimes found for night %s at binning %s; nothing to expose.",
+                    night,
+                    self._binning_str(),
+                )
             return exptimes
 
         return [self.exptime]
@@ -145,6 +174,11 @@ class DarkBiasScript(Script):
                     )
 
         exptimes = await self._resolve_exptimes()
+        if not exptimes:
+            # match_science_exptimes found nothing to take darks at -- _resolve_exptimes()
+            # already logged why; leave the camera's image type/exptime untouched rather than
+            # switching it to DARK for a series that never runs
+            return
         if len(exptimes) > 1:
             log.info("Resolved dark exptimes for %s: %s", self.camera, exptimes)
 
@@ -168,23 +202,25 @@ class DarkBiasScript(Script):
 
         For match_science_exptimes, this sync method can't query the archive itself; it reads
         whatever can_run()'s prior (async) call already cached for this site/night, via
-        peek_cached_science_exptimes_for_night(). Falls back to a single-series placeholder
-        estimate (using the configured exptime, 0 by default) if nothing is cached yet -- e.g.
-        can_run() hasn't run for this site/night within the cache's TTL.
+        peek_cached_science_exptimes_for_night(). Falls back to a placeholder single-series
+        estimate at _FALLBACK_MATCH_EXPTIME if nothing is cached yet -- e.g. can_run() hasn't
+        run for this site/night within the cache's TTL.
         """
         # TODO: get a better estimate for readout overhead
         readout = 5.0
         if self.exptimes is not None:
             return sum(self.count * (e + readout) for e in self.exptimes)
 
-        if self.match_science_exptimes and self.site is not None:
-            night = self._resolve_night()
-            if night is not None:
-                cached = peek_cached_science_exptimes_for_night(self.site, night)
-                if cached is not None:
-                    exptimes = {e for values in cached.values() for e in values}
-                    if exptimes:
-                        return sum(self.count * (e + readout) for e in exptimes)
+        if self.match_science_exptimes:
+            if self.site is not None:
+                night = self._resolve_night()
+                if night is not None:
+                    cached = peek_cached_science_exptimes_for_night(self.site, night)
+                    if cached is not None:
+                        exptimes = self._flatten_matching_exptimes(cached)
+                        if exptimes:
+                            return sum(self.count * (e + readout) for e in exptimes)
+            return self.count * (self._FALLBACK_MATCH_EXPTIME + readout)
 
         return self.count * (self.exptime + readout)
 

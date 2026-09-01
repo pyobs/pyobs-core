@@ -22,6 +22,11 @@ def test_exptimes_close_zero_target_only_matches_zero() -> None:
     assert exptimes_close(1.0, 0.0) is False
 
 
+def test_exptimes_close_is_symmetric() -> None:
+    assert exptimes_close(100.0, 101.0, tolerance=0.01) == exptimes_close(101.0, 100.0, tolerance=0.01)
+    assert exptimes_close(100.0, 101.01, tolerance=0.01) == exptimes_close(101.01, 100.0, tolerance=0.01)
+
+
 # ── group_exptimes ───────────────────────────────────────────────────────────
 
 

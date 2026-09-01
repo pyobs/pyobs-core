@@ -63,4 +63,54 @@ def test_find_cache_entry_emtpy():
     cache = _CalibrationCache(2)
 
     with pytest.raises(ValueError):
-        cache._find_cache_entry((image_type, image_instrument, image_binning, image_filter))
+        cache._find_cache_entry((image_type, image_instrument, image_binning, image_filter, None))
+
+
+# ── exptime keying (DARK masters at different exptimes) ─────────────────────
+
+
+@pytest.fixture()
+def dark_lookup_image():
+    # instrument/binning matching _dark_master()'s, no FILTER -- DARK lookups ignore filter, and
+    # a real dark master's own FITS header often doesn't carry one either (see _get_cache_keys)
+    image = Image()
+    image.header["INSTRUME"] = "cam"
+    image.header["XBINNING"] = 1
+    return image
+
+
+def _dark_master() -> Image:
+    master = Image()
+    master.header["INSTRUME"] = "cam"
+    master.header["XBINNING"] = 1
+    return master
+
+
+def test_get_from_cache_keys_by_exptime(dark_lookup_image):
+    exact = _dark_master()
+    reference = _dark_master()
+
+    cache = _CalibrationCache(5)
+    cache.add_to_cache(exact, ImageType.DARK, exptime=45.0)
+    cache.add_to_cache(reference, ImageType.DARK, exptime=600.0)
+
+    assert cache.get_from_cache(dark_lookup_image, ImageType.DARK, exptime=45.0) == exact
+    assert cache.get_from_cache(dark_lookup_image, ImageType.DARK, exptime=600.0) == reference
+
+
+def test_get_from_cache_miss_for_different_exptime(dark_lookup_image):
+    cache = _CalibrationCache(5)
+    cache.add_to_cache(_dark_master(), ImageType.DARK, exptime=45.0)
+
+    with pytest.raises(ValueError):
+        cache.get_from_cache(dark_lookup_image, ImageType.DARK, exptime=600.0)
+
+
+def test_exptime_defaults_to_none_unaffected_by_dark_entries(dark_lookup_image):
+    # a BIAS/SKYFLAT lookup (exptime=None, the default) must not collide with a DARK entry
+    # cached under an explicit exptime
+    cache = _CalibrationCache(5)
+    cache.add_to_cache(_dark_master(), ImageType.DARK, exptime=600.0)
+
+    with pytest.raises(ValueError):
+        cache.get_from_cache(dark_lookup_image, ImageType.DARK)

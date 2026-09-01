@@ -32,6 +32,7 @@ def mock_image():
     image.header["XBINNING"] = 1
     image.header["FILTER"] = "filter"
     image.header["DATE-OBS"] = "2023-11-20 07:53:29.653"
+    image.header["EXPTIME"] = 30.0
 
     return image
 
@@ -106,6 +107,7 @@ async def test_call_valid(mocker, mock_image):
     archive = ConcreteArchive()
     calibration = Calibration(archive)
     mocker.patch.object(calibration, "_find_master", return_value=mock_image)
+    mocker.patch.object(calibration, "_find_dark_master", return_value=(mock_image, False))
 
     result_image = await calibration(mock_image)
 
@@ -152,3 +154,190 @@ def test_verify_image_header_invalid():
 
     with pytest.raises(ValueError):
         Calibration._verify_image_header(image)
+
+
+def test_verify_image_header_requires_exptime():
+    image = Image()
+    image.header["INSTRUME"] = "cam"
+    image.header["XBINNING"] = 1
+    image.header["DATE-OBS"] = "2023-11-20 07:53:29.653"
+
+    with pytest.raises(ValueError):
+        Calibration._verify_image_header(image)
+
+
+def _dark_master(exptime: float) -> Image:
+    # real dark masters inherit INSTRUME/XBINNING from the raw frames combined into them, and
+    # the calibration cache derives its key from these on the master, not the science image
+    master = Image()
+    master.header["INSTRUME"] = "cam"
+    master.header["XBINNING"] = 1
+    master.header["EXPTIME"] = exptime
+    return master
+
+
+def _find_master_side_effect(exact: Image | None = None, reference: Image | None = None, fallback: Image | None = None):
+    """Fakes Pipeline.find_master for _find_dark_master tests: _find_dark_at's exact-match call
+    passes exptime= without exptime_max=, its reference call passes both, and the branch-4
+    fallback (via _find_master -> _find_master_in_archive) passes neither."""
+
+    def side_effect(*args, **kwargs):
+        if kwargs.get("exptime_max") is not None:
+            return reference
+        if "exptime" in kwargs:
+            return exact
+        return fallback
+
+    return side_effect
+
+
+# ── _find_dark_master (ADR 0015 policy) ────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_require_dark_false_skips_lookup(mocker, mock_image):
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master")
+    calibration = Calibration(ConcreteArchive(), require_dark=False)
+
+    master, scale = await calibration._find_dark_master(mock_image)
+
+    assert (master, scale) == (None, False)
+    pyobs.utils.pipeline.Pipeline.find_master.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_exact_match_used_unscaled(mocker, mock_image):
+    mock_image.header["EXPTIME"] = 600.0
+    exact = _dark_master(600.0)
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect(exact=exact))
+
+    calibration = Calibration(ConcreteArchive())
+    master, scale = await calibration._find_dark_master(mock_image)
+
+    assert master is exact
+    assert scale is False
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_below_minimum_is_bias_only(mocker, mock_image):
+    mock_image.header["EXPTIME"] = 2.0  # below the default dark_min_exptime=5.0
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect())
+
+    calibration = Calibration(ConcreteArchive())
+    master, scale = await calibration._find_dark_master(mock_image)
+
+    assert (master, scale) == (None, False)
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_exact_match_below_minimum_wins_over_bias_only(mocker, mock_image):
+    mock_image.header["EXPTIME"] = 2.0
+    exact = _dark_master(2.0)
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect(exact=exact))
+
+    calibration = Calibration(ConcreteArchive())
+    master, scale = await calibration._find_dark_master(mock_image)
+
+    assert master is exact
+    assert scale is False
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_reference_scaled_down(mocker, mock_image):
+    mock_image.header["EXPTIME"] = 45.0
+    reference = _dark_master(600.0)
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect(reference=reference))
+
+    calibration = Calibration(ConcreteArchive())
+    master, scale = await calibration._find_dark_master(mock_image)
+
+    assert master is reference
+    assert scale is True
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_science_exptime_above_reference_skips_scale_branch(mocker, mock_image):
+    # EXPTIME > dark_scale_exptime -- branch 3 must not fire even if a reference exists,
+    # otherwise the reference would be scaled UP, which ADR 0015 forbids
+    mock_image.header["EXPTIME"] = 900.0
+    reference = _dark_master(600.0)
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect(reference=reference))
+
+    calibration = Calibration(ConcreteArchive())
+    with pytest.raises(ValueError):
+        await calibration._find_dark_master(mock_image)
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_allow_unmatched_dark_scale_falls_back(mocker, mock_image):
+    mock_image.header["EXPTIME"] = 45.0
+    fallback = _dark_master(123.0)
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect(fallback=fallback))
+
+    calibration = Calibration(ConcreteArchive(), dark_scale_exptime=None, allow_unmatched_dark_scale=True)
+    master, scale = await calibration._find_dark_master(mock_image)
+
+    assert master is fallback
+    assert scale is True
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_strict_no_match_raises(mocker, mock_image):
+    mock_image.header["EXPTIME"] = 45.0
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect())
+
+    calibration = Calibration(ConcreteArchive())
+    with pytest.raises(ValueError, match="EXPTIME=45.0"):
+        await calibration._find_dark_master(mock_image)
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_dark_min_exptime_none_disables_bias_only_branch(mocker, mock_image):
+    mock_image.header["EXPTIME"] = 2.0
+    reference = _dark_master(600.0)
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect(reference=reference))
+
+    calibration = Calibration(ConcreteArchive(), dark_min_exptime=None)
+    master, scale = await calibration._find_dark_master(mock_image)
+
+    # no exact match, and dark_min_exptime disabled -- falls through to the reference branch
+    # instead of returning the bias-only (None, False)
+    assert master is reference
+    assert scale is True
+
+
+# ── _CCDDataCalibrator dark_scale ──────────────────────────────────────────────
+
+
+def test_ccddata_calibrator_unscaled_dark_passes_no_dark_exposure(mocker):
+    image = Image(data=np.zeros((2, 2), dtype=np.float32))
+    image.header["DET-GAIN"] = 1.0
+    image.header["DET-RON"] = 0.0
+    image.header["EXPTIME"] = 600.0
+
+    dark = Image(data=np.zeros((2, 2), dtype=np.float32))
+    dark.header["EXPTIME"] = 600.0
+
+    mock_ccd_process = mocker.patch("ccdproc.ccd_process")
+    calibrator = _CCDDataCalibrator(image, dark=dark, dark_scale=False)
+    calibrator()
+
+    assert mock_ccd_process.call_args.kwargs["dark_scale"] is False
+    assert mock_ccd_process.call_args.kwargs["dark_exposure"] is None
+
+
+def test_ccddata_calibrator_scaled_dark_passes_dark_exposure(mocker):
+    image = Image(data=np.zeros((2, 2), dtype=np.float32))
+    image.header["DET-GAIN"] = 1.0
+    image.header["DET-RON"] = 0.0
+    image.header["EXPTIME"] = 45.0
+
+    dark = Image(data=np.zeros((2, 2), dtype=np.float32))
+    dark.header["EXPTIME"] = 600.0
+
+    mock_ccd_process = mocker.patch("ccdproc.ccd_process")
+    calibrator = _CCDDataCalibrator(image, dark=dark, dark_scale=True)
+    calibrator()
+
+    assert mock_ccd_process.call_args.kwargs["dark_scale"] is True
+    assert mock_ccd_process.call_args.kwargs["dark_exposure"] is not None

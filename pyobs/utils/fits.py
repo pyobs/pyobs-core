@@ -95,6 +95,7 @@ class FilenameFormatter:
             "filter": self._format_filter,
             "string": self._format_string,
             "type": self._format_type,
+            "exptime": self._format_exptime,
         }
 
     def _value(self, hdr: fits.Header, key: str) -> int | float | str:
@@ -290,6 +291,20 @@ class FilenameFormatter:
             return "d"
         else:
             return "e"
+
+    def _format_exptime(self, hdr: fits.Header, key: str) -> str:
+        """Formats an exposure time, rendering whole-second values without a trailing ".0"
+        (e.g. 600.0 -> "600", 0.333 -> "0.333") so per-exptime master filenames stay readable.
+
+        Args:
+            hdr: FITS header to take values from.
+            key: The name of the FITS header key to use.
+
+        Returns:
+            Formatted string.
+        """
+        value = float(self._value(hdr, key))
+        return str(int(value)) if value == int(value) else str(value)
 
 
 def format_filename(hdr: fits.Header, fmt: str | list[str], keys: dict[str, Any] | None = None) -> str:

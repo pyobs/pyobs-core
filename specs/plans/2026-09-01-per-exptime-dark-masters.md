@@ -1,6 +1,6 @@
 # Plan: per-exposure-time dark masters, reference-master scale-down only
 
-Status: **proposed**
+Status: implemented
 
 Tracks issue #832. Reduction/pipeline half of the dark-exptime-matching work; depends on the
 archive `exptime` plumbing from `2026-09-01-morning-darks-match-science-exptimes.md` (#831).
@@ -127,35 +127,38 @@ Implements ADR 0015's decision directly.
   reads `EXPTIME` from the science image's own header (`calibration.py`, per #3) rather than
   needing it passed explicitly from `Reduction`.
 
-## Open questions to resolve during implementation
+## Open questions -- resolved during implementation
 
-- Whether `dark_exptime_tolerance` should be relative (percentage) or absolute (seconds), or
-  configurable as either — ADR 0015 assumes relative 1% as the default; confirm this holds for
-  both very short (bias-adjacent) and very long exptimes before hardcoding relative-only.
-- Filename-pattern migration: hard rename vs. documented opt-in — decide once #1's on-disk
-  layout for existing deployments (MONET, iag50) is checked against what a mid-migration state
-  looks like (old single dark master + new per-exptime ones coexisting during rollout).
+- `dark_exptime_tolerance` is relative-only (matching #831's `exptimes_close`/`group_exptimes`,
+  which this plan already reuses). No absolute-tolerance mode was added -- not needed for the
+  discrete, well-separated exptimes real detectors use, and would have doubled the parameter
+  surface across `Reduction`, `Pipeline.find_master`, and `Calibration` for no concrete use case.
+- Filename-pattern migration: hard rename, called out here and in the PR description rather than
+  adding a second configurable pattern. Existing archives keep their old-pattern masters under
+  their original filenames; only newly-created masters (BIAS/SKYFLAT included, since the pattern
+  is shared) use the new `{EXPTIME|exptime}` component.
 
 ## Acceptance criteria
 
-- [ ] A night with darks at multiple exposure times produces one distinct master dark per
+- [x] A night with darks at multiple exposure times produces one distinct master dark per
       exposure time — distinct filenames, cache entries, and `MasterCalibCreated` events each
       carrying the correct `exptime`.
-- [ ] Science frames are calibrated with the exptime-matching master (within tolerance),
+- [x] Science frames are calibrated with the exptime-matching master (within tolerance),
       unscaled, whenever one exists.
-- [ ] Scaling happens only via the reference master, only downward (science `EXPTIME <=
+- [x] Scaling happens only via the reference master, only downward (science `EXPTIME <=
       dark_scale_exptime`); a science frame with no matching master and `EXPTIME >
       dark_scale_exptime` fails calibration with a clear, catchable error instead of silently
       scaling.
-- [ ] `allow_unmatched_dark_scale=True` reproduces today's always-scale behavior exactly, for
+- [x] `allow_unmatched_dark_scale=True` reproduces today's always-scale behavior exactly, for
       sites not yet taking per-exptime darks.
-- [ ] A science frame with `EXPTIME < dark_min_exptime` and no exact-match dark master is
+- [x] A science frame with `EXPTIME < dark_min_exptime` and no exact-match dark master is
       calibrated with bias only (no dark correction applied, no error); an exact-match master for
       that exptime, if one exists, is still used ahead of the bias-only path.
-- [ ] Backward compatibility: existing `Calibration` configs either keep working unchanged or
-      have a documented, changelog-visible migration step (filename pattern, new default
-      behavior).
-- [ ] Tests: master grouping by exptime (incl. tolerance, under-populated groups skipped
+- [x] Backward compatibility: existing `Calibration` configs keep working unchanged (all new
+      `__init__` params default to today's ADR-0015-approved policy); the filename-pattern change
+      is a documented migration step (see "Open questions" above and the PR description), not a
+      config break.
+- [x] Tests: master grouping by exptime (incl. tolerance, under-populated groups skipped
       individually); filename/cache-key/progress-event exptime plumbing; matching logic
       (exact match / bias-only-below-minimum / reference-scale-down / reference-scale-up rejected
       / unmatched-strict-error / `allow_unmatched_dark_scale` fallback); `_CCDDataCalibrator`'s

@@ -122,7 +122,7 @@ class DummyRoof(BaseRoof, IRoof):
         await self._change_motion_status(MotionStatus.ABORTING)
 
         async with LockWithAbort(self._lock_motion, self._abort_motion):
-            await self._change_motion_status(MotionStatus.IDLE)
+            await self._change_motion_status(MotionStatus.PARKED if self._is_closed() else MotionStatus.IDLE)
 
 
 __all__ = ["DummyRoof"]

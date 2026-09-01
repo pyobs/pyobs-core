@@ -17,22 +17,30 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (10, checked 2026-09-01)
+## Open issues (18, checked 2026-09-01)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#850](https://github.com/pyobs/pyobs-core/issues/850) | A refused slew (`AltitudeLimitError`) puts the module in ERROR state until a manual reset | *bug* — found on 2.1.1 with `DummyRaDecTelescope` via pyobs-gui; a correctly-refused slew is handled as severe, module goes to error and rejects every further command (even valid ones) until `reset_error()` |
+| pyobs-core | [#848](https://github.com/pyobs/pyobs-core/issues/848) | `OnDemandScheduler` doesn't reschedule on project changes (e.g. new priorities) | *bug, assigned: thusser* — two gaps: pyobs-portal's `last_task_update` marker ignores project edits, and `Scheduler._update_schedule()` compares task IDs only, not project content. Needs a pyobs-portal fix too (Repos: pyobs-core, pyobs-portal) |
+| pyobs-core | [#847](https://github.com/pyobs/pyobs-core/issues/847) | Scheduler never reschedules when a task is deactivated in the portal (stale observations keep mastermind in "Could not resolve task" loop) | *bug, assigned: thusser* — the "was it scheduled?" reschedule gate discards removals because `PortalObservationArchive`'s schedule cache is deliberately left empty; mastermind then retries the orphaned observation every ~10s. Needs a pyobs-portal cascade-deactivation fix too (Repos: pyobs-core, pyobs-portal) |
+| pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Open question: where the observatory-level config lives (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
+| pyobs-core | [#845](https://github.com/pyobs/pyobs-core/issues/845) | `Module._on_module_opened` crashes with unhandled `ValueError` when a peer cannot be resolved | *bug* — `Comm._resolve_proxy` raises plain `ValueError`, not `PyobsError`, so the handler's `except exc.PyobsError` doesn't catch it; logged as an unhandled exception on every such event. Regression from #669's exception-handling rollout |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
-| pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-core | [#844](https://github.com/pyobs/pyobs-core/issues/844) | Reduction: make min-frames-per-exptime-group threshold for dark masters configurable | *enhancement, assigned: thusser* — `_create_master_darks` hardcodes a minimum of 3 raw frames per exptime group; add a `min_darks_per_group` param matching the existing `min_flats`. Surfaced while closing out pyobs-pipeline #13/#14 |
+| pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-web-admin | [#79](https://github.com/pyobs/pyobs-web-admin/issues/79) | Add "update all" button to packages page | |
+| pyobs-web-admin | [#82](https://github.com/pyobs/pyobs-web-admin/issues/82) | Log views: auto-refresh destroys text selection, making it impossible to copy text | *bug* — `renderLogs()` rebuilds the whole `<pre>` via `innerHTML` every 3s tick, wiping any in-progress selection even when nothing new arrived; fix direction open (no-op guard vs. pause-on-select vs. incremental DOM) |
 | pyobs-web-admin | [#74](https://github.com/pyobs/pyobs-web-admin/issues/74) | Add fullscreen button for logs | *assigned: thusser* — both log views render at a fixed height with no enlarge option |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
-| pyobs-weather | [#31](https://github.com/pyobs/pyobs-weather/issues/31) | develop is 12 commits behind master (through v1.2.0..v2.0.0.dev3) | repo-hygiene — `develop` needs merging/fast-forwarding to catch up |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
+| pyobs-weather | [#33](https://github.com/pyobs/pyobs-weather/issues/33) | User management with Keycloak login | *enhancement* — prerequisite for #6, historic-data download should be logged-in-only; needs Keycloak SSO like the other web projects |
 | pyobs-astrometry | [#1](https://github.com/pyobs/pyobs-astrometry/issues/1) | No version tracking (no pyproject.toml) | *assigned: thusser* — nothing to tell what version is deployed; minimal `pyproject.toml` (or `VERSION` file) wanted |
+| pyobs-polaris | [#4](https://github.com/pyobs/pyobs-polaris/issues/4) | macOS binary missing from the dev2 and dev3 releases | release-artifact regression (dev1 had all three platforms); reporter's dev1 macOS build runs well on Apple Silicon, incl. against a real ZWO AM3N mount over a third-party INDI driver |
+| pyobs-robotic-backend | [#132](https://github.com/pyobs/pyobs-robotic-backend/issues/132) | Script builder: if a dropdown has only one option, preselect it as the default | *assigned: thusser* — module-ref and optional-polymorphic selects in the schema-driven forms default to blank even when there's exactly one candidate |
+| pyobs-robotic-backend | [#131](https://github.com/pyobs/pyobs-robotic-backend/issues/131) | `script_tree()`: don't show modules that start with an underscore | *assigned: thusser* — `pkgutil.iter_modules` scan surfaces private `_*` modules/classes as script/provider types; no current core module hits it, but extension packages could |
 
 ## Open plans
 
@@ -53,6 +61,11 @@ One row per issue — same layout for every repo.
   observation-portal (MONET fork) to OIDC via generic `mozilla-django-oidc` (no pyobs-auth
   dependency, upstream-submittable), config-gated via `OIDC_ENABLED`, additive next to local
   username/password auth; supersedes Section 0 of the 2026-08-12 shared-auth plan.
+- [2026-09-01-instrument-capability-duration-estimates.md](../plans/2026-09-01-instrument-capability-duration-estimates.md) —
+  *proposed*, no issue yet (pyobs-core, pyobs-portal). Feed pyobs-portal#133's instrument
+  capability data (readout/filter-change/slew/dome-rotate times) into `Script.estimate_duration()`
+  for `ImagingScript` and 4 other leaf scripts via a new `TaskData.instrument_capabilities` field;
+  wires the portal's script builder and `OnDemandScheduler` (not `AstroplanScheduler`).
 
 ### Design docs still *proposed*
 

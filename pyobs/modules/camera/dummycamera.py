@@ -57,6 +57,12 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
 
     __module__ = "pyobs.modules.camera"
 
+    # Moffat-profile wing exponent for simulated stars. Not measured from any real detector --
+    # a fixed stand-in in the range typically fit to real stellar profiles (roughly 2-4).
+    # astropy's own Moffat2D default (alpha=1) makes the flux->amplitude conversion in
+    # _get_sources_table() diverge (division by alpha - 1), so it can't be left unset.
+    _MOFFAT_ALPHA = 2.5
+
     def __init__(
         self,
         readout_time: float = 2,
@@ -204,16 +210,20 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
                 sun_alt = self._sun_alt()
                 flat_counts = 30000 / np.exp(-1.28 * (4.209 + sun_alt)) * exp_time
                 data += make_noise_image(shape, distribution="gaussian", mean=flat_counts, stddev=flat_counts / 10.0)
-                sources = self._get_sources_table(exp_time)
+                sources, gamma = self._get_sources_table(exp_time)
                 sources = sources[
                     (sources["x_mean"] > 0)
                     & (sources["x_mean"] < shape[1])
                     & (sources["y_mean"] > 0)
                     & (sources["y_mean"] < shape[0])
                 ]
-                model = models.Moffat2D()
+                model = models.Moffat2D(gamma=gamma, alpha=self._MOFFAT_ALPHA)
                 data += make_model_image(
-                    shape, model, sources, model_shape=(15, 15), params_map={"x_0": "x_mean", "y_0": "y_mean"}
+                    shape,
+                    model,
+                    sources,
+                    model_shape=(15, 15),
+                    params_map={"x_0": "x_mean", "y_0": "y_mean", "amplitude": "amplitude"},
                 )
 
         data[data > 65535] = 65535
@@ -256,7 +266,15 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
             self._catalog_coords = self._telescope_pos
         return self._catalog  # type: ignore[return-value]
 
-    def _get_sources_table(self, exp_time: float) -> Table:
+    def _get_sources_table(self, exp_time: float) -> tuple[Table, float]:
+        """Builds the source table used by _simulate_image's make_model_image() call.
+
+        Returns:
+            (sources, gamma): sources carries the per-star x_mean/y_mean/amplitude columns
+            (the Moffat2D params that actually vary star to star); gamma is the Moffat2D width
+            matching self._seeing at the current plate scale -- uniform across sources for a
+            given exposure, so it's applied directly to the model rather than as a column.
+        """
         tmp = 360.0 / (2.0 * np.pi) * self._pixel_size / self._focal_length
         cdelt1, cdelt2 = tmp * self._binning[0], tmp * self._binning[1]
         fov = np.max(cdelt2 * np.array(self._full_frame[2:]))
@@ -268,15 +286,20 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         w.wcs.crval = [self._telescope_pos.ra.degree, self._telescope_pos.dec.degree]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
-        fwhm = self._seeing / 3600.0 / cdelt1 / 2.3548
+        # self._seeing is a FWHM (arcsec); convert to Moffat2D's gamma (pixels) via Moffat2D's
+        # own fwhm formula: fwhm = 2 * gamma * sqrt(2 ** (1 / alpha) - 1).
+        fwhm_pix = self._seeing / 3600.0 / cdelt1
+        gamma = fwhm_pix / (2.0 * np.sqrt(2.0 ** (1.0 / self._MOFFAT_ALPHA) - 1.0))
+
         cat["x"], cat["y"] = w.wcs_world2pix(cat["ra"], cat["dec"], 0)
 
         sources = cat["x", "y", "phot_g_mean_flux", "phot_g_mean_mag"]
         sources.rename_columns(["x", "y", "phot_g_mean_flux"], ["x_mean", "y_mean", "flux"])
-        sources.add_column([fwhm] * len(sources), name="x_stddev")
-        sources.add_column([fwhm] * len(sources), name="y_stddev")
         sources["flux"] *= exp_time
-        return sources
+        # Moffat2D.amplitude is a peak value, not integrated flux -- convert using the
+        # profile's own volume, pi * gamma**2 / (alpha - 1) (finite since alpha > 1).
+        sources["amplitude"] = sources["flux"] * (self._MOFFAT_ALPHA - 1.0) / (np.pi * gamma**2)
+        return sources, gamma
 
     def _get_image(self, exp_time: float, open_shutter: bool) -> Image:
         now = Time.now()

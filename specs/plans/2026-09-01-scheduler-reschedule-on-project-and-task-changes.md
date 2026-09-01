@@ -1,6 +1,6 @@
 # Plan: reschedule on project and same-ID task content changes
 
-Status: proposed
+Status: implemented
 
 Tracks issue #848. Repos: pyobs-core (this plan); the signal-delivery half lives in
 `pyobs-portal/specs/plans/2026-09-01-last-task-update-marker-includes-projects.md` (separate
@@ -97,15 +97,16 @@ end (`:221`), the same place `self._tasks = tasks` already happens.
 
 ## Acceptance criteria
 
-- [ ] Project-only content change triggers a reschedule.
-- [ ] Assignment-order bug fixed — old projects are diffed against new before `self._projects`
+- [x] Project-only content change triggers a reschedule.
+- [x] Assignment-order bug fixed — old projects are diffed against new before `self._projects`
       is overwritten.
-- [ ] Same-ID task content change triggers a reschedule when the task is on the current schedule
+- [x] Same-ID task content change triggers a reschedule when the task is on the current schedule
       or is the running task; is skipped when the task isn't on the schedule at all.
-- [ ] Existing `_compare_task_lists` contract and its two removed/added downgrade checks are
+- [x] Existing `_compare_task_lists` contract and its two removed/added downgrade checks are
       unchanged for pure add/remove cases — no regression in current scheduler tests.
-- [ ] New tests listed above pass.
-- [ ] `ruff`/`pyrefly` clean.
+- [x] New tests listed above pass (implemented as `_changed_task_ids()` rather than the
+      originally-sketched `_diff_task_content()` name; behavior matches).
+- [x] `ruff`/`pyrefly` clean. Full non-integration suite (1786 tests) also green.
 
 ## Out of scope
 

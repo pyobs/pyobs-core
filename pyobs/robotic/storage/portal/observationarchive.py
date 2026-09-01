@@ -37,6 +37,9 @@ class PortalObservationArchive(ObservationArchive):
         # First failure logs immediately at ERROR (someone should know right away); repeats
         # during the same outage are throttled to at most one ERROR per minute.
         self._poll_error_throttle = LogThrottle(quiet_for=0.0, interval=60.0)
+        # Same pattern, keyed per observation id: a portal outage would otherwise re-log an
+        # ERROR every poll for as long as the cancel PUT keeps failing.
+        self._cancel_error_throttle = LogThrottle(quiet_for=0.0, interval=60.0)
 
         if auto_update:
             self.add_background_task(self._check_for_changes)
@@ -171,22 +174,37 @@ class PortalObservationArchive(ObservationArchive):
         """
         return self._observations
 
-    async def _resolve_or_cancel(self, obs: Observation, task_archive: TaskArchive) -> bool:
-        """Resolve obs.task; if the portal no longer has the task, mark obs canceled so it stops
-        being retried on every subsequent poll instead of logged-and-skipped forever.
+    async def _resolve_or_cancel_pending(self, obs: Observation, task_archive: TaskArchive) -> bool:
+        """Resolve a *pending* obs.task; if the task archive has completed at least one poll and
+        the portal no longer has the task, mark obs canceled so it stops being retried on every
+        subsequent poll instead of logged-and-skipped forever.
+
+        Only for pending observations: an in-progress one should be allowed to finish even if its
+        task was deactivated mid-run, not flipped to canceled out from under the mastermind.
 
         Returns:
             True if obs.task resolved and obs is usable.
         """
+        task_id = obs.task
         await obs.fetch_task(task_archive)
         if obs.task is not None:
             return True
+        if await task_archive.last_changed() is None:
+            # task archive has never completed a poll (e.g. still starting up) -- a genuinely
+            # missing task looks the same as this transient race, so don't cancel on it.
+            log.error("Could not resolve task for observation %s, skipping.", obs.id)
+            return False
         log.error("Could not resolve task for observation %s, marking canceled.", obs.id)
+        obs.task = task_id  # portal's task FK is non-nullable -- keep the id for the PUT payload
         obs.state = ObservationState.CANCELED
         try:
             await self.update_observation(obs)
+            self._cancel_error_throttle.clear(str(obs.id))
         except Exception as e:
-            log.error("Failed to mark observation %s canceled on portal: %s", obs.id, e)
+            if self._cancel_error_throttle.should_escalate(str(obs.id)):
+                log.error("Failed to mark observation %s canceled on portal: %s", obs.id, e)
+            else:
+                log.debug("Failed to mark observation %s canceled on portal: %s", obs.id, e)
         return False
 
     async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
@@ -201,7 +219,7 @@ class PortalObservationArchive(ObservationArchive):
         """
         for obs in self._observations:
             if obs.state == "pending" and obs.start < time < obs.end:
-                if task_archive is not None and not await self._resolve_or_cancel(obs, task_archive):
+                if task_archive is not None and not await self._resolve_or_cancel_pending(obs, task_archive):
                     continue
                 return obs
         else:
@@ -220,8 +238,11 @@ class PortalObservationArchive(ObservationArchive):
         """
         for obs in self._observations:
             if obs.state == "in_progress":
-                if task_archive is not None and not await self._resolve_or_cancel(obs, task_archive):
-                    continue
+                if task_archive is not None:
+                    await obs.fetch_task(task_archive)
+                    if obs.task is None:
+                        log.error("Could not resolve task for observation %s, skipping.", obs.id)
+                        continue
                 return obs
         else:
             return None

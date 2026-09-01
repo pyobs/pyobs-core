@@ -78,9 +78,12 @@ class MissingObserverError(exc.MotionError):
     pass
 
 
-class AltitudeLimitError(exc.MotionError):
+class AltitudeLimitError(exc.PyobsError):
     """Destination altitude is below the configured limit -- an expected, deferrable condition
-    from a scheduler's point of view, not a failure to alert on."""
+    from a scheduler's point of view, not a failure to alert on. Deliberately not a MotionError:
+    it's not a motion fault (nothing was attempted), so it must not count towards the module's
+    repeated-motion-failure escalation (see _register_exception(exc.MotionError, ...) below) --
+    picking a target below the horizon is normal, not a sign the telescope is broken."""
 
     pass
 

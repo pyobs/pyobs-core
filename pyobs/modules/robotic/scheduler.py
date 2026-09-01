@@ -184,7 +184,12 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         # mirroring self._tasks (only overwritten once _need_update has been decided)
         old_projects = self._projects
         projects = await self._task_archive.get_projects()
-        projects_changed = {p.code: p.model_dump() for p in projects} != {p.code: p.model_dump() for p in old_projects}
+        # `updated_at` is excluded: it's a portal-side save timestamp (round-trip-only field, not
+        # scheduling-relevant), and a no-op re-save still bumps it -- comparing it in would force
+        # a reschedule on every no-op edit, not just real content changes.
+        projects_changed = {p.code: p.model_dump(exclude={"updated_at"}) for p in projects} != {
+            p.code: p.model_dump(exclude={"updated_at"}) for p in old_projects
+        }
 
         # compare new and old lists, both by ID (removed/added) and by content (changed, same ID)
         removed, added = self._compare_task_lists(self._tasks, tasks)
@@ -280,20 +285,36 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         return sorted(additional1), sorted(additional2)  # type: ignore[type-var]
 
     @staticmethod
-    def _changed_task_ids(tasks1: list[Task], tasks2: list[Task]) -> set[Any]:
+    def _content_dump(task: Task) -> dict[str, Any]:
+        """``task.model_dump()`` with ``updated_at`` stripped.
+
+        ``Task`` is a ``PolymorphicBaseModel``, whose ``@model_serializer`` builds its own dict
+        from ``model_fields`` and injects a ``class`` key (``pyobs/utils/serialization.py:44-49``)
+        -- it does not honor ``model_dump(exclude=...)`` at all, so the key has to be dropped from
+        the result afterwards instead. ``updated_at`` is a portal-side save timestamp, not
+        scheduling-relevant content, and a no-op re-save (e.g. an unchanged DRF PATCH) still bumps
+        it -- leaving it in would report every no-op edit as a "changed" task.
+        """
+        dump = task.model_dump()
+        dump.pop("updated_at", None)
+        return dump
+
+    @classmethod
+    def _changed_task_ids(cls, tasks1: list[Task], tasks2: list[Task]) -> set[Any]:
         """IDs present in both lists whose task content differs between them.
 
-        Comparison is via ``model_dump()``, not pydantic ``==``: ``Task.__eq__`` also compares
-        runtime-only ``PrivateAttr``s (e.g. ``_cant_run_reason`` set by ``can_run()``, or
-        ``_resolved_target`` set while scheduling), which would make a task that has merely been
-        scheduled/run look "changed" on the next poll. ``model_dump()`` excludes private
-        attributes by construction, so only real content differences (priority, duration,
-        script, ...) are reported.
+        Comparison is via ``model_dump()`` (see :meth:`_content_dump`), not pydantic ``==``:
+        ``Task.__eq__`` also compares runtime-only ``PrivateAttr``s (e.g. ``_cant_run_reason`` set
+        by ``can_run()``, or ``_resolved_target`` set while scheduling), which would make a task
+        that has merely been scheduled/run look "changed" on the next poll. ``model_dump()``
+        excludes private attributes by construction. What's left after also dropping
+        ``updated_at`` (priority, duration, script, ...) are the fields that actually matter for
+        scheduling.
         """
         by_id1 = {t.id: t for t in tasks1}
         by_id2 = {t.id: t for t in tasks2}
         common = set(by_id1).intersection(by_id2)
-        return {i for i in common if by_id1[i].model_dump() != by_id2[i].model_dump()}
+        return {i for i in common if cls._content_dump(by_id1[i]) != cls._content_dump(by_id2[i])}
 
     async def _schedule_worker(self) -> None:
         await asyncio.sleep(5)

@@ -138,6 +138,29 @@ async def test_task_get_projects_from_portal_accepts_public(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_task_get_projects_from_portal_accepts_updated_at(mocker) -> None:
+    """Projects with the portal `updated_at` field (pyobs-portal#134, pyobs-core#848) ingest
+    without a strict-model ValidationError, and the value round-trips."""
+    archive = make_task_archive()
+    mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(
+            return_value=[
+                {
+                    "code": "test",
+                    "name": "Test",
+                    "priority": 1.0,
+                    "updated_at": "2026-08-20T17:59:29.526066Z",
+                }
+            ]
+        ),
+    )
+    result = await archive._get_projects()
+    assert len(result) == 1
+    assert result[0].updated_at == "2026-08-20T17:59:29.526066Z"
+
+
+@pytest.mark.asyncio
 async def test_task_get_tasks_from_portal(mocker) -> None:
     archive = make_task_archive()
     mock = mocker.patch(

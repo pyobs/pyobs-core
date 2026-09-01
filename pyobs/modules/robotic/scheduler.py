@@ -180,23 +180,33 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         )
         log.info("Downloaded %d schedulable tasks(s).", len(tasks))
 
-        # download projects
-        self._projects = await self._task_archive.get_projects()
+        # download projects -- keep the old list around long enough to diff against below,
+        # mirroring self._tasks (only overwritten once _need_update has been decided)
+        old_projects = self._projects
+        projects = await self._task_archive.get_projects()
+        projects_changed = {p.code: p.model_dump() for p in projects} != {p.code: p.model_dump() for p in old_projects}
 
-        # compare new and old lists
+        # compare new and old lists, both by ID (removed/added) and by content (changed, same ID)
         removed, added = self._compare_task_lists(self._tasks, tasks)
+        changed = self._changed_task_ids(self._tasks, tasks)
 
         # schedule update
         self._need_update = True
 
-        # no changes?
-        if not self._trigger_on_every_update and len(removed) == 0 and len(added) == 0:
+        # no changes at all?
+        if (
+            not self._trigger_on_every_update
+            and len(removed) == 0
+            and len(added) == 0
+            and len(changed) == 0
+            and not projects_changed
+        ):
             # no need to re-schedule
             log.info("No change in list of blocks detected.")
             self._need_update = False
 
-        # has only the current block been removed?
-        log.info("Removed: %d, added: %d", len(removed), len(added))
+        # has only the current block been removed, with nothing else changed?
+        log.info("Removed: %d, added: %d, changed: %d", len(removed), len(added), len(changed))
         if len(removed) == 1:
             log.info(
                 "Found 1 removed block with ID %d. Last task ID was %s, current is %s.",
@@ -204,21 +214,38 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
                 str(self._last_task_id),
                 str(self._current_task_id),
             )
-        if len(removed) == 1 and len(added) == 0 and removed[0] == self._last_task_id:
+        if (
+            len(removed) == 1
+            and len(added) == 0
+            and len(changed) == 0
+            and not projects_changed
+            and removed[0] == self._last_task_id
+        ):
             # no need to re-schedule
             log.info("Only one removed block detected, which is the one currently running.")
             self._need_update = False
 
-        # check, if one of the removed blocks was actually in schedule
-        if len(removed) > 0 and self._need_update:
+        # a content change on the currently-running block always forces a reschedule -- its new
+        # content (e.g. priority) can reorder everything scheduled after it. Unlike a *removed*
+        # current block (handled above), it isn't simply ending on its own, so it must not be
+        # waved through by the schedule-membership check below.
+        current_task_changed = self._current_task_id in changed
+
+        # check, if one of the removed/changed blocks was actually in schedule -- an off-schedule
+        # removal or content change can't affect the active plan
+        if (removed or changed) and self._need_update and not current_task_changed:
             schedule = await self._schedule.get_schedule()
-            removed_from_schedule = [s for s in schedule if s.task.id in removed]
-            if len(removed_from_schedule) == 0:
-                log.info("Found %s tasks, but none of them was scheduled.", len(removed))
+            scheduled_ids = {s.task.id for s in schedule}
+            if not (set(removed) & scheduled_ids) and not (changed & scheduled_ids):
+                log.info(
+                    "Found %d removed/changed task(s), but none of them was scheduled.",
+                    len(removed) + len(changed),
+                )
                 self._need_update = False
 
         # store blocks
         self._tasks = tasks
+        self._projects = projects
 
         # schedule update
         if self._need_update:
@@ -251,6 +278,22 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         additional2 = list(set(ids2.keys()).difference(ids1.keys()))
 
         return sorted(additional1), sorted(additional2)  # type: ignore[type-var]
+
+    @staticmethod
+    def _changed_task_ids(tasks1: list[Task], tasks2: list[Task]) -> set[Any]:
+        """IDs present in both lists whose task content differs between them.
+
+        Comparison is via ``model_dump()``, not pydantic ``==``: ``Task.__eq__`` also compares
+        runtime-only ``PrivateAttr``s (e.g. ``_cant_run_reason`` set by ``can_run()``, or
+        ``_resolved_target`` set while scheduling), which would make a task that has merely been
+        scheduled/run look "changed" on the next poll. ``model_dump()`` excludes private
+        attributes by construction, so only real content differences (priority, duration,
+        script, ...) are reported.
+        """
+        by_id1 = {t.id: t for t in tasks1}
+        by_id2 = {t.id: t for t in tasks2}
+        common = set(by_id1).intersection(by_id2)
+        return {i for i in common if by_id1[i].model_dump() != by_id2[i].model_dump()}
 
     async def _schedule_worker(self) -> None:
         await asyncio.sleep(5)

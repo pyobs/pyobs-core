@@ -20,6 +20,7 @@ class FrameInfo:
         self.filter_name: str | None = None
         self.binning: int | None = None
         self.dateobs: str | None = None
+        self.exptime: float | None = None
 
 
 class Archive(PolymorphicBaseModel, metaclass=ABCMeta):
@@ -41,6 +42,7 @@ class Archive(PolymorphicBaseModel, metaclass=ABCMeta):
         filter_name: str | None = None,
         rlevel: int | None = None,
         obsnum: str | None = None,
+        exptime: float | None = None,
     ) -> dict[str, list[Any]]: ...
 
     @abstractmethod
@@ -57,6 +59,7 @@ class Archive(PolymorphicBaseModel, metaclass=ABCMeta):
         filter_name: str | None = None,
         rlevel: int | None = None,
         obsnum: str | None = None,
+        exptime: float | None = None,
     ) -> list[FrameInfo]: ...
 
     @abstractmethod

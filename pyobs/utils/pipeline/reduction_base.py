@@ -45,8 +45,9 @@ class ReductionBase(ABC):
         self._min_flats = min_flats
         self._progress_callback = progress_callback
 
-        # cache for master calibration frames
-        self._master_frames: dict[tuple[ImageType, str, str, str | None], Image] = {}
+        # cache for master calibration frames -- exptime is None for every non-DARK type, and
+        # the grouped exptime for DARK (a night can have darks at more than one exposure time)
+        self._master_frames: dict[tuple[ImageType, str, str, str | None, float | None], Image] = {}
 
     def _report_progress(self, event: ProgressEvent) -> None:
         if self._progress_callback is None:
@@ -64,6 +65,8 @@ class ReductionBase(ABC):
         binning: str,
         filter_name: str | None = None,
         max_days: float = 30.0,
+        exptime: float | None = None,
+        exptime_tolerance: float = 0.01,
     ) -> Image | None:
         """Find master calibration frame for given parameters using a cache.
 
@@ -73,23 +76,35 @@ class ReductionBase(ABC):
             binning: Binning.
             filter_name: Name of filter.
             max_days: Maximum number of days from DATE-OBS to find frames.
+            exptime: For DARK, prefer a master close to this exposure time; see
+                Pipeline.find_master. Also used as part of the cache key, so lookups at
+                different exptimes don't collide.
+            exptime_tolerance: See Pipeline.find_master.
 
         Returns:
             Image or None
         """
 
         # is in cache?
-        if (image_type, instrument, binning, filter_name) in self._master_frames:
-            return self._master_frames[image_type, instrument, binning, filter_name]
+        if (image_type, instrument, binning, filter_name, exptime) in self._master_frames:
+            return self._master_frames[image_type, instrument, binning, filter_name, exptime]
 
         # try to download one
         midnight = Time(night + " 23:59:59")
         image = await self._pipeline.find_master(
-            self._archive, image_type, midnight, instrument, binning, filter_name, max_days=max_days
+            self._archive,
+            image_type,
+            midnight,
+            instrument,
+            binning,
+            filter_name,
+            max_days=max_days,
+            exptime=exptime,
+            exptime_tolerance=exptime_tolerance,
         )
         if image is not None:
             # store and return it
-            self._master_frames[image_type, instrument, binning, filter_name] = image
+            self._master_frames[image_type, instrument, binning, filter_name, exptime] = image
             return image
         else:
             # still nothing

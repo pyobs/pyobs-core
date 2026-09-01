@@ -185,7 +185,11 @@ class LocalArchive(Archive):
             info.filter_name = row["filter"]
             info.binning = row["binning"]
             info.dateobs = row["date-obs"]
-            info.exptime = row["exptime"]
+            # pandas silently coerces a None in a float64-dtype column (i.e. as soon as any
+            # row in this archive has a real EXPTIME) to NaN, not None -- normalize back so
+            # "no EXPTIME" is always exactly None for callers, never a NaN that compares
+            # unequal to everything including itself
+            info.exptime = None if pd.isna(row["exptime"]) else float(row["exptime"])
             infos.append(info)
         return infos
 

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from pyobs.utils.exptime_grouping import exptimes_close, group_exptimes
+import statistics
+from dataclasses import dataclass
+
+from pyobs.utils.exptime_grouping import exptimes_close, group_by_exptime, group_exptimes
 
 # ── exptimes_close ───────────────────────────────────────────────────────────
 
@@ -46,3 +49,40 @@ def test_group_exptimes_empty_input() -> None:
 
 def test_group_exptimes_single_value() -> None:
     assert group_exptimes([45.0]) == [45.0]
+
+
+# ── group_by_exptime ────────────────────────────────────────────────────────
+
+
+@dataclass
+class _Frame:
+    name: str
+    exptime: float
+
+
+def test_group_by_exptime_groups_items_not_just_values() -> None:
+    frames = [_Frame("a", 30.0), _Frame("b", 30.1), _Frame("c", 600.0)]
+
+    groups = group_by_exptime(frames, key=lambda f: f.exptime)
+
+    assert [f.name for f in groups[0]] == ["a", "b"]
+    assert [f.name for f in groups[1]] == ["c"]
+
+
+def test_group_by_exptime_preserves_key_sorted_order_within_group() -> None:
+    frames = [_Frame("second", 30.1), _Frame("first", 29.9)]
+
+    groups = group_by_exptime(frames, key=lambda f: f.exptime)
+
+    assert [f.name for f in groups[0]] == ["first", "second"]
+
+
+def test_group_by_exptime_empty_input() -> None:
+    assert group_by_exptime([], key=lambda f: f.exptime) == []
+
+
+def test_group_exptimes_is_group_by_exptime_collapsed_to_medians() -> None:
+    values = [30.0, 30.1, 29.9, 600.0, 601.0]
+    groups = group_by_exptime(values, key=lambda v: v)
+
+    assert group_exptimes(values) == [statistics.median(g) for g in groups]

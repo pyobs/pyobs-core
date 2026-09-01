@@ -32,6 +32,7 @@ def make_frame_headers(
     telescope: str = "tel1",
     rlevel: int = 0,
     fname: str = "raw.fits",
+    exptime: float = 30.0,
 ) -> dict[str, object]:
     return {
         "DATE-OBS": date_obs,
@@ -45,6 +46,7 @@ def make_frame_headers(
         "TELID": telescope,
         "RLEVEL": rlevel,
         "FNAME": fname,
+        "EXPTIME": exptime,
     }
 
 
@@ -218,6 +220,116 @@ async def test_progress_callback_reports_calibs_and_cumulative_science_frames(tm
     assert [e.index for e in frame_events] == [1, 2]
     assert all(e.total == 2 for e in frame_events)
     assert all(e.status == "ok" for e in frame_events)
+
+
+# ── per-exptime dark masters ────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_master_darks_groups_by_exptime(tmp_path: Path) -> None:
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    for i in range(3):
+        write_fits(in_dir / f"bias{i}.fits", **make_frame_headers(image_type="bias", fname=f"bias{i}.fits"))
+    for i in range(3):
+        write_fits(
+            in_dir / f"dark30_{i}.fits",
+            **make_frame_headers(image_type="dark", fname=f"dark30_{i}.fits", exptime=30.0),
+        )
+    for i in range(3):
+        write_fits(
+            in_dir / f"dark600_{i}.fits",
+            **make_frame_headers(image_type="dark", fname=f"dark600_{i}.fits", exptime=600.0),
+        )
+
+    archive = LocalArchive(root=str(in_dir))
+    output = LocalArchive(root=str(tmp_path / "out"))
+    pipeline = Pipeline(steps=[])
+
+    events: list[ProgressEvent] = []
+    reduction = Reduction(
+        archive=archive, pipeline=pipeline, output=output, calib_science=False, progress_callback=events.append
+    )
+    await reduction._create_master_calib("2024-01-01", "cam1", ImageType.BIAS, "1x1")
+    masters = await reduction._create_master_darks("2024-01-01", "cam1", "1x1")
+
+    assert sorted(m.header["EXPTIME"] for m in masters) == [30.0, 600.0]
+    # longest exptime first, matching DarkBiasScript's own series order
+    assert [m.header["EXPTIME"] for m in masters] == [600.0, 30.0]
+
+    dark_events = [e for e in events if isinstance(e, MasterCalibCreated) and e.image_type == ImageType.DARK]
+    assert sorted(e.exptime for e in dark_events) == [30.0, 600.0]
+
+    # two distinct master files landed in the output archive, one per exptime
+    dark_files = sorted(p.name for p in (tmp_path / "out").glob("*-dark-*"))
+    assert len(dark_files) == 2
+    assert dark_files[0] != dark_files[1]
+
+
+@pytest.mark.asyncio
+async def test_create_master_darks_skips_under_populated_group_individually(tmp_path: Path) -> None:
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    for i in range(3):
+        write_fits(in_dir / f"bias{i}.fits", **make_frame_headers(image_type="bias", fname=f"bias{i}.fits"))
+    # enough at 30s, too few at 600s
+    for i in range(3):
+        write_fits(
+            in_dir / f"dark30_{i}.fits",
+            **make_frame_headers(image_type="dark", fname=f"dark30_{i}.fits", exptime=30.0),
+        )
+    for i in range(2):
+        write_fits(
+            in_dir / f"dark600_{i}.fits",
+            **make_frame_headers(image_type="dark", fname=f"dark600_{i}.fits", exptime=600.0),
+        )
+
+    archive = LocalArchive(root=str(in_dir))
+    output = LocalArchive(root=str(tmp_path / "out"))
+    pipeline = Pipeline(steps=[])
+
+    reduction = Reduction(archive=archive, pipeline=pipeline, output=output, calib_science=False)
+    await reduction._create_master_calib("2024-01-01", "cam1", ImageType.BIAS, "1x1")
+    masters = await reduction._create_master_darks("2024-01-01", "cam1", "1x1")
+
+    assert [m.header["EXPTIME"] for m in masters] == [30.0]
+
+
+@pytest.mark.asyncio
+async def test_create_master_darks_no_bias_skips_all_groups(tmp_path: Path) -> None:
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    for i in range(3):
+        write_fits(
+            in_dir / f"dark30_{i}.fits",
+            **make_frame_headers(image_type="dark", fname=f"dark30_{i}.fits", exptime=30.0),
+        )
+
+    archive = LocalArchive(root=str(in_dir))
+    output = LocalArchive(root=str(tmp_path / "out"))
+    pipeline = Pipeline(steps=[])
+
+    reduction = Reduction(archive=archive, pipeline=pipeline, output=output, calib_science=False)
+    masters = await reduction._create_master_darks("2024-01-01", "cam1", "1x1")
+
+    assert masters == []
+
+
+@pytest.mark.asyncio
+async def test_create_master_darks_no_dark_frames_returns_empty(tmp_path: Path) -> None:
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    for i in range(3):
+        write_fits(in_dir / f"bias{i}.fits", **make_frame_headers(image_type="bias", fname=f"bias{i}.fits"))
+
+    archive = LocalArchive(root=str(in_dir))
+    output = LocalArchive(root=str(tmp_path / "out"))
+    pipeline = Pipeline(steps=[])
+
+    reduction = Reduction(archive=archive, pipeline=pipeline, output=output, calib_science=False)
+    masters = await reduction._create_master_darks("2024-01-01", "cam1", "1x1")
+
+    assert masters == []
 
 
 @pytest.mark.asyncio

@@ -17,7 +17,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (16, checked 2026-09-01)
+## Open issues (15, checked 2026-09-01)
 
 One row per issue — same layout for every repo.
 
@@ -33,7 +33,6 @@ One row per issue — same layout for every repo.
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-brot | [#60](https://github.com/pyobs/pyobs-brot/issues/60) | Bump astropy pin to allow 8.x | *assigned: thusser* — pin (`astropy<8,>=7.0.1`) forces a downgrade when installed alongside pyobs-portal (locked to `astropy==8.0.1`); on south/monet's portal image, `uv run`'s re-sync undoes the downgrade on every container start (multi-minute startup tax, re-fetches astropy over the network). Needs test-suite check before widening to `<9` |
 | pyobs-gui | [#154](https://github.com/pyobs/pyobs-gui/issues/154) | Add generic `IStructuredConfig` widget — schema-driven form auto-built from `ConfigSchema` | *enhancement* — one generic widget covers every `IStructuredConfig` module (schema-driven editors + live `ConfigAppliedState` + `set_config()`); plan `2026-08-28-structuredconfig-widget.md` below (*proposed*) |
-| pyobs-gui | [#150](https://github.com/pyobs/pyobs-gui/issues/150) | Main widgets vs. sidebar widgets — automatic tab pages for multi-widget modules | *assigned: thusser* — split widget concept into main vs. sidebar categories; affects page assembly; draft plan `2026-08-28-gui-main-vs-sidebar-widgets.md`, revised 2026-09-01 (`sidebar_preferred` promotion rule, universal sidebar container, `paired_sidebar_widget`); follow-up plan `2026-09-01-gui-video-widget-split.md` (both pyobs-gui specs, below) |
 | pyobs-portal | [#116](https://github.com/pyobs/pyobs-portal/issues/116) | Add instrument config app for script builder (camera/telescope capabilities) | *assigned: thusser* — static instrument capability data so the script builder works without live modules |
 | pyobs-web-admin | [#74](https://github.com/pyobs/pyobs-web-admin/issues/74) | Add fullscreen button for logs | *assigned: thusser* — both log views render at a fixed height with no enlarge option |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
@@ -79,12 +78,9 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
-- **pyobs-gui** — [2026-08-28-gui-main-vs-sidebar-widgets.md](../../pyobs-gui/specs/2026-08-28-gui-main-vs-sidebar-widgets.md) —
-  main vs. sidebar widget split, automatic tab pages for multi-widget modules (#150) (*draft,
-  revised 2026-09-01*)
 - **pyobs-gui** — [2026-09-01-gui-video-widget-split.md](../../pyobs-gui/specs/2026-09-01-gui-video-widget-split.md) —
-  split `VideoWidget` into a main widget + paired sidebar widget, follow-up to the above (#150 D6)
-  (*draft*)
+  split `VideoWidget` into a main widget + paired sidebar widget, D6 follow-up to the (now landed,
+  see pyobs-gui's own `specs/index.md`) main-vs-sidebar-widgets plan (#150) (*draft, unblocked*)
 - **pyobs-gui** — [2026-08-28-structuredconfig-widget.md](../../pyobs-gui/specs/2026-08-28-structuredconfig-widget.md) —
   generic schema-driven `IStructuredConfig` form widget (#154) (*proposed*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —

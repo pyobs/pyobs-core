@@ -185,18 +185,22 @@ class DarkBiasScript(Script):
             if self.archive is None or self.site is None:
                 self._cant_run_reason = "match_science_exptimes requires archive and site to be configured."
                 return False
-            night = self._resolve_night()
-            if night is None:
-                self._cant_run_reason = "No observer configured to derive the night from."
-                return False
-            # Task.create_script() re-validates a fresh Script (and Archive) on every call, so
-            # estimate_duration() can't reuse this instance's state later -- warm the module-level
-            # cache here instead, so its later (sync, archive-less) lookup can hit it.
+            # _resolve_night() can raise (e.g. night_obs()'s IERS lookup failing) -- guard it
+            # alongside the archive query so any failure here surfaces as "cannot run" rather
+            # than propagating out of can_run() as a hard exception.
             try:
+                night = self._resolve_night()
+                if night is None:
+                    self._cant_run_reason = "No observer configured to derive the night from."
+                    return False
+                # Task.create_script() re-validates a fresh Script (and Archive) on every call, so
+                # estimate_duration() can't reuse this instance's state later -- warm the
+                # module-level cache here instead, so its later (sync, archive-less) lookup can
+                # hit it.
                 await science_exptimes_for_night(self.archive, self.site, night)
             except Exception:
-                log.exception("Could not query archive for science exptimes.")
-                self._cant_run_reason = "Could not query archive for science exptimes."
+                log.exception("Could not determine night or query archive for science exptimes.")
+                self._cant_run_reason = "Could not determine night or query archive for science exptimes."
                 return False
 
         # seems alright
@@ -285,10 +289,10 @@ class DarkBiasScript(Script):
             return sum(self.count * (e + readout) for e in self.exptimes)
 
         if self.match_science_exptimes:
-            if self.site is not None:
+            if self.site is not None and self.archive is not None:
                 night = self._resolve_night()
                 if night is not None:
-                    cached = peek_cached_science_exptimes_for_night(self.site, night)
+                    cached = peek_cached_science_exptimes_for_night(self.archive, self.site, night)
                     if cached is not None:
                         exptimes = self._flatten_matching_exptimes(cached)
                         if exptimes:

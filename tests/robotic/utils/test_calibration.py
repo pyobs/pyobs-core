@@ -142,7 +142,8 @@ async def test_different_night_is_not_cached_together() -> None:
 
 
 def test_peek_cache_returns_none_when_nothing_cached() -> None:
-    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") is None
+    archive = _FakeArchive()
+    assert peek_cached_science_exptimes_for_night(archive, "siteA", "2024-01-01") is None
 
 
 @pytest.mark.asyncio
@@ -150,7 +151,34 @@ async def test_peek_cache_returns_value_after_a_real_call() -> None:
     archive = _FakeArchive(exptimes_by_frame=[600.0])
     expected = await science_exptimes_for_night(archive, site="siteA", night="2024-01-01")
 
-    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") == expected
+    assert peek_cached_science_exptimes_for_night(archive, "siteA", "2024-01-01") == expected
+
+
+@pytest.mark.asyncio
+async def test_peek_cache_ignores_mutation_of_the_same_archive_instance() -> None:
+    """A stateful Archive field (like this fake's call counter) must not affect the cache key --
+    otherwise the very first real call, which mutates that field as a side effect, would already
+    miss its own cache entry on the next lookup."""
+    archive = _FakeArchive(exptimes_by_frame=[600.0])
+
+    result = await science_exptimes_for_night(archive, site="siteA", night="2024-01-01")
+    assert archive.list_options_calls == 1
+
+    assert peek_cached_science_exptimes_for_night(archive, "siteA", "2024-01-01") == result
+
+
+def test_peek_cache_is_shared_across_archive_instances_of_the_same_class() -> None:
+    archive_a = _FakeArchive(instruments=["cam1"])
+    archive_b = _FakeArchive(instruments=["cam2"])
+    import time
+
+    from pyobs.robotic.utils import calibration
+
+    key = calibration._cache_key(archive_a, "siteA", "2024-01-01", 0.01, 5.0)
+    calibration._cache[key] = (time.monotonic(), {("cam1", "1x1"): [600.0]})
+
+    # same class -> same key, even though instruments differ; documented limitation
+    assert peek_cached_science_exptimes_for_night(archive_b, "siteA", "2024-01-01") == {("cam1", "1x1"): [600.0]}
 
 
 def test_peek_cache_returns_none_once_expired() -> None:
@@ -158,10 +186,12 @@ def test_peek_cache_returns_none_once_expired() -> None:
 
     from pyobs.robotic.utils import calibration
 
+    archive = _FakeArchive()
     stale = time.monotonic() - calibration._CACHE_TTL - 1.0
-    calibration._cache[("siteA", "2024-01-01", 0.01, 5.0)] = (stale, {("cam1", "1x1"): [600.0]})
+    key = calibration._cache_key(archive, "siteA", "2024-01-01", 0.01, 5.0)
+    calibration._cache[key] = (stale, {("cam1", "1x1"): [600.0]})
 
-    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") is None
+    assert peek_cached_science_exptimes_for_night(archive, "siteA", "2024-01-01") is None
 
 
 def test_clear_cache_empties_it() -> None:
@@ -169,9 +199,11 @@ def test_clear_cache_empties_it() -> None:
 
     from pyobs.robotic.utils import calibration
 
-    calibration._cache[("siteA", "2024-01-01", 0.01, 5.0)] = (time.monotonic(), {})
-    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") == {}
+    archive = _FakeArchive()
+    key = calibration._cache_key(archive, "siteA", "2024-01-01", 0.01, 5.0)
+    calibration._cache[key] = (time.monotonic(), {})
+    assert peek_cached_science_exptimes_for_night(archive, "siteA", "2024-01-01") == {}
 
     clear_cache()
 
-    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") is None
+    assert peek_cached_science_exptimes_for_night(archive, "siteA", "2024-01-01") is None

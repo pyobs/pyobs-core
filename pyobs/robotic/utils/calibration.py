@@ -8,18 +8,23 @@ from pyobs.utils.exptime_grouping import group_exptimes
 
 # Task.create_script() re-validates a Script (and any nested Archive field) fresh from its raw
 # config dict on every call -- can_run()/estimate_duration() never see the same Archive instance
-# twice, so caching can't key on archive identity. Keying on (site, night, ...) instead lets
-# DarkBiasScript's can_run() (async) warm this once per scheduling pass and estimate_duration()
-# (sync, can't query the archive itself) read the cached result moments later.
+# twice, so caching can't key on Python object identity, and can't key on the archive's full
+# config either (a stateful Archive subclass mutating a field between calls -- a request counter,
+# a warmed connection handle -- would turn every call into a cache miss). Keying on (site, night,
+# ..., archive class) instead lets DarkBiasScript's can_run() (async) warm this once per
+# scheduling pass and estimate_duration() (sync, can't query the archive itself) read the cached
+# result moments later. This still lets two *differently configured* archives of the same class
+# (e.g. two PyobsArchive pointed at different URLs) serving the same site/night collide within
+# the TTL -- unlikely in practice (one process, one site, two archive backends), not solved here.
 _CACHE_TTL = 300.0  # seconds
 
-_CacheKey = tuple[str, str, float, float | None]
+_CacheKey = tuple[str, str, float, float | None, type["Archive"]]
 _CacheEntry = tuple[float, dict[tuple[str, str], list[float]]]
 _cache: dict[_CacheKey, _CacheEntry] = {}
 
 
-def _cache_key(site: str, night: str, tolerance: float, min_exptime: float | None) -> _CacheKey:
-    return site, night, tolerance, min_exptime
+def _cache_key(archive: Archive, site: str, night: str, tolerance: float, min_exptime: float | None) -> _CacheKey:
+    return site, night, tolerance, min_exptime, type(archive)
 
 
 async def science_exptimes_for_night(
@@ -49,7 +54,7 @@ async def science_exptimes_for_night(
         Distinct, tolerance-grouped science exptimes, keyed per (instrument, binning) --
         mirrors the per-combination looping Reduction.__call__ does for calibration masters.
     """
-    key = _cache_key(site, night, tolerance, min_exptime)
+    key = _cache_key(archive, site, night, tolerance, min_exptime)
     cached = _cache.get(key)
     now = _time.monotonic()
     if cached is not None and now - cached[0] < _CACHE_TTL:
@@ -84,6 +89,7 @@ def clear_cache() -> None:
 
 
 def peek_cached_science_exptimes_for_night(
+    archive: Archive,
     site: str,
     night: str,
     tolerance: float = 0.01,
@@ -94,8 +100,10 @@ def peek_cached_science_exptimes_for_night(
     Never queries the archive. Returns None if nothing has been cached yet for this key (no
     prior science_exptimes_for_night() call) or the cached entry has expired. Used by
     DarkBiasScript.estimate_duration(), which is sync and can't await the real query itself.
+    ``archive`` must be configured the same way as the one passed to that prior call, or the
+    cache key won't match -- see _cache_key.
     """
-    cached = _cache.get(_cache_key(site, night, tolerance, min_exptime))
+    cached = _cache.get(_cache_key(archive, site, night, tolerance, min_exptime))
     if cached is None or _time.monotonic() - cached[0] >= _CACHE_TTL:
         return None
     return cached[1]

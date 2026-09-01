@@ -209,14 +209,6 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
             log.info("Only one removed block detected, which is the one currently running.")
             self._need_update = False
 
-        # check, if one of the removed blocks was actually in schedule
-        if len(removed) > 0 and self._need_update:
-            schedule = await self._schedule.get_schedule()
-            removed_from_schedule = [s for s in schedule if s.task.id in removed]
-            if len(removed_from_schedule) == 0:
-                log.info("Found %s tasks, but none of them was scheduled.", len(removed))
-                self._need_update = False
-
         # store blocks
         self._tasks = tasks
 

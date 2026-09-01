@@ -171,6 +171,24 @@ class PortalObservationArchive(ObservationArchive):
         """
         return self._observations
 
+    async def _resolve_or_cancel(self, obs: Observation, task_archive: TaskArchive) -> bool:
+        """Resolve obs.task; if the portal no longer has the task, mark obs canceled so it stops
+        being retried on every subsequent poll instead of logged-and-skipped forever.
+
+        Returns:
+            True if obs.task resolved and obs is usable.
+        """
+        await obs.fetch_task(task_archive)
+        if obs.task is not None:
+            return True
+        log.error("Could not resolve task for observation %s, marking canceled.", obs.id)
+        obs.state = ObservationState.CANCELED
+        try:
+            await self.update_observation(obs)
+        except Exception as e:
+            log.error("Failed to mark observation %s canceled on portal: %s", obs.id, e)
+        return False
+
     async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
 
@@ -183,11 +201,8 @@ class PortalObservationArchive(ObservationArchive):
         """
         for obs in self._observations:
             if obs.state == "pending" and obs.start < time < obs.end:
-                if task_archive is not None:
-                    await obs.fetch_task(task_archive)
-                    if obs.task is None:
-                        log.error("Could not resolve task for observation %s, skipping.", obs.id)
-                        continue
+                if task_archive is not None and not await self._resolve_or_cancel(obs, task_archive):
+                    continue
                 return obs
         else:
             return None
@@ -205,11 +220,8 @@ class PortalObservationArchive(ObservationArchive):
         """
         for obs in self._observations:
             if obs.state == "in_progress":
-                if task_archive is not None:
-                    await obs.fetch_task(task_archive)
-                    if obs.task is None:
-                        log.error("Could not resolve task for observation %s, skipping.", obs.id)
-                        continue
+                if task_archive is not None and not await self._resolve_or_cancel(obs, task_archive):
+                    continue
                 return obs
         else:
             return None

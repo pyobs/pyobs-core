@@ -28,9 +28,11 @@ from pyobs.interfaces import (
     IImageFormat,
     ImageFormatCapabilities,
     ImageFormatState,
+    IMotion,
     IPointingRaDec,
     ITemperatures,
     IWindow,
+    MotionState,
     RaDecState,
     SensorReading,
     TemperaturesState,
@@ -39,7 +41,7 @@ from pyobs.interfaces import (
 )
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils import exceptions as exc
-from pyobs.utils.enums import ExposureStatus, ImageFormat, ImageType
+from pyobs.utils.enums import ExposureStatus, ImageFormat, ImageType, MotionStatus
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -73,6 +75,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         max_mag: float = 20.0,
         seeing: float = 3.0,
         telescope: str | None = None,
+        roof: str | None = None,
         **kwargs: Any,
     ):
         """Creates a new dummy camera.
@@ -86,6 +89,10 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
             max_mag: Maximum magnitude of simulated stars.
             seeing: Seeing in arcsec FWHM.
             telescope: Name of telescope module to read pointing from (for star simulation).
+            roof: Name of roof module to read open/closed state from. When given, the sky (flat
+                flux and stars) is only simulated while the roof is not parked -- frames come
+                back dark otherwise. Fails closed: until the roof's state has been received, the
+                roof is assumed closed.
         """
         BaseCamera.__init__(self, **kwargs)
         self.add_background_task(self._cooling_thread, True)
@@ -112,6 +119,10 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         self._telescope_module = telescope
         self._telescope_pos: SkyCoord = SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs")
 
+        # roof state (updated via subscribe_state); fail closed until a state arrives
+        self._roof_module = roof
+        self._roof_open: bool = roof is None
+
         # camera state
         self._cooling = CoolingStatus()
         self._exposing = True
@@ -127,6 +138,10 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
     def _on_telescope_state(self, state: RaDecState) -> None:
         """Update cached telescope position from IPointingRaDec state."""
         self._telescope_pos = SkyCoord(ra=state.ra * u.deg, dec=state.dec * u.deg, frame="icrs")
+
+    def _on_roof_state(self, state: MotionState) -> None:
+        """Update cached roof open/closed state from IMotion state."""
+        self._roof_open = state.status != MotionStatus.PARKED
 
     async def open(self) -> None:
         """Opens camera."""
@@ -153,6 +168,10 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         # subscribe to telescope pointing if given
         if self._telescope_module:
             await self.comm.subscribe_state(self._telescope_module, IPointingRaDec, self._on_telescope_state)
+
+        # subscribe to roof state if given
+        if self._roof_module:
+            await self.comm.subscribe_state(self._roof_module, IMotion, self._on_roof_state)
 
         # publish initial states
         await self.comm.set_state(
@@ -206,7 +225,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
 
         if exp_time > 0:
             data += make_noise_image(shape, distribution="gaussian", mean=exp_time / 1e4, stddev=exp_time / 1e5)
-            if open_shutter:
+            if open_shutter and self._roof_open:
                 sun_alt = self._sun_alt()
                 flat_counts = 30000 / np.exp(-1.28 * (4.209 + sun_alt)) * exp_time
                 data += make_noise_image(shape, distribution="gaussian", mean=flat_counts, stddev=flat_counts / 10.0)

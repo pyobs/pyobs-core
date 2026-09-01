@@ -230,24 +230,6 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
             log.info("Only one removed block detected, which is the one currently running.")
             self._need_update = False
 
-        # a content change on the currently-running block always forces a reschedule -- its new
-        # content (e.g. priority) can reorder everything scheduled after it. Unlike a *removed*
-        # current block (handled above), it isn't simply ending on its own, so it must not be
-        # waved through by the schedule-membership check below.
-        current_task_changed = self._current_task_id in changed
-
-        # check, if one of the removed/changed blocks was actually in schedule -- an off-schedule
-        # removal or content change can't affect the active plan
-        if (removed or changed) and self._need_update and not current_task_changed:
-            schedule = await self._schedule.get_schedule()
-            scheduled_ids = {s.task.id for s in schedule}
-            if not (set(removed) & scheduled_ids) and not (changed & scheduled_ids):
-                log.info(
-                    "Found %d removed/changed task(s), but none of them was scheduled.",
-                    len(removed) + len(changed),
-                )
-                self._need_update = False
-
         # store blocks
         self._tasks = tasks
         self._projects = projects

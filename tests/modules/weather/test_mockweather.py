@@ -11,12 +11,12 @@ from pyobs.utils.enums import Unit, WeatherSensors
 
 
 @pytest.mark.asyncio
-async def test_open() -> None:
+async def test_open(mocker) -> None:
     weather = MockWeather()
     weather._comm.register_event = AsyncMock()
     weather._comm.set_state = AsyncMock()
 
-    Module.open = AsyncMock()
+    mocker.patch.object(Module, "open", AsyncMock())
 
     await weather.open()
 

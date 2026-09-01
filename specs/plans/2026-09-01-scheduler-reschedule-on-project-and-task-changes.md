@@ -144,6 +144,27 @@ and this PR's follow-up commit fixed:
   sets `_resolved_target`/`_running_script`, not just `_cant_run_reason`, guarding all three
   `PrivateAttr`s a real scheduling round-trip can touch.
 - **Missing coverage** (nits): added `test_update_schedule_project_removed_triggers_update` and
-  `test_update_schedule_mixed_removed_running_and_changed_scheduled_triggers_update` (the
-  currently-running task removed at the same time as an unrelated, actually-scheduled task's
-  content changes — the latter must still force a reschedule).
+  a mixed removed+changed poll test (the currently-running task removed at the same time as an
+  unrelated task's content changes — the latter must still force a reschedule).
+
+## Merge-conflict addendum (rebase onto develop)
+
+While rebasing onto `develop`, PR #852 (issue #847, landed concurrently) turned out to conflict
+at the design level, not just textually: it **deleted** the "was one of the removed tasks
+actually in `self._schedule.get_schedule()`?" guard this plan's design (§3) explicitly said to
+*reuse* for `changed_ids`. Their reasoning: `PortalObservationArchive`'s schedule cache is
+permanently empty by construction (the `Scheduler` runs it with `auto_update=False`), so that
+guard always found nothing and silently discarded every real portal task removal — the exact bug
+#847 fixed. Reusing the same guard for `changed_ids` would have reintroduced the identical bug
+one level up: every same-ID content change to a task would have been silently swallowed on a
+portal deployment, defeating the entire point of #848.
+
+Resolution: dropped the schedule-membership guard for `changed_ids` too (never added it back),
+matching #852's decision. Net effect: a project change, a task removal, a task addition, or a
+same-ID task content change all now force a reschedule unconditionally (modulo the one remaining
+downgrade — a removal that's exactly the currently-running task ending on its own, and only
+that). This *simplifies* the design in §3: the "asymmetry" between a removed vs. changed running
+task, and the `current_task_changed` bypass variable, are no longer needed — with no membership
+check left to bypass, a changed running task simply flows through as `True` like everything else.
+Rewrote the affected tests to match (no longer mocking/asserting on `get_schedule()` for content
+changes, mirroring #852's own `..._without_consulting_schedule_cache` naming).

@@ -156,3 +156,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   so subscriptions can land before the first publish (XEP-0060 `create_node`); plus the #824 retry
   hardening (`_retry_delay` exponent clamp, stuck-key cleanup in both retry loops). **proposed**
   (issue #824; Repos: pyobs-core)
+- [2026-08-28-structuredconfig-widget.md](2026-08-28-structuredconfig-widget.md) — generic
+  schema-driven `IStructuredConfig` form widget for pyobs-gui, auto-built from `ConfigSchema`.
+  **proposed** (pyobs-gui#154; Repos: pyobs-gui, pyobs-core)

@@ -1,5 +1,5 @@
-v2.1.1.dev1 (2026-08-31)
-*************************
+v2.2.0 (2026-09-01)
+*********************
 * Issue #832: ``Calibration``/``Reduction`` now match dark masters to a science frame's
   ``EXPTIME`` instead of always scaling whatever dark master ``find_master`` happened to return
   (see ADR ``0015-dark-master-strict-exptime-matching-reference-scale-down-only.md``). An exact
@@ -17,6 +17,21 @@ v2.1.1.dev1 (2026-08-31)
   matches exist. ``Reduction``'s master-calibration-frame filename pattern also gained an
   exposure-time component (``{EXPTIME|exptime}``, shared by BIAS/SKYFLAT too); existing archives
   keep their old-pattern masters under their original filenames.
+
+  A reference master is also no longer scaled up (only down), and a legacy master with no
+  ``EXPTIME`` in its header is now used unscaled instead of raising ``KeyError`` on the
+  ``allow_unmatched_dark_scale`` fallback path.
+* Issue #831: ``DarkBiasScript`` can now take one morning dark series per exposure time actually
+  used by the night's science frames, instead of always a single fixed exptime. Adds
+  ``science_exptimes_for_night()`` (derives per-instrument/binning exptimes from the night's
+  ``OBJECT`` frames; exptimes below ``dark_min_exptime`` are dropped since calibration treats them
+  as bias-only) and exposes ``EXPTIME`` on the archive API (``FrameInfo``, ``list_frames``/
+  ``list_options``, both ``PyobsArchive`` and ``LocalArchive``) so it can be queried. Enable via
+  ``DarkBiasScript``'s new ``exptimes``/``match_science_exptimes`` options.
+* Added ``DummyStructuredConfig`` (``pyobs.modules``), implementing ``IStructuredConfig`` with one
+  field of every ``ConfigFieldSchema`` type (str, int, a float with a unit, bool, enum, nested
+  object) so pyobs-gui's new ``StructuredConfigWidget`` (gui#154) has something to manually verify
+  against without pyobs-iagvt's FTS, the only other ``IStructuredConfig`` consumer.
 * Fixes issue #830: ``http_request_with_retries`` no longer logs a WARNING on every failed retry
   attempt. Retries now stay quiet for the first 60s a URL has been failing (covering a typical
   short pyobs-portal restart), then warn at most once per minute until the request succeeds again.

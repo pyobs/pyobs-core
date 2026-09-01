@@ -271,6 +271,20 @@ async def test_find_dark_master_reference_scaled_down(mocker, mock_image):
 
 
 @pytest.mark.asyncio
+async def test_find_dark_master_reference_shorter_than_science_rejected(mocker, mock_image):
+    # only a 45s master exists; science at 100s is within the dark_scale_exptime=600 ceiling, so
+    # the reference branch fires, but scaling the 45s master UP to 100s is exactly what ADR 0015
+    # forbids -- must be rejected (falling through to the strict error) rather than used
+    mock_image.header["EXPTIME"] = 100.0
+    too_short = _dark_master(45.0)
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect(reference=too_short))
+
+    calibration = Calibration(ConcreteArchive())
+    with pytest.raises(ValueError, match="EXPTIME=100.0"):
+        await calibration._find_dark_master(mock_image)
+
+
+@pytest.mark.asyncio
 async def test_find_dark_master_science_exptime_above_reference_skips_scale_branch(mocker, mock_image):
     # EXPTIME > dark_scale_exptime -- branch 3 must not fire even if a reference exists,
     # otherwise the reference would be scaled UP, which ADR 0015 forbids
@@ -294,6 +308,26 @@ async def test_find_dark_master_allow_unmatched_dark_scale_falls_back(mocker, mo
 
     assert master is fallback
     assert scale is True
+
+
+@pytest.mark.asyncio
+async def test_find_dark_master_allow_unmatched_dark_scale_legacy_master_used_unscaled(mocker, mock_image):
+    # the fallback master has no EXPTIME at all (Reduction's legacy, all-untagged-darks
+    # fallback) -- ccdproc can't compute a scale factor without it, so it must be used
+    # unscaled instead of the branch normally always scaling
+    mock_image.header["EXPTIME"] = 45.0
+    legacy_fallback = Image()
+    legacy_fallback.header["INSTRUME"] = "cam"
+    legacy_fallback.header["XBINNING"] = 1
+    mocker.patch(
+        "pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect(fallback=legacy_fallback)
+    )
+
+    calibration = Calibration(ConcreteArchive(), dark_scale_exptime=None, allow_unmatched_dark_scale=True)
+    master, scale = await calibration._find_dark_master(mock_image)
+
+    assert master is legacy_fallback
+    assert scale is False
 
 
 @pytest.mark.asyncio
@@ -332,6 +366,24 @@ def test_ccddata_calibrator_unscaled_dark_passes_no_dark_exposure(mocker):
 
     dark = Image(data=np.zeros((2, 2), dtype=np.float32))
     dark.header["EXPTIME"] = 600.0
+
+    mock_ccd_process = mocker.patch("ccdproc.ccd_process")
+    calibrator = _CCDDataCalibrator(image, dark=dark, dark_scale=False)
+    calibrator()
+
+    assert mock_ccd_process.call_args.kwargs["dark_scale"] is False
+    assert mock_ccd_process.call_args.kwargs["dark_exposure"] is None
+
+
+def test_ccddata_calibrator_unscaled_dark_with_no_exptime_header_does_not_crash(mocker):
+    # a legacy dark master (Reduction's all-untagged-darks fallback) has no EXPTIME at all --
+    # dark_scale=False must not touch dark.header["EXPTIME"], since it doesn't exist
+    image = Image(data=np.zeros((2, 2), dtype=np.float32))
+    image.header["DET-GAIN"] = 1.0
+    image.header["DET-RON"] = 0.0
+    image.header["EXPTIME"] = 45.0
+
+    dark = Image(data=np.zeros((2, 2), dtype=np.float32))  # no EXPTIME
 
     mock_ccd_process = mocker.patch("ccdproc.ccd_process")
     calibrator = _CCDDataCalibrator(image, dark=dark, dark_scale=False)

@@ -1,9 +1,13 @@
 # Plan: Rename pyobs-robotic-backend → pyobs-portal
 
-Status: code merged everywhere 2026-08-25; **deployment to iagvt/monet is not yet safe,
-see the warning under Step 5**. Individual file-level checkboxes below are left unchecked as
-a historical record of the original plan — treat the PR/MR links as the source of truth for
-what's actually landed.
+Status: implemented, closed 2026-08-25. Code merged everywhere; `pyobs-core 2.0.0.dev97`
+(contains the rename) published to PyPI; iagvt/monet pins bumped and pushed (`612d9e4`,
+`ab02dfc`). Deployment confirmed live 2026-08-31: both `pyobs-iagvt/specs/design/pyobs-service-topology.md`
+and `pyobs-monet/specs/design/monets-service-topology.md` show `mastermind.yaml`/`scheduler.yaml`
+on iagvtsrv and monets actually running `PortalTaskArchive`/`PortalObservationArchive`, not just
+merged-on-develop. Individual file-level checkboxes below are left unchecked as a historical
+record of the original plan — treat the PR/MR links as the source of truth for what's actually
+landed.
 
 - Step 1 (`pyobs-robotic-backend` -> `pyobs-portal`): GitHub repo renamed; code rename PR
   pyobs/pyobs-portal#104, merged. Version bumped to `2.0.0.dev9`.

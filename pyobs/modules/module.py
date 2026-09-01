@@ -439,8 +439,8 @@ class Module(Object, IModule, IConfig):
                 caps = proxy.get_capabilities(IModule)
                 module_version = caps.version if caps is not None else ""
                 remote_location = caps.location if caps is not None else None
-        except exc.PyobsError:
-            # however this failed (transport or domain), we just skip this module
+        except (exc.PyobsError, ValueError):
+            # however this failed (transport, domain, or unresolvable peer), we just skip this module
             return True
 
         # log it

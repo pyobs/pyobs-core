@@ -158,7 +158,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                     foc_state = focuser.get_state(IFocuser)
                     guess = foc_state.focus if foc_state is not None else 0.0
                     log.info("Using current focus of %.2fmm as initial guess.", guess)
-        except exc.PyobsError:
+        except (exc.PyobsError, ValueError):
             raise exc.FocusError("Could not fetch current focus value.")
 
         # define array of focus values to iterate
@@ -185,7 +185,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                     else:
                         await focuser.set_focus(float(foc))
 
-            except exc.PyobsError:
+            except (exc.PyobsError, ValueError):
                 raise exc.FocusError("Could not set new focus value.")
 
             # do exposure

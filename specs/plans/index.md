@@ -159,3 +159,7 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-28-structuredconfig-widget.md](2026-08-28-structuredconfig-widget.md) — generic
   schema-driven `IStructuredConfig` form widget for pyobs-gui, auto-built from `ConfigSchema`.
   **proposed** (pyobs-gui#154; Repos: pyobs-gui, pyobs-core)
+- [2026-09-01-portal-instrument-config-app.md](2026-09-01-portal-instrument-config-app.md) — new
+  `instruments` Django app for pyobs-portal: per-type capability models (camera/telescope/filter
+  wheels), admin-editable via a scoped `instrument-config` group, read-only nested API for the
+  script builder. **proposed** (pyobs-portal#116; Repos: pyobs-portal)

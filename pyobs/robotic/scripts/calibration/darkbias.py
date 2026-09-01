@@ -25,7 +25,80 @@ log = logging.getLogger(__name__)
 
 
 class DarkBiasScript(Script):
-    """Script for running darks or biases."""
+    """Script for running darks or biases.
+
+    Exactly one of three mutually exclusive modes selects what is exposed:
+
+    - ``exptime`` (default ``0``): a single series -- ``0`` takes a bias, anything
+      else takes one dark series at that exposure time. This is the classic,
+      unchanged behavior.
+    - ``exptimes``: an explicit list of exposure times, one dark series each, run
+      longest-first. ``0`` is not allowed inside the list -- a bias is always its
+      own single series.
+    - ``match_science_exptimes``: derive the series from the night's science
+      frames instead of a fixed list. Requires ``archive`` and ``site``; the night
+      is taken from ``night`` if given, else derived from the observer injected by
+      the scheduler (the night that just ended). Science exptimes below
+      ``dark_min_exptime`` (5 s, per ADR 0015) are dropped, near-duplicates are
+      tolerance-grouped (1 %), and only exptimes used at the script's own
+      ``binning`` are kept -- the script exposes at exactly one binning and never
+      loops over binnings.
+
+    Example configs:
+
+    Single bias (default)::
+
+        class: pyobs.robotic.scripts.calibration.darkbias.DarkBiasScript
+        camera: cam1
+        count: 20
+        exptime: 0
+
+    Explicit dark exptimes::
+
+        class: pyobs.robotic.scripts.calibration.darkbias.DarkBiasScript
+        camera: cam1
+        count: 10
+        exptimes: [30.0, 300.0, 600.0]
+        binning: [1, 1]
+
+    Match the night's science exptimes (local archive)::
+
+        class: pyobs.robotic.scripts.calibration.darkbias.DarkBiasScript
+        camera: cam1
+        count: 10
+        match_science_exptimes: true
+        site: bsh
+        archive:
+          class: pyobs.robotic.utils.archive.local_archive.LocalArchive
+          root: /data/archive
+        binning: [1, 1]
+
+    Match the night's science exptimes (pyobs-archive server)::
+
+        class: pyobs.robotic.scripts.calibration.darkbias.DarkBiasScript
+        camera: cam1
+        count: 10
+        match_science_exptimes: true
+        site: bsh
+        night: 2026-09-01   # optional; defaults to the just-ended night via the observer
+        archive:
+          class: pyobs.robotic.utils.archive.pyobs_archive.PyobsArchive
+          url: https://archive.example.org
+          token: <token>
+        binning: [1, 1]
+
+    Notes:
+
+    - ``estimate_duration()`` sums over all series; for ``match_science_exptimes``
+      it reads the result ``can_run()`` already cached (5 min TTL), falling back
+      to a 600 s placeholder per series when nothing is cached yet.
+    - For ``match_science_exptimes`` the binning match is a string comparison
+      against the archive's ``list_options()`` ``binnings`` values ("NxM"). This
+      always matches for ``LocalArchive``; for ``PyobsArchive`` it depends on the
+      pyobs-archive server returning that format.
+    - If no science exptimes are found for the night/binning, nothing is exposed
+      and a warning is logged.
+    """
 
     # Placeholder used by estimate_duration() for match_science_exptimes when nothing is cached
     # yet -- ADR 0015's default reference dark exptime, a closer approximation to a real series

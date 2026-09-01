@@ -1,8 +1,13 @@
 # Plan: generic `IStructuredConfig` widget for pyobs-gui
 
-Status: proposed (pyobs/pyobs-gui#154)
+Status: implemented — pyobs-gui#154 closed. `StructuredConfigWidget` landed in pyobs-gui#158
+(merged 2026-09-01). A `DummyStructuredConfig` module also landed in pyobs-core#841 (merged
+2026-09-01, `pyobs/modules/utils/dummystructuredconfig.py`) purely so the widget has something to
+manually verify against — not a change to the frozen interface below. Manually verified end-to-end
+via `pyobs-gui/test/structuredconfig.yaml` (`MultiModule` + `LocalComm`, real Qt window).
 
-Repos: pyobs-gui (widget), pyobs-core (`IStructuredConfig` — frozen, no changes)
+Repos: pyobs-gui (widget), pyobs-core (`IStructuredConfig` itself — frozen, no changes; a new
+`DummyStructuredConfig` dummy module was added as a verification fixture, see above)
 
 ## Problem
 
@@ -60,24 +65,36 @@ Two-phase `_init()` (one-shot, per `BaseWidget` conventions in `base.py`):
   errors surface through the existing `show_remote_error` path (`base.py`). Disable Apply when
   `self.permitted("set_config")` is `False` (existing ACL machinery) and while the call is in
   flight (`_enable_buttons`).
-- **Module not READY:** `BaseWidget._update_loop` already disables the whole widget — nothing
-  extra needed.
+- **Module not READY:** this plan's original claim that `BaseWidget._update_loop` auto-disables
+  the widget was wrong — that loop only runs for widgets passed an `update_func` (today only
+  `RoboticWidget`/`ScheduleWidget`). `CoolingWidget`/`FilterWidget`/`ModeWidget` don't get it
+  either; they just `setEnabled(True)` on state arrival. PR pyobs-gui#158 matched that existing
+  convention instead of inventing new gating logic.
 - **Lists:** `ConfigValue` allows `list[...]` on the wire, but `ConfigFieldSchema` has no list
   type today — explicitly out of scope; unsupported fields render disabled with a tooltip.
 
-### 2. Registration & placement (see also #150)
+### 2. Registration & placement (superseded by #150, landed 2026-09-01)
 
-`DEFAULT_WIDGETS` (`mainwindow.py:54-67`) is first-match-wins, and so is the standalone
-`ModuleWindow.open()` (`modulegui.py:28-32`). Therefore:
+This section originally assumed `DEFAULT_WIDGETS` (`mainwindow.py:54-67`), a first-match-wins
+dict. #150 replaced that with a `MAIN_WIDGETS` registry (PR pyobs-gui#157, merged into `develop`;
+not yet on `main`) — update accordingly:
 
-- Add `IStructuredConfig: StructuredConfigWidget` to `DEFAULT_WIDGETS` **after** the specialized
-  interfaces (`ISpectrograph`, …) so e.g. the FTS keeps its `SpectrographWidget` and the generic
-  form acts as a fallback.
-- Add a `DEFAULT_ICONS` entry (e.g. `fa5s.cog`).
-- The FTS also shows the overlap: it already ships a bespoke config UI *inside* its spectrograph
-  page. Long-term the generic form could replace that hand-rolled block, or sit alongside it once
-  issue #150 (tab pages for multi-widget modules) lands — the widget should be written as a plain
-  `BaseWidget` so it works both as a main page and as a sidebar/tab component.
+- Add `MainWidgetEntry(IStructuredConfig, StructuredConfigWidget, "Config", "fa5s.cog")` to
+  `MAIN_WIDGETS`. Leave `sidebar_preferred` at its default `False` — this is a main page in its
+  own right, not a sidebar demotion candidate. Registry order no longer matters for visibility
+  (unlike the old dict, every matching entry now shows).
+- No separate icon dict — `icon` is a field on the entry itself.
+- **Behavior change vs. the original "fallback" framing:** because #150 turns *every* matching
+  main-role interface into a tab rather than hiding all but the first, the FTS (`ISpectrograph` +
+  `IStructuredConfig`) will now show **both** a "Spectrograph" and a "Config" tab automatically —
+  not fallback-only. That collides with the FTS's existing hand-rolled config UI living *inside*
+  its spectrograph page (`pyobs_iagvt/widgets/ftswidget.py`): once this widget ships, the FTS
+  would show its config twice (bespoke block + generic tab). Worth deciding at implementation
+  time whether to strip the hand-rolled block from `ftswidget.py` as part of this change, rather
+  than leaving it as a someday follow-up.
+- `ModuleWindow.open()` (`modulegui.py`) now shares the same assembly path
+  (`collect_main_widgets()` / `ModulePage`) as the main window, so no separate registration is
+  needed for standalone mode.
 
 ### 3. Tests (`tests/`, headless offscreen `QApplication` already set up in `conftest.py`)
 
@@ -101,6 +118,21 @@ Two-phase `_init()` (one-shot, per `BaseWidget` conventions in `base.py`):
 
 ## Out of scope
 
-- No changes to pyobs-core (`ConfigSchema`/`ConfigFieldSchema`/`IStructuredConfig` are frozen); no
+- No changes to `ConfigSchema`/`ConfigFieldSchema`/`IStructuredConfig` themselves (frozen); no
   list-type rendering; no YAML import/export (possible follow-up).
-- Not depending on #150 — but designed to slot into it later.
+- #150 has since landed on `develop` (2026-09-01) — this plan no longer merely "slots into it
+  later"; §2 now targets the `MAIN_WIDGETS` registry directly, and the FTS tab-duplication
+  question above is a direct consequence of that landing, not a hypothetical.
+
+## Known follow-ups (not done here)
+
+- **FTS double-tab**: per §2, the FTS will show both "Spectrograph" and "Config" tabs once a
+  siderostat- or FTS-style module widget lands alongside this one — the hand-rolled config block
+  in `ftswidget.py` was deliberately left untouched (issue #154's "FTS unchanged" acceptance
+  criterion).
+- **pyobs-gui `test/*.yaml` fixture bug**: every fixture in `test/` (not just the new
+  `structuredconfig.yaml`) has a stale top-level `name: <module>` key that current pyobs-core
+  `develop` now rejects (`Object.__init__`'s stricter leftover-kwarg check has no `name`
+  parameter anywhere in the `Module`/`Object` chain) — verified against the unmodified
+  `roof.yaml`. Unrelated to this plan's scope; tracked as a follow-up fix directly on
+  `develop` in pyobs-gui.

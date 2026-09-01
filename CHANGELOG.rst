@@ -1,5 +1,22 @@
 v2.1.1.dev1 (2026-08-31)
 *************************
+* Issue #832: ``Calibration``/``Reduction`` now match dark masters to a science frame's
+  ``EXPTIME`` instead of always scaling whatever dark master ``find_master`` happened to return
+  (see ADR ``0015-dark-master-strict-exptime-matching-reference-scale-down-only.md``). An exact
+  exptime match (within ``dark_exptime_tolerance``, default 1%) is used unscaled; below
+  ``dark_min_exptime`` (default 5s) with no exact match, calibration falls back to bias-only; a
+  reference master (``dark_scale_exptime``, default 600s) is scaled down to shorter science
+  exptimes but never scaled up.
+
+  **Behavior change, upgrade check required:** a site that takes darks at only one exptime and
+  previously relied on always-scale-whatever's-nearest now fails calibration (a caught,
+  catchable ``ValueError``, logged and returned uncalibrated -- not a crash) for any science
+  exptime longer than its one master, or with no reference configured. Set
+  ``allow_unmatched_dark_scale=True`` to keep today's behavior, or take darks at more than one
+  exptime (``DarkBiasScript``'s ``exptimes``/``match_science_exptimes``, issue #831) so exact
+  matches exist. ``Reduction``'s master-calibration-frame filename pattern also gained an
+  exposure-time component (``{EXPTIME|exptime}``, shared by BIAS/SKYFLAT too); existing archives
+  keep their old-pattern masters under their original filenames.
 * Fixes issue #830: ``http_request_with_retries`` no longer logs a WARNING on every failed retry
   attempt. Retries now stay quiet for the first 60s a URL has been failing (covering a typical
   short pyobs-portal restart), then warn at most once per minute until the request succeeds again.

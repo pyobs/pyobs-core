@@ -1,6 +1,6 @@
 # Plan: per-exposure-time dark masters, reference-master scale-down only
 
-Status: **proposed**
+Status: implemented
 
 Tracks issue #832. Reduction/pipeline half of the dark-exptime-matching work; depends on the
 archive `exptime` plumbing from `2026-09-01-morning-darks-match-science-exptimes.md` (#831).
@@ -30,7 +30,10 @@ this plan implements: an exact-exptime-match master is used unscaled; only a con
 reference exptime (default 600 s) may be scaled, and only *down* to shorter science exptimes; an
 unmatched science exptime longer than the reference, or with no reference configured, is a
 calibration error rather than a silent scale — unless `allow_unmatched_dark_scale=True` opts a
-site back into today's always-scale behavior.
+site back into today's always-scale behavior. Science exptimes below a configured minimum
+(`dark_min_exptime`, default 5 s) skip dark subtraction entirely and are calibrated with bias
+only, ahead of the reference-scale check — dark current is assumed negligible there and an exact
+match still wins if one exists.
 
 ## Design
 
@@ -86,24 +89,33 @@ Implements ADR 0015's decision directly.
   merely time-close one.
 - `Calibration` (`pyobs/images/processors/calibration/calibration.py`):
   - New `__init__` params (`:137-167`): `dark_exptime_tolerance: float = 0.01`,
-    `dark_scale_exptime: float | None = 600.0`, `allow_unmatched_dark_scale: bool = False`.
+    `dark_scale_exptime: float | None = 600.0`, `allow_unmatched_dark_scale: bool = False`,
+    `dark_min_exptime: float | None = 5.0`.
   - `_find_master_in_archive()` (`:248-269`): for `ImageType.DARK`, read the science image's
     `EXPTIME` from its header and pass it to `Pipeline.find_master()` as the new `exptime` arg.
   - New matching logic (replaces the current "just take whatever dark `find_master` returns")
-    per ADR 0015: exact-match (within `dark_exptime_tolerance`) → use unscaled; else if
-    `dark_scale_exptime is not None` and science `EXPTIME <= dark_scale_exptime` (within
-    tolerance) → use the reference master (nearest available exptime `<= dark_scale_exptime` in
-    the archive) scaled down; else if `allow_unmatched_dark_scale` → fall back to today's
-    behavior (whatever `find_master` returns, scaled, regardless of direction); else → raise
-    `ValueError` listing the requested exptime and the available master exptimes. This is caught
-    by the existing `except ValueError` in `__call__` (`:179-183`), which already logs a warning
-    and returns the image uncalibrated — no new exception-handling path needed there.
+    per ADR 0015, in order: (1) exact-match (within `dark_exptime_tolerance`) → use unscaled,
+    checked first regardless of exptime; (2) no exact match and `dark_min_exptime is not None`
+    and science `EXPTIME < dark_min_exptime` (within tolerance) → skip dark subtraction, DARK
+    correction omitted from the `ccdproc.ccd_process()` call entirely (bias-only calibration);
+    (3) no exact match, `EXPTIME >= dark_min_exptime`, and `dark_scale_exptime is not None` and
+    `EXPTIME <= dark_scale_exptime` (within tolerance) → use the reference master (nearest
+    available exptime `<= dark_scale_exptime` in the archive) scaled down; (4) else if
+    `allow_unmatched_dark_scale` → fall back to today's behavior (whatever `find_master` returns,
+    scaled, regardless of direction); (5) else → raise `ValueError` listing the requested exptime
+    and the available master exptimes. This is caught by the existing `except ValueError` in
+    `__call__` (`:179-183`), which already logs a warning and returns the image uncalibrated —
+    no new exception-handling path needed there.
   - `_CCDDataCalibrator` (`_ccddata_calibrator.py`): change `dark_scale=True` (`:52`) to a
     constructor parameter, `dark_scale: bool = True` on `__init__` (`:10`), threaded from
     `Calibration.__call__` (`:185-186`) based on which matching branch fired above. Only pass
     `dark_exposure=self._dark_exp_time * u.second` (`:50`) when `dark_scale` is actually `True`
     — an unscaled exact-match dark shouldn't carry a spurious `dark_exposure` into
-    `ccd_process()`.
+    `ccd_process()`. For the bias-only branch (2), `Calibration` needs a way to invoke
+    `_CCDDataCalibrator` (or the underlying `ccd_process()` call) with no dark master at all —
+    check whether that means a new `dark_frame: CCDData | None = None`-accepting path on
+    `_CCDDataCalibrator.__init__` (`:10`) or a separate bias-only calibrator branch in
+    `Calibration.__call__`; either way, bias subtraction itself must still run unchanged.
 
 ### 4. Reduction integration
 
@@ -115,36 +127,47 @@ Implements ADR 0015's decision directly.
   reads `EXPTIME` from the science image's own header (`calibration.py`, per #3) rather than
   needing it passed explicitly from `Reduction`.
 
-## Open questions to resolve during implementation
+## Open questions -- resolved during implementation
 
-- Whether `dark_exptime_tolerance` should be relative (percentage) or absolute (seconds), or
-  configurable as either — ADR 0015 assumes relative 1% as the default; confirm this holds for
-  both very short (bias-adjacent) and very long exptimes before hardcoding relative-only.
-- Filename-pattern migration: hard rename vs. documented opt-in — decide once #1's on-disk
-  layout for existing deployments (MONET, iag50) is checked against what a mid-migration state
-  looks like (old single dark master + new per-exptime ones coexisting during rollout).
+- `dark_exptime_tolerance` is relative-only (matching #831's `exptimes_close`/`group_exptimes`,
+  which this plan already reuses). No absolute-tolerance mode was added -- not needed for the
+  discrete, well-separated exptimes real detectors use, and would have doubled the parameter
+  surface across `Reduction`, `Pipeline.find_master`, and `Calibration` for no concrete use case.
+- Filename-pattern migration: hard rename, called out here and in the PR description rather than
+  adding a second configurable pattern. Existing archives keep their old-pattern masters under
+  their original filenames; only newly-created masters (BIAS/SKYFLAT included, since the pattern
+  is shared) use the new `{EXPTIME|exptime}` component.
 
 ## Acceptance criteria
 
-- [ ] A night with darks at multiple exposure times produces one distinct master dark per
+- [x] A night with darks at multiple exposure times produces one distinct master dark per
       exposure time — distinct filenames, cache entries, and `MasterCalibCreated` events each
       carrying the correct `exptime`.
-- [ ] Science frames are calibrated with the exptime-matching master (within tolerance),
+- [x] Science frames are calibrated with the exptime-matching master (within tolerance),
       unscaled, whenever one exists.
-- [ ] Scaling happens only via the reference master, only downward (science `EXPTIME <=
+- [x] Scaling happens only via the reference master, only downward (science `EXPTIME <=
       dark_scale_exptime`); a science frame with no matching master and `EXPTIME >
       dark_scale_exptime` fails calibration with a clear, catchable error instead of silently
       scaling.
-- [ ] `allow_unmatched_dark_scale=True` reproduces today's always-scale behavior exactly, for
+- [x] `allow_unmatched_dark_scale=True` reproduces today's always-scale behavior exactly, for
       sites not yet taking per-exptime darks.
-- [ ] Backward compatibility: existing `Calibration` configs either keep working unchanged or
-      have a documented, changelog-visible migration step (filename pattern, new default
-      behavior).
-- [ ] Tests: master grouping by exptime (incl. tolerance, under-populated groups skipped
+- [x] A science frame with `EXPTIME < dark_min_exptime` and no exact-match dark master is
+      calibrated with bias only (no dark correction applied, no error); an exact-match master for
+      that exptime, if one exists, is still used ahead of the bias-only path.
+- [x] Backward compatibility: existing `Calibration` *configs* keep validating and running
+      unchanged (all new `__init__` params default to today's ADR-0015-approved policy) -- but
+      per ADR 0015's own "Consequences", *behavior* changes for a site relying on
+      always-scale-whatever's-nearest: it now fails calibration (a caught `ValueError`, not a
+      crash) for science exptimes outside its one master's tolerance, until it sets
+      `allow_unmatched_dark_scale=True` or takes per-exptime darks (#831). Documented in
+      `CHANGELOG.rst` (not just here) per the ADR's explicit requirement. The filename-pattern
+      change is a separate, also-documented migration step.
+- [x] Tests: master grouping by exptime (incl. tolerance, under-populated groups skipped
       individually); filename/cache-key/progress-event exptime plumbing; matching logic
-      (exact match / reference-scale-down / reference-scale-up rejected / unmatched-strict-error
-      / `allow_unmatched_dark_scale` fallback); `_CCDDataCalibrator`'s `dark_scale` parameter
-      behavior in both states.
+      (exact match / bias-only-below-minimum / reference-scale-down / reference-scale-up rejected
+      / unmatched-strict-error / `allow_unmatched_dark_scale` fallback); `_CCDDataCalibrator`'s
+      `dark_scale` parameter behavior in both states; `dark_min_exptime=0`/`None` disables the
+      bias-only branch.
 
 ## Out of scope
 

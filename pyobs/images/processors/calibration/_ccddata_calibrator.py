@@ -7,7 +7,14 @@ from pyobs.images import Image
 
 
 class _CCDDataCalibrator:
-    def __init__(self, image: Image, bias: Image | None = None, dark: Image | None = None, flat: Image | None = None):
+    def __init__(
+        self,
+        image: Image,
+        bias: Image | None = None,
+        dark: Image | None = None,
+        flat: Image | None = None,
+        dark_scale: bool = True,
+    ):
         # to_ccddata() below never carries a catalog through anyway, so drop it before trim() to
         # avoid its stale-catalog guard rejecting an image whose catalog wouldn't survive regardless.
         if image.safe_catalog is not None:
@@ -17,10 +24,16 @@ class _CCDDataCalibrator:
         self._bias = self._optional_to_ccddata(bias)
         self._dark = self._optional_to_ccddata(dark)
         self._flat = self._optional_to_ccddata(flat)
+        # whether ccd_process() should rescale the dark to the science exptime -- False for an
+        # exact exptime-match master, which is used as-is (see Calibration._find_dark_master).
+        self._dark_scale = dark_scale
 
         self._ccd_data = self._image.to_ccddata()
 
-        if dark is not None:
+        # only read EXPTIME when it's actually needed -- an unscaled exact-match dark
+        # (dark_scale=False) doesn't require it, and a legacy master combined from raw frames
+        # with no EXPTIME at all (see Reduction._create_master_darks' fallback) doesn't have it
+        if dark is not None and dark_scale:
             self._dark_exp_time = dark.header["EXPTIME"]
 
     @staticmethod
@@ -47,8 +60,8 @@ class _CCDDataCalibrator:
             bad_pixel_mask=None,
             gain=self._image.header["DET-GAIN"] * u.electron / u.adu,
             readnoise=self._image.header["DET-RON"] * u.electron,
-            dark_exposure=self._dark_exp_time * u.second if self._dark is not None else None,
+            dark_exposure=self._dark_exp_time * u.second if (self._dark is not None and self._dark_scale) else None,
             data_exposure=self._image.header["EXPTIME"] * u.second,
-            dark_scale=True,
+            dark_scale=self._dark_scale,
             gain_corrected=False,
         )

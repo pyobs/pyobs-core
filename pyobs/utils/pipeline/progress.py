@@ -16,6 +16,9 @@ class MasterCalibCreated:
     binning: str
     filter_name: str | None
     filename: str
+    exptime: float | None = None
+    """The dark's exposure time in seconds, for a per-exptime DARK master. None for BIAS/SKYFLAT
+    and for a DARK master created before per-exptime grouping existed."""
 
 
 @dataclass

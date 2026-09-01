@@ -1,6 +1,6 @@
 # Plan: take morning darks at the night's science exposure times
 
-Status: **proposed**
+Status: implemented
 
 Tracks issue #831. Robotic/archive half of the dark-exptime-matching work; the reduction half is
 `2026-09-01-per-exptime-dark-masters.md` (issue #832), which depends on the archive changes here.
@@ -63,14 +63,19 @@ The archive API currently carries no exposure-time information at all:
 
 ### 2. Helper: distinct science exposure times for a night
 
-New function, `science_exptimes_for_night(archive, site, night, tolerance=0.01)` in
-`pyobs/robotic/utils/calibration.py` (new file — no existing module owns "derive calibration
-targets from science data"):
+New function, `science_exptimes_for_night(archive, site, night, tolerance=0.01,
+min_exptime=5.0)` in `pyobs/robotic/utils/calibration.py` (new file — no existing module owns
+"derive calibration targets from science data"):
 
 - Lists OBJECT frames (rlevel 0) via `archive.list_frames(night=night, site=site,
   image_type=ImageType.OBJECT, rlevel=0)`, grouped by `(instrument, binning)` — mirrors the
   per-combination looping `Reduction.__call__` already does
   (`pyobs/utils/pipeline/reduction.py:264-297`).
+- Drops any frame with `EXPTIME < min_exptime` before grouping — per ADR 0015's
+  `dark_min_exptime` (same default, 5 s), calibration treats those as bias-only and never needs a
+  dark master, so there's no point scheduling a dark series for them. `min_exptime=0`/`None`
+  keeps every exptime, for a caller that wants the full distribution regardless of the ADR's
+  default.
 - Collapses `exptime` values within `tolerance` (relative, default 1%) into groups, returning
   one representative exptime per group — e.g. round to the group's median or first-seen value.
   This grouping logic is the one both this helper and #832's per-exptime master grouping need;
@@ -115,20 +120,27 @@ discoverable without reading the script source.
 
 ## Acceptance criteria
 
-- [ ] `FrameInfo.exptime` populated by both `PyobsArchive` and `LocalArchive`; `list_frames()`/
+- [x] `FrameInfo.exptime` populated by both `PyobsArchive` and `LocalArchive`; `list_frames()`/
       `list_options()` accept and honor an `exptime` filter in both implementations.
-- [ ] `list_options()` returns an `exptimes` key in both implementations.
-- [ ] `science_exptimes_for_night()` returns the distinct, tolerance-grouped science exptimes
-      for a site+night, keyed per instrument/binning.
-- [ ] `DarkBiasScript` runs one dark series per exptime (explicit list or
+- [x] `list_options()` returns an `exptimes` key in both implementations. `LocalArchive` computes
+      it directly; `PyobsArchive.list_options()` passes the server's `frames/aggregate/` response
+      through unchanged, so its `exptimes` key depends on the pyobs-archive server adding one —
+      not verifiable from this repo alone.
+- [x] `science_exptimes_for_night()` returns the distinct, tolerance-grouped science exptimes
+      for a site+night, keyed per instrument/binning, excluding exptimes below `min_exptime`
+      (default 5 s) unless `min_exptime=0`/`None` is passed.
+- [x] `DarkBiasScript` runs one dark series per exptime (explicit list or
       `match_science_exptimes`-derived) while the single-`exptime` path is unchanged; mutual
       exclusivity between `exptime`/`exptimes`/`match_science_exptimes` is validated, not silently
       resolved by picking one.
-- [ ] `estimate_duration()` reflects the multi-series total.
-- [ ] Tests: `exptime` filter in both archive implementations (including tolerance behavior),
+- [x] `estimate_duration()` reflects the multi-series total for the explicit `exptimes` list.
+      `match_science_exptimes` falls back to a single-series placeholder estimate (using the
+      configured `exptime`, 0 by default) since the method is sync and can't run the archive
+      query needed to know the real series — a known gap, not solved by this plan.
+- [x] Tests: `exptime` filter in both archive implementations (including tolerance behavior),
       `science_exptimes_for_night()` grouping (exact matches, near-duplicates within/outside
-      tolerance, empty night), `DarkBiasScript` run/estimate with multiple exptimes, mutual-
-      exclusivity validation.
+      tolerance, empty night, exptimes below/above `min_exptime`), `DarkBiasScript` run/estimate
+      with multiple exptimes, mutual-exclusivity validation.
 
 ## Out of scope
 

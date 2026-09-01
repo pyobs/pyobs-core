@@ -29,8 +29,9 @@ def make_frame_headers(
     telescope: str = "tel1",
     rlevel: int = 91,
     obsnum: str = "42",
+    exptime: float | None = 600.0,
 ) -> dict[str, object]:
-    return {
+    headers: dict[str, object] = {
         "DATE-OBS": date_obs,
         "DAY-OBS": day_obs,
         "XBINNING": binning[0],
@@ -43,6 +44,9 @@ def make_frame_headers(
         "RLEVEL": rlevel,
         "OBSNUM": obsnum,
     }
+    if exptime is not None:
+        headers["EXPTIME"] = exptime
+    return headers
 
 
 # ── model_post_init / _update_root ──────────────────────────────────────────
@@ -203,6 +207,78 @@ async def test_list_frames_empty_when_nothing_matches(tmp_path: Path) -> None:
     frames = await archive.list_frames(filter_name="nonexistent")
 
     assert frames == []
+
+
+@pytest.mark.asyncio
+async def test_list_frames_parses_exptime(tmp_path: Path) -> None:
+    write_fits(tmp_path / "a.fits", **make_frame_headers(exptime=45.0))
+    archive = LocalArchive(root=str(tmp_path))
+
+    frames = await archive.list_frames()
+
+    assert frames[0].exptime == 45.0
+
+
+@pytest.mark.asyncio
+async def test_list_frames_exptime_is_none_when_header_missing(tmp_path: Path) -> None:
+    write_fits(tmp_path / "a.fits", **make_frame_headers(exptime=None))
+    archive = LocalArchive(root=str(tmp_path))
+
+    frames = await archive.list_frames()
+
+    assert frames[0].exptime is None
+
+
+@pytest.mark.asyncio
+async def test_list_frames_filters_by_exptime_within_tolerance(tmp_path: Path) -> None:
+    write_fits(tmp_path / "a.fits", **make_frame_headers(exptime=600.0))
+    write_fits(tmp_path / "b.fits", **make_frame_headers(exptime=602.0))
+    write_fits(tmp_path / "c.fits", **make_frame_headers(exptime=45.0))
+    archive = LocalArchive(root=str(tmp_path))
+
+    frames = await archive.list_frames(exptime=600.0)
+
+    assert {f.exptime for f in frames} == {600.0, 602.0}
+
+
+@pytest.mark.asyncio
+async def test_list_frames_exptime_is_none_not_nan_when_mixed_with_tagged_frames(tmp_path: Path) -> None:
+    # a pandas float64 column silently coerces None to NaN as soon as any row in it holds a
+    # real float -- this archive's index must normalize that back to None, since NaN is not
+    # None (and compares unequal to everything, including itself)
+    write_fits(tmp_path / "tagged.fits", **make_frame_headers(exptime=30.0, obsnum="1"))
+    write_fits(tmp_path / "untagged.fits", **make_frame_headers(exptime=None, obsnum="2"))
+    archive = LocalArchive(root=str(tmp_path))
+
+    frames = await archive.list_frames()
+
+    by_obsnum = {"tagged.fits": 30.0, "untagged.fits": None}
+    for frame in frames:
+        expected = by_obsnum[Path(frame.filename).name]
+        assert frame.exptime == expected
+        if expected is None:
+            assert frame.exptime is None  # exactly None, not float("nan")
+
+
+@pytest.mark.asyncio
+async def test_list_frames_exptime_excludes_frames_without_exptime(tmp_path: Path) -> None:
+    write_fits(tmp_path / "a.fits", **make_frame_headers(exptime=None))
+    archive = LocalArchive(root=str(tmp_path))
+
+    frames = await archive.list_frames(exptime=600.0)
+
+    assert frames == []
+
+
+@pytest.mark.asyncio
+async def test_list_options_returns_exptimes(tmp_path: Path) -> None:
+    write_fits(tmp_path / "a.fits", **make_frame_headers(exptime=30.0))
+    write_fits(tmp_path / "b.fits", **make_frame_headers(exptime=600.0))
+    archive = LocalArchive(root=str(tmp_path))
+
+    options = await archive.list_options()
+
+    assert set(options["exptimes"]) == {30.0, 600.0}
 
 
 # ── download_frames / download_headers ──────────────────────────────────────

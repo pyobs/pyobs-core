@@ -9,6 +9,7 @@ from pydantic import PrivateAttr
 
 from pyobs.images import Image
 from pyobs.utils.enums import ImageType
+from pyobs.utils.exptime_grouping import exptimes_close
 from pyobs.utils.time import Time
 
 from .archive import Archive, FrameInfo
@@ -47,6 +48,7 @@ class LocalArchive(Archive):
                 "telescope",
                 "rlevel",
                 "obsnum",
+                "exptime",
             ]
         }
         for filename in filenames:
@@ -61,6 +63,7 @@ class LocalArchive(Archive):
             columns["telescope"].append(hdr["TELID"] if "TELID" in hdr else None)
             columns["rlevel"].append(hdr["RLEVEL"] if "RLEVEL" in hdr else None)
             columns["obsnum"].append(str(hdr["OBSNUM"]) if "OBSNUM" in hdr else None)
+            columns["exptime"].append(float(hdr["EXPTIME"]) if "EXPTIME" in hdr else None)
         columns["filename"] = filenames
         self._data = pd.DataFrame(columns)
 
@@ -77,6 +80,7 @@ class LocalArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
         obsnum: str | None = None,
+        exptime: float | None = None,
     ) -> pd.DataFrame:
         data = self._data
         if start is not None:
@@ -101,6 +105,8 @@ class LocalArchive(Archive):
             data = data[data["rlevel"] == rlevel]
         if obsnum is not None:
             data = data[data["obsnum"] == obsnum]
+        if exptime is not None:
+            data = data[data["exptime"].apply(lambda e: e is not None and exptimes_close(e, exptime))]
         return data
 
     async def list_options(
@@ -116,9 +122,21 @@ class LocalArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
         obsnum: str | None = None,
+        exptime: float | None = None,
     ) -> dict[str, list[Any]]:
         data = self._filter_data(
-            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel, obsnum=obsnum
+            start,
+            end,
+            night,
+            site,
+            telescope,
+            instrument,
+            image_type,
+            binning,
+            filter_name,
+            rlevel,
+            obsnum=obsnum,
+            exptime=exptime,
         )
         return {
             "binnings": list(data["binning"].unique()),
@@ -127,6 +145,7 @@ class LocalArchive(Archive):
             "instruments": list(data["instrument"].unique()),
             "sites": list(data["site"].unique()),
             "telescopes": list(data["telescope"].unique()),
+            "exptimes": [e for e in data["exptime"].unique() if e is not None],
         }
 
     async def list_frames(
@@ -142,9 +161,21 @@ class LocalArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
         obsnum: str | None = None,
+        exptime: float | None = None,
     ) -> list[FrameInfo]:
         data = self._filter_data(
-            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel, obsnum=obsnum
+            start,
+            end,
+            night,
+            site,
+            telescope,
+            instrument,
+            image_type,
+            binning,
+            filter_name,
+            rlevel,
+            obsnum=obsnum,
+            exptime=exptime,
         )
         infos: list[FrameInfo] = []
         for _, row in data.iterrows():
@@ -154,6 +185,11 @@ class LocalArchive(Archive):
             info.filter_name = row["filter"]
             info.binning = row["binning"]
             info.dateobs = row["date-obs"]
+            # pandas silently coerces a None in a float64-dtype column (i.e. as soon as any
+            # row in this archive has a real EXPTIME) to NaN, not None -- normalize back so
+            # "no EXPTIME" is always exactly None for callers, never a NaN that compares
+            # unequal to everything including itself
+            info.exptime = None if pd.isna(row["exptime"]) else float(row["exptime"])
             infos.append(info)
         return infos
 

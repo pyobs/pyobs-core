@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 import os.path
+import statistics
 from typing import Any
 
 from pyobs.images import Image
 from pyobs.object import get_object
 from pyobs.robotic.utils.archive import Archive, FrameInfo
 from pyobs.utils.enums import ImageType
+from pyobs.utils.exptime_grouping import group_by_exptime
 from pyobs.utils.fits import FilenameFormatter
 
 from .pipeline import Pipeline
@@ -18,7 +21,15 @@ from .reduction_base import ReductionBase
 log = logging.getLogger(__name__)
 
 
-FILENAME = "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits"
+# Includes an exptime component (rendered without a trailing ".0" -- see
+# FilenameFormatter._format_exptime) so per-exptime DARK masters (see #832) don't collide on
+# filename; harmless for BIAS/SKYFLAT, which each still produce a single master per
+# instrument/binning[/filter] as before. This changed the on-disk filename for every master
+# calibration frame, BIAS/SKYFLAT included -- existing archives keep their old-pattern masters
+# under their original filenames, but reduction runs from here on write the new pattern.
+FILENAME = (
+    "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{IMAGETYP}-{EXPTIME|exptime}-{XBINNING}x{YBINNING}{FILTER|filter}.fits"
+)
 
 
 class Reduction(ReductionBase):
@@ -32,6 +43,7 @@ class Reduction(ReductionBase):
         create_calibs: bool = True,
         calib_science: bool = True,
         progress_callback: ProgressCallback | None = None,
+        dark_exptime_tolerance: float = 0.01,
     ):
         """Creates a Reduction object for reducing a given observation period.
 
@@ -46,6 +58,8 @@ class Reduction(ReductionBase):
             create_calibs: If False, no calibration files are created for night.
             calib_science: If False, no science frames are calibrated.
             progress_callback: See ReductionBase.
+            dark_exptime_tolerance: Relative tolerance for grouping a night's raw DARK frames
+                into per-exptime master series -- see pyobs.utils.exptime_grouping.
         """
         super().__init__(archive=archive, pipeline=pipeline, min_flats=min_flats, progress_callback=progress_callback)
 
@@ -55,6 +69,7 @@ class Reduction(ReductionBase):
         )
         self._create_calibs = create_calibs
         self._calib_science = calib_science
+        self._dark_exptime_tolerance = dark_exptime_tolerance
 
         # make sure the local output directory exists
         if self._store_local:
@@ -69,9 +84,48 @@ class Reduction(ReductionBase):
         self._frames_done = 0
         self._frames_total = 0
 
+    async def _store_master_calib(
+        self,
+        calib: Image,
+        image_type: ImageType,
+        instrument: str,
+        binning: str,
+        filter_name: str | None,
+        exptime: float | None,
+    ) -> None:
+        """Formats the filename, saves/uploads, and reports progress for one freshly-combined
+        master calibration frame. Shared by _create_master_calib (BIAS/SKYFLAT, one master) and
+        _create_master_darks (DARK, one master per exptime group)."""
+        calib.format_filename(self._fmt_calib)
+
+        if self._store_local:
+            path = os.path.join(self._store_local, calib.header["FNAME"])
+            log.info("Storing master calibration frame as %s...", path)
+            calib.writeto(path, overwrite=True)
+        else:
+            log.info("Uploading master calibration frame as %s...", calib.header["FNAME"])
+            await self._output_archive.upload_frames([calib])
+
+        self._report_progress(
+            MasterCalibCreated(
+                image_type=image_type,
+                instrument=instrument,
+                binning=binning,
+                filter_name=filter_name,
+                filename=calib.header["FNAME"],
+                exptime=exptime,
+            )
+        )
+
     async def _create_master_calib(
         self, night: str, instrument: str, image_type: ImageType, binning: str, filter_name: str | None = None
     ) -> Image | None:
+        """Creates a single master BIAS or SKYFLAT frame. DARK masters are created per-exptime
+        by _create_master_darks() instead, since a night's raw darks can span more than one
+        exposure time (see #831)."""
+        if image_type == ImageType.DARK:
+            raise ValueError("DARK masters are created via _create_master_darks(), not this method.")
+
         # get frames
         infos = await self._archive.list_frames(
             night=night,
@@ -108,23 +162,7 @@ class Reduction(ReductionBase):
                 return None
 
             # store in cache
-            self._master_frames[ImageType.BIAS, instrument, binning, None] = calib
-
-        elif image_type == ImageType.DARK:
-            # for DARKs, we first need a BIAS
-            bias = await self._find_master(night, ImageType.BIAS, instrument, binning, None)
-            if bias is None:
-                log.error("Could not find BIAS frame, skipping...")
-                return None
-
-            # combine
-            calib = await self._pipeline.create_master_dark(images, bias=bias)
-            if calib is None:
-                log.warning("Could not create master dark.")
-                return None
-
-            # store in cache
-            self._master_frames[ImageType.DARK, instrument, binning, None] = calib
+            self._master_frames[ImageType.BIAS, instrument, binning, None, None] = calib
 
         elif image_type == ImageType.SKYFLAT:
             # got enough frames?
@@ -145,35 +183,96 @@ class Reduction(ReductionBase):
                 return None
 
             # store in cache
-            self._master_frames[ImageType.SKYFLAT, instrument, binning, filter_name] = calib
+            self._master_frames[ImageType.SKYFLAT, instrument, binning, filter_name, None] = calib
 
         else:
             raise ValueError("Invalid image type")
 
-        # filename
-        calib.format_filename(self._fmt_calib)
-
-        # save/upload
-        if self._store_local:
-            path = os.path.join(self._store_local, calib.header["FNAME"])
-            log.info("Storing master calibration frame as %s...", path)
-            calib.writeto(path, overwrite=True)
-        else:
-            log.info("Uploading master calibration frame as %s...", calib.header["FNAME"])
-            await self._output_archive.upload_frames([calib])
-
-        self._report_progress(
-            MasterCalibCreated(
-                image_type=image_type,
-                instrument=instrument,
-                binning=binning,
-                filter_name=filter_name,
-                filename=calib.header["FNAME"],
-            )
-        )
-
-        # finished
+        await self._store_master_calib(calib, image_type, instrument, binning, filter_name, None)
         return calib
+
+    async def _create_master_darks(self, night: str, instrument: str, binning: str) -> list[Image]:
+        """Creates one master dark per exposure time present in the night's raw DARK frames
+        (grouped within self._dark_exptime_tolerance) -- a night can have darks at more than
+        one exptime now that DarkBiasScript can match them to the night's science exptimes
+        (#831). Frame groups with fewer than 3 members are skipped individually with a
+        warning, rather than aborting dark reduction for this instrument/binning entirely.
+
+        If none of the night's raw darks carry EXPTIME at all (a fully legacy instrument, as
+        opposed to a handful of untagged frames mixed in with tagged ones), grouping would
+        silently produce zero masters -- falls back to combining all of them into a single
+        untagged master instead, reproducing this method's pre-#832 behavior.
+
+        Returns:
+            The master dark(s) created, longest exptime first (the untagged legacy fallback,
+            if it fires, is always the only element).
+        """
+        infos = await self._archive.list_frames(
+            night=night, image_type=ImageType.DARK, instrument=instrument, binning=binning, rlevel=0
+        )
+        log.info("Found %d %s DARK frames from instrument %s.", len(infos), binning, instrument)
+        if not infos:
+            return []
+
+        # not-a-number is defensively treated the same as None -- an Archive backed by a numeric
+        # column (e.g. pandas) can end up coercing a missing EXPTIME to NaN rather than None
+        usable = [i for i in infos if i.exptime is not None and not math.isnan(i.exptime)]
+        groups: list[tuple[list[FrameInfo], float | None]]
+        if not usable:
+            log.warning(
+                "None of the %d DARK frames for instrument %s, binning %s carry EXPTIME -- "
+                "creating one legacy (untagged) master instead of grouping by exptime.",
+                len(infos),
+                instrument,
+                binning,
+            )
+            groups = [(infos, None)]
+        else:
+            if len(usable) < len(infos):
+                log.warning("Dropping %d DARK frame(s) with no EXPTIME.", len(infos) - len(usable))
+            # longest-first, matching DarkBiasScript's own series order
+            by_exptime = sorted(
+                group_by_exptime(usable, key=lambda i: i.exptime or 0.0, tolerance=self._dark_exptime_tolerance),
+                key=lambda group: statistics.median(i.exptime for i in group if i.exptime is not None),
+                reverse=True,
+            )
+            groups = [(g, statistics.median(i.exptime for i in g if i.exptime is not None)) for g in by_exptime]
+
+        bias = await self._find_master(night, ImageType.BIAS, instrument, binning, None)
+        if bias is None:
+            log.error("Could not find BIAS frame, skipping darks for instrument %s, binning %s.", instrument, binning)
+            return []
+
+        masters: list[Image] = []
+        for group, exptime in groups:
+            label = "legacy (no exptime)" if exptime is None else f"~{exptime}s"
+
+            if len(group) < 3:
+                log.warning("Too few (%d) dark frames at %s, skipping...", len(group), label)
+                continue
+
+            images = await self._archive.download_frames(group)
+            if len(images) < 3:
+                log.warning("Too few (%d) dark frames at %s, skipping...", len(images), label)
+                continue
+
+            calib = await self._pipeline.create_master_dark(images, bias=bias)
+            if calib is None:
+                log.warning("Could not create master dark at %s.", label)
+                continue
+
+            if exptime is not None:
+                # EXPTIME may or may not survive ccdproc's sigma-clip combine unchanged -- set
+                # it explicitly from the group's own value rather than trusting the combined
+                # header. The legacy fallback leaves it as whatever (if anything) the raw
+                # frames' own combined header carries -- there is no group value to set it to.
+                calib.header["EXPTIME"] = (exptime, "Exposure time [s]")
+
+            self._master_frames[ImageType.DARK, instrument, binning, None, exptime] = calib
+            await self._store_master_calib(calib, ImageType.DARK, instrument, binning, None, exptime)
+            masters.append(calib)
+
+        return masters
 
     async def _count_science_frames(self, night: str, options: dict[str, list[Any]]) -> int:
         """Pre-pass: list (not download) OBJECT frames for every instrument/binning/filter
@@ -267,16 +366,18 @@ class Reduction(ReductionBase):
 
             # loop binnings
             for binning in options["binnings"]:
-                # create bias and dark
+                # create bias and dark(s)
                 if self._create_calibs:
                     try:
                         await self._create_master_calib(night, instrument, ImageType.BIAS, binning)
                     except Exception:
                         log.exception("Error creating master bias for instrument %s, binning %s.", instrument, binning)
                     try:
-                        await self._create_master_calib(night, instrument, ImageType.DARK, binning)
+                        await self._create_master_darks(night, instrument, binning)
                     except Exception:
-                        log.exception("Error creating master dark for instrument %s, binning %s.", instrument, binning)
+                        log.exception(
+                            "Error creating master dark(s) for instrument %s, binning %s.", instrument, binning
+                        )
 
                 # loop filters
                 for filter_name in options["filters"]:

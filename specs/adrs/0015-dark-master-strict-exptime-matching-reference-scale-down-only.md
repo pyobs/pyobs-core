@@ -1,6 +1,6 @@
 # Dark masters: strict per-exposure-time matching, reference master scales down only
 
-status: proposed
+status: accepted
 date: 2026-09-01
 
 ## Context and Problem Statement
@@ -19,13 +19,16 @@ used during the night instead of one fixed value. This ADR is the policy decisio
 needing one before the reduction-side implementation can proceed: once per-exposure-time masters
 exist, when is scaling still allowed, and what happens when nothing matches?
 
-Two sub-questions, decided together because they define the same "escape hatch":
+Three sub-questions, decided together because they define the same "escape hatch":
 
 1. **Default behavior for `dark_scale_exptime`** (`Calibration`'s new option) — does an
    unmatched science exptime keep today's silent always-scale behavior by default, or fail
    loudly unless it matches a master exactly or matches the configured reference exptime?
 2. **Scale direction for the reference master** — if a 600 s reference master is kept for
    scaling, can it scale to *any* other exptime (both up and down), or only one direction?
+3. **Minimum exptime to apply a dark at all** — very short science exposures (a few seconds)
+   see negligible dark current; is there an exptime below which dark subtraction is skipped
+   entirely rather than matched or scaled?
 
 ## Considered Options
 
@@ -45,9 +48,20 @@ Two sub-questions, decided together because they define the same "escape hatch":
   frames with `EXPTIME < 600 s` (within tolerance). A science frame requesting `EXPTIME > 600 s`
   with no exact-match master fails calibration instead of scaling the reference up.
 
+### Minimum exptime for dark subtraction
+
+* **No minimum** — every science frame goes through the matching/scaling logic above,
+  regardless of how short its exptime is; a 2 s frame with no exact-match master either scales
+  the reference down to 2 s or fails, same as any other exptime.
+* **Configurable minimum, bias-only below it** (`dark_min_exptime: float = 5.0`) — a science
+  frame with `EXPTIME < dark_min_exptime` and no exact-match dark master skips dark subtraction
+  entirely and is calibrated with bias only; an exact-match master, if one happens to exist for
+  that exptime, is still used ahead of this check (exact match always wins).
+
 ## Decision Outcome
 
-Chosen: **strict by default, reference-master scaling in one direction only (down)**.
+Chosen: **strict by default, reference-master scaling in one direction only (down), with a
+configurable minimum exptime below which dark subtraction is skipped**.
 
 - `Calibration` ships with `dark_scale_exptime: float | None = 600.0` and
   `allow_unmatched_dark_scale: bool = False`. A science frame is calibrated with an exact-match
@@ -61,6 +75,16 @@ Chosen: **strict by default, reference-master scaling in one direction only (dow
   Setting `dark_scale_exptime=None` disables the reference-scale fallback entirely (exact match
   or nothing); `allow_unmatched_dark_scale=True` is the explicit opt-out back to today's
   always-scale-whatever-you-found behavior, for a site that hasn't taken per-exptime darks yet.
+- `Calibration` also ships `dark_min_exptime: float = 5.0`. The full matching order for a DARK
+  correction is: (1) exact-match master (within `dark_exptime_tolerance`) → unscaled, always
+  checked first regardless of exptime; (2) no exact match and science `EXPTIME <
+  dark_min_exptime` → skip dark subtraction, calibrate with bias only; (3) no exact match,
+  `EXPTIME >= dark_min_exptime`, and `EXPTIME <= dark_scale_exptime` → reference master scaled
+  down; (4) `allow_unmatched_dark_scale=True` → legacy always-scale fallback; (5) otherwise →
+  calibration error. Setting `dark_min_exptime=0` (or `None`) disables the bias-only step,
+  restoring the exact/reference/error flow this ADR otherwise decides. The default of 5 s is a
+  starting point, not a measured cutoff for any specific detector — sites with detectors that
+  show dark current at low exptimes should lower it or set it to 0.
 - This is a deliberate breaking change in default behavior. It is the entire point of #832 — a
   default that keeps silently scaling is a default that keeps the noise/error problem live. The
   "preserve current behavior by default" option would ship a strict-matching *capability* nobody
@@ -104,3 +128,10 @@ Chosen: **strict by default, reference-master scaling in one direction only (dow
   degraded-but-better-than-nothing option. Accepted as the safer failure mode; revisit only if a
   real site's exptime distribution runs longer than its reference dark and per-exptime darks
   aren't a viable fix for it.
+* Good, because `dark_min_exptime` means short science exposures no longer need a per-exptime
+  dark master (#831) taken at all, or hit the reference-scale-down path with a very small
+  divisor — bias-only calibration avoids both the wasted calibration-time cost of taking darks
+  nobody needs and the noise amplification of scaling a 600 s dark down to a couple of seconds.
+* Neutral, because 5 s is an unvalidated default; a site whose detector shows measurable dark
+  current below 5 s needs to lower `dark_min_exptime` (or set it to 0) rather than relying on the
+  out-of-the-box value being correct for its hardware.

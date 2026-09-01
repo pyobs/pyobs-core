@@ -1,6 +1,6 @@
 # Plan: take morning darks at the night's science exposure times
 
-Status: **proposed**
+Status: implemented
 
 Tracks issue #831. Robotic/archive half of the dark-exptime-matching work; the reduction half is
 `2026-09-01-per-exptime-dark-masters.md` (issue #832), which depends on the archive changes here.
@@ -120,18 +120,24 @@ discoverable without reading the script source.
 
 ## Acceptance criteria
 
-- [ ] `FrameInfo.exptime` populated by both `PyobsArchive` and `LocalArchive`; `list_frames()`/
+- [x] `FrameInfo.exptime` populated by both `PyobsArchive` and `LocalArchive`; `list_frames()`/
       `list_options()` accept and honor an `exptime` filter in both implementations.
-- [ ] `list_options()` returns an `exptimes` key in both implementations.
-- [ ] `science_exptimes_for_night()` returns the distinct, tolerance-grouped science exptimes
+- [x] `list_options()` returns an `exptimes` key in both implementations. `LocalArchive` computes
+      it directly; `PyobsArchive.list_options()` passes the server's `frames/aggregate/` response
+      through unchanged, so its `exptimes` key depends on the pyobs-archive server adding one —
+      not verifiable from this repo alone.
+- [x] `science_exptimes_for_night()` returns the distinct, tolerance-grouped science exptimes
       for a site+night, keyed per instrument/binning, excluding exptimes below `min_exptime`
       (default 5 s) unless `min_exptime=0`/`None` is passed.
-- [ ] `DarkBiasScript` runs one dark series per exptime (explicit list or
+- [x] `DarkBiasScript` runs one dark series per exptime (explicit list or
       `match_science_exptimes`-derived) while the single-`exptime` path is unchanged; mutual
       exclusivity between `exptime`/`exptimes`/`match_science_exptimes` is validated, not silently
       resolved by picking one.
-- [ ] `estimate_duration()` reflects the multi-series total.
-- [ ] Tests: `exptime` filter in both archive implementations (including tolerance behavior),
+- [x] `estimate_duration()` reflects the multi-series total for the explicit `exptimes` list.
+      `match_science_exptimes` falls back to a single-series placeholder estimate (using the
+      configured `exptime`, 0 by default) since the method is sync and can't run the archive
+      query needed to know the real series — a known gap, not solved by this plan.
+- [x] Tests: `exptime` filter in both archive implementations (including tolerance behavior),
       `science_exptimes_for_night()` grouping (exact matches, near-duplicates within/outside
       tolerance, empty night, exptimes below/above `min_exptime`), `DarkBiasScript` run/estimate
       with multiple exptimes, mutual-exclusivity validation.

@@ -43,5 +43,5 @@ Short decision records for choices that had genuine considered-and-rejected alte
   pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin)
 - [0015-dark-master-strict-exptime-matching-reference-scale-down-only.md](0015-dark-master-strict-exptime-matching-reference-scale-down-only.md) —
   dark masters: strict default (`allow_unmatched_dark_scale=False`), exact-exptime match used
-  unscaled, reference (600 s) master scales down only, never up. *proposed* (issue #832;
+  unscaled, reference (600 s) master scales down only, never up. *accepted* (issue #832;
   execution tracked in `specs/plans/2026-09-01-per-exptime-dark-masters.md`)

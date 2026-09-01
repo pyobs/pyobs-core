@@ -1,6 +1,6 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — checked on 2026-09-01 (11:14 CEST).
+Status: standing snapshot — checked on 2026-09-01.
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -17,17 +17,16 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (14, checked 2026-09-01 11:14 CEST)
+## Open issues (13, checked 2026-09-01)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#832](https://github.com/pyobs/pyobs-core/issues/832) | Dark masters per exposure time: match science frames by exptime, scale only a reference (600s) dark | *assigned: thusser* — reduction half of #831; scaling-policy question resolved by ADR `0015-dark-master-strict-exptime-matching-reference-scale-down-only.md` (strict default, reference scales down only); plan `2026-09-01-per-exptime-dark-masters.md` below (*proposed*); pyobs-pipeline#13 is the downstream consumer of the new `Calibration`/`Reduction` config knobs + `MasterCalibCreated.exptime` |
-| pyobs-core | [#831](https://github.com/pyobs/pyobs-core/issues/831) | Take morning darks at the exposure times used for science frames during the night | *assigned: thusser* — robotic/observing half (reduction half is #832); plan `2026-09-01-morning-darks-match-science-exptimes.md` below (*proposed*) |
+| pyobs-core | [#832](https://github.com/pyobs/pyobs-core/issues/832) | Dark masters per exposure time: match science frames by exptime, scale only a reference (600s) dark | *assigned: thusser* — reduction half of #831 (robotic/archive half landed on `develop` 2026-09-01, #831 itself left open pending a `main` release); scaling-policy question resolved by ADR `0015-dark-master-strict-exptime-matching-reference-scale-down-only.md` (strict default, reference scales down only, now *accepted*); plan `2026-09-01-per-exptime-dark-masters.md` below (*proposed*); pyobs-pipeline#13 is the downstream consumer of the new `Calibration`/`Reduction` config knobs + `MasterCalibCreated.exptime` |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
-| pyobs-pipeline | [#13](https://github.com/pyobs/pyobs-pipeline/issues/13) | Support per-exposure-time dark masters: config knobs + exposure time in period UI | *enhancement, assigned: thusser* — app-side support for pyobs-core #831/#832: builder form fields for the new `Calibration`/`Reduction` options, exposure time shown in the period-detail calibs list; blocked on a pyobs-core rev containing #831/#832 (pin bump or temporary editable-path override) |
+| pyobs-pipeline | [#13](https://github.com/pyobs/pyobs-pipeline/issues/13) | Support per-exposure-time dark masters: config knobs + exposure time in period UI | *enhancement, assigned: thusser* — app-side support for pyobs-core #831/#832: builder form fields for the new `Calibration`/`Reduction` options, exposure time shown in the period-detail calibs list; blocked on a pyobs-core rev containing #832 (its #831 prerequisite landed on `develop` 2026-09-01; still needs a pin bump or temporary editable-path override once #832 lands too) |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-brot | [#60](https://github.com/pyobs/pyobs-brot/issues/60) | Bump astropy pin to allow 8.x | *assigned: thusser* — pin (`astropy<8,>=7.0.1`) forces a downgrade when installed alongside pyobs-portal (locked to `astropy==8.0.1`); on south/monet's portal image, `uv run`'s re-sync undoes the downgrade on every container start (multi-minute startup tax, re-fetches astropy over the network). Needs test-suite check before widening to `<9` |
 | pyobs-gui | [#154](https://github.com/pyobs/pyobs-gui/issues/154) | Add generic `IStructuredConfig` widget — schema-driven form auto-built from `ConfigSchema` | *enhancement* — one generic widget covers every `IStructuredConfig` module (schema-driven editors + live `ConfigAppliedState` + `set_config()`); plan `2026-08-28-structuredconfig-widget.md` below (*proposed*) |
@@ -42,14 +41,11 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
-- [2026-09-01-morning-darks-match-science-exptimes.md](../plans/2026-09-01-morning-darks-match-science-exptimes.md) —
-  *proposed* (#831). Archive API needs an `exptime` field/filter (`FrameInfo`, `PyobsArchive`,
-  `LocalArchive`), a helper to derive the previous night's science exposure times, and a
-  `DarkBiasScript` option to take darks at each one.
 - [2026-09-01-per-exptime-dark-masters.md](../plans/2026-09-01-per-exptime-dark-masters.md) —
-  *proposed* (#832, depends on #831 above). Per-exptime master darks (filename/cache/progress
-  carry `exptime`), match-or-scale-reference-only-or-error policy at calibration time per ADR
-  `0015`.
+  *proposed* (#832, depends on #831 — landed on `develop` 2026-09-01, see
+  `2026-09-01-morning-darks-match-science-exptimes.md`). Per-exptime master darks
+  (filename/cache/progress carry `exptime`), match-or-scale-reference-only-or-error policy at
+  calibration time per ADR `0015`.
 - [2026-09-01-portal-instrument-config-app.md](../plans/2026-09-01-portal-instrument-config-app.md) —
   *proposed* (pyobs-portal#116). New `instruments` Django app for pyobs-portal: per-type
   capability models (camera/telescope/filter wheels), admin-editable via a scoped

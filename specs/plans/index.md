@@ -162,7 +162,7 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-09-01-morning-darks-match-science-exptimes.md](2026-09-01-morning-darks-match-science-exptimes.md) —
   robotic/archive side of dark-exptime matching: expose `EXPTIME` on the archive API, derive a
   night's distinct science exptimes, `DarkBiasScript` takes darks at those exptimes.
-  **proposed** (issue #831; reduction side is
+  **implemented** (issue #831, landed on `develop` 2026-09-01 via PR #840; reduction side is
   `2026-09-01-per-exptime-dark-masters.md`)
 - [2026-09-01-per-exptime-dark-masters.md](2026-09-01-per-exptime-dark-masters.md) —
   reduction/pipeline side: per-exposure-time dark masters, strict exptime matching, reference

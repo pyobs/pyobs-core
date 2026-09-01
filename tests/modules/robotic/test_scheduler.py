@@ -296,30 +296,30 @@ async def test_update_schedule_only_current_task_removed_skips_update() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_schedule_removed_task_not_in_schedule_skips_update() -> None:
+async def test_update_schedule_removed_task_triggers_update() -> None:
     scheduler = make_scheduler()
     task1 = DummyTask(id=1, name="t1", duration=100)
     scheduler._tasks = [task1]
     scheduler._last_task_id = None  # removed task is not the "current" one
     scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[])
     scheduler._task_archive.get_projects = AsyncMock(return_value=[])
-    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList())
 
     await scheduler._update_schedule()
 
-    assert scheduler._need_update is False
+    assert scheduler._need_update is True
 
 
 @pytest.mark.asyncio
-async def test_update_schedule_removed_task_in_schedule_triggers_update() -> None:
+async def test_update_schedule_removed_task_triggers_update_even_with_empty_schedule_cache() -> None:
+    # PortalObservationArchive's get_schedule() is a permanently-empty cache by construction
+    # (Scheduler drives it via auto_update=False) -- a removal must still trigger a reschedule.
     scheduler = make_scheduler()
     task1 = DummyTask(id=1, name="t1", duration=100)
     scheduler._tasks = [task1]
     scheduler._last_task_id = None
     scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[])
     scheduler._task_archive.get_projects = AsyncMock(return_value=[])
-    scheduled_obs = make_obs(task1, "2024-01-01T00:00:00", "2024-01-01T00:05:00")
-    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([scheduled_obs]))
+    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList())
 
     await scheduler._update_schedule()
 

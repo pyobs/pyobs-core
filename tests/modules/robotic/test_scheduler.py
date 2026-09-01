@@ -296,7 +296,11 @@ async def test_update_schedule_only_current_task_removed_skips_update() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_schedule_removed_task_not_in_schedule_skips_update() -> None:
+async def test_update_schedule_removed_task_triggers_update_without_consulting_schedule_cache() -> None:
+    # PortalObservationArchive's get_schedule() is a permanently-empty cache by construction
+    # (Scheduler drives it via auto_update=False) -- a removal must trigger a reschedule
+    # regardless, and must not even consult the cache (the removed gate used to, and always found
+    # it empty, which is exactly how this bug hid).
     scheduler = make_scheduler()
     task1 = DummyTask(id=1, name="t1", duration=100)
     scheduler._tasks = [task1]
@@ -307,23 +311,8 @@ async def test_update_schedule_removed_task_not_in_schedule_skips_update() -> No
 
     await scheduler._update_schedule()
 
-    assert scheduler._need_update is False
-
-
-@pytest.mark.asyncio
-async def test_update_schedule_removed_task_in_schedule_triggers_update() -> None:
-    scheduler = make_scheduler()
-    task1 = DummyTask(id=1, name="t1", duration=100)
-    scheduler._tasks = [task1]
-    scheduler._last_task_id = None
-    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[])
-    scheduler._task_archive.get_projects = AsyncMock(return_value=[])
-    scheduled_obs = make_obs(task1, "2024-01-01T00:00:00", "2024-01-01T00:05:00")
-    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([scheduled_obs]))
-
-    await scheduler._update_schedule()
-
     assert scheduler._need_update is True
+    scheduler._schedule.get_schedule.assert_not_awaited()
 
 
 # ── _schedule_worker ─────────────────────────────────────────────────────────

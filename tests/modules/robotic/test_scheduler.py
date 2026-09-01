@@ -9,7 +9,7 @@ from pyobs.events import GoodWeatherEvent, TaskFailedEvent, TaskFinishedEvent, T
 from pyobs.interfaces import IRoboticScheduler, IRunning
 from pyobs.modules.robotic import Scheduler
 from pyobs.modules.robotic.scheduler import _class_accepts_param
-from pyobs.robotic import ObservationArchive, Task, TaskArchive
+from pyobs.robotic import ObservationArchive, Project, Task, TaskArchive
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
 from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.robotic.scheduler.astroplanscheduler import AstroplanScheduler
@@ -77,6 +77,45 @@ def test_compare_block_lists() -> None:
     # both lists should be empty
     assert len(unique1) == 0
     assert len(unique2) == 0
+
+
+def test_changed_task_ids_detects_content_change() -> None:
+    task1a = DummyTask(id=1, name="t1", duration=100, priority=1.0)
+    task1b = DummyTask(id=1, name="t1", duration=100, priority=5.0)
+    task2 = DummyTask(id=2, name="t2", duration=100)
+
+    changed = Scheduler._changed_task_ids([task1a, task2], [task1b, task2])
+
+    assert changed == {1}
+
+
+def test_changed_task_ids_ignores_private_attr_mutation() -> None:
+    # a task that has merely been scheduled/run (can_run()/resolve_target()/run() touch only
+    # PrivateAttrs) must not look "changed" against a freshly downloaded, otherwise-identical
+    # copy -- that's what keeps this comparison from livelocking the scheduler on its own
+    # runtime state. Exercises every PrivateAttr a real scheduling round-trip can set
+    # (`pyobs/robotic/task.py:53-55`), not just the one _cant_run_reason.
+    task_before = DummyTask(id=1, name="t1", duration=100)
+    task_after = DummyTask(id=1, name="t1", duration=100)
+    task_after._cant_run_reason = "some reason set at runtime"
+    task_after._resolved_target = "stand-in for a resolved Target, set via resolve_target()"
+    task_after._running_script = "stand-in for a Script instance, set via run()"
+
+    changed = Scheduler._changed_task_ids([task_before], [task_after])
+
+    assert changed == set()
+
+
+def test_changed_task_ids_ignores_updated_at() -> None:
+    # updated_at is a portal-side save timestamp, not scheduling content -- a no-op re-save
+    # (e.g. an unchanged DRF PATCH) bumps it without changing anything that matters for
+    # scheduling, and must not be reported as a content change.
+    task_before = DummyTask(id=1, name="t1", duration=100, updated_at="2026-01-01T00:00:00Z")
+    task_after = DummyTask(id=1, name="t1", duration=100, updated_at="2026-01-02T00:00:00Z")
+
+    changed = Scheduler._changed_task_ids([task_before], [task_after])
+
+    assert changed == set()
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -313,6 +352,142 @@ async def test_update_schedule_removed_task_triggers_update_without_consulting_s
 
     assert scheduler._need_update is True
     scheduler._schedule.get_schedule.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "old_project,new_project",
+    [
+        (
+            Project(code="P1", name="Project 1", priority=1.0),
+            Project(code="P1", name="Project 1", priority=5.0),
+        ),
+        (
+            Project(code="P1", name="Project 1", users=["alice"]),
+            Project(code="P1", name="Project 1", users=["alice", "bob"]),
+        ),
+        (
+            Project(code="P1", name="Project 1", public=False),
+            Project(code="P1", name="Project 1", public=True),
+        ),
+    ],
+    ids=["priority", "users", "public"],
+)
+async def test_update_schedule_project_content_change_triggers_update(old_project, new_project) -> None:
+    scheduler = make_scheduler()
+    task1 = DummyTask(id=1, name="t1", duration=100)
+    scheduler._tasks = [task1]
+    scheduler._projects = [old_project]
+    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task1])
+    scheduler._task_archive.get_projects = AsyncMock(return_value=[new_project])
+
+    await scheduler._update_schedule()
+
+    assert scheduler._need_update is True
+    assert scheduler._projects == [new_project]
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_project_and_tasks_unchanged_skips_update() -> None:
+    scheduler = make_scheduler()
+    task1 = DummyTask(id=1, name="t1", duration=100)
+    scheduler._tasks = [task1]
+    scheduler._projects = [Project(code="P1", name="Project 1", priority=1.0)]
+    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task1])
+    scheduler._task_archive.get_projects = AsyncMock(return_value=[Project(code="P1", name="Project 1", priority=1.0)])
+
+    await scheduler._update_schedule()
+
+    assert scheduler._need_update is False
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_project_updated_at_only_change_skips_update() -> None:
+    # updated_at is a portal-side save timestamp, not scheduling content -- a no-op re-save of a
+    # project must not force a reschedule on its own.
+    scheduler = make_scheduler()
+    task1 = DummyTask(id=1, name="t1", duration=100)
+    scheduler._tasks = [task1]
+    scheduler._projects = [Project(code="P1", name="Project 1", updated_at="2026-01-01T00:00:00Z")]
+    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task1])
+    scheduler._task_archive.get_projects = AsyncMock(
+        return_value=[Project(code="P1", name="Project 1", updated_at="2026-01-02T00:00:00Z")]
+    )
+
+    await scheduler._update_schedule()
+
+    assert scheduler._need_update is False
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_project_removed_triggers_update() -> None:
+    scheduler = make_scheduler()
+    task1 = DummyTask(id=1, name="t1", duration=100)
+    scheduler._tasks = [task1]
+    scheduler._projects = [Project(code="P1", name="Project 1"), Project(code="P2", name="Project 2")]
+    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task1])
+    scheduler._task_archive.get_projects = AsyncMock(return_value=[Project(code="P1", name="Project 1")])
+
+    await scheduler._update_schedule()
+
+    assert scheduler._need_update is True
+    assert scheduler._projects == [Project(code="P1", name="Project 1")]
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_task_content_change_triggers_update_without_consulting_schedule_cache() -> None:
+    # mirrors test_update_schedule_removed_task_triggers_update_without_consulting_schedule_cache
+    # above: a same-ID content change must force a reschedule regardless of get_schedule()
+    # contents (PortalObservationArchive's cache is permanently empty by construction), and must
+    # not even consult it.
+    scheduler = make_scheduler()
+    task_old = DummyTask(id=1, name="t1", duration=100, priority=1.0)
+    task_new = DummyTask(id=1, name="t1", duration=100, priority=5.0)
+    scheduler._tasks = [task_old]
+    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task_new])
+    scheduler._task_archive.get_projects = AsyncMock(return_value=[])
+    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList())
+
+    await scheduler._update_schedule()
+
+    assert scheduler._need_update is True
+    scheduler._schedule.get_schedule.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_task_content_change_on_running_task_triggers_update() -> None:
+    scheduler = make_scheduler()
+    task_old = DummyTask(id=1, name="t1", duration=100, priority=1.0)
+    task_new = DummyTask(id=1, name="t1", duration=100, priority=5.0)
+    scheduler._tasks = [task_old]
+    scheduler._current_task_id = 1
+    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task_new])
+    scheduler._task_archive.get_projects = AsyncMock(return_value=[])
+
+    await scheduler._update_schedule()
+
+    assert scheduler._need_update is True
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_mixed_removed_running_and_changed_triggers_update() -> None:
+    # a mixed poll: the currently-running task ends (removed, alone a no-op, per
+    # test_update_schedule_only_current_task_removed_skips_update above) at the same time an
+    # unrelated task's content changes -- the latter must still force a reschedule, not get
+    # canceled out by the former (guards the "removed[0] == last_task_id" downgrade's
+    # len(changed) == 0 guard).
+    scheduler = make_scheduler()
+    task_running = DummyTask(id=1, name="running", duration=100)
+    task_old = DummyTask(id=3, name="t3", duration=100, priority=1.0)
+    task_new = DummyTask(id=3, name="t3", duration=100, priority=5.0)
+    scheduler._tasks = [task_running, task_old]
+    scheduler._last_task_id = 1
+    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task_new])
+    scheduler._task_archive.get_projects = AsyncMock(return_value=[])
+
+    await scheduler._update_schedule()
+
+    assert scheduler._need_update is True
 
 
 # ── _schedule_worker ─────────────────────────────────────────────────────────

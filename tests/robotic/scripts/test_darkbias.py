@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import astropy.units as u
 import pytest
@@ -10,6 +10,7 @@ from pyobs.robotic.scripts.calibration.darkbias import DarkBiasScript
 from pyobs.robotic.utils.archive import Archive, FrameInfo
 from pyobs.robotic.utils.calibration import clear_cache
 from pyobs.utils.enums import ImageType
+from pyobs.utils.time import Time
 from tests.helpers import isinstance_class, make_proxy_cm
 
 
@@ -312,7 +313,11 @@ async def test_can_run_true_with_observer_configured() -> None:
     )
     script._comm.has_proxy = AsyncMock(return_value=True)
 
-    assert await script.can_run(None) is True
+    # Time.now() pulls in astropy's IERS auto-download; pin it to a fixed, bundled-IERS-coverage
+    # instant like every other Observer-based test in the repo, so the suite stays standalone.
+    with patch("pyobs.robotic.scripts.calibration.darkbias.Time") as mock_time:
+        mock_time.now.return_value = Time("2026-07-16T15:45:50")
+        assert await script.can_run(None) is True
 
 
 # ── explicit exptimes list ────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import io
 import logging
 import urllib.parse
-from typing import Any, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, cast
 
 import aiohttp
 from pydantic import PrivateAttr
@@ -23,7 +23,7 @@ class PyobsArchiveFrameInfoDict(TypedDict):
     FILTER: str
     binning: str
     url: str
-    EXPTIME: float
+    EXPTIME: NotRequired[float]
 
 
 class PyobsArchiveFrameInfo(FrameInfo):
@@ -136,8 +136,13 @@ class PyobsArchive(Archive):
                     frames.extend(new_frames)
                     if len(frames) >= res["count"]:
                         if exptime is not None:
-                            # server-side EXPTIME filtering may not exist/be tolerant; re-filter
-                            # client-side so an unsupported or exact-only param doesn't matter
+                            # Server-side EXPTIME filtering may not exist or may be exact-only;
+                            # re-filter client-side to apply the tolerance regardless. This only
+                            # recovers near-matches the server itself returned -- an exact-only
+                            # server has already dropped them before we get here, so it still
+                            # matters that the server side supports (or ignores) EXPTIME. Harmless
+                            # today since science_exptimes_for_night() never passes exptime= to
+                            # list_frames().
                             frames = [f for f in frames if f.exptime is not None and exptimes_close(f.exptime, exptime)]
                         return frames
                     params["offset"] += len(new_frames)

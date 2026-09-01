@@ -2,7 +2,9 @@ import numpy as np
 from astropy.modeling import models
 from astropy.table import Table
 
+from pyobs.interfaces import MotionState
 from pyobs.modules.camera import DummyCamera
+from pyobs.utils.enums import MotionStatus
 
 
 def _camera_with_fake_catalog(seeing: float = 3.0, flux: float = 1e6) -> DummyCamera:
@@ -56,3 +58,45 @@ def test_simulate_image_renders_visible_star():
 
     background = np.median(data)
     assert data.max() > background + 500
+
+
+def test_no_roof_configured_defaults_to_open():
+    """Without a roof reference, behavior must be unchanged from before #851: sky simulated."""
+    camera = _camera_with_fake_catalog(flux=1e6)
+
+    assert camera._roof_open is True
+
+
+def test_roof_configured_fails_closed_until_state_received():
+    """Regression for #851: until the roof's state arrives, assume closed rather than open."""
+    camera = DummyCamera(image_size=(200, 200), roof="roof")
+
+    assert camera._roof_open is False
+
+
+def test_roof_state_parked_keeps_camera_closed():
+    camera = DummyCamera(image_size=(200, 200), roof="roof")
+
+    camera._on_roof_state(MotionState(status=MotionStatus.PARKED))
+
+    assert camera._roof_open is False
+
+
+def test_roof_state_not_parked_opens_camera():
+    camera = DummyCamera(image_size=(200, 200), roof="roof")
+
+    camera._on_roof_state(MotionState(status=MotionStatus.IDLE))
+
+    assert camera._roof_open is True
+
+
+def test_simulate_image_dark_when_roof_closed():
+    """Regression for #851: DummyCamera must not image the sky through a closed roof."""
+    camera = _camera_with_fake_catalog(flux=1e6)
+    camera._roof_module = "roof"
+    camera._roof_open = False
+
+    data = camera._simulate_image(exp_time=5.0, open_shutter=True)
+
+    background = np.median(data)
+    assert data.max() < background + 500

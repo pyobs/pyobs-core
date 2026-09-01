@@ -54,8 +54,9 @@ track pyobs-core's major version and which aren't:
 
 ### Task scheduling and operations
 
-- pyobs-robotic-backend — REST API + web frontend for tasks/projects/observations/scheduling
-  (Python, uv, Django + DRF) — 2.x, complies with the version policy
+- pyobs-portal — REST API + web frontend for tasks/projects/observations/scheduling (Python, uv,
+  Django + DRF) — 2.x, complies with the version policy. Renamed from pyobs-robotic-backend
+  (ADR `0013`, 2026-08-24)
 - pyobs-web-admin — start/stop/restart modules, tail logs, edit configs, from a browser
   (Python, uv, Django) — 2.x (manually bumped 2026-08-11); no pyobs-core dependency, but the
   version policy now applies fleet-wide regardless (see "Version policy" below)
@@ -142,7 +143,7 @@ have an obvious way to apply a Python-style major-version bump — flagging this
 rather than deciding unilaterally how (or whether) a non-Python project's version should track
 pyobs-core's. Worth a explicit decision later, not silently exempting them forever.
 
-pyobs-robotic-backend complies (bumped to 2.x before the 2026-08-11 survey). pyobs-pipeline and
+pyobs-portal complies (bumped to 2.x before the 2026-08-11 survey). pyobs-pipeline and
 pyobs-dashboard-utils have real `pyobs-core` dependencies and (pipeline only) already comply on
 version too — dashboard-utils still needs its own bump. pyobs-allsky-cloudcover's `pyobs-core`
 dependency is currently commented out, so it's moot until that's reinstated, but the policy still
@@ -165,7 +166,7 @@ needs support.
 
 pyobs-core already does exactly this: its own `1.x` branch is still getting real patch releases
 (`v1.54.4` as of 2026-07-14) in parallel with `2.0.0.devN` development on `develop`.
-pyobs-robotic-backend already made this jump. Any future project doing the same should create the
+pyobs-portal (as pyobs-robotic-backend, before its rename) already made this jump. Any future project doing the same should create the
 equivalent `<old-major>.x` branch from its pre-bump state, the same way, rather than just letting
 the old major version's history dead-end at the bump commit.
 

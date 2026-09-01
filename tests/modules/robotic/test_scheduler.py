@@ -335,7 +335,11 @@ async def test_update_schedule_only_current_task_removed_skips_update() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_schedule_removed_task_not_in_schedule_skips_update() -> None:
+async def test_update_schedule_removed_task_triggers_update_without_consulting_schedule_cache() -> None:
+    # PortalObservationArchive's get_schedule() is a permanently-empty cache by construction
+    # (Scheduler drives it via auto_update=False) -- a removal must trigger a reschedule
+    # regardless, and must not even consult the cache (the removed gate used to, and always found
+    # it empty, which is exactly how this bug hid).
     scheduler = make_scheduler()
     task1 = DummyTask(id=1, name="t1", duration=100)
     scheduler._tasks = [task1]
@@ -346,23 +350,8 @@ async def test_update_schedule_removed_task_not_in_schedule_skips_update() -> No
 
     await scheduler._update_schedule()
 
-    assert scheduler._need_update is False
-
-
-@pytest.mark.asyncio
-async def test_update_schedule_removed_task_in_schedule_triggers_update() -> None:
-    scheduler = make_scheduler()
-    task1 = DummyTask(id=1, name="t1", duration=100)
-    scheduler._tasks = [task1]
-    scheduler._last_task_id = None
-    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[])
-    scheduler._task_archive.get_projects = AsyncMock(return_value=[])
-    scheduled_obs = make_obs(task1, "2024-01-01T00:00:00", "2024-01-01T00:05:00")
-    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([scheduled_obs]))
-
-    await scheduler._update_schedule()
-
     assert scheduler._need_update is True
+    scheduler._schedule.get_schedule.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -446,47 +435,15 @@ async def test_update_schedule_project_removed_triggers_update() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_schedule_task_content_change_not_in_schedule_skips_update() -> None:
+async def test_update_schedule_task_content_change_triggers_update_without_consulting_schedule_cache() -> None:
+    # mirrors test_update_schedule_removed_task_triggers_update_without_consulting_schedule_cache
+    # above: a same-ID content change must force a reschedule regardless of get_schedule()
+    # contents (PortalObservationArchive's cache is permanently empty by construction), and must
+    # not even consult it.
     scheduler = make_scheduler()
     task_old = DummyTask(id=1, name="t1", duration=100, priority=1.0)
     task_new = DummyTask(id=1, name="t1", duration=100, priority=5.0)
     scheduler._tasks = [task_old]
-    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task_new])
-    scheduler._task_archive.get_projects = AsyncMock(return_value=[])
-    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList())
-
-    await scheduler._update_schedule()
-
-    assert scheduler._need_update is False
-
-
-@pytest.mark.asyncio
-async def test_update_schedule_task_content_change_in_schedule_triggers_update() -> None:
-    scheduler = make_scheduler()
-    task_old = DummyTask(id=1, name="t1", duration=100, priority=1.0)
-    task_new = DummyTask(id=1, name="t1", duration=100, priority=5.0)
-    scheduler._tasks = [task_old]
-    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task_new])
-    scheduler._task_archive.get_projects = AsyncMock(return_value=[])
-    scheduled_obs = make_obs(task_old, "2024-01-01T00:00:00", "2024-01-01T00:05:00")
-    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([scheduled_obs]))
-
-    await scheduler._update_schedule()
-
-    assert scheduler._need_update is True
-
-
-@pytest.mark.asyncio
-async def test_update_schedule_task_content_change_on_running_task_triggers_update() -> None:
-    # asymmetry vs. a *removed* running task (see test_update_schedule_only_current_task_removed_
-    # skips_update above): a content change on the currently-running task must force a
-    # reschedule regardless of get_schedule() contents, since its new priority can reorder
-    # everything scheduled after it.
-    scheduler = make_scheduler()
-    task_old = DummyTask(id=1, name="t1", duration=100, priority=1.0)
-    task_new = DummyTask(id=1, name="t1", duration=100, priority=5.0)
-    scheduler._tasks = [task_old]
-    scheduler._current_task_id = 1
     scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task_new])
     scheduler._task_archive.get_projects = AsyncMock(return_value=[])
     scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList())
@@ -498,21 +455,35 @@ async def test_update_schedule_task_content_change_on_running_task_triggers_upda
 
 
 @pytest.mark.asyncio
-async def test_update_schedule_mixed_removed_running_and_changed_scheduled_triggers_update() -> None:
-    # a mixed poll: the currently-running task ends (removed, alone a no-op) at the same time an
-    # unrelated, actually-scheduled task's content changes -- the latter must still force a
-    # reschedule, not get canceled out by the former.
+async def test_update_schedule_task_content_change_on_running_task_triggers_update() -> None:
+    scheduler = make_scheduler()
+    task_old = DummyTask(id=1, name="t1", duration=100, priority=1.0)
+    task_new = DummyTask(id=1, name="t1", duration=100, priority=5.0)
+    scheduler._tasks = [task_old]
+    scheduler._current_task_id = 1
+    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task_new])
+    scheduler._task_archive.get_projects = AsyncMock(return_value=[])
+
+    await scheduler._update_schedule()
+
+    assert scheduler._need_update is True
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_mixed_removed_running_and_changed_triggers_update() -> None:
+    # a mixed poll: the currently-running task ends (removed, alone a no-op, per
+    # test_update_schedule_only_current_task_removed_skips_update above) at the same time an
+    # unrelated task's content changes -- the latter must still force a reschedule, not get
+    # canceled out by the former (guards the "removed[0] == last_task_id" downgrade's
+    # len(changed) == 0 guard).
     scheduler = make_scheduler()
     task_running = DummyTask(id=1, name="running", duration=100)
     task_old = DummyTask(id=3, name="t3", duration=100, priority=1.0)
     task_new = DummyTask(id=3, name="t3", duration=100, priority=5.0)
     scheduler._tasks = [task_running, task_old]
     scheduler._last_task_id = 1
-    scheduler._current_task_id = 1
     scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[task_new])
     scheduler._task_archive.get_projects = AsyncMock(return_value=[])
-    scheduled_obs = make_obs(task_old, "2024-01-01T00:00:00", "2024-01-01T00:05:00")
-    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList([scheduled_obs]))
 
     await scheduler._update_schedule()
 

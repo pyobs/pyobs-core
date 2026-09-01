@@ -19,9 +19,18 @@ def _clear_exptime_cache() -> None:
 
 
 class _FakeArchive(Archive):
-    """Stub archive returning a fixed set of OBJECT frame exptimes for one instrument/binning."""
+    """Stub archive returning fixed OBJECT frame exptimes, optionally per (instrument, binning).
+
+    `exptimes` seeds a single "cam1"/"1x1" combination. `exptimes_by_binning` (binning string ->
+    exptimes) overrides that for tests that need multiple instruments/binnings in play, to check
+    that DarkBiasScript only picks up the combination matching its own configured binning.
+    """
 
     exptimes: list[float] = []
+    exptimes_by_binning: dict[str, list[float]] | None = None
+
+    def _combos(self) -> dict[str, list[float]]:
+        return self.exptimes_by_binning if self.exptimes_by_binning is not None else {"1x1": self.exptimes}
 
     async def list_options(
         self,
@@ -38,7 +47,7 @@ class _FakeArchive(Archive):
         obsnum: Any = None,
         exptime: Any = None,
     ) -> dict[str, list[Any]]:
-        return {"instruments": ["cam1"], "binnings": ["1x1"]}
+        return {"instruments": ["cam1"], "binnings": list(self._combos().keys())}
 
     async def list_frames(
         self,
@@ -56,7 +65,7 @@ class _FakeArchive(Archive):
         exptime: Any = None,
     ) -> list[FrameInfo]:
         frames = []
-        for e in self.exptimes:
+        for e in self._combos().get(binning, []):
             info = FrameInfo()
             info.exptime = e
             frames.append(info)
@@ -249,6 +258,11 @@ def test_exptimes_alone_is_valid() -> None:
     make_script(exptimes=[30.0, 600.0])
 
 
+def test_exptimes_cannot_include_zero() -> None:
+    with pytest.raises(ValueError, match="cannot include 0"):
+        make_script(exptimes=[0, 30.0])
+
+
 # ── can_run: match_science_exptimes ──────────────────────────────────────────
 
 
@@ -342,6 +356,22 @@ async def test_runs_series_derived_from_science_exptimes() -> None:
 
 
 @pytest.mark.asyncio
+async def test_only_uses_exptimes_from_its_own_binning() -> None:
+    # cam1 (this script's binning, 1x1) used 30s/600s; a different instrument/binning (2x2, not
+    # this script's) used 90s -- 90 must not leak in just because science_exptimes_for_night
+    # unions across every (instrument, binning) combination it found that night
+    archive = _FakeArchive(exptimes_by_binning={"1x1": [30.0, 600.0], "2x2": [90.0]})
+    script = make_script(count=1, match_science_exptimes=True, archive=archive, site="siteA", night="2024-01-01")
+    camera = make_camera()
+    setup_run_comm(script, camera)
+
+    await script.run(None)
+
+    calls = [c.args[0] for c in camera.set_exposure_time.call_args_list]
+    assert calls == [600.0, 30.0]
+
+
+@pytest.mark.asyncio
 async def test_no_science_exptimes_takes_nothing() -> None:
     archive = _FakeArchive(exptimes=[])
     script = make_script(count=1, match_science_exptimes=True, archive=archive, site="siteA", night="2024-01-01")
@@ -350,6 +380,7 @@ async def test_no_science_exptimes_takes_nothing() -> None:
 
     await script.run(None)
 
+    camera.set_image_type.assert_not_called()
     camera.set_exposure_time.assert_not_called()
     camera.grab_data.assert_not_called()
 
@@ -376,8 +407,10 @@ async def test_estimate_duration_falls_back_without_a_prior_can_run() -> None:
     archive = _FakeArchive(exptimes=[30.0, 600.0])
     script = make_script(count=2, match_science_exptimes=True, archive=archive, site="siteA", night="2024-01-01")
 
-    # exptime defaults to 0 -- placeholder estimate, not the real archive-derived series
-    assert script.estimate_duration(None) == 2 * (0.0 + 5.0)
+    # nothing cached yet -- placeholder estimate at _FALLBACK_MATCH_EXPTIME, not the real
+    # archive-derived series (and not the always-0 configured exptime, which would badly
+    # underestimate a real dark run)
+    assert script.estimate_duration(None) == 2 * (DarkBiasScript._FALLBACK_MATCH_EXPTIME + 5.0)
 
 
 @pytest.mark.asyncio

@@ -116,3 +116,23 @@ def test_unrecognized_kwarg_message_excludes_downstream_consumed_kwargs():
     message = str(exc_info.value)
     assert "bogus_kwarg" in message
     assert "mixin_only_kwarg" not in message
+
+
+def test_get_object_keeps_childs_own_vfs_over_parents():
+    """Regression test for #837: get_object's inherit-if-not-set check for vfs/timezone/observer
+    looked for the underscore-prefixed attribute name ("_vfs") in the config dict, but a YAML/dict
+    config keys on the constructor param name ("vfs"), so the check always missed and the parent's
+    own vfs silently overwrote a child's explicitly configured one."""
+    parent = Object(vfs={"class": "pyobs.vfs.VirtualFileSystem"})
+    child_cfg = {
+        "class": "pyobs.object.Object",
+        "vfs": {
+            "class": "pyobs.vfs.VirtualFileSystem",
+            "roots": {"cache": {"class": "pyobs.vfs.LocalFile", "root": "/tmp"}},
+        },
+    }
+
+    child = parent.get_object(child_cfg, copy_comm=False)
+
+    assert child.vfs is not parent.vfs
+    assert "cache" in child.vfs._roots

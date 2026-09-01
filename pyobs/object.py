@@ -521,7 +521,7 @@ class Object(PrivateAttrMixin):
 
         # copy timezone, vfs, and observer, if not exists (location is derived from observer)
         for p in ["_timezone", "_vfs", "_observer"]:
-            if self.config_or_object_get_param(config_or_object, p) is None:
+            if self.config_or_object_get_param(config_or_object, p[1:]) is None:
                 params[p[1:]] = getattr(self, p)
 
         # get it

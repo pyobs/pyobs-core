@@ -41,3 +41,7 @@ Short decision records for choices that had genuine considered-and-rejected alte
   centralize authorization in Keycloak groups/roles instead of per-service local activation.
   *accepted* (issue #823; design `specs/design/shared-authz-keycloak.md`; Repos: pyobs-core,
   pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin)
+- [0015-dark-master-strict-exptime-matching-reference-scale-down-only.md](0015-dark-master-strict-exptime-matching-reference-scale-down-only.md) —
+  dark masters: strict default (`allow_unmatched_dark_scale=False`), exact-exptime match used
+  unscaled, reference (600 s) master scales down only, never up. *proposed* (issue #832;
+  execution tracked in `specs/plans/2026-09-01-per-exptime-dark-masters.md`)

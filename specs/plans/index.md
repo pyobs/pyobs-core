@@ -168,3 +168,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   reduction/pipeline side: per-exposure-time dark masters, strict exptime matching, reference
   master scales down only (ADR `0015`). **implemented** (issue #832, landed on `develop`
   2026-09-01 via PR #842; depends on `2026-09-01-morning-darks-match-science-exptimes.md`)
+- [2026-09-01-instrument-capability-duration-estimates.md](2026-09-01-instrument-capability-duration-estimates.md) —
+  feed pyobs-portal#133's instrument capability data (readout/filter-change/slew/dome-rotate
+  times) into `Script.estimate_duration()` for `ImagingScript` and 4 other leaf scripts, via a new
+  `TaskData.instrument_capabilities` field; wires the portal's script builder and
+  `OnDemandScheduler` (not `AstroplanScheduler` — see plan's Non-goals). **proposed** (no issue
+  yet; Repos: pyobs-core, pyobs-portal)

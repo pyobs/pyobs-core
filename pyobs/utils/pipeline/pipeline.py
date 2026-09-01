@@ -168,6 +168,9 @@ class Pipeline(Object, PipelineMixin):
         binning: str,
         filter_name: str | None = None,
         max_days: float | None = 30.0,
+        exptime: float | None = None,
+        exptime_tolerance: float = 0.01,
+        exptime_max: float | None = None,
     ) -> Image | None:
         """Find and download master calibration frame.
 
@@ -179,6 +182,15 @@ class Pipeline(Object, PipelineMixin):
             binning: Used binning.
             filter_name: Used filter.
             max_days: Maximum number of days from DATE-OBS to find frames.
+            exptime: For DARK, prefer candidates close to this exposure time over ones merely
+                close in DATE-OBS -- an exptime match within exptime_tolerance always sorts
+                ahead of a non-matching one, regardless of how much closer in time the latter
+                is. Ignored for other image types, and if no candidate has exptime set.
+            exptime_tolerance: Relative tolerance used to rank exptime-closeness; see
+                pyobs.utils.exptime_grouping.exptimes_close.
+            exptime_max: For DARK, drop candidates whose exptime exceeds this (within
+                exptime_tolerance) before ranking -- used to enforce "reference master scales
+                down only" when exptime is a scale-down reference rather than an exact target.
 
         Returns:
             FrameInfo for master calibration frame or None.
@@ -207,8 +219,26 @@ class Pipeline(Object, PipelineMixin):
             log.warning("Could not find any matching %s calibration frames.", image_type)
             return None
 
-        # sort by diff to time and take first
-        s = sorted(infos, key=lambda i: abs((i.dateobs - time).sec))
+        # scale-down-only reference lookup: drop candidates longer than exptime_max upfront
+        if exptime_max is not None:
+            ceiling = exptime_max * (1 + exptime_tolerance)
+            infos = [i for i in infos if i.exptime is not None and i.exptime <= ceiling]
+            if not infos:
+                log.warning("Could not find any %s calibration frames with exptime <= %s.", image_type, exptime_max)
+                return None
+
+        # sort by diff to time, or -- for DARK with a target exptime -- by exptime-closeness
+        # first so an exptime match always wins over a merely time-close non-match
+        if exptime is not None and image_type == ImageType.DARK:
+            s = sorted(
+                infos,
+                key=lambda i: (
+                    float("inf") if i.exptime is None else abs(i.exptime - exptime),
+                    abs((i.dateobs - time).sec),
+                ),
+            )
+        else:
+            s = sorted(infos, key=lambda i: abs((i.dateobs - time).sec))
         info = s[0]
         log.info("Found %s frame %s.", image_type.name, info.filename)
 

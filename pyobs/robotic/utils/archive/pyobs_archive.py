@@ -8,6 +8,7 @@ from pydantic import PrivateAttr
 
 from pyobs.images import Image
 from pyobs.utils.enums import ImageType
+from pyobs.utils.exptime_grouping import exptimes_close
 from pyobs.utils.time import Time
 
 from .archive import Archive, FrameInfo
@@ -22,6 +23,7 @@ class PyobsArchiveFrameInfoDict(TypedDict):
     FILTER: str
     binning: str
     url: str
+    EXPTIME: float
 
 
 class PyobsArchiveFrameInfo(FrameInfo):
@@ -36,6 +38,7 @@ class PyobsArchiveFrameInfo(FrameInfo):
         self.filter_name = self.info["FILTER"]
         self.binning = int(self.info["binning"][0])
         self.url = self.info["url"]
+        self.exptime = self.info.get("EXPTIME")
 
 
 class PyobsArchive(Archive):
@@ -67,10 +70,22 @@ class PyobsArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
         obsnum: str | None = None,
+        exptime: float | None = None,
     ) -> dict[str, list[Any]]:
         url = urllib.parse.urljoin(self.url, "frames/aggregate/")
         params = self._build_query(
-            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel, obsnum=obsnum
+            start,
+            end,
+            night,
+            site,
+            telescope,
+            instrument,
+            image_type,
+            binning,
+            filter_name,
+            rlevel,
+            obsnum=obsnum,
+            exptime=exptime,
         )
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
@@ -91,10 +106,22 @@ class PyobsArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
         obsnum: str | None = None,
+        exptime: float | None = None,
     ) -> list[FrameInfo]:
         url = urllib.parse.urljoin(self.url, "frames/")
         params = self._build_query(
-            start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel, obsnum=obsnum
+            start,
+            end,
+            night,
+            site,
+            telescope,
+            instrument,
+            image_type,
+            binning,
+            filter_name,
+            rlevel,
+            obsnum=obsnum,
+            exptime=exptime,
         )
         frames: list[FrameInfo] = []
         params["offset"] = 0
@@ -108,6 +135,10 @@ class PyobsArchive(Archive):
                     new_frames = [PyobsArchiveFrameInfo(frame) for frame in res["results"]]
                     frames.extend(new_frames)
                     if len(frames) >= res["count"]:
+                        if exptime is not None:
+                            # server-side EXPTIME filtering may not exist/be tolerant; re-filter
+                            # client-side so an unsupported or exact-only param doesn't matter
+                            frames = [f for f in frames if f.exptime is not None and exptimes_close(f.exptime, exptime)]
                         return frames
                     params["offset"] += len(new_frames)
 
@@ -124,6 +155,7 @@ class PyobsArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
         obsnum: str | None = None,
+        exptime: float | None = None,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {}
         if start is not None:
@@ -148,6 +180,8 @@ class PyobsArchive(Archive):
             params["RLEVEL"] = rlevel
         if obsnum is not None:
             params["OBSNUM"] = obsnum
+        if exptime is not None:
+            params["EXPTIME"] = exptime
         return params
 
     async def download_frames(self, infos: list[FrameInfo]) -> list[Image]:

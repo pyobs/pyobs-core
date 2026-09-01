@@ -1,6 +1,6 @@
 # Dark masters: strict per-exposure-time matching, reference master scales down only
 
-status: proposed
+status: accepted
 date: 2026-09-01
 
 ## Context and Problem Statement

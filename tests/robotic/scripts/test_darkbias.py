@@ -1,12 +1,62 @@
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from pyobs.robotic.scripts.calibration.darkbias import DarkBiasScript
+from pyobs.robotic.utils.archive import Archive, FrameInfo
 from pyobs.utils.enums import ImageType
 from tests.helpers import isinstance_class, make_proxy_cm
+
+
+class _FakeArchive(Archive):
+    """Stub archive returning a fixed set of OBJECT frame exptimes for one instrument/binning."""
+
+    exptimes: list[float] = []
+
+    async def list_options(
+        self,
+        start: Any = None,
+        end: Any = None,
+        night: Any = None,
+        site: Any = None,
+        telescope: Any = None,
+        instrument: Any = None,
+        image_type: Any = None,
+        binning: Any = None,
+        filter_name: Any = None,
+        rlevel: Any = None,
+        obsnum: Any = None,
+        exptime: Any = None,
+    ) -> dict[str, list[Any]]:
+        return {"instruments": ["cam1"], "binnings": ["1x1"]}
+
+    async def list_frames(
+        self,
+        start: Any = None,
+        end: Any = None,
+        night: Any = None,
+        site: Any = None,
+        telescope: Any = None,
+        instrument: Any = None,
+        image_type: Any = None,
+        binning: Any = None,
+        filter_name: Any = None,
+        rlevel: Any = None,
+        obsnum: Any = None,
+        exptime: Any = None,
+    ) -> list[FrameInfo]:
+        frames = []
+        for e in self.exptimes:
+            info = FrameInfo()
+            info.exptime = e
+            frames.append(info)
+        return frames
+
+    async def download_frames(self, frames: list[FrameInfo]) -> list[Any]:
+        return []
 
 
 def make_script(**kwargs) -> DarkBiasScript:
@@ -167,3 +217,128 @@ async def test_takes_correct_count() -> None:
 
     await script.run(None)
     assert camera.grab_data.call_count == 5
+
+
+# ── mutual exclusivity validation ────────────────────────────────────────────
+
+
+def test_exptimes_and_match_science_exptimes_are_mutually_exclusive() -> None:
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        make_script(exptimes=[30.0, 600.0], match_science_exptimes=True, archive=_FakeArchive(), site="siteA")
+
+
+def test_exptime_and_exptimes_cannot_be_combined() -> None:
+    with pytest.raises(ValueError, match="cannot be combined"):
+        make_script(exptime=30.0, exptimes=[30.0, 600.0])
+
+
+def test_exptime_and_match_science_exptimes_cannot_be_combined() -> None:
+    with pytest.raises(ValueError, match="cannot be combined"):
+        make_script(exptime=30.0, match_science_exptimes=True, archive=_FakeArchive(), site="siteA")
+
+
+def test_exptimes_alone_is_valid() -> None:
+    # should not raise
+    make_script(exptimes=[30.0, 600.0])
+
+
+# ── can_run: match_science_exptimes ──────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_can_run_false_without_archive_when_matching_science_exptimes() -> None:
+    script = make_script(match_science_exptimes=True, site="siteA")
+    script._comm.has_proxy = AsyncMock(return_value=True)
+
+    assert await script.can_run(None) is False
+    assert "archive" in script.cant_run_reason()
+
+
+@pytest.mark.asyncio
+async def test_can_run_false_without_site_when_matching_science_exptimes() -> None:
+    script = make_script(match_science_exptimes=True, archive=_FakeArchive())
+    script._comm.has_proxy = AsyncMock(return_value=True)
+
+    assert await script.can_run(None) is False
+    assert "archive" in script.cant_run_reason()
+
+
+@pytest.mark.asyncio
+async def test_can_run_false_without_night_or_observer() -> None:
+    script = make_script(match_science_exptimes=True, archive=_FakeArchive(), site="siteA")
+    script._comm.has_proxy = AsyncMock(return_value=True)
+
+    assert await script.can_run(None) is False
+    assert "observer" in script.cant_run_reason()
+
+
+@pytest.mark.asyncio
+async def test_can_run_true_with_explicit_night() -> None:
+    script = make_script(match_science_exptimes=True, archive=_FakeArchive(), site="siteA", night="2024-01-01")
+    script._comm.has_proxy = AsyncMock(return_value=True)
+
+    assert await script.can_run(None) is True
+
+
+@pytest.mark.asyncio
+async def test_can_run_true_with_observer_configured() -> None:
+    script = DarkBiasScript.model_validate(
+        {"camera": "camera", "match_science_exptimes": True, "archive": _FakeArchive(), "site": "siteA"},
+        context={"comm": MagicMock(), "observer": MagicMock()},
+    )
+    script._comm.has_proxy = AsyncMock(return_value=True)
+
+    assert await script.can_run(None) is True
+
+
+# ── explicit exptimes list ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_runs_series_longest_first() -> None:
+    script = make_script(count=2, exptimes=[30.0, 600.0, 60.0])
+    camera = make_camera()
+    setup_run_comm(script, camera)
+
+    await script.run(None)
+
+    calls = [c.args[0] for c in camera.set_exposure_time.call_args_list]
+    assert calls == [600.0, 60.0, 30.0]
+    camera.set_image_type.assert_called_once_with(ImageType.DARK)
+    assert camera.grab_data.call_count == 6  # 3 series * 2 exposures
+
+
+@pytest.mark.asyncio
+async def test_estimate_duration_sums_over_exptimes_list() -> None:
+    script = make_script(count=2, exptimes=[30.0, 600.0])
+    assert script.estimate_duration(None) == 2 * (30.0 + 5.0) + 2 * (600.0 + 5.0)
+
+
+# ── match_science_exptimes ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_runs_series_derived_from_science_exptimes() -> None:
+    archive = _FakeArchive(exptimes=[45.0, 45.1, 600.0])
+    script = make_script(count=1, match_science_exptimes=True, archive=archive, site="siteA", night="2024-01-01")
+    camera = make_camera()
+    setup_run_comm(script, camera)
+
+    await script.run(None)
+
+    calls = [c.args[0] for c in camera.set_exposure_time.call_args_list]
+    assert calls == [600.0, 45.05]
+    camera.set_image_type.assert_called_once_with(ImageType.DARK)
+
+
+@pytest.mark.asyncio
+async def test_no_science_exptimes_takes_nothing() -> None:
+    archive = _FakeArchive(exptimes=[])
+    script = make_script(count=1, match_science_exptimes=True, archive=archive, site="siteA", night="2024-01-01")
+    camera = make_camera()
+    setup_run_comm(script, camera)
+
+    await script.run(None)
+
+    camera.set_exposure_time.assert_not_called()
+    camera.grab_data.assert_not_called()

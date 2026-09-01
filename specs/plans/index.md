@@ -168,7 +168,3 @@ Implementation plans, checklist-style. Newest at the bottom.
   reduction/pipeline side: per-exposure-time dark masters, strict exptime matching, reference
   master scales down only (ADR `0015`). **implemented** (issue #832, landed on `develop`
   2026-09-01 via PR #842; depends on `2026-09-01-morning-darks-match-science-exptimes.md`)
-- [2026-09-01-portal-instrument-config-app.md](2026-09-01-portal-instrument-config-app.md) — new
-  `instruments` Django app for pyobs-portal: per-type capability models (camera/telescope/filter
-  wheels), admin-editable via a scoped `instrument-config` group, read-only nested API for the
-  script builder. **proposed** (pyobs-portal#116; Repos: pyobs-portal)

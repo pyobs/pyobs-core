@@ -102,6 +102,22 @@ Implementation plans, checklist-style. Newest at the bottom.
   pins bumped to it and pushed (`612d9e4`, `ab02dfc`) (Repos: pyobs-core, pyobs-portal,
   pyobs-auth, pyobs-archive, pyobs-web-admin, pyobs-iagvt, pyobs-monet)
 
+- [2026-08-28-shared-authz-keycloak.md](2026-08-28-shared-authz-keycloak.md) — centralized
+  authorization: Keycloak groups/roles become the source of truth; services gate on token claims
+  instead of per-service `is_active` activation (design: `specs/design/shared-authz-keycloak.md`,
+  ADR `0014`). **implemented, closed 2026-08-31** — verified released across the stack: pyobs-auth,
+  pyobs-archive, pyobs-portal, pyobs-web-admin all on v2.1.0; live-verified on MONET/S web-admin
+  (Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin)
+- [2026-08-28-precreate-pubsub-nodes.md](2026-08-28-precreate-pubsub-nodes.md) — pre-create pubsub
+  event nodes (not state — enforce-state-publishing already narrows that gap) at module startup
+  so subscriptions can land before the first publish (XEP-0060 `create_node`); plus the #824 retry
+  hardening (`_retry_delay` exponent clamp, stuck-key cleanup in both retry loops). **implemented,
+  closed 2026-08-31** (`ea9fe7ef`) — `_retry_delay` now clamps `min(attempt, 60)` before
+  exponentiation; on `develop`, not yet in a tagged release (Repos: pyobs-core)
+- [2026-08-28-structuredconfig-widget.md](2026-08-28-structuredconfig-widget.md) — generic
+  schema-driven `IStructuredConfig` form widget for pyobs-gui, auto-built from `ConfigSchema`.
+  **implemented, closed** (pyobs-gui#154; Repos: pyobs-gui, pyobs-core)
+
 ## Not finished
 - [2026-08-23-iag50-pyobs-core-2x-migration.md](2026-08-23-iag50-pyobs-core-2x-migration.md) —
   pyobs-iag50's `2.0.0.dev2` version bump was premature (still pinned/locked to pyobs-core 1.x);
@@ -141,24 +157,11 @@ Implementation plans, checklist-style. Newest at the bottom.
   tag `Script` module-name fields (`ImagingScript.camera`, etc.) with required `pyobs.interfaces`
   via `typing.Annotated`, for pyobs-portal's module dropdowns. **implemented, closed**
   (closed #808, PR #809)
-- [2026-08-28-shared-authz-keycloak.md](2026-08-28-shared-authz-keycloak.md) — centralized
-  authorization: Keycloak groups/roles become the source of truth; services gate on token claims
-  instead of per-service `is_active` activation (design: `specs/design/shared-authz-keycloak.md`,
-  ADR `0014`). **proposed** (issue #823; Repos: pyobs-auth, pyobs-archive, pyobs-portal,
-  pyobs-web-admin)
 - [2026-08-28-observation-portal-keycloak-auth.md](2026-08-28-observation-portal-keycloak-auth.md) —
   attach observation-portal (MONET fork) to OIDC via generic `mozilla-django-oidc` (no pyobs-auth
   dependency, upstream-submittable), config-gated via `OIDC_ENABLED`, additive next to local
   username/password auth; supersedes Section 0 (portal brokered behind Keycloak) of the
   2026-08-12 plan. **proposed, revised 2026-08-31** (Repos: observation-portal)
-- [2026-08-28-precreate-pubsub-nodes.md](2026-08-28-precreate-pubsub-nodes.md) — pre-create pubsub
-  event nodes (not state — enforce-state-publishing already narrows that gap) at module startup
-  so subscriptions can land before the first publish (XEP-0060 `create_node`); plus the #824 retry
-  hardening (`_retry_delay` exponent clamp, stuck-key cleanup in both retry loops). **proposed**
-  (issue #824; Repos: pyobs-core)
-- [2026-08-28-structuredconfig-widget.md](2026-08-28-structuredconfig-widget.md) — generic
-  schema-driven `IStructuredConfig` form widget for pyobs-gui, auto-built from `ConfigSchema`.
-  **proposed** (pyobs-gui#154; Repos: pyobs-gui, pyobs-core)
 - [2026-09-01-morning-darks-match-science-exptimes.md](2026-09-01-morning-darks-match-science-exptimes.md) —
   robotic/archive side of dark-exptime matching: expose `EXPTIME` on the archive API, derive a
   night's distinct science exptimes, `DarkBiasScript` takes darks at those exptimes.

@@ -17,7 +17,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (11, checked 2026-09-01)
+## Open issues (10, checked 2026-09-01)
 
 One row per issue — same layout for every repo.
 
@@ -27,7 +27,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-core | [#844](https://github.com/pyobs/pyobs-core/issues/844) | Reduction: make min-frames-per-exptime-group threshold for dark masters configurable | *enhancement, assigned: thusser* — `_create_master_darks` hardcodes a minimum of 3 raw frames per exptime group; add a `min_darks_per_group` param matching the existing `min_flats`. Surfaced while closing out pyobs-pipeline #13/#14 |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-portal | [#116](https://github.com/pyobs/pyobs-portal/issues/116) | Add instrument config app for script builder (camera/telescope capabilities) | *assigned: thusser* — static instrument capability data so the script builder works without live modules; plan under "Sibling repos" below (*proposed*) |
 | pyobs-web-admin | [#79](https://github.com/pyobs/pyobs-web-admin/issues/79) | Add "update all" button to packages page | |
 | pyobs-web-admin | [#74](https://github.com/pyobs/pyobs-web-admin/issues/74) | Add fullscreen button for logs | *assigned: thusser* — both log views render at a fixed height with no enlarge option |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
@@ -70,10 +69,6 @@ One line per plan — same layout for every repo.
 - **pyobs-gui** — [2026-09-01-gui-video-widget-split.md](../../pyobs-gui/specs/2026-09-01-gui-video-widget-split.md) —
   split `VideoWidget` into a main widget + paired sidebar widget, D6 follow-up to the (now landed,
   see pyobs-gui's own `specs/index.md`) main-vs-sidebar-widgets plan (#150) (*draft, unblocked*)
-- **pyobs-portal** — [2026-09-01-portal-instrument-config-app.md](../../pyobs-portal/specs/plans/2026-09-01-portal-instrument-config-app.md) —
-  new `instruments` Django app: per-type capability models (camera/telescope/dome/filter wheels),
-  admin-editable via a scoped `instrument-config` group, read-only nested API for the script
-  builder, incl. task-duration-estimate fields (*proposed*, #116)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
 - **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —

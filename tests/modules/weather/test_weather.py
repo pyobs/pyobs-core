@@ -15,11 +15,11 @@ from pyobs.utils.time import Time
 
 
 @pytest.mark.asyncio
-async def test_open() -> None:
+async def test_open(mocker) -> None:
     weather = Weather("")
     weather._comm.register_event = AsyncMock()
 
-    Module.open = AsyncMock()
+    mocker.patch.object(Module, "open", AsyncMock())
 
     await weather.open()
 

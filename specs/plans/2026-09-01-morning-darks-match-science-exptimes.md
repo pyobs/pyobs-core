@@ -63,14 +63,19 @@ The archive API currently carries no exposure-time information at all:
 
 ### 2. Helper: distinct science exposure times for a night
 
-New function, `science_exptimes_for_night(archive, site, night, tolerance=0.01)` in
-`pyobs/robotic/utils/calibration.py` (new file — no existing module owns "derive calibration
-targets from science data"):
+New function, `science_exptimes_for_night(archive, site, night, tolerance=0.01,
+min_exptime=5.0)` in `pyobs/robotic/utils/calibration.py` (new file — no existing module owns
+"derive calibration targets from science data"):
 
 - Lists OBJECT frames (rlevel 0) via `archive.list_frames(night=night, site=site,
   image_type=ImageType.OBJECT, rlevel=0)`, grouped by `(instrument, binning)` — mirrors the
   per-combination looping `Reduction.__call__` already does
   (`pyobs/utils/pipeline/reduction.py:264-297`).
+- Drops any frame with `EXPTIME < min_exptime` before grouping — per ADR 0015's
+  `dark_min_exptime` (same default, 5 s), calibration treats those as bias-only and never needs a
+  dark master, so there's no point scheduling a dark series for them. `min_exptime=0`/`None`
+  keeps every exptime, for a caller that wants the full distribution regardless of the ADR's
+  default.
 - Collapses `exptime` values within `tolerance` (relative, default 1%) into groups, returning
   one representative exptime per group — e.g. round to the group's median or first-seen value.
   This grouping logic is the one both this helper and #832's per-exptime master grouping need;
@@ -119,7 +124,8 @@ discoverable without reading the script source.
       `list_options()` accept and honor an `exptime` filter in both implementations.
 - [ ] `list_options()` returns an `exptimes` key in both implementations.
 - [ ] `science_exptimes_for_night()` returns the distinct, tolerance-grouped science exptimes
-      for a site+night, keyed per instrument/binning.
+      for a site+night, keyed per instrument/binning, excluding exptimes below `min_exptime`
+      (default 5 s) unless `min_exptime=0`/`None` is passed.
 - [ ] `DarkBiasScript` runs one dark series per exptime (explicit list or
       `match_science_exptimes`-derived) while the single-`exptime` path is unchanged; mutual
       exclusivity between `exptime`/`exptimes`/`match_science_exptimes` is validated, not silently
@@ -127,8 +133,8 @@ discoverable without reading the script source.
 - [ ] `estimate_duration()` reflects the multi-series total.
 - [ ] Tests: `exptime` filter in both archive implementations (including tolerance behavior),
       `science_exptimes_for_night()` grouping (exact matches, near-duplicates within/outside
-      tolerance, empty night), `DarkBiasScript` run/estimate with multiple exptimes, mutual-
-      exclusivity validation.
+      tolerance, empty night, exptimes below/above `min_exptime`), `DarkBiasScript` run/estimate
+      with multiple exptimes, mutual-exclusivity validation.
 
 ## Out of scope
 

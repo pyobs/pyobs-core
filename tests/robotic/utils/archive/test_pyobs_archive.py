@@ -46,8 +46,10 @@ def make_archive(**kwargs: object) -> PyobsArchive:
     return PyobsArchive(url="http://archive.example/", token="tok", **kwargs)
 
 
-def make_frame_dict(id: int = 1, basename: str = "img.fits", url: str = "download/1/") -> dict[str, Any]:
-    return {
+def make_frame_dict(
+    id: int = 1, basename: str = "img.fits", url: str = "download/1/", exptime: float | None = 600.0
+) -> dict[str, Any]:
+    d: dict[str, Any] = {
         "id": id,
         "basename": basename,
         "DATE_OBS": "2024-01-01T03:00:00.000",
@@ -55,6 +57,9 @@ def make_frame_dict(id: int = 1, basename: str = "img.fits", url: str = "downloa
         "binning": "1x1",
         "url": url,
     }
+    if exptime is not None:
+        d["EXPTIME"] = exptime
+    return d
 
 
 # ── model_post_init ──────────────────────────────────────────────────────────
@@ -70,7 +75,7 @@ def test_init_sets_headers_and_timeout() -> None:
 
 
 def test_frame_info_parses_fields() -> None:
-    info = PyobsArchiveFrameInfo(make_frame_dict(id=42, basename="x.fits"))
+    info = PyobsArchiveFrameInfo(make_frame_dict(id=42, basename="x.fits", exptime=45.0))
 
     assert info.id == 42
     assert info.filename == "x.fits"
@@ -78,6 +83,13 @@ def test_frame_info_parses_fields() -> None:
     assert info.binning == 1
     assert isinstance(info.dateobs, Time)
     assert info.url == "download/1/"
+    assert info.exptime == 45.0
+
+
+def test_frame_info_exptime_is_none_when_missing() -> None:
+    info = PyobsArchiveFrameInfo(make_frame_dict(exptime=None))
+
+    assert info.exptime is None
 
 
 # ── _build_query ─────────────────────────────────────────────────────────────
@@ -109,6 +121,11 @@ def test_build_query_includes_all_given_params() -> None:
     assert params["OBSNUM"] == "42"
     assert params["start"] == "2024-01-01T00:00:00.000"
     assert params["end"] == "2024-01-02T00:00:00.000"
+
+
+def test_build_query_includes_exptime() -> None:
+    params = PyobsArchive._build_query(exptime=600.0)
+    assert params["EXPTIME"] == 600.0
 
 
 def test_build_query_empty_when_nothing_given() -> None:
@@ -192,6 +209,41 @@ async def test_list_frames_raises_on_non_200(mocker) -> None:
 
     with pytest.raises(ValueError):
         await archive.list_frames()
+
+
+@pytest.mark.asyncio
+async def test_list_frames_filters_by_exptime_client_side(mocker) -> None:
+    # server doesn't (yet) honor EXPTIME filtering and returns everything; client-side
+    # re-filtering must still narrow the result down to matching exptimes
+    archive = make_archive()
+    response = MockResponse(
+        json={
+            "results": [
+                make_frame_dict(id=1, exptime=600.0),
+                make_frame_dict(id=2, exptime=602.0),
+                make_frame_dict(id=3, exptime=45.0),
+            ],
+            "count": 3,
+        }
+    )
+    mocker.patch("aiohttp.ClientSession.get", return_value=response)
+
+    frames = await archive.list_frames(exptime=600.0)
+
+    assert {f.id for f in frames} == {1, 2}
+
+
+@pytest.mark.asyncio
+async def test_list_frames_no_exptime_filter_keeps_all(mocker) -> None:
+    archive = make_archive()
+    response = MockResponse(
+        json={"results": [make_frame_dict(id=1, exptime=600.0), make_frame_dict(id=2, exptime=45.0)], "count": 2}
+    )
+    mocker.patch("aiohttp.ClientSession.get", return_value=response)
+
+    frames = await archive.list_frames()
+
+    assert {f.id for f in frames} == {1, 2}
 
 
 # ── download_frames ──────────────────────────────────────────────────────────

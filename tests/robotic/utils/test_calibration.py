@@ -6,9 +6,18 @@ import pytest
 
 from pyobs.images import Image
 from pyobs.robotic.utils.archive import Archive, FrameInfo
-from pyobs.robotic.utils.calibration import science_exptimes_for_night
+from pyobs.robotic.utils.calibration import (
+    clear_cache,
+    peek_cached_science_exptimes_for_night,
+    science_exptimes_for_night,
+)
 from pyobs.utils.enums import ImageType
 from pyobs.utils.time import Time
+
+
+@pytest.fixture(autouse=True)
+def _clear_exptime_cache() -> None:
+    clear_cache()
 
 
 class _FakeArchive(Archive):
@@ -17,6 +26,7 @@ class _FakeArchive(Archive):
     instruments: list[str] = ["cam1"]
     binnings: list[str] = ["1x1"]
     exptimes_by_frame: list[float] = []
+    list_options_calls: int = 0
 
     async def list_options(
         self,
@@ -33,6 +43,7 @@ class _FakeArchive(Archive):
         obsnum: str | None = None,
         exptime: float | None = None,
     ) -> dict[str, list[Any]]:
+        self.list_options_calls += 1
         return {"instruments": self.instruments, "binnings": self.binnings}
 
     async def list_frames(
@@ -105,3 +116,62 @@ async def test_empty_night_returns_empty_dict() -> None:
     result = await science_exptimes_for_night(archive, site="siteA", night="2024-01-01")
 
     assert result == {}
+
+
+# ── caching ───────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_second_call_hits_cache_not_archive() -> None:
+    archive = _FakeArchive(exptimes_by_frame=[600.0])
+
+    await science_exptimes_for_night(archive, site="siteA", night="2024-01-01")
+    await science_exptimes_for_night(archive, site="siteA", night="2024-01-01")
+
+    assert archive.list_options_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_different_night_is_not_cached_together() -> None:
+    archive = _FakeArchive(exptimes_by_frame=[600.0])
+
+    await science_exptimes_for_night(archive, site="siteA", night="2024-01-01")
+    await science_exptimes_for_night(archive, site="siteA", night="2024-01-02")
+
+    assert archive.list_options_calls == 2
+
+
+def test_peek_cache_returns_none_when_nothing_cached() -> None:
+    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") is None
+
+
+@pytest.mark.asyncio
+async def test_peek_cache_returns_value_after_a_real_call() -> None:
+    archive = _FakeArchive(exptimes_by_frame=[600.0])
+    expected = await science_exptimes_for_night(archive, site="siteA", night="2024-01-01")
+
+    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") == expected
+
+
+def test_peek_cache_returns_none_once_expired() -> None:
+    import time
+
+    from pyobs.robotic.utils import calibration
+
+    stale = time.monotonic() - calibration._CACHE_TTL - 1.0
+    calibration._cache[("siteA", "2024-01-01", 0.01, 5.0)] = (stale, {("cam1", "1x1"): [600.0]})
+
+    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") is None
+
+
+def test_clear_cache_empties_it() -> None:
+    import time
+
+    from pyobs.robotic.utils import calibration
+
+    calibration._cache[("siteA", "2024-01-01", 0.01, 5.0)] = (time.monotonic(), {})
+    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") == {}
+
+    clear_cache()
+
+    assert peek_cached_science_exptimes_for_night("siteA", "2024-01-01") is None

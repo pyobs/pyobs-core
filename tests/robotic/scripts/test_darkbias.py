@@ -3,12 +3,19 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import astropy.units as u
 import pytest
 
 from pyobs.robotic.scripts.calibration.darkbias import DarkBiasScript
 from pyobs.robotic.utils.archive import Archive, FrameInfo
+from pyobs.robotic.utils.calibration import clear_cache
 from pyobs.utils.enums import ImageType
 from tests.helpers import isinstance_class, make_proxy_cm
+
+
+@pytest.fixture(autouse=True)
+def _clear_exptime_cache() -> None:
+    clear_cache()
 
 
 class _FakeArchive(Archive):
@@ -282,9 +289,12 @@ async def test_can_run_true_with_explicit_night() -> None:
 
 @pytest.mark.asyncio
 async def test_can_run_true_with_observer_configured() -> None:
+    from astroplan import Observer
+
+    observer = Observer(longitude=9.94 * u.deg, latitude=51.56 * u.deg, elevation=150 * u.m)
     script = DarkBiasScript.model_validate(
         {"camera": "camera", "match_science_exptimes": True, "archive": _FakeArchive(), "site": "siteA"},
-        context={"comm": MagicMock(), "observer": MagicMock()},
+        context={"comm": MagicMock(), "observer": observer},
     )
     script._comm.has_proxy = AsyncMock(return_value=True)
 
@@ -342,3 +352,42 @@ async def test_no_science_exptimes_takes_nothing() -> None:
 
     camera.set_exposure_time.assert_not_called()
     camera.grab_data.assert_not_called()
+
+
+# ── match_science_exptimes: estimate_duration via can_run()'s cache warm-up ──
+
+
+@pytest.mark.asyncio
+async def test_estimate_duration_uses_cache_warmed_by_can_run() -> None:
+    archive = _FakeArchive(exptimes=[30.0, 600.0])
+    script = make_script(count=2, match_science_exptimes=True, archive=archive, site="siteA", night="2024-01-01")
+    script._comm.has_proxy = AsyncMock(return_value=True)
+    assert await script.can_run(None) is True
+
+    # a fresh instance, as Task.create_script() would produce -- no shared state with `script`,
+    # only the module-level cache can_run() warmed above
+    other = make_script(count=2, match_science_exptimes=True, archive=archive, site="siteA", night="2024-01-01")
+
+    assert other.estimate_duration(None) == 2 * (30.0 + 5.0) + 2 * (600.0 + 5.0)
+
+
+@pytest.mark.asyncio
+async def test_estimate_duration_falls_back_without_a_prior_can_run() -> None:
+    archive = _FakeArchive(exptimes=[30.0, 600.0])
+    script = make_script(count=2, match_science_exptimes=True, archive=archive, site="siteA", night="2024-01-01")
+
+    # exptime defaults to 0 -- placeholder estimate, not the real archive-derived series
+    assert script.estimate_duration(None) == 2 * (0.0 + 5.0)
+
+
+@pytest.mark.asyncio
+async def test_can_run_false_when_archive_query_raises() -> None:
+    class _BrokenArchive(_FakeArchive):
+        async def list_options(self, **kwargs: Any) -> dict[str, list[Any]]:
+            raise RuntimeError("archive unreachable")
+
+    script = make_script(match_science_exptimes=True, archive=_BrokenArchive(), site="siteA", night="2024-01-01")
+    script._comm.has_proxy = AsyncMock(return_value=True)
+
+    assert await script.can_run(None) is False
+    assert "archive" in script.cant_run_reason()

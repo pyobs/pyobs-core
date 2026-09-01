@@ -14,7 +14,7 @@ from pyobs.interfaces import (
 )
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.archive import Archive
-from pyobs.robotic.utils.calibration import science_exptimes_for_night
+from pyobs.robotic.utils.calibration import peek_cached_science_exptimes_for_night, science_exptimes_for_night
 from pyobs.utils.enums import ImageType
 from pyobs.utils.time import Time
 
@@ -62,6 +62,15 @@ class DarkBiasScript(Script):
             raise ValueError("exptime cannot be combined with exptimes or match_science_exptimes.")
         return self
 
+    def _resolve_night(self) -> str | None:
+        """Resolves the night to query for match_science_exptimes: the configured override, or
+        derived from the current time via the injected observer. None if neither is available."""
+        if self.night is not None:
+            return self.night
+        if self._observer is not None:
+            return Time.now().night_obs(self._observer).isoformat()
+        return None
+
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
         Returns:
@@ -78,8 +87,18 @@ class DarkBiasScript(Script):
             if self.archive is None or self.site is None:
                 self._cant_run_reason = "match_science_exptimes requires archive and site to be configured."
                 return False
-            if self.night is None and self._observer is None:
+            night = self._resolve_night()
+            if night is None:
                 self._cant_run_reason = "No observer configured to derive the night from."
+                return False
+            # Task.create_script() re-validates a fresh Script (and Archive) on every call, so
+            # estimate_duration() can't reuse this instance's state later -- warm the module-level
+            # cache here instead, so its later (sync, archive-less) lookup can hit it.
+            try:
+                await science_exptimes_for_night(self.archive, self.site, night)
+            except Exception:
+                log.exception("Could not query archive for science exptimes.")
+                self._cant_run_reason = "Could not query archive for science exptimes."
                 return False
 
         # seems alright
@@ -95,11 +114,8 @@ class DarkBiasScript(Script):
         if self.match_science_exptimes:
             if self.archive is None or self.site is None:
                 raise ValueError("match_science_exptimes requires archive and site to be configured.")
-            if self.night is not None:
-                night = self.night
-            elif self._observer is not None:
-                night = Time.now().night_obs(self._observer).isoformat()
-            else:
+            night = self._resolve_night()
+            if night is None:
                 raise ValueError("No observer configured to derive the night from.")
             by_combo = await science_exptimes_for_night(self.archive, self.site, night)
             exptimes = sorted({e for values in by_combo.values() for e in values}, reverse=True)
@@ -150,14 +166,26 @@ class DarkBiasScript(Script):
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         """Estimate duration of the dark/bias series.
 
-        For match_science_exptimes, the exptime list isn't known without an async archive
-        query this sync method can't make; falls back to a single-series estimate using the
-        configured exptime (0 by default) as a rough placeholder.
+        For match_science_exptimes, this sync method can't query the archive itself; it reads
+        whatever can_run()'s prior (async) call already cached for this site/night, via
+        peek_cached_science_exptimes_for_night(). Falls back to a single-series placeholder
+        estimate (using the configured exptime, 0 by default) if nothing is cached yet -- e.g.
+        can_run() hasn't run for this site/night within the cache's TTL.
         """
         # TODO: get a better estimate for readout overhead
         readout = 5.0
         if self.exptimes is not None:
             return sum(self.count * (e + readout) for e in self.exptimes)
+
+        if self.match_science_exptimes and self.site is not None:
+            night = self._resolve_night()
+            if night is not None:
+                cached = peek_cached_science_exptimes_for_night(self.site, night)
+                if cached is not None:
+                    exptimes = {e for values in cached.values() for e in values}
+                    if exptimes:
+                        return sum(self.count * (e + readout) for e in exptimes)
+
         return self.count * (self.exptime + readout)
 
 

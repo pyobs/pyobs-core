@@ -1,10 +1,12 @@
 # Plan: reschedule on project and same-ID task content changes
 
-Status: proposed
+Status: implemented
 
 Tracks issue #848. Repos: pyobs-core (this plan); the signal-delivery half lives in
 `pyobs-portal/specs/plans/2026-09-01-last-task-update-marker-includes-projects.md` (separate
-repo, separate plan) — the two are independently landable, see Out of scope.
+repo, separate plan). **Not independently landable** — see Out of scope: pyobs-portal's
+`Project` payload gained `updated_at`, which core's `Project` model must accept a round-trip
+field for (added in this PR) or every poll fails with a `ValidationError`.
 
 ## Problem
 
@@ -97,21 +99,72 @@ end (`:221`), the same place `self._tasks = tasks` already happens.
 
 ## Acceptance criteria
 
-- [ ] Project-only content change triggers a reschedule.
-- [ ] Assignment-order bug fixed — old projects are diffed against new before `self._projects`
+- [x] Project-only content change triggers a reschedule.
+- [x] Assignment-order bug fixed — old projects are diffed against new before `self._projects`
       is overwritten.
-- [ ] Same-ID task content change triggers a reschedule when the task is on the current schedule
+- [x] Same-ID task content change triggers a reschedule when the task is on the current schedule
       or is the running task; is skipped when the task isn't on the schedule at all.
-- [ ] Existing `_compare_task_lists` contract and its two removed/added downgrade checks are
+- [x] Existing `_compare_task_lists` contract and its two removed/added downgrade checks are
       unchanged for pure add/remove cases — no regression in current scheduler tests.
-- [ ] New tests listed above pass.
-- [ ] `ruff`/`pyrefly` clean.
+- [x] New tests listed above pass (implemented as `_changed_task_ids()` rather than the
+      originally-sketched `_diff_task_content()` name; behavior matches).
+- [x] `ruff`/`pyrefly` clean. Full non-integration suite (1786 tests) also green.
 
 ## Out of scope
 
 - pyobs-portal's `/api/last_task_update/` marker not moving on project edits — a separate,
   required gap for the fix to matter in production (without it, `PortalTaskArchive` never
   re-polls, so this plan's comparison never even runs on a real project edit). Tracked in
-  `pyobs-portal/specs/plans/2026-09-01-last-task-update-marker-includes-projects.md`. The two
-  plans are independently correct and independently landable — this one is already exercised by
-  `trigger_on_every_update=True` deployments and by the new tests regardless of portal state.
+  `pyobs-portal/specs/plans/2026-09-01-last-task-update-marker-includes-projects.md`.
+
+## Post-review addendum
+
+Independent review of the initial implementation (verified against PR head `a374458d`) found
+and this PR's follow-up commit fixed:
+
+- **Coupling, not independence**: pyobs-portal's `ProjectSerializer` is `fields="__all__"`, so
+  once pyobs-portal#134 lands, `/api/projects/` starts emitting `updated_at`. Core's `Project`
+  (`pyobs/robotic/task.py:152`) is `extra="forbid"` with no such field, so
+  `PortalTaskArchive._get_projects()` (`taskarchive.py:117`) would raise `ValidationError` on
+  every poll — the two PRs are **not** independently landable as originally claimed. Fixed by
+  adding `updated_at: str | None = None` to `Project`, mirroring the identical precedent already
+  shipped for `Task.updated_at` (commit `e550423e`, pyobs-portal#84), plus a regression test
+  (`test_task_get_projects_from_portal_accepts_updated_at`) mirroring that precedent's own test.
+- **`updated_at` leaking into content comparisons**: once `Project` carries `updated_at`, both
+  `projects_changed` and `_changed_task_ids()`'s `model_dump()` comparisons would count a no-op
+  re-save (timestamp-only change) as a real content change, forcing spurious reschedules. Fixed
+  by excluding `updated_at` from both comparisons. For `Task` this could **not** be done via
+  `model_dump(exclude={"updated_at"})`: `Task` is a `PolymorphicBaseModel`, whose
+  `@model_serializer` (`pyobs/utils/serialization.py:44-49`) builds its own dict from
+  `model_fields` via `getattr` and never calls `handler(self)`, so it silently ignores
+  `exclude`/`include` entirely — filed as a separate, wider-scoped follow-up,
+  pyobs-core#855. Worked around locally with `Scheduler._content_dump()`, which dumps
+  normally and pops the key from the resulting dict.
+- **Regression test breadth**: `test_changed_task_ids_ignores_private_attr_mutation` now also
+  sets `_resolved_target`/`_running_script`, not just `_cant_run_reason`, guarding all three
+  `PrivateAttr`s a real scheduling round-trip can touch.
+- **Missing coverage** (nits): added `test_update_schedule_project_removed_triggers_update` and
+  a mixed removed+changed poll test (the currently-running task removed at the same time as an
+  unrelated task's content changes — the latter must still force a reschedule).
+
+## Merge-conflict addendum (rebase onto develop)
+
+While rebasing onto `develop`, PR #852 (issue #847, landed concurrently) turned out to conflict
+at the design level, not just textually: it **deleted** the "was one of the removed tasks
+actually in `self._schedule.get_schedule()`?" guard this plan's design (§3) explicitly said to
+*reuse* for `changed_ids`. Their reasoning: `PortalObservationArchive`'s schedule cache is
+permanently empty by construction (the `Scheduler` runs it with `auto_update=False`), so that
+guard always found nothing and silently discarded every real portal task removal — the exact bug
+#847 fixed. Reusing the same guard for `changed_ids` would have reintroduced the identical bug
+one level up: every same-ID content change to a task would have been silently swallowed on a
+portal deployment, defeating the entire point of #848.
+
+Resolution: dropped the schedule-membership guard for `changed_ids` too (never added it back),
+matching #852's decision. Net effect: a project change, a task removal, a task addition, or a
+same-ID task content change all now force a reschedule unconditionally (modulo the one remaining
+downgrade — a removal that's exactly the currently-running task ending on its own, and only
+that). This *simplifies* the design in §3: the "asymmetry" between a removed vs. changed running
+task, and the `current_task_changed` bypass variable, are no longer needed — with no membership
+check left to bypass, a changed running task simply flows through as `True` like everything else.
+Rewrote the affected tests to match (no longer mocking/asserting on `get_schedule()` for content
+changes, mirroring #852's own `..._without_consulting_schedule_cache` naming).

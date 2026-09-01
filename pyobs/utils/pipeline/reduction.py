@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 import os.path
 import statistics
@@ -197,26 +198,45 @@ class Reduction(ReductionBase):
         (#831). Frame groups with fewer than 3 members are skipped individually with a
         warning, rather than aborting dark reduction for this instrument/binning entirely.
 
+        If none of the night's raw darks carry EXPTIME at all (a fully legacy instrument, as
+        opposed to a handful of untagged frames mixed in with tagged ones), grouping would
+        silently produce zero masters -- falls back to combining all of them into a single
+        untagged master instead, reproducing this method's pre-#832 behavior.
+
         Returns:
-            The master dark(s) created, longest exptime first.
+            The master dark(s) created, longest exptime first (the untagged legacy fallback,
+            if it fires, is always the only element).
         """
         infos = await self._archive.list_frames(
             night=night, image_type=ImageType.DARK, instrument=instrument, binning=binning, rlevel=0
         )
         log.info("Found %d %s DARK frames from instrument %s.", len(infos), binning, instrument)
-
-        usable = [i for i in infos if i.exptime is not None]
-        if len(usable) < len(infos):
-            log.warning("Dropping %d DARK frame(s) with no EXPTIME.", len(infos) - len(usable))
-        if not usable:
+        if not infos:
             return []
 
-        # longest-first, matching DarkBiasScript's own series order
-        groups = sorted(
-            group_by_exptime(usable, key=lambda i: i.exptime or 0.0, tolerance=self._dark_exptime_tolerance),
-            key=lambda group: statistics.median(i.exptime for i in group if i.exptime is not None),
-            reverse=True,
-        )
+        # not-a-number is defensively treated the same as None -- an Archive backed by a numeric
+        # column (e.g. pandas) can end up coercing a missing EXPTIME to NaN rather than None
+        usable = [i for i in infos if i.exptime is not None and not math.isnan(i.exptime)]
+        groups: list[tuple[list[FrameInfo], float | None]]
+        if not usable:
+            log.warning(
+                "None of the %d DARK frames for instrument %s, binning %s carry EXPTIME -- "
+                "creating one legacy (untagged) master instead of grouping by exptime.",
+                len(infos),
+                instrument,
+                binning,
+            )
+            groups = [(infos, None)]
+        else:
+            if len(usable) < len(infos):
+                log.warning("Dropping %d DARK frame(s) with no EXPTIME.", len(infos) - len(usable))
+            # longest-first, matching DarkBiasScript's own series order
+            by_exptime = sorted(
+                group_by_exptime(usable, key=lambda i: i.exptime or 0.0, tolerance=self._dark_exptime_tolerance),
+                key=lambda group: statistics.median(i.exptime for i in group if i.exptime is not None),
+                reverse=True,
+            )
+            groups = [(g, statistics.median(i.exptime for i in g if i.exptime is not None)) for g in by_exptime]
 
         bias = await self._find_master(night, ImageType.BIAS, instrument, binning, None)
         if bias is None:
@@ -224,26 +244,29 @@ class Reduction(ReductionBase):
             return []
 
         masters: list[Image] = []
-        for group in groups:
-            exptime = statistics.median(i.exptime for i in group if i.exptime is not None)
+        for group, exptime in groups:
+            label = "legacy (no exptime)" if exptime is None else f"~{exptime}s"
 
             if len(group) < 3:
-                log.warning("Too few (%d) dark frames at ~%ss, skipping...", len(group), exptime)
+                log.warning("Too few (%d) dark frames at %s, skipping...", len(group), label)
                 continue
 
             images = await self._archive.download_frames(group)
             if len(images) < 3:
-                log.warning("Too few (%d) dark frames at ~%ss, skipping...", len(images), exptime)
+                log.warning("Too few (%d) dark frames at %s, skipping...", len(images), label)
                 continue
 
             calib = await self._pipeline.create_master_dark(images, bias=bias)
             if calib is None:
-                log.warning("Could not create master dark at ~%ss.", exptime)
+                log.warning("Could not create master dark at %s.", label)
                 continue
 
-            # EXPTIME may or may not survive ccdproc's sigma-clip combine unchanged -- set it
-            # explicitly from the group's own value rather than trusting the combined header.
-            calib.header["EXPTIME"] = (exptime, "Exposure time [s]")
+            if exptime is not None:
+                # EXPTIME may or may not survive ccdproc's sigma-clip combine unchanged -- set
+                # it explicitly from the group's own value rather than trusting the combined
+                # header. The legacy fallback leaves it as whatever (if anything) the raw
+                # frames' own combined header carries -- there is no group value to set it to.
+                calib.header["EXPTIME"] = (exptime, "Exposure time [s]")
 
             self._master_frames[ImageType.DARK, instrument, binning, None, exptime] = calib
             await self._store_master_calib(calib, ImageType.DARK, instrument, binning, None, exptime)

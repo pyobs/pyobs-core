@@ -114,3 +114,32 @@ def test_exptime_defaults_to_none_unaffected_by_dark_entries(dark_lookup_image):
 
     with pytest.raises(ValueError):
         cache.get_from_cache(dark_lookup_image, ImageType.DARK)
+
+
+# ── filter is ignored for BIAS/DARK, still honored for SKYFLAT/OBJECT ───────
+
+
+@pytest.mark.parametrize("image_type", [ImageType.BIAS, ImageType.DARK])
+def test_filter_mismatch_between_science_and_master_still_hits_for_bias_and_dark(mock_image, image_type):
+    # a real master bias/dark commonly has no FILTER header at all (or a stale one), while the
+    # science image looked up against it usually does -- must not cause a cache miss
+    master = _dark_master()  # no FILTER
+
+    cache = _CalibrationCache(5)
+    kwargs = {"exptime": 0.0} if image_type == ImageType.DARK else {}
+    cache.add_to_cache(master, image_type, **kwargs)
+
+    assert cache.get_from_cache(mock_image, image_type, **kwargs) == master
+
+
+def test_filter_mismatch_still_misses_for_skyflat(mock_image):
+    master = Image()
+    master.header["INSTRUME"] = "cam"
+    master.header["XBINNING"] = 1
+    # no FILTER on the master -- unlike BIAS/DARK, SKYFLAT still keys on it
+
+    cache = _CalibrationCache(5)
+    cache.add_to_cache(master, ImageType.SKYFLAT)
+
+    with pytest.raises(ValueError):
+        cache.get_from_cache(mock_image, ImageType.SKYFLAT)

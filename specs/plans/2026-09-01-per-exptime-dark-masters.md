@@ -154,10 +154,14 @@ Implements ADR 0015's decision directly.
 - [x] A science frame with `EXPTIME < dark_min_exptime` and no exact-match dark master is
       calibrated with bias only (no dark correction applied, no error); an exact-match master for
       that exptime, if one exists, is still used ahead of the bias-only path.
-- [x] Backward compatibility: existing `Calibration` configs keep working unchanged (all new
-      `__init__` params default to today's ADR-0015-approved policy); the filename-pattern change
-      is a documented migration step (see "Open questions" above and the PR description), not a
-      config break.
+- [x] Backward compatibility: existing `Calibration` *configs* keep validating and running
+      unchanged (all new `__init__` params default to today's ADR-0015-approved policy) -- but
+      per ADR 0015's own "Consequences", *behavior* changes for a site relying on
+      always-scale-whatever's-nearest: it now fails calibration (a caught `ValueError`, not a
+      crash) for science exptimes outside its one master's tolerance, until it sets
+      `allow_unmatched_dark_scale=True` or takes per-exptime darks (#831). Documented in
+      `CHANGELOG.rst` (not just here) per the ADR's explicit requirement. The filename-pattern
+      change is a separate, also-documented migration step.
 - [x] Tests: master grouping by exptime (incl. tolerance, under-populated groups skipped
       individually); filename/cache-key/progress-event exptime plumbing; matching logic
       (exact match / bias-only-below-minimum / reference-scale-down / reference-scale-up rejected

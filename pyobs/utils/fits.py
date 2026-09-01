@@ -296,6 +296,11 @@ class FilenameFormatter:
         """Formats an exposure time, rendering whole-second values without a trailing ".0"
         (e.g. 600.0 -> "600", 0.333 -> "0.333") so per-exptime master filenames stay readable.
 
+        Unlike the other format functions, a missing key renders as "unknown" rather than
+        raising -- a legacy dark master combined from raw frames that never carried EXPTIME at
+        all has no numeric value to render, and this placeholder lets filename formatting (and
+        therefore storing the master at all) still succeed for that master.
+
         Args:
             hdr: FITS header to take values from.
             key: The name of the FITS header key to use.
@@ -303,6 +308,8 @@ class FilenameFormatter:
         Returns:
             Formatted string.
         """
+        if key not in self.keys and key not in hdr:
+            return "unknown"
         value = float(self._value(hdr, key))
         return str(int(value)) if value == int(value) else str(value)
 

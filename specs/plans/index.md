@@ -189,6 +189,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   `Scheduler._update_schedule()`'s change-detection is task-ID-only, so a project priority change
   or a same-ID task content change never triggers a reschedule; adds project/task content-diff
   (`model_dump()`-keyed, mirroring `PortalTaskArchive._update()`) plus a fix for an
-  assignment-order bug that overwrites `self._projects` before it could ever be compared.
-  **proposed** (issue #848; Repos: pyobs-core; portal-side signal fix is a separate plan in
-  pyobs-portal)
+  assignment-order bug that overwrites `self._projects` before it could ever be compared. Also
+  dropped the schedule-membership guard for the new `changed` set, rebasing onto #852's removal
+  of that same guard for `removed` (both silently discarded real changes against
+  `PortalObservationArchive`'s permanently-empty schedule cache). **implemented** (issue #848; PR
+  #854; Repos: pyobs-core; portal-side signal fix pyobs-portal#134)

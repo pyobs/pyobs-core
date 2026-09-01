@@ -284,7 +284,12 @@ class Calibration(ImageProcessor):
         if self._dark_min_exptime is not None and science_exptime < self._dark_min_exptime:
             return None, False
 
-        # (3) reference master, scaled down only (never up)
+        # (3) reference master, scaled down only (never up). The tolerance band means a science
+        # exptime up to ~dark_scale_exptime*(1+tolerance) is accepted here even though it's
+        # technically above the reference -- and _find_dark_at's own exptime_max ceiling for the
+        # reference lookup uses the same band, so the master found is never more than that
+        # ~1% above dark_scale_exptime either. Never scales *up* in practice; the band is a
+        # deliberate width-of-a-hair looseness, not a policy hole.
         if self._dark_scale_exptime is not None and science_exptime <= self._dark_scale_exptime * (
             1 + self._dark_exptime_tolerance
         ):
@@ -300,15 +305,34 @@ class Calibration(ImageProcessor):
             return fallback, True
 
         # (5) strict -- no usable dark master under the configured policy
+        ceiling = (
+            None if self._dark_scale_exptime is None else self._dark_scale_exptime * (1 + self._dark_exptime_tolerance)
+        )
+        available = await self._available_dark_exptimes(image)
         raise ValueError(
             f"No usable dark master for EXPTIME={science_exptime}s (no exact match within "
             f"{self._dark_exptime_tolerance:.0%}"
             + (
-                f", no reference master <= {self._dark_scale_exptime}s to scale down)."
-                if self._dark_scale_exptime is not None
-                else ", no reference exptime configured)."
+                f", no reference master <= {ceiling:.1f}s to scale down"
+                if ceiling is not None
+                else ", no reference exptime configured"
             )
+            + f"); available master exptimes: {available if available else 'none'}."
         )
+
+    async def _available_dark_exptimes(self, image: Image) -> list[float]:
+        """Best-effort list of exptimes among this instrument/binning's archived DARK masters,
+        for the strict-policy error message only (ADR 0015 asks that it name what's available).
+        Never raises -- an archive issue here shouldn't mask the real ValueError being raised."""
+        try:
+            instrument = image.header["INSTRUME"]
+            binning = "{0}x{0}".format(image.header["XBINNING"])  # noqa: UP031
+            infos = await self._archive.list_frames(
+                instrument=instrument, image_type=ImageType.DARK, binning=binning, rlevel=1
+            )
+        except Exception:
+            return []
+        return sorted({i.exptime for i in infos if i.exptime is not None})
 
     async def _find_dark_at(
         self, image: Image, target_exptime: float, max_days: float | None, exptime_max: float | None = None
@@ -356,10 +380,12 @@ class Calibration(ImageProcessor):
         if master is None:
             return None
 
-        if exptime_max is None and not exptimes_close(
-            float(master.header["EXPTIME"]), target_exptime, self._dark_exptime_tolerance
+        if exptime_max is None and (
+            "EXPTIME" not in master.header
+            or not exptimes_close(float(master.header["EXPTIME"]), target_exptime, self._dark_exptime_tolerance)
         ):
-            # nearest available, but not actually an exact match -- not usable for this lookup
+            # nearest available, but not actually an exact match (or a legacy pre-#831 master
+            # with no EXPTIME header at all) -- not usable for this lookup
             return None
 
         self._calib_cache.add_to_cache(master, ImageType.DARK, exptime=target_exptime)

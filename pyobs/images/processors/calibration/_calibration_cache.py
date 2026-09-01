@@ -33,6 +33,14 @@ class _CalibrationCache:
         self, image: Image, image_type: ImageType, exptime: float | None = None
     ) -> tuple[ImageType, str, str, str | None, float | None]:
         instrument, binning, filter_name = self._get_image_cache_keys(image)
+        if image_type in (ImageType.BIAS, ImageType.DARK):
+            # BIAS/DARK lookups ignore filter (matching Calibration._find_master_in_archive,
+            # which never passes a science image's FILTER to Pipeline.find_master for these two
+            # types). Deriving filter_name from whichever image was passed -- the science image
+            # on a get, the master on an add -- would otherwise near-guarantee a cache miss:
+            # a master dark/bias frequently has no FILTER header at all (or a stale one from
+            # whatever was mounted at the time) while the science image usually does.
+            filter_name = None
         # exptime is not derived from `image`'s own header: for DARK, callers pass the exptime
         # they searched for (the science exptime for an exact match, or the configured
         # reference exptime for a scale-down lookup), which generally differs from either the

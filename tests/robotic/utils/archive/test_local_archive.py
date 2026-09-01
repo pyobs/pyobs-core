@@ -242,6 +242,25 @@ async def test_list_frames_filters_by_exptime_within_tolerance(tmp_path: Path) -
 
 
 @pytest.mark.asyncio
+async def test_list_frames_exptime_is_none_not_nan_when_mixed_with_tagged_frames(tmp_path: Path) -> None:
+    # a pandas float64 column silently coerces None to NaN as soon as any row in it holds a
+    # real float -- this archive's index must normalize that back to None, since NaN is not
+    # None (and compares unequal to everything, including itself)
+    write_fits(tmp_path / "tagged.fits", **make_frame_headers(exptime=30.0, obsnum="1"))
+    write_fits(tmp_path / "untagged.fits", **make_frame_headers(exptime=None, obsnum="2"))
+    archive = LocalArchive(root=str(tmp_path))
+
+    frames = await archive.list_frames()
+
+    by_obsnum = {"tagged.fits": 30.0, "untagged.fits": None}
+    for frame in frames:
+        expected = by_obsnum[Path(frame.filename).name]
+        assert frame.exptime == expected
+        if expected is None:
+            assert frame.exptime is None  # exactly None, not float("nan")
+
+
+@pytest.mark.asyncio
 async def test_list_frames_exptime_excludes_frames_without_exptime(tmp_path: Path) -> None:
     write_fits(tmp_path / "a.fits", **make_frame_headers(exptime=None))
     archive = LocalArchive(root=str(tmp_path))

@@ -219,6 +219,21 @@ async def test_find_dark_master_exact_match_used_unscaled(mocker, mock_image):
 
 
 @pytest.mark.asyncio
+async def test_find_dark_master_legacy_master_with_no_exptime_is_not_an_exact_match(mocker, mock_image):
+    # a legacy pre-#831 master with no EXPTIME header at all must fall through to the rest of
+    # the policy (here: strict error) rather than raising a bare KeyError
+    mock_image.header["EXPTIME"] = 600.0
+    legacy = Image()
+    legacy.header["INSTRUME"] = "cam"
+    legacy.header["XBINNING"] = 1
+    mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect(exact=legacy))
+
+    calibration = Calibration(ConcreteArchive())
+    with pytest.raises(ValueError, match="EXPTIME=600.0"):
+        await calibration._find_dark_master(mock_image)
+
+
+@pytest.mark.asyncio
 async def test_find_dark_master_below_minimum_is_bias_only(mocker, mock_image):
     mock_image.header["EXPTIME"] = 2.0  # below the default dark_min_exptime=5.0
     mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", side_effect=_find_master_side_effect())

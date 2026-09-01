@@ -316,6 +316,42 @@ async def test_create_master_darks_no_bias_skips_all_groups(tmp_path: Path) -> N
 
 
 @pytest.mark.asyncio
+async def test_create_master_darks_legacy_fallback_when_all_darks_lack_exptime(tmp_path: Path) -> None:
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    for i in range(3):
+        write_fits(in_dir / f"bias{i}.fits", **make_frame_headers(image_type="bias", fname=f"bias{i}.fits"))
+    for i in range(3):
+        headers = make_frame_headers(image_type="dark", fname=f"dark{i}.fits")
+        del headers["EXPTIME"]
+        write_fits(in_dir / f"dark{i}.fits", **headers)
+
+    archive = LocalArchive(root=str(in_dir))
+    output = LocalArchive(root=str(tmp_path / "out"))
+    pipeline = Pipeline(steps=[])
+
+    events: list[ProgressEvent] = []
+    reduction = Reduction(
+        archive=archive, pipeline=pipeline, output=output, calib_science=False, progress_callback=events.append
+    )
+    await reduction._create_master_calib("2024-01-01", "cam1", ImageType.BIAS, "1x1")
+    masters = await reduction._create_master_darks("2024-01-01", "cam1", "1x1")
+
+    # one combined master, not zero -- and it's not tagged with a made-up exptime
+    assert len(masters) == 1
+    assert "EXPTIME" not in masters[0].header
+
+    dark_events = [e for e in events if isinstance(e, MasterCalibCreated) and e.image_type == ImageType.DARK]
+    assert len(dark_events) == 1
+    assert dark_events[0].exptime is None
+
+    # filename formatting didn't blow up despite the missing EXPTIME
+    dark_files = list((tmp_path / "out").glob("*-dark-*"))
+    assert len(dark_files) == 1
+    assert "unknown" in dark_files[0].name
+
+
+@pytest.mark.asyncio
 async def test_create_master_darks_no_dark_frames_returns_empty(tmp_path: Path) -> None:
     in_dir = tmp_path / "in"
     in_dir.mkdir()

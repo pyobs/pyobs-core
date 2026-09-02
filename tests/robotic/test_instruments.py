@@ -1,0 +1,157 @@
+from __future__ import annotations
+
+from typing import Any
+
+from pyobs.robotic.instruments import Instrument, InstrumentCapabilities
+
+# One Instrument's InstrumentSerializer output, dumped from a live pyobs-portal instance
+# (pyobs-portal#142's schema: module_name lives on CameraCapability/TelescopeCapability/
+# DomeCapability/FilterWheelCapability, not on Instrument itself) -- confirmed against the actual
+# serializer output, not just hand-guessed field names.
+INSTRUMENT_RESPONSE: dict[str, Any] = {
+    "display_name": "GOE 50cm",
+    "notes": "Main telescope",
+    "updated_at": "2026-09-02T18:34:16.451210Z",
+    "cameras": [
+        {
+            "module_name": "iag50cam",
+            "code": "ef01",
+            "pixel_size_um": 5.4,
+            "sensor_width_px": 4096,
+            "sensor_height_px": 4096,
+            "roi_min_width_px": None,
+            "roi_min_height_px": None,
+            "roi_step_px": None,
+            "exposure_time_min_s": 0.001,
+            "exposure_time_max_s": 3600.0,
+            "image_types": ["object", "bias", "dark", "flat"],
+            "updated_at": "2026-09-02T18:34:16.452157Z",
+            "binnings": [
+                {"x": 1, "y": 1, "readout_time_s": 3.2, "updated_at": "2026-09-02T18:34:16.452608Z"},
+                {"x": 2, "y": 2, "readout_time_s": 1.8, "updated_at": "2026-09-02T18:34:16.452879Z"},
+            ],
+            "filter_wheels": [
+                {
+                    "name": "",
+                    "module_name": "iag50filt",
+                    "filter_change_time_s": 4.5,
+                    "updated_at": "2026-09-02T18:34:16.453140Z",
+                    "filters": [
+                        {"name": "R", "position": 1, "updated_at": "2026-09-02T18:34:16.453420Z"},
+                        {"name": "V", "position": 2, "updated_at": "2026-09-02T18:34:16.453663Z"},
+                    ],
+                }
+            ],
+        }
+    ],
+    "telescope": {
+        "module_name": "iag50telescope",
+        "aperture_mm": 500.0,
+        "focal_length_mm": 4000.0,
+        "mount_type": "fork",
+        "slew_rate_deg_per_s": 3.0,
+        "updated_at": "2026-09-02T18:34:16.453947Z",
+    },
+    "dome": {
+        "module_name": "iag50dome",
+        "rotate_rate_deg_per_s": 2.5,
+        "updated_at": "2026-09-02T18:34:16.454272Z",
+    },
+}
+
+
+def test_instrument_round_trips_portal_response() -> None:
+    instrument = Instrument.model_validate(INSTRUMENT_RESPONSE)
+    assert instrument.display_name == "GOE 50cm"
+    camera = instrument.cameras[0]
+    assert camera.module_name == "iag50cam"
+    assert camera.code == "ef01"
+    assert [(b.x, b.y, b.readout_time_s) for b in camera.binnings] == [(1, 1, 3.2), (2, 2, 1.8)]
+    wheel = camera.filter_wheels[0]
+    assert wheel.module_name == "iag50filt"
+    assert wheel.filter_change_time_s == 4.5
+    assert [f.name for f in wheel.filters] == ["R", "V"]
+    assert instrument.telescope is not None
+    assert instrument.telescope.module_name == "iag50telescope"
+    assert instrument.telescope.slew_rate_deg_per_s == 3.0
+    assert instrument.dome is not None
+    assert instrument.dome.module_name == "iag50dome"
+    assert instrument.dome.rotate_rate_deg_per_s == 2.5
+
+
+def test_instrument_with_no_telescope_or_dome() -> None:
+    response = {**INSTRUMENT_RESPONSE, "telescope": None, "dome": None}
+    instrument = Instrument.model_validate(response)
+    assert instrument.telescope is None
+    assert instrument.dome is None
+
+
+class TestInstrumentCapabilities:
+    def setup_method(self) -> None:
+        self.capabilities = InstrumentCapabilities.from_api_response([INSTRUMENT_RESPONSE])
+
+    def test_camera_lookup_by_module_name(self) -> None:
+        camera = self.capabilities.camera("iag50cam")
+        assert camera is not None
+        assert camera.code == "ef01"
+        assert self.capabilities.camera("no-such-module") is None
+
+    def test_by_camera_code(self) -> None:
+        camera = self.capabilities.by_camera_code("ef01")
+        assert camera is not None
+        assert camera.module_name == "iag50cam"
+        assert self.capabilities.by_camera_code("zz99") is None
+
+    def test_telescope_lookup_by_module_name(self) -> None:
+        telescope = self.capabilities.telescope("iag50telescope")
+        assert telescope is not None
+        assert telescope.slew_rate_deg_per_s == 3.0
+        assert self.capabilities.telescope("iag50cam") is None
+
+    def test_dome_lookup_by_module_name(self) -> None:
+        dome = self.capabilities.dome("iag50dome")
+        assert dome is not None
+        assert dome.rotate_rate_deg_per_s == 2.5
+
+    def test_filter_wheel_lookup_by_module_name(self) -> None:
+        wheel = self.capabilities.filter_wheel("iag50filt")
+        assert wheel is not None
+        assert wheel.filter_change_time_s == 4.5
+
+    def test_filter_wheel_with_no_module_name_is_not_indexed(self) -> None:
+        # pyobs-portal#142: module_name is nullable on FilterWheelCapability -- a wheel with none
+        # set has no key to look it up by, and must not silently collide with another None-named
+        # entry.
+        response = {
+            **INSTRUMENT_RESPONSE,
+            "cameras": [
+                {
+                    **INSTRUMENT_RESPONSE["cameras"][0],
+                    "filter_wheels": [
+                        {
+                            "name": "unnamed",
+                            "module_name": None,
+                            "filter_change_time_s": 1.0,
+                            "updated_at": None,
+                            "filters": [],
+                        }
+                    ],
+                }
+            ],
+        }
+        capabilities = InstrumentCapabilities.from_api_response([response])
+        assert capabilities.filter_wheel("iag50filt") is None
+
+    def test_multiple_instruments_aggregate_into_one_lookup(self) -> None:
+        other = {
+            **INSTRUMENT_RESPONSE,
+            "display_name": "Guide scope",
+            "cameras": [{**INSTRUMENT_RESPONSE["cameras"][0], "module_name": "guidecam", "code": "ef02"}],
+            "telescope": {**INSTRUMENT_RESPONSE["telescope"], "module_name": "guidetelescope"},
+            "dome": None,
+        }
+        capabilities = InstrumentCapabilities.from_api_response([INSTRUMENT_RESPONSE, other])
+        assert capabilities.camera("iag50cam") is not None
+        assert capabilities.camera("guidecam") is not None
+        assert capabilities.telescope("guidetelescope") is not None
+        assert len(capabilities.instruments) == 2

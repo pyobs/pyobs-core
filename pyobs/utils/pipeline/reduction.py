@@ -44,6 +44,7 @@ class Reduction(ReductionBase):
         calib_science: bool = True,
         progress_callback: ProgressCallback | None = None,
         dark_exptime_tolerance: float = 0.01,
+        min_darks_per_group: int = 3,
     ):
         """Creates a Reduction object for reducing a given observation period.
 
@@ -60,6 +61,8 @@ class Reduction(ReductionBase):
             progress_callback: See ReductionBase.
             dark_exptime_tolerance: Relative tolerance for grouping a night's raw DARK frames
                 into per-exptime master series -- see pyobs.utils.exptime_grouping.
+            min_darks_per_group: Minimum number of raw frames in a per-exptime DARK group to
+                combine a master dark from; smaller groups are skipped individually.
         """
         super().__init__(archive=archive, pipeline=pipeline, min_flats=min_flats, progress_callback=progress_callback)
 
@@ -70,6 +73,7 @@ class Reduction(ReductionBase):
         self._create_calibs = create_calibs
         self._calib_science = calib_science
         self._dark_exptime_tolerance = dark_exptime_tolerance
+        self._min_darks_per_group = min_darks_per_group
 
         # make sure the local output directory exists
         if self._store_local:
@@ -195,8 +199,9 @@ class Reduction(ReductionBase):
         """Creates one master dark per exposure time present in the night's raw DARK frames
         (grouped within self._dark_exptime_tolerance) -- a night can have darks at more than
         one exptime now that DarkBiasScript can match them to the night's science exptimes
-        (#831). Frame groups with fewer than 3 members are skipped individually with a
-        warning, rather than aborting dark reduction for this instrument/binning entirely.
+        (#831). Frame groups with fewer than self._min_darks_per_group members are skipped
+        individually with a warning, rather than aborting dark reduction for this
+        instrument/binning entirely.
 
         If none of the night's raw darks carry EXPTIME at all (a fully legacy instrument, as
         opposed to a handful of untagged frames mixed in with tagged ones), grouping would
@@ -247,12 +252,12 @@ class Reduction(ReductionBase):
         for group, exptime in groups:
             label = "legacy (no exptime)" if exptime is None else f"~{exptime}s"
 
-            if len(group) < 3:
+            if len(group) < self._min_darks_per_group:
                 log.warning("Too few (%d) dark frames at %s, skipping...", len(group), label)
                 continue
 
             images = await self._archive.download_frames(group)
-            if len(images) < 3:
+            if len(images) < self._min_darks_per_group:
                 log.warning("Too few (%d) dark frames at %s, skipping...", len(images), label)
                 continue
 

@@ -17,6 +17,15 @@ pyobs-portal#140: `module_name` now lives on each device-capability model (`Tele
 (§A.1/§A.8) already assumes that flatter shape, no further changes needed there before starting
 implementation.
 
+§B's implementation detail (cache helper, `last_instrument_update/` marker, `schema.py` wiring)
+now has its own plan on the pyobs-portal side:
+`../../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md`
+— written against the `instruments` app as actually implemented post-#140 (confirmed
+`GET /api/instruments/` already exists with `INSTRUMENT_QUERYSET`'s prefetch shape; `schema.py`'s
+`estimate_duration()` is currently at `:766-792`, not `:748-774` as first estimated below). §B
+below is kept for cross-repo context but that doc is the current source of truth for the
+pyobs-portal-side design.
+
 ## Problem
 
 Several `Script.estimate_duration()` implementations in pyobs-core return hardcoded fudge

@@ -24,12 +24,14 @@ class PortalObservationArchive(ObservationArchive):
         token: str,
         mode: Literal["day", "night"] = "night",
         auto_update: bool = True,
+        announce_updates: bool = True,
         **kwargs: Any,
     ):
         ObservationArchive.__init__(self, **kwargs)
         self._url = url
         self._token = token
         self._mode = mode
+        self._announce_updates = announce_updates
         self._aiohttp_session: aiohttp.ClientSession | None = None
         self._last_update: Time | None = None
         self._last_marker: Time | None = None
@@ -109,15 +111,16 @@ class PortalObservationArchive(ObservationArchive):
         }:
             self._observations = observations
             self._last_update = Time.now()
-            sorted_obs = sorted(
-                filter(lambda o: o.state == ObservationState.PENDING, self._observations),
-                key=lambda o: o.start,
-            )
-            if len(sorted_obs) == 0:
-                log.info("Downloaded new schedule.")
-            else:
-                obs = sorted_obs[0]
-                log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
+            if self._announce_updates:
+                sorted_obs = sorted(
+                    filter(lambda o: o.state == ObservationState.PENDING, self._observations),
+                    key=lambda o: o.start,
+                )
+                if len(sorted_obs) == 0:
+                    log.info("Downloaded new schedule.")
+                else:
+                    obs = sorted_obs[0]
+                    log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
 
     async def last_update_time(self) -> Time:
         """Fetches last schedule update time."""

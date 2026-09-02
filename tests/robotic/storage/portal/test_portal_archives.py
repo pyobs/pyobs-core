@@ -671,6 +671,42 @@ async def test_obs_update_downloads_and_applies(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_obs_update_announces_by_default(mocker, caplog) -> None:
+    """Default (announce_updates=True) behavior, e.g. as used by Mastermind: a real content
+    change logs an INFO line."""
+    archive = make_obs_archive()
+    mocker.patch(
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
+        AsyncMock(return_value=[OBS_DICT]),
+    )
+
+    with caplog.at_level("INFO"):
+        await archive._update()
+
+    assert "Downloaded new schedule" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_obs_update_announce_updates_false_suppresses_info_log(mocker, caplog) -> None:
+    """Scheduler injects announce_updates=False (it already logs its own schedule in detail) --
+    the change must still be applied, just not announced at INFO."""
+    archive = PortalObservationArchive(
+        url="http://localhost:8000", token="testtoken", auto_update=False, announce_updates=False
+    )
+    archive._aiohttp_session = MagicMock()
+    mocker.patch(
+        "pyobs.robotic.storage.portal.observationarchive.http_request_paginated",
+        AsyncMock(return_value=[OBS_DICT]),
+    )
+
+    with caplog.at_level("INFO"):
+        await archive._update()
+
+    assert len(archive._observations) == 1
+    assert "Downloaded new schedule" not in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_obs_update_no_change_keeps_cache(mocker) -> None:
     """Idempotent poll must not replace the cached list or bump _last_update."""
     archive = make_obs_archive()

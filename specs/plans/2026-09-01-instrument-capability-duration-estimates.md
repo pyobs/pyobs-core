@@ -87,19 +87,22 @@ models mirroring the shape `InstrumentSerializer` already emits (`pyobs_portal/i
 post-#139: `Instrument` (`display_name`, `notes`, `cameras: list[CameraCapability]`, `telescope`,
 `dome` — no `module_name` of its own), `CameraCapability` (`module_name`, `code`,
 `binnings: list[BinningOption]`, `filter_wheels: list[FilterWheelCapability]`, ...),
-`BinningOption` (`x`, `y`, `readout_time_s`), `FilterWheelCapability` (`filter_change_time_s`,
-`filters: list[Filter]`), `TelescopeCapability` (`module_name`, `slew_rate_deg_per_s`, ...),
+`BinningOption` (`x`, `y`, `readout_time_s`), `FilterWheelCapability` (`module_name`,
+`filter_change_time_s`, `filters: list[Filter]` — `module_name` nullable, per pyobs-portal#142:
+not every wheel is its own addressable module), `TelescopeCapability` (`module_name`, `slew_rate_deg_per_s`, ...),
 `DomeCapability` (`module_name`, `rotate_rate_deg_per_s`). No Django import — pyobs-core only ever
 deserializes the JSON the portal API already returns.
 
-`InstrumentCapabilities` flattens the nested response into three module-name-keyed dicts built
-once at parse time — `dict[module_name, CameraCapability]`, `dict[module_name, TelescopeCapability]`,
-`dict[module_name, DomeCapability]` — with `camera(module_name)`/`telescope(module_name)`/
-`dome(module_name)` lookups hitting those directly (each script only ever needs one device's
-capability row, never "the instrument" as a concept) plus `by_camera_code(code) ->
-CameraCapability | None` for the fleet-wide-ID case. No two-step "resolve `Instrument`, then search
-its nested list" indirection — `self.camera`/`self.telescope` (already-existing plain module-name
-string fields on the scripts) match directly against a leaf capability's own `module_name`.
+`InstrumentCapabilities` flattens the nested response into module-name-keyed dicts built once at
+parse time — `dict[module_name, CameraCapability]`, `dict[module_name, TelescopeCapability]`,
+`dict[module_name, DomeCapability]`, `dict[module_name, FilterWheelCapability]` (skipping rows
+with a `None` `module_name`) — with `camera(module_name)`/`telescope(module_name)`/
+`dome(module_name)`/`filter_wheel(module_name)` lookups hitting those directly (each script only
+ever needs one device's capability row, never "the instrument" as a concept) plus
+`by_camera_code(code) -> CameraCapability | None` for the fleet-wide-ID case. No two-step "resolve
+`Instrument`, then search its nested list" indirection — `self.camera`/`self.telescope`/
+`self.filters` (already-existing plain module-name string fields on the scripts) match directly
+against a leaf capability's own `module_name`.
 
 **2. `TaskData` gains a field** (`pyobs/robotic/task.py:24-34`):
 ```python
@@ -147,14 +150,14 @@ argument. No other caller of `schedule()` needs changes — this is the only pla
 outside tests.
 
 **8. The five leaf scripts** read `data.instrument_capabilities`, look up by `self.camera`/
-`self.telescope` (already-existing plain module-name string fields), and fall back to today's
-constant whenever the lookup misses at any level (no `data`, no `instrument_capabilities`, no
-`CameraCapability`/`TelescopeCapability` row with that `module_name`, or the specific field is
-`None` on the matched row):
+`self.telescope`/`self.filters` (already-existing plain module-name string fields), and fall back
+to today's constant whenever the lookup misses at any level (no `data`, no
+`instrument_capabilities`, no `CameraCapability`/`TelescopeCapability`/`FilterWheelCapability` row
+with that `module_name`, or the specific field is `None` on the matched row):
 
 | Script | Looks up | Replaces |
 | --- | --- | --- |
-| `ImagingScript` | camera's matching `BinningOption.readout_time_s`, active filter wheel's `filter_change_time_s`, telescope's `slew_rate_deg_per_s` | adds readout + filter-change (currently absent), replaces the `60.0`/`30.0` fudge |
+| `ImagingScript` | camera's matching `BinningOption.readout_time_s`, `self.filters`-matched `FilterWheelCapability.filter_change_time_s` (pyobs-portal#142 gave `FilterWheelCapability` its own `module_name`, so this matches directly like camera/telescope rather than needing an "active wheel" heuristic — falls back to today's constant if `self.filters` is unset or the wheel's `module_name` is `None`/unmatched), telescope's `slew_rate_deg_per_s` | adds readout + filter-change (currently absent), replaces the `60.0`/`30.0` fudge |
 | `PointingScript` | telescope's `slew_rate_deg_per_s` | flat `60.0` |
 | `DarkBiasScript` | camera's matching `BinningOption.readout_time_s` | flat `readout = 5.0` |
 | `AutoFocusScript` | telescope's `slew_rate_deg_per_s` | the `+60.0` slew fudge |

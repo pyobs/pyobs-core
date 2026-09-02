@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import ConfigDict, Field, PrivateAttr
 
 from pyobs.interfaces import FitsHeaderEntry
+from pyobs.robotic.instruments import InstrumentCapabilities
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
@@ -26,6 +27,7 @@ class TaskData:
     observation_archive: ObservationArchive | None = None
     task_archive: TaskArchive | None = None
     target: Target | None = None
+    instrument_capabilities: InstrumentCapabilities | None = None
 
     @property
     def resolved_target(self) -> Target | None:
@@ -118,9 +120,13 @@ class Task(PolymorphicBaseModel):
             return {}
         return self._running_script.get_fits_headers(namespaces)
 
-    def estimate_duration(self, time: Time | None = None) -> float:
+    def estimate_duration(
+        self, time: Time | None = None, instrument_capabilities: InstrumentCapabilities | None = None
+    ) -> float:
         if self.script:
-            return self.create_script().estimate_duration(TaskData(task=self), time)
+            return self.create_script().estimate_duration(
+                TaskData(task=self, instrument_capabilities=instrument_capabilities), time
+            )
         return self.duration
 
     async def resolve_target(self, time: Time, task: Task, data: DataProvider) -> bool:

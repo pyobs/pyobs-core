@@ -10,6 +10,7 @@ import numpy as np
 from astropy.time import TimeDelta
 
 from pyobs.object import Object
+from pyobs.robotic.instruments import InstrumentCapabilities
 from pyobs.robotic.storage.observationarchive import ObservationArchive
 from pyobs.utils.time import Time
 
@@ -59,7 +60,12 @@ class OnDemandScheduler(TaskScheduler):
         self._global_constraints: list[Constraint] = [Constraint.create(self, c) for c in constraints]
 
     async def schedule(
-        self, tasks: list[Task], projects: list[Project], start: Time, end: Time
+        self,
+        tasks: list[Task],
+        projects: list[Project],
+        start: Time,
+        end: Time,
+        instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> AsyncIterator[Observation]:
         if self._observer is None:
             raise RuntimeError("No observer given.")
@@ -75,7 +81,9 @@ class OnDemandScheduler(TaskScheduler):
         data.archive.freeze()
 
         # schedule from start to end
-        async for task in self.schedule_in_interval(tasks, projects_dict, start, end, data):
+        async for task in self.schedule_in_interval(
+            tasks, projects_dict, start, end, data, instrument_capabilities=instrument_capabilities
+        ):
             # evolve archive -- night is keyed by the task's own scheduled time, not "now", since
             # a run can schedule up to schedule_range ahead into a different night (see
             # ObservationArchiveEvolution.evolve()'s docstring/comment for why)
@@ -95,6 +103,7 @@ class OnDemandScheduler(TaskScheduler):
         end: Time,
         data: DataProvider,
         step: float = 300,
+        instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> AsyncIterator[Observation]:
         time = start
         while time < end:
@@ -105,7 +114,9 @@ class OnDemandScheduler(TaskScheduler):
                 task.reset_resolved_target()
 
             # schedule first in this interval, could be one or two
-            async for scheduled_task in self.schedule_first_in_interval(tasks, projects, time, end, data):  # type: ignore[arg-type]
+            async for scheduled_task in self.schedule_first_in_interval(
+                tasks, projects, time, end, data, instrument_capabilities=instrument_capabilities  # type: ignore[arg-type]
+            ):
                 # yield it to caller
                 yield scheduled_task
 
@@ -128,44 +139,73 @@ class OnDemandScheduler(TaskScheduler):
         end: Time,
         data: DataProvider,
         step: float = 300,
+        instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> AsyncIterator[Observation]:
         # find current best task
-        task, merit = await self.find_next_best_task(tasks, projects, start, end, data)
+        task, merit = await self.find_next_best_task(
+            tasks, projects, start, end, data, instrument_capabilities=instrument_capabilities
+        )
 
         if task is not None and merit is not None:
             # check, whether there is another task within its duration that  will have a higher merit
             better_task, better_time, better_merit = await self.check_for_better_task(
-                task, projects, merit, tasks, start, end, data, step=step
+                task,
+                projects,
+                merit,
+                tasks,
+                start,
+                end,
+                data,
+                step=step,
+                instrument_capabilities=instrument_capabilities,
             )
 
             if better_task is not None and better_time is not None and better_merit is not None:
                 # can we maybe postpone the better task to run both?
                 postpone_time = await self.can_postpone_task(
-                    task, projects, better_task, better_merit, start, end, data
+                    task,
+                    projects,
+                    better_task,
+                    better_merit,
+                    start,
+                    end,
+                    data,
+                    instrument_capabilities=instrument_capabilities,
                 )
                 if postpone_time is not None:
                     # yes, we can! schedule both
-                    yield self.create_scheduled_task(task, merit, start)
-                    yield self.create_scheduled_task(better_task, better_merit, postpone_time)
+                    yield self.create_scheduled_task(
+                        task, merit, start, instrument_capabilities=instrument_capabilities
+                    )
+                    yield self.create_scheduled_task(
+                        better_task, better_merit, postpone_time, instrument_capabilities=instrument_capabilities
+                    )
                 else:
                     # just schedule better_task
-                    yield self.create_scheduled_task(better_task, better_merit, better_time)
+                    yield self.create_scheduled_task(
+                        better_task, better_merit, better_time, instrument_capabilities=instrument_capabilities
+                    )
 
                     # and find other tasks for in between, new end time is better_time
-                    async for between_task in self.schedule_in_interval(tasks, projects, start, better_time, data):
+                    async for between_task in self.schedule_in_interval(
+                        tasks, projects, start, better_time, data, instrument_capabilities=instrument_capabilities
+                    ):
                         yield between_task
 
             else:
                 # this seems to be the best task for now, schedule it
-                yield self.create_scheduled_task(task, merit, start)
+                yield self.create_scheduled_task(task, merit, start, instrument_capabilities=instrument_capabilities)
 
-    def create_scheduled_task(self, task: Task, merit: float, time: Time) -> Observation:
+    def create_scheduled_task(
+        self, task: Task, merit: float, time: Time, instrument_capabilities: InstrumentCapabilities | None = None
+    ) -> Observation:
         from pyobs.robotic import Observation
 
         return Observation(
             task=task,
             start=time,
-            end=time + TimeDelta(task.estimate_duration(time=time) * u.second),
+            end=time
+            + TimeDelta(task.estimate_duration(time=time, instrument_capabilities=instrument_capabilities) * u.second),
             priority=merit,
             target=task.target,
         )
@@ -213,7 +253,13 @@ class OnDemandScheduler(TaskScheduler):
         return total_merit
 
     async def evaluate_constraints_and_merits(
-        self, tasks: list[Task], projects: dict[str, Project], start: Time, end: Time, data: DataProvider
+        self,
+        tasks: list[Task],
+        projects: dict[str, Project],
+        start: Time,
+        end: Time,
+        data: DataProvider,
+        instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> list[float]:
         # evaluate all merit functions at given time
         merits: list[float] = []
@@ -230,7 +276,13 @@ class OnDemandScheduler(TaskScheduler):
                     # no merits? evaluate to 1
                     merit = 1.0
 
-                elif start + TimeDelta(task.estimate_duration(time=start) * u.second) > end:
+                elif (
+                    start
+                    + TimeDelta(
+                        task.estimate_duration(time=start, instrument_capabilities=instrument_capabilities) * u.second
+                    )
+                    > end
+                ):
                     # if task is too long for the given slot, we evaluate its merits to zero
                     merit = 0.0
 
@@ -255,11 +307,19 @@ class OnDemandScheduler(TaskScheduler):
         return merits
 
     async def find_next_best_task(
-        self, tasks: list[Task], projects: dict[str, Project], start: Time, end: Time, data: DataProvider
+        self,
+        tasks: list[Task],
+        projects: dict[str, Project],
+        start: Time,
+        end: Time,
+        data: DataProvider,
+        instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> tuple[Task | None, float]:
 
         # evaluate all merit functions at given time
-        merits = await run_cpu_bound(self.evaluate_constraints_and_merits, tasks, projects, start, end, data)
+        merits = await run_cpu_bound(
+            self.evaluate_constraints_and_merits, tasks, projects, start, end, data, instrument_capabilities
+        )
 
         # find max one
         idx = np.argmax(merits)
@@ -278,12 +338,17 @@ class OnDemandScheduler(TaskScheduler):
         end: Time,
         data: DataProvider,
         step: float = 300,
+        instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> tuple[Task | None, Time | None, float | None]:
         # exclude the already-selected task so it can't be picked as "better"
         other_tasks = [t for t in tasks if t is not task]
         t = start + TimeDelta(step * u.second)
-        while t < start + TimeDelta(task.estimate_duration(time=start) * u.second):
-            merits = await run_cpu_bound(self.evaluate_constraints_and_merits, other_tasks, projects, t, end, data)
+        while t < start + TimeDelta(
+            task.estimate_duration(time=start, instrument_capabilities=instrument_capabilities) * u.second
+        ):
+            merits = await run_cpu_bound(
+                self.evaluate_constraints_and_merits, other_tasks, projects, t, end, data, instrument_capabilities
+            )
             for i, m in enumerate(merits):
                 if m > merit:
                     return other_tasks[i], t, m
@@ -299,13 +364,24 @@ class OnDemandScheduler(TaskScheduler):
         start: Time,
         end: Time,
         data: DataProvider,
+        instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> Time | None:
         # new start time of better_task would be after the execution of task
-        better_start: Time = start + TimeDelta(task.estimate_duration(time=start) * u.second)
+        better_start: Time = start + TimeDelta(
+            task.estimate_duration(time=start, instrument_capabilities=instrument_capabilities) * u.second
+        )
 
         # evaluate merit of better_task at new start time
         merit = (
-            await run_cpu_bound(self.evaluate_constraints_and_merits, [better_task], projects, better_start, end, data)
+            await run_cpu_bound(
+                self.evaluate_constraints_and_merits,
+                [better_task],
+                projects,
+                better_start,
+                end,
+                data,
+                instrument_capabilities,
+            )
         )[0]
 
         # if it got better, return it, otherwise return Nones

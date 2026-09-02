@@ -17,7 +17,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (12, checked 2026-09-02)
+## Open issues (11, checked 2026-09-02)
 
 One row per issue — same layout for every repo.
 
@@ -28,7 +28,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-portal | [#132](https://github.com/pyobs/pyobs-portal/issues/132) | Script builder: if a dropdown has only one option, preselect it as the default | *assigned: thusser* — module-ref and optional-polymorphic selects in the schema-driven forms default to blank even when there's exactly one candidate |
 | pyobs-portal | [#131](https://github.com/pyobs/pyobs-portal/issues/131) | `script_tree()`: don't show modules that start with an underscore | *assigned: thusser* — `pkgutil.iter_modules` scan surfaces private `_*` modules/classes as script/provider types; no current core module hits it, but extension packages could |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |

@@ -296,6 +296,30 @@ async def test_create_master_darks_skips_under_populated_group_individually(tmp_
 
 
 @pytest.mark.asyncio
+async def test_create_master_darks_min_darks_per_group_lowers_threshold(tmp_path: Path) -> None:
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    for i in range(3):
+        write_fits(in_dir / f"bias{i}.fits", **make_frame_headers(image_type="bias", fname=f"bias{i}.fits"))
+    # only 2 frames at 600s -- skipped under the default threshold of 3
+    for i in range(2):
+        write_fits(
+            in_dir / f"dark600_{i}.fits",
+            **make_frame_headers(image_type="dark", fname=f"dark600_{i}.fits", exptime=600.0),
+        )
+
+    archive = LocalArchive(root=str(in_dir))
+    output = LocalArchive(root=str(tmp_path / "out"))
+    pipeline = Pipeline(steps=[])
+
+    reduction = Reduction(archive=archive, pipeline=pipeline, output=output, calib_science=False, min_darks_per_group=2)
+    await reduction._create_master_calib("2024-01-01", "cam1", ImageType.BIAS, "1x1")
+    masters = await reduction._create_master_darks("2024-01-01", "cam1", "1x1")
+
+    assert [m.header["EXPTIME"] for m in masters] == [600.0]
+
+
+@pytest.mark.asyncio
 async def test_create_master_darks_no_bias_skips_all_groups(tmp_path: Path) -> None:
     in_dir = tmp_path / "in"
     in_dir.mkdir()

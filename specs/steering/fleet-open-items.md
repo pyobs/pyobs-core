@@ -1,6 +1,6 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — checked on 2026-09-01.
+Status: standing snapshot — checked on 2026-09-02.
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -17,19 +17,17 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (20, checked 2026-09-01)
+## Open issues (18, checked 2026-09-02)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
 | pyobs-core | [#851](https://github.com/pyobs/pyobs-core/issues/851) | `DummyCamera` images the sky through a closed `DummyRoof` | *bug* — found on 2.1.1; the camera module has no roof reference, so nothing connects the two. Fix direction: an optional roof reference on `DummyCamera`, like the existing telescope reference, that darkens frames when the roof isn't open |
-| pyobs-core | [#850](https://github.com/pyobs/pyobs-core/issues/850) | A refused slew (`AltitudeLimitError`) puts the module in ERROR state until a manual reset | *bug* — found on 2.1.1 with `DummyRaDecTelescope` via pyobs-gui; a correctly-refused slew is handled as severe, module goes to error and rejects every further command (even valid ones) until `reset_error()` |
 | pyobs-core | [#849](https://github.com/pyobs/pyobs-core/issues/849) | `DummyRoof.stop_motion` always ends in IDLE, even on a parked roof | *bug* — found via the pyobs-gui roof widget on 2.1.1; stopping a parked/closed roof still reports IDLE, which reads as open. A scheduler trusting motion status to know whether the sky is available would start observing under a closed roof. Fix: derive status from `_open_percentage` instead of hardcoding IDLE |
 | pyobs-core | [#856](https://github.com/pyobs/pyobs-core/issues/856) | `PortalTaskArchive._update()` no-op saves cause avoidable re-download + reschedule churn | *enhancement* — a no-op re-save bumps `updated_at`, which the archive's own `model_dump()` comparison still counts as changed, triggering an unnecessary re-download/re-diff cycle even though the scheduler correctly no-ops in the end (follow-up from #848/#854) |
 | pyobs-core | [#855](https://github.com/pyobs/pyobs-core/issues/855) | `PolymorphicBaseModel`'s custom `model_serializer` ignores `exclude`/`include` (and other `model_dump` kwargs) | *bug* — `inject_class_on_serialization()` never calls its `handler`, so `model_dump(exclude=...)` silently no-ops on `Task`/`Script`/`Constraint`/`Merit`/`Target`; found while fixing #848. Needs `info.exclude`/`info.include` honored in the hand-rolled dict, without breaking the abstract-type-resolution fix the handler-bypass exists for |
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
-| pyobs-core | [#845](https://github.com/pyobs/pyobs-core/issues/845) | `Module._on_module_opened` crashes with unhandled `ValueError` when a peer cannot be resolved | *bug* — `Comm._resolve_proxy` raises plain `ValueError`, not `PyobsError`, so the handler's `except exc.PyobsError` doesn't catch it; logged as an unhandled exception on every such event. Regression from #669's exception-handling rollout |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#844](https://github.com/pyobs/pyobs-core/issues/844) | Reduction: make min-frames-per-exptime-group threshold for dark masters configurable | *enhancement, assigned: thusser* — `_create_master_darks` hardcodes a minimum of 3 raw frames per exptime group; add a `min_darks_per_group` param matching the existing `min_flats`. Surfaced while closing out pyobs-pipeline #13/#14 |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |

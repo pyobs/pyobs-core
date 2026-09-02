@@ -15,6 +15,12 @@ from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)
 
+# Filename suffixes whose content is attempted to be parsed as FITS (for templated destination
+# names and derived classes' process_extra/cleanup_extra hooks). Files whose names don't match
+# are still watched and copied as-is to non-templated destinations, just never handed to astropy
+# -- which is what produced the header warnings on non-FITS files.
+FITS_FILENAME_SUFFIXES = (".fits", ".fitz", ".fits.gz", ".fits.fz")
+
 
 @dataclass
 class CurrentFile:
@@ -203,13 +209,20 @@ class ImageWatcher(Module):
                 async with self.vfs.open_file(filename, "rb") as fd:
                     data = await fd.read()
 
-                # try to load as fits file; data may well not be a FITS file at all
-                try:
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore", fits.verify.VerifyWarning)
-                        fits_file = await asyncio.to_thread(fits.HDUList.fromstring, data)
-                except Exception:
-                    fits_file = None
+                # only attempt to load the file as FITS when its name suggests it is one; any
+                # other file (e.g. a raw camera binary like "w123.0") is still copied as-is to
+                # non-templated destinations, just without the parse attempt and the astropy
+                # header warnings it raises on non-FITS content. A matching name is no
+                # guarantee, though -- the data may be corrupt or truncated -- hence the
+                # try/except below.
+                fits_file = None
+                if os.path.basename(filename).lower().endswith(FITS_FILENAME_SUFFIXES):
+                    try:
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", fits.verify.VerifyWarning)
+                            fits_file = await asyncio.to_thread(fits.HDUList.fromstring, data)
+                    except Exception:
+                        fits_file = None
 
                 # fill current file
                 self.current_file = CurrentFile(filename=filename, data=data, hdu_list=fits_file)

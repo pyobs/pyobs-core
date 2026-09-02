@@ -203,6 +203,112 @@ async def test_worker_requeues_on_write_failure(caplog) -> None:
     assert "skipping for now" in caplog.text
 
 
+# ── FITS-parse gating by filename suffix ──────────────────────────────────────
+
+
+@pytest.mark.parametrize("name", ["frame.0", "frame.txt", "frame.bin", "frame"])
+@pytest.mark.asyncio
+async def test_worker_does_not_parse_non_fits_filenames(monkeypatch, name) -> None:
+    """A file whose name doesn't look like FITS is still copied as-is to a non-templated
+    destination, but is never handed to astropy -- no parse attempt, so no astropy header
+    warnings for e.g. raw camera binaries ("frame.0" here, per a real incident)."""
+    watcher = make_watcher(destinations=["/dest"], wait_time=0)
+    data = b"\x00\x01\x02 raw binary, definitely not fits"
+    read_ctx, write_ctx = make_read_write_ctx(data)
+
+    def open_side_effect(filename, mode):
+        return read_ctx if mode == "rb" else write_ctx
+
+    watcher._vfs.open_file = MagicMock(side_effect=open_side_effect)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+
+    parse_calls = []
+
+    def unexpected_fromstring(_data: bytes):
+        parse_calls.append(_data)
+        return None
+
+    monkeypatch.setattr(imagewatcher_module.fits.HDUList, "fromstring", staticmethod(unexpected_fromstring))
+
+    watcher._queue.put_nowait((f"/watch/{name}", 0.0))
+    task = asyncio.create_task(watcher._worker())
+    await asyncio.sleep(0.1)
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+    assert parse_calls == []
+    assert watcher.current_file is not None
+    assert watcher.current_file.hdu_list is None
+    watcher._vfs.remove.assert_called_once_with(f"/watch/{name}")
+
+
+@pytest.mark.parametrize("name", ["frame.fits", "frame.fitz", "frame.fits.gz", "frame.fits.fz", "FRAME.FITS"])
+@pytest.mark.asyncio
+async def test_worker_parses_fits_filename_suffixes(monkeypatch, name) -> None:
+    """Files whose names match the FITS suffixes still get the (best-effort) parse attempt."""
+    watcher = make_watcher(destinations=["/dest"], wait_time=0)
+    data = b"some data"
+    read_ctx, write_ctx = make_read_write_ctx(data)
+
+    def open_side_effect(filename, mode):
+        return read_ctx if mode == "rb" else write_ctx
+
+    watcher._vfs.open_file = MagicMock(side_effect=open_side_effect)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+
+    parse_calls = []
+
+    def recording_fromstring(parsed: bytes):
+        parse_calls.append(parsed)
+        return MagicMock()
+
+    monkeypatch.setattr(imagewatcher_module.fits.HDUList, "fromstring", staticmethod(recording_fromstring))
+
+    watcher._queue.put_nowait((f"/watch/{name}", 0.0))
+    task = asyncio.create_task(watcher._worker())
+    await asyncio.sleep(0.1)
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+    assert parse_calls == [data]
+    assert watcher.current_file is not None
+    watcher._vfs.remove.assert_called_once_with(f"/watch/{name}")
+
+
+@pytest.mark.asyncio
+async def test_worker_parse_failure_on_fits_name_still_copies_file() -> None:
+    """A .fits-named file whose bytes fail to parse (corrupt/truncated) is still copied as-is
+    to a non-templated destination -- the parse is best-effort, not a gate on copying."""
+    watcher = make_watcher(destinations=["/dest"], wait_time=0)
+    data = b"not really fits but named like it"
+    read_ctx, write_ctx = make_read_write_ctx(data)
+
+    def open_side_effect(filename, mode):
+        return read_ctx if mode == "rb" else write_ctx
+
+    watcher._vfs.open_file = MagicMock(side_effect=open_side_effect)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+
+    watcher._queue.put_nowait(("/watch/corrupt.fits", 0.0))
+    task = asyncio.create_task(watcher._worker())
+    await asyncio.sleep(0.1)
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+    assert watcher.current_file is not None
+    assert watcher.current_file.hdu_list is None
+    watcher._vfs.remove.assert_called_once_with("/watch/corrupt.fits")
+
+
 # ── event-loop responsiveness during file processing ─────────────────────────
 
 

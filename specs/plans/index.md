@@ -205,4 +205,4 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-09-02-imagewatcher-relative-path-recursive.md](2026-09-02-imagewatcher-relative-path-recursive.md) —
   `ImageWatcher`: optional relative-path preservation (`flatten=False`) and recursive directory
   watching, needed so it can relocate a nested directory tree wholesale instead of flattening it.
-  **implemented, PR open** (PR #860)
+  **implemented, merged, released** (PR #860, `v2.3.0`)

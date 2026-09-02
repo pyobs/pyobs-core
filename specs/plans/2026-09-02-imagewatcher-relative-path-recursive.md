@@ -1,6 +1,7 @@
 # Plan: ImageWatcher — relative-path preservation and recursive watching
 
-Status: **implemented, PR open** — cleanup-of-empty-dirs (§3) deliberately deferred, see below
+Status: **implemented, merged, released** (PR #860, squash-merged to `develop` as `4eb5553d`;
+released as `v2.3.0`) — cleanup-of-empty-dirs (§3) deliberately deferred, see below.
 
 ## Context
 
@@ -142,7 +143,7 @@ above would also catch anything dropped this way.
 - [x] Docs: `ImageWatcher`'s docstring covers `flatten` and the recursive `pattern` matching;
       Sphinx pulls this in automatically via `autoclass ... :members:`, no separate `.rst` edit
       needed.
-- [ ] Release per pyobs-core conventions — not done yet, pending PR review/merge.
+- [x] Release per pyobs-core conventions — `v2.3.0`.
 
 ### Review follow-up (thusser, PR #860)
 

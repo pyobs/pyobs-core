@@ -17,12 +17,13 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (13, checked 2026-09-02)
+## Open issues (14, checked 2026-09-02)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#866](https://github.com/pyobs/pyobs-core/issues/866) | `Module._on_module_opened` fan-out is unthrottled, saturates event loop with enough peers | confirmed twice (iag50 module-join timeouts, pyobs-gui `monet` GUI-freeze) — see `specs/steering/module-opened-fanout-stalls-event-loop.md` |
 | pyobs-core | [#863](https://github.com/pyobs/pyobs-core/issues/863) | Colors in web projects, especially plots: theme-aware chart colors and user-defined colors that work in both themes | *enhancement* — follow-up to #861 |
 | pyobs-core | [#861](https://github.com/pyobs/pyobs-core/issues/861) | Default theme should correspond to the user's theme across all web projects | *enhancement* — follow-up to #749 |
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |

@@ -1,6 +1,6 @@
 # Plan: Feed pyobs-portal instrument capability data into script duration estimates
 
-Status: proposed, blocked on pyobs-portal#139 (Repos: pyobs-core, pyobs-portal)
+Status: proposed, unblocked (Repos: pyobs-core, pyobs-portal)
 
 Follow-up to pyobs-portal#133 (merged 2026-09-01/02; `instruments` app: per-instrument
 camera/telescope/dome capability data, incl. task-duration-estimate fields — readout time per
@@ -8,13 +8,14 @@ binning, filter-change time, slew rate, dome-rotate rate). That plan
 (`../../../pyobs-portal/specs/plans/2026-09-01-portal-instrument-config-app.md`) deliberately
 scoped out consuming the data anywhere; this plan is where it gets consumed.
 
-**Blocked on pyobs-portal#139**: as merged, `Instrument.module_name` conflates the grouping's
-identity with the telescope's module name, and `CameraCapability` has no module-name field at all
-(only `code`, a different, physical-hardware-ID namespace) — so there's no key to look up a camera
-capability by `ImagingScript.camera`/`DarkBiasScript.camera` etc. #139 moves `module_name` onto
-each device-capability model (`TelescopeCapability`, `DomeCapability`, `CameraCapability`) and
-drops `InstrumentDetail`; the design below (§A.1/§A.8) already assumes that flatter shape lands
-first.
+Was blocked on pyobs-portal#139 (as merged, `Instrument.module_name` conflated the grouping's
+identity with the telescope's module name, and `CameraCapability` had no module-name field at all
+— only `code`, a different, physical-hardware-ID namespace — so there was no key to look up a
+camera capability by `ImagingScript.camera`/`DarkBiasScript.camera` etc.). Landed 2026-09-02 in
+pyobs-portal#140: `module_name` now lives on each device-capability model (`TelescopeCapability`,
+`DomeCapability`, `CameraCapability`) and `InstrumentDetail` is dropped — the design below
+(§A.1/§A.8) already assumes that flatter shape, no further changes needed there before starting
+implementation.
 
 ## Problem
 

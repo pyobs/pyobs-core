@@ -248,6 +248,12 @@ class YamlObservationArchive(FileSystemObservationArchive):
             return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
     async def _save_observations_to_file(self, path: str, observations: ObservationList) -> None:
+        # exclude_defaults now also applies to the nested (PolymorphicBaseModel) Task/Constraint/
+        # etc. fields, not just Observation's own -- pyobs-core#855 fixed inject_class_on_
+        # serialization() silently ignoring it. Saved YAML files drop more default-valued task
+        # fields (active, empty constraints/merits/script, priority: 1.0, ...) than before; this
+        # is intentional and round-trips fine (model_validate refills the defaults), but anyone
+        # reading these files raw will notice the shape change.
         data = [obs.model_dump(mode="json", exclude_defaults=True) for obs in observations]
         with open(path, "w") as f:
             yaml.safe_dump(data, f)

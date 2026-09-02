@@ -80,6 +80,42 @@ async def test_create_dir(tmp_path: Path) -> None:
             await f.write("This is a test")
 
 
+# ── rmdir ─────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_rmdir_removes_empty_directory(tmp_path: Path) -> None:
+    root = str(tmp_path)
+    (tmp_path / "sub").mkdir()
+
+    assert await LocalFile.rmdir("sub", root=root) is True
+    assert not (tmp_path / "sub").exists()
+
+
+@pytest.mark.asyncio
+async def test_rmdir_returns_false_for_non_empty_directory(tmp_path: Path) -> None:
+    root = str(tmp_path)
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "file.txt").write_text("data")
+
+    assert await LocalFile.rmdir("sub", root=root) is False
+    assert (tmp_path / "sub").exists()
+
+
+@pytest.mark.asyncio
+async def test_rmdir_returns_false_for_missing_directory(tmp_path: Path) -> None:
+    assert await LocalFile.rmdir("does-not-exist", root=str(tmp_path)) is False
+
+
+@pytest.mark.asyncio
+async def test_rmdir_returns_false_for_a_file(tmp_path: Path) -> None:
+    root = str(tmp_path)
+    (tmp_path / "file.txt").write_text("data")
+
+    assert await LocalFile.rmdir("file.txt", root=root) is False
+    assert (tmp_path / "file.txt").exists()
+
+
 # ── event-loop responsiveness ────────────────────────────────────────────────
 
 

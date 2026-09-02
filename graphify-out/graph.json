@@ -190,7 +190,7 @@
       "ecosystem": "python",
       "source_file": "pyproject.toml",
       "source_location": "L1",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "_origin": "ast",
       "id": "pkg_pyobs_core",
       "community": 399,
@@ -357741,5 +357741,5 @@
       "source_file": "specs/steering/scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md"
     }
   ],
-  "built_at_commit": "1a86853441871bd97f312cc4acf376976e310184"
+  "built_at_commit": "5a7ea12d530c4e17d8cfbd80219169cd9abe4ad0"
 }

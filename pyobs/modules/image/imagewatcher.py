@@ -272,12 +272,32 @@ class ImageWatcher(Module):
                 log.info("Removing file from watch directory...")
                 if not await self.vfs.remove(filename):
                     log.warning("Could not delete %s.", filename)
+                else:
+                    # clean up any now-empty parent directories the file left behind
+                    await self._cleanup_empty_parents(filename)
 
                 # cleanup extra
                 await self.cleanup_extra(filename)
 
             except Exception:
                 log.exception("Something went wrong.")
+
+    async def _cleanup_empty_parents(self, filename: str) -> None:
+        """Remove now-empty parent directories left behind by a just-deleted file.
+
+        Walks from filename's immediate parent up towards (but excluding) watchpath, removing
+        each directory while it's empty and stopping at the first one that isn't (or otherwise
+        can't be removed) -- most commonly a directory that still holds sibling files/dirs, which
+        is the normal, expected way this loop ends. Only relevant for recursive watching
+        (watchpath itself is never removed); a flat watch directory has no subdirectories for
+        this to ever act on.
+        """
+        watchpath = PurePosixPath(self._watchpath)
+        parent = PurePosixPath(filename).parent
+        while parent != watchpath and watchpath in parent.parents:
+            if not await self.vfs.rmdir(str(parent)):
+                break
+            parent = parent.parent
 
     async def process_extra(self, filename: str) -> bool:
         """Can be overwritten by derived classes to do extra processing on files.

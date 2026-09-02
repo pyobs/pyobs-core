@@ -17,7 +17,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (10, checked 2026-09-02)
+## Open issues (9, checked 2026-09-02)
 
 One row per issue — same layout for every repo.
 
@@ -28,7 +28,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-core | [#858](https://github.com/pyobs/pyobs-core/issues/858) | Use live telescope position for scheduler's first-task slew-distance estimate | *enhancement* — follow-up to the instrument-capability-duration-estimates plan below; solvable now for `OnDemandScheduler`'s first placed task only (one pre-fetched live position), not the harder mid-schedule/portal-UI cases |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement* — follow-up to #858; needs "last scheduled task's target" state threaded through `OnDemandScheduler`'s greedy recursion, careful of `check_for_better_task`/`can_postpone_task`'s out-of-order yields |
-| pyobs-portal | [#139](https://github.com/pyobs/pyobs-portal/issues/139) | `instruments` app: move `module_name` to Telescope/Dome/CameraCapability, drop `InstrumentDetail` | *blocking, PR open* — [pyobs-portal#140](https://github.com/pyobs/pyobs-portal/pull/140) implements it, awaiting review; blocks pyobs-core's instrument-capability-duration-estimates plan (§A.1/§A.8) |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
@@ -54,13 +53,13 @@ One row per issue — same layout for every repo.
   dependency, upstream-submittable), config-gated via `OIDC_ENABLED`, additive next to local
   username/password auth; supersedes Section 0 of the 2026-08-12 shared-auth plan.
 - [2026-09-01-instrument-capability-duration-estimates.md](../plans/2026-09-01-instrument-capability-duration-estimates.md) —
-  *proposed, blocked on pyobs-portal#139* (pyobs-core, pyobs-portal). Feed pyobs-portal#133's
-  (merged) instrument capability data (readout/filter-change/slew/dome-rotate times) into
-  `Script.estimate_duration()` for `ImagingScript` and 4 other leaf scripts via a new
-  `TaskData.instrument_capabilities` field; wires the portal's script builder and
-  `OnDemandScheduler` (not `AstroplanScheduler`). Slew/rotate start-position left as a fixed
-  placeholder except `OnDemandScheduler`'s first placed task, split out as pyobs-core#858 (first
-  task) and pyobs-core#859 (every task after).
+  *proposed, unblocked* (pyobs-core, pyobs-portal). Feed pyobs-portal#133's (merged) instrument
+  capability data (readout/filter-change/slew/dome-rotate times) into `Script.estimate_duration()`
+  for `ImagingScript` and 4 other leaf scripts via a new `TaskData.instrument_capabilities` field;
+  wires the portal's script builder and `OnDemandScheduler` (not `AstroplanScheduler`). Was
+  blocked on pyobs-portal#139, landed 2026-09-02 in pyobs-portal#140. Slew/rotate start-position
+  left as a fixed placeholder except `OnDemandScheduler`'s first placed task, split out as
+  pyobs-core#858 (first task) and pyobs-core#859 (every task after).
 ### Design docs still *proposed*
 
 - [gui-standalone-binary.md](../design/gui-standalone-binary.md) — umbrella for the compiled

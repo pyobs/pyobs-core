@@ -1,11 +1,20 @@
 # Plan: Feed pyobs-portal instrument capability data into script duration estimates
 
-Status: proposed (no issue filed yet; Repos: pyobs-core, pyobs-portal)
+Status: proposed, blocked on pyobs-portal#139 (Repos: pyobs-core, pyobs-portal)
 
-Follow-up to pyobs-portal#133 (`instruments` app: per-instrument camera/telescope/dome capability
-data, incl. task-duration-estimate fields — readout time per binning, filter-change time, slew
-rate, dome-rotate rate). That plan (`../../../pyobs-portal/specs/plans/2026-09-01-portal-instrument-config-app.md`)
-deliberately scoped out consuming the data anywhere; this plan is where it gets consumed.
+Follow-up to pyobs-portal#133 (merged 2026-09-01/02; `instruments` app: per-instrument
+camera/telescope/dome capability data, incl. task-duration-estimate fields — readout time per
+binning, filter-change time, slew rate, dome-rotate rate). That plan
+(`../../../pyobs-portal/specs/plans/2026-09-01-portal-instrument-config-app.md`) deliberately
+scoped out consuming the data anywhere; this plan is where it gets consumed.
+
+**Blocked on pyobs-portal#139**: as merged, `Instrument.module_name` conflates the grouping's
+identity with the telescope's module name, and `CameraCapability` has no module-name field at all
+(only `code`, a different, physical-hardware-ID namespace) — so there's no key to look up a camera
+capability by `ImagingScript.camera`/`DarkBiasScript.camera` etc. #139 moves `module_name` onto
+each device-capability model (`TelescopeCapability`, `DomeCapability`, `CameraCapability`) and
+drops `InstrumentDetail`; the design below (§A.1/§A.8) already assumes that flatter shape lands
+first.
 
 ## Problem
 
@@ -64,15 +73,23 @@ This directly affects two consumers of duration estimates:
 ### A. pyobs-core
 
 **1. `InstrumentCapabilities` models** (new: `pyobs/robotic/instruments.py`) — plain pydantic
-models mirroring the shape `InstrumentSerializer` already emits (`pyobs_portal/instruments/serializers.py`):
-`Instrument` (`module_name`, `cameras: list[CameraCapability]`, `telescope`, `dome`),
-`CameraCapability` (`code`, `binnings: list[BinningOption]`, `filter_wheels: list[FilterWheelCapability]`,
-...), `BinningOption` (`x`, `y`, `readout_time_s`), `FilterWheelCapability` (`filter_change_time_s`,
-`filters: list[Filter]`), `TelescopeCapability` (`slew_rate_deg_per_s`, ...), `DomeCapability`
-(`rotate_rate_deg_per_s`). No Django import — pyobs-core only ever deserializes the JSON the portal
-API already returns. A small `InstrumentCapabilities` container wraps `dict[module_name, Instrument]`
-plus a `camera(module_name) -> CameraCapability | None` / `by_camera_code(code) -> CameraCapability | None`
-convenience lookup.
+models mirroring the shape `InstrumentSerializer` already emits (`pyobs_portal/instruments/serializers.py`),
+post-#139: `Instrument` (`display_name`, `notes`, `cameras: list[CameraCapability]`, `telescope`,
+`dome` — no `module_name` of its own), `CameraCapability` (`module_name`, `code`,
+`binnings: list[BinningOption]`, `filter_wheels: list[FilterWheelCapability]`, ...),
+`BinningOption` (`x`, `y`, `readout_time_s`), `FilterWheelCapability` (`filter_change_time_s`,
+`filters: list[Filter]`), `TelescopeCapability` (`module_name`, `slew_rate_deg_per_s`, ...),
+`DomeCapability` (`module_name`, `rotate_rate_deg_per_s`). No Django import — pyobs-core only ever
+deserializes the JSON the portal API already returns.
+
+`InstrumentCapabilities` flattens the nested response into three module-name-keyed dicts built
+once at parse time — `dict[module_name, CameraCapability]`, `dict[module_name, TelescopeCapability]`,
+`dict[module_name, DomeCapability]` — with `camera(module_name)`/`telescope(module_name)`/
+`dome(module_name)` lookups hitting those directly (each script only ever needs one device's
+capability row, never "the instrument" as a concept) plus `by_camera_code(code) ->
+CameraCapability | None` for the fleet-wide-ID case. No two-step "resolve `Instrument`, then search
+its nested list" indirection — `self.camera`/`self.telescope` (already-existing plain module-name
+string fields on the scripts) match directly against a leaf capability's own `module_name`.
 
 **2. `TaskData` gains a field** (`pyobs/robotic/task.py:24-34`):
 ```python
@@ -122,7 +139,8 @@ outside tests.
 **8. The five leaf scripts** read `data.instrument_capabilities`, look up by `self.camera`/
 `self.telescope` (already-existing plain module-name string fields), and fall back to today's
 constant whenever the lookup misses at any level (no `data`, no `instrument_capabilities`, no
-matching `Instrument`, or the specific field is `None` on the matched row):
+`CameraCapability`/`TelescopeCapability` row with that `module_name`, or the specific field is
+`None` on the matched row):
 
 | Script | Looks up | Replaces |
 | --- | --- | --- |
@@ -192,9 +210,31 @@ return {"duration": script.estimate_duration(
   pyobs-portal#133's own scoping — this plan only ever reads the portal's hand-entered planning
   data, never queries a live module.
 - **Representative slew/rotate distance** for `ImagingScript`/`PointingScript`/`AutoFocusScript`
-  (no "current pointing" state at estimate time) — first pass uses a fixed placeholder distance;
-  a real fix (e.g. estimating from the target's actual sky position vs. last-known pointing) is
-  future work.
+  (no "current pointing" state at estimate time) — first pass uses a fixed placeholder distance.
+  A real distance needs both a destination and a start position; the destination is trivial
+  (`task.target`/`TaskData.resolved_target` already has RA/Dec), but the start position splits
+  into three cases of very different difficulty:
+  - **`OnDemandScheduler`'s first placed task in a `schedule()` call**: solvable now, cheaply — one
+    async `IPointingRaDec`/`IPointingAltAz` proxy call to the live telescope before `schedule()`
+    runs, threaded through the same way this plan already threads `instrument_capabilities` (fetched
+    once by `pyobs/modules/robotic/scheduler.py`, passed into `TaskScheduler.schedule()`/`TaskData`).
+    `estimate_duration()` itself is sync so can't make the live call directly — it must be
+    pre-fetched by the caller.
+  - **Every task after the first in the same scheduling pass**: not currently possible without new
+    scheduler state. `OnDemandScheduler`'s greedy generator (`schedule_in_interval` →
+    `schedule_first_in_interval` → recursion, `ondemandscheduler.py`) doesn't track "last scheduled
+    task's target" across calls — `create_scheduled_task` builds each `Observation` independent of
+    what came before. Would need that state threaded through the recursion, plus care around
+    `check_for_better_task`/`can_postpone_task`'s speculative/out-of-order scheduling (tasks can be
+    yielded out of the order they were evaluated in) — tracked as pyobs-core#859.
+  - **pyobs-portal's script-builder live-edit estimate**: no concept of "previous task" or a live
+    telescope exists there at all — it's an isolated single-script edit in the Django process
+    (`schema.py`'s `estimate_duration()`), not part of a schedule.
+
+  First pass (this plan) ships the fixed-placeholder version for all three cases. The first two
+  cases above are real future work worth their own issues, not just "future work" hand-waving — see
+  pyobs-core#858 (first task) and pyobs-core#859 (every task after). The portal-UI case needs more
+  design first before it's even issue-shaped.
 
 ## Test plan
 

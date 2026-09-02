@@ -61,9 +61,13 @@ One row per issue — same layout for every repo.
   capability data (readout/filter-change/slew/dome-rotate times) into `Script.estimate_duration()`
   for `ImagingScript` and 4 other leaf scripts via a new `TaskData.instrument_capabilities` field;
   wires the portal's script builder and `OnDemandScheduler` (not `AstroplanScheduler`). Was
-  blocked on pyobs-portal#139, landed 2026-09-02 in pyobs-portal#140. Slew/rotate start-position
-  left as a fixed placeholder except `OnDemandScheduler`'s first placed task, split out as
-  pyobs-core#858 (first task) and pyobs-core#859 (every task after).
+  blocked on pyobs-portal#139, landed 2026-09-02 in pyobs-portal#140. A review follow-up on #140
+  (`FilterWheelCapability` had no `module_name` key for the filter-change lookup) also landed
+  2026-09-02, in pyobs-portal#142 — no more blockers on the design itself. Slew/rotate
+  start-position left as a fixed placeholder except `OnDemandScheduler`'s first placed task, split
+  out as pyobs-core#858 (first task) and pyobs-core#859 (every task after). §B's pyobs-portal-side
+  implementation detail now has its own plan, see the pyobs-portal entry below.
+
 ### Design docs still *proposed*
 
 - [gui-standalone-binary.md](../design/gui-standalone-binary.md) — umbrella for the compiled
@@ -79,6 +83,11 @@ One line per plan — same layout for every repo.
 - **pyobs-gui** — [2026-09-01-gui-video-widget-split.md](../../pyobs-gui/specs/2026-09-01-gui-video-widget-split.md) —
   split `VideoWidget` into a main widget + paired sidebar widget, D6 follow-up to the (now landed,
   see pyobs-gui's own `specs/index.md`) main-vs-sidebar-widgets plan (#150) (*draft, unblocked*)
+- **pyobs-portal** — [2026-09-02-instrument-capability-estimate-duration-endpoint.md](../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md) —
+  this repo's half of the pyobs-core instrument-capability-duration-estimates plan above: a
+  TTL-cached `get_instrument_capabilities()` helper feeding `schema.py`'s `estimate_duration/`,
+  plus a `last_instrument_update/` marker for pyobs-core's `PortalTaskArchive` to poll
+  (*proposed, no issue yet*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
 - **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —

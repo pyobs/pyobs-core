@@ -175,7 +175,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   `PolymorphicBaseModel`'s hand-rolled `model_serializer` silently ignores `exclude`/`include`/
   `by_alias`/`exclude_none`/`exclude_defaults`/`exclude_unset`; make it honor flat (non-nested)
   specs and raise `NotImplementedError` on anything nested rather than silently doing the wrong
-  thing. **proposed** (issue #855; Repos: pyobs-core)
+  thing. **implemented** (issue #855; Repos: pyobs-core)
 - [2026-09-01-instrument-capability-duration-estimates.md](2026-09-01-instrument-capability-duration-estimates.md) —
   feed pyobs-portal#133's instrument capability data (readout/filter-change/slew/dome-rotate
   times) into `Script.estimate_duration()` for `ImagingScript` and 4 other leaf scripts, via a new

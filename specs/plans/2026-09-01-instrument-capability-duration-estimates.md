@@ -88,7 +88,7 @@ This directly affects two consumers of duration estimates:
 
 ### A. pyobs-core
 
-**1. `InstrumentCapabilities` models** (new: `pyobs/robotic/instruments.py`) — plain pydantic
+**1. `InstrumentCapabilities` models** — **landed 2026-09-02 in pyobs-core#864.** (new: `pyobs/robotic/instruments.py`) — plain pydantic
 models mirroring the shape `InstrumentSerializer` already emits (`pyobs_portal/instruments/serializers.py`),
 post-#139: `Instrument` (`display_name`, `notes`, `cameras: list[CameraCapability]`, `telescope`,
 `dome` — no `module_name` of its own), `CameraCapability` (`module_name`, `code`,
@@ -134,6 +134,22 @@ sibling coroutine on the same cadence) gated on a new portal marker endpoint (§
 `GET /api/instruments/` only when the marker moves, caching the parsed `InstrumentCapabilities` in
 memory. On a fetch failure, keep serving the last-good cache (same as the existing
 `_poll_error_throttle` pattern at `taskarchive.py:34-36,63-69`) rather than clearing it.
+
+Two things pyobs-core#864's review flagged as needing a decision here, not before (§A.1's field
+sets match the portal's current payload exactly, so neither is a problem yet):
+- **`extra="forbid"` on the §A.1 models degrade-to-`None` conflict.** They inherit
+  `pyobs.utils.serialization.BaseModel`'s `extra="forbid"`, so a portal field addition/rename (a
+  real risk — #139/#140/#142 just reshaped this exact payload three times) raises `ValidationError`
+  for the *whole* response, not just the new field. Under this section's "fetch failure keeps
+  last-good cache" design, a `ValidationError` needs to be caught and treated as a fetch failure
+  here (or the §A.1 models switched to `extra="ignore"`) — otherwise a first-ever parse failure
+  (before any cache exists) leaves `instrument_capabilities` permanently `None` instead of
+  degrading gracefully once the portal payload drifts.
+- **Pagination truncation.** `GET /api/instruments/` is DRF-paginated (`PAGE_SIZE=100` in portal
+  settings) and `InstrumentCapabilities.from_api_response()` expects the caller to hand it an
+  already-unwrapped `results` list — fine today, but this fetch needs to either page through all
+  results or the portal view needs `pagination_class = None`, or a fleet with >100 instruments
+  silently loses coverage past the first page.
 
 **5. `Task.estimate_duration()` gains an optional parameter** (`pyobs/robotic/task.py:121-123`):
 ```python

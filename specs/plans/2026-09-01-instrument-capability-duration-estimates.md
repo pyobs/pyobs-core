@@ -17,6 +17,12 @@ pyobs-portal#140: `module_name` now lives on each device-capability model (`Tele
 (§A.1/§A.8) already assumes that flatter shape, no further changes needed there before starting
 implementation.
 
+Filed as a review follow-up on #140 (not a separate blocker — `FilterWheelCapability` was the one
+device-capability model the #139/#140 flattening left out, so there was still no `module_name` key
+to resolve "which filter wheel" for `ImagingScript`'s filter-change estimate). Landed 2026-09-02 in
+pyobs-portal#142: `FilterWheelCapability.module_name` (nullable — a wheel isn't always its own
+addressable module). §A.1/§A.8 below already assume it.
+
 §B's implementation detail (cache helper, `last_instrument_update/` marker, `schema.py` wiring)
 now has its own plan on the pyobs-portal side:
 `../../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md`

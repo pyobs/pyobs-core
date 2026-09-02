@@ -84,21 +84,6 @@ class PortalTaskArchive(TaskArchive):
             await self._update()
             self._last_marker = last_update
 
-    @staticmethod
-    def _task_content_dump(task: Task) -> dict[str, Any]:
-        """``task.model_dump()`` with ``updated_at`` stripped.
-
-        ``Task`` is a ``PolymorphicBaseModel``, whose ``@model_serializer`` builds its own dict
-        from ``model_fields`` (``pyobs/utils/serialization.py``) and does not honor
-        ``model_dump(exclude=...)`` at all, so the key has to be dropped from the result
-        afterwards instead (same workaround as ``Scheduler._content_dump()``). ``updated_at`` is a
-        portal-side save timestamp -- an unchanged DRF PATCH still bumps it via ``auto_now`` -- so
-        leaving it in would flag every no-op re-save as a content change.
-        """
-        dump = task.model_dump()
-        dump.pop("updated_at", None)
-        return dump
-
     async def _update(self) -> None:
         """Fetch tasks/projects from the portal and apply them if anything changed.
 
@@ -108,16 +93,15 @@ class PortalTaskArchive(TaskArchive):
         ``Task._cant_run_reason`` set by ``can_run()``) and would flag unchanged tasks as changed
         on every poll; it is keyed by ID so that a stable reordering of the same items (e.g. an
         unordered portal queryset) is not mistaken for a change. ``updated_at`` is excluded from
-        both comparisons so a no-op re-save doesn't trigger a re-download/reschedule cascade (see
-        pyobs-core#856); ``Project`` isn't polymorphic so ``exclude=`` works directly, while
-        ``Task`` needs :meth:`_task_content_dump`'s pop-after-dump workaround.
+        both comparisons via ``exclude=`` so a no-op re-save doesn't trigger a re-download/
+        reschedule cascade (see pyobs-core#856).
         """
         projects = await self._get_projects()
         tasks = await self._get_tasks()
         if {p.code: p.model_dump(exclude={"updated_at"}) for p in projects} != {
             p.code: p.model_dump(exclude={"updated_at"}) for p in self._projects
-        } or {t.id: self._task_content_dump(t) for t in tasks} != {
-            t.id: self._task_content_dump(t) for t in self._tasks
+        } or {t.id: t.model_dump(exclude={"updated_at"}) for t in tasks} != {
+            t.id: t.model_dump(exclude={"updated_at"}) for t in self._tasks
         }:
             self._projects = projects
             self._tasks = tasks

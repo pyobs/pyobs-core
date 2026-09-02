@@ -268,18 +268,13 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
 
     @staticmethod
     def _content_dump(task: Task) -> dict[str, Any]:
-        """``task.model_dump()`` with ``updated_at`` stripped.
+        """``task.model_dump(exclude={"updated_at"})``.
 
-        ``Task`` is a ``PolymorphicBaseModel``, whose ``@model_serializer`` builds its own dict
-        from ``model_fields`` and injects a ``class`` key (``pyobs/utils/serialization.py:44-49``)
-        -- it does not honor ``model_dump(exclude=...)`` at all, so the key has to be dropped from
-        the result afterwards instead. ``updated_at`` is a portal-side save timestamp, not
-        scheduling-relevant content, and a no-op re-save (e.g. an unchanged DRF PATCH) still bumps
-        it -- leaving it in would report every no-op edit as a "changed" task.
+        ``updated_at`` is a portal-side save timestamp, not scheduling-relevant content, and a
+        no-op re-save (e.g. an unchanged DRF PATCH) still bumps it -- leaving it in would report
+        every no-op edit as a "changed" task.
         """
-        dump = task.model_dump()
-        dump.pop("updated_at", None)
-        return dump
+        return task.model_dump(exclude={"updated_at"})
 
     @classmethod
     def _changed_task_ids(cls, tasks1: list[Task], tasks2: list[Task]) -> set[Any]:

@@ -1,6 +1,6 @@
 # Plan: honor exclude/include/by_alias/exclude_* on PolymorphicBaseModel
 
-Status: proposed
+Status: implemented
 
 Tracks issue #855. Repos: pyobs-core only.
 
@@ -156,14 +156,23 @@ purely cosmetic, and touches code that's already correct — leave alone unless 
 
 ## Acceptance criteria
 
-- [ ] `inject_class_on_serialization` accepts `info: SerializationInfo` and honors flat
+- [x] `inject_class_on_serialization` accepts `info: SerializationInfo` and honors flat
       `exclude`/`include`/`by_alias`/`exclude_none`/`exclude_defaults`/`exclude_unset`.
-- [ ] Any nested (non-flat) `exclude`/`include` spec raises `NotImplementedError` instead of being
-      silently ignored or partially applied.
-- [ ] Plain `model_dump()` (no kwargs) output is unchanged for every existing caller — no
-      regression in current scheduler/task-archive/portal-import tests.
-- [ ] New tests listed above pass.
-- [ ] `ruff`/`pyrefly` clean; full non-integration suite green.
+- [x] Any nested (non-flat) `exclude`/`include` spec raises `NotImplementedError` instead of being
+      silently ignored or partially applied. **Caveat found during implementation**: pydantic-core
+      wraps any exception a `@model_serializer` function raises into its own
+      `pydantic_core.PydanticSerializationError` — the `NotImplementedError` never reaches the
+      caller as its own type, only as embedded text in the wrapped error's message
+      (`"...: NotImplementedError: ..."`). This is pydantic-core's own behavior for every
+      `model_serializer`, not something this fix can avoid; tests assert on
+      `PydanticSerializationError` with `match="NotImplementedError"` rather than
+      `pytest.raises(NotImplementedError)`.
+- [x] Plain `model_dump()` (no kwargs) output is unchanged for every existing caller — no
+      regression in current scheduler/task-archive/portal-import tests (111/111 pass unchanged).
+- [x] New tests listed above pass (15/15, `tests/utils/test_serialization.py`).
+- [x] `ruff`/`black`/`pyrefly` clean; full non-integration suite green (1817 passed; 7 pre-existing,
+      unrelated `tests/cli/test_pyobsd.py` failures confirmed present on `develop` before this
+      change too — local-environment "pyobs executable not found", untouched by this fix).
 
 ## Out of scope
 

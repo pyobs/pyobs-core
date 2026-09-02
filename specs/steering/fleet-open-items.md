@@ -17,7 +17,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (14, checked 2026-09-02)
+## Open issues (13, checked 2026-09-02)
 
 One row per issue — same layout for every repo.
 
@@ -28,7 +28,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-web-admin | [#82](https://github.com/pyobs/pyobs-web-admin/issues/82) | Log views: auto-refresh destroys text selection, making it impossible to copy text | *bug* — `renderLogs()` rebuilds the whole `<pre>` via `innerHTML` every 3s tick, wiping any in-progress selection even when nothing new arrived; fix direction open (no-op guard vs. pause-on-select vs. incremental DOM) |
 | pyobs-portal | [#135](https://github.com/pyobs/pyobs-portal/issues/135) | Cascade task deactivation/deletion to pending observations | *bug, assigned: thusser* — root cause behind pyobs-core#847 (fixed on the pyobs-core side via #852): deactivating/deleting a task doesn't cancel its pending observations on the portal, so they sit stale referencing a task the API no longer serves. pyobs-core's scheduler/mastermind are now resilient to this, but the stale window on every deactivation is still there until the portal cascades it |
 | pyobs-portal | [#132](https://github.com/pyobs/pyobs-portal/issues/132) | Script builder: if a dropdown has only one option, preselect it as the default | *assigned: thusser* — module-ref and optional-polymorphic selects in the schema-driven forms default to blank even when there's exactly one candidate |
 | pyobs-portal | [#131](https://github.com/pyobs/pyobs-portal/issues/131) | `script_tree()`: don't show modules that start with an underscore | *assigned: thusser* — `pkgutil.iter_modules` scan surfaces private `_*` modules/classes as script/provider types; no current core module hits it, but extension packages could |

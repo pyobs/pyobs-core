@@ -146,9 +146,11 @@ abstract-type-resolution behavior the `handler`-bypass exists for still holds:
 
 ### 5. Optional follow-up cleanup (not part of this plan; do only if separately asked)
 
-Once this lands, `Scheduler._content_dump()` (`pyobs/modules/robotic/scheduler.py:269-282`) and
-`PortalTaskArchive._task_content_dump()` (`pyobs/robotic/storage/portal/taskarchive.py`, added for
-#856) could both switch from "dump-then-pop" to `model_dump(exclude={"updated_at"})` directly,
+Once this lands, `Scheduler._content_dump()` (`pyobs/modules/robotic/scheduler.py:269-282`,
+introduced in `3b06cf16`, 2026-09-01, "fix: address review findings on #848 scheduler reschedule
+fix" — the commit that filed #855) and `PortalTaskArchive._task_content_dump()`
+(`pyobs/robotic/storage/portal/taskarchive.py`, added for #856) could both switch from
+"dump-then-pop" to `model_dump(exclude={"updated_at"})` directly,
 removing the pop-after-dump workaround and its docstrings explaining *why* it's there. Low value,
 purely cosmetic, and touches code that's already correct — leave alone unless requested.
 

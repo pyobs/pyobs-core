@@ -181,8 +181,10 @@ Implementation plans, checklist-style. Newest at the bottom.
   feed pyobs-portal#133's instrument capability data (readout/filter-change/slew/dome-rotate
   times) into `Script.estimate_duration()` for `ImagingScript` and 4 other leaf scripts, via a new
   `TaskData.instrument_capabilities` field; wires the portal's script builder and
-  `OnDemandScheduler` (not `AstroplanScheduler` — see plan's Non-goals). **proposed** (no issue
-  yet; Repos: pyobs-core, pyobs-portal)
+  `OnDemandScheduler` (not `AstroplanScheduler` — see plan's Non-goals). pyobs-portal-side
+  implementation detail (cache helper, `last_instrument_update/` marker, `schema.py` wiring) is
+  its own plan: `../../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md`.
+  **proposed** (no issue yet; Repos: pyobs-core, pyobs-portal)
 - [2026-09-01-scheduler-reschedule-on-portal-task-removal.md](2026-09-01-scheduler-reschedule-on-portal-task-removal.md) —
   drop `Scheduler._update_schedule()`'s "was it scheduled?" gate, which is unconditionally wrong
   for `PortalObservationArchive` (permanently empty cache by construction) and stalls

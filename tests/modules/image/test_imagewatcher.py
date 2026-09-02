@@ -367,7 +367,12 @@ async def test_worker_flatten_false_still_uses_fits_header_template() -> None:
 @pytest.mark.asyncio
 async def test_watch_poll_picks_up_nested_files() -> None:
     watcher = make_watcher(poll=True, poll_interval=0)
-    watcher._vfs.find = AsyncMock(side_effect=[[], ["2026/09/02/test.fits"]])
+    # side_effect list: first call is the initial scan (empty), every call after returns the
+    # nested file -- avoids relying on list exhaustion to end the test (that would raise
+    # StopAsyncIteration inside the task instead of the explicit cancel below doing it).
+    watcher._vfs.find = AsyncMock(
+        side_effect=lambda *a, **kw: [] if watcher._vfs.find.call_count == 1 else ["2026/09/02/test.fits"]
+    )
 
     added: list[str] = []
 
@@ -385,6 +390,38 @@ async def test_watch_poll_picks_up_nested_files() -> None:
         pass
 
     assert added == ["/watch/2026/09/02/test.fits"]
+    # pattern filtering happens in add_file, not here: find() is always called unfiltered
+    watcher._vfs.find.assert_called_with("/watch", "*")
+
+
+@pytest.mark.asyncio
+async def test_watch_poll_and_inotify_apply_pattern_consistently() -> None:
+    """Regression for a review finding: poll mode used to pre-filter find() by pattern (matched
+    per-directory against each entry's basename), while inotify mode only ever filtered in
+    add_file (matched against the full path) -- a real behavioral divergence for a pattern like
+    "*2026*" against a file under a "2026/" subdirectory. Both now defer entirely to add_file, so
+    this exercises the real (unmocked) add_file to prove the filtering actually happens there."""
+    watcher = make_watcher(poll=True, poll_interval=0, pattern="*.fits")
+    found = ["2026/keep.fits", "2026/skip.txt"]
+    # first call (the initial baseline scan) sees nothing yet, so the files "found" afterward
+    # register as new and get queued
+    watcher._vfs.find = AsyncMock(side_effect=lambda *a, **kw: [] if watcher._vfs.find.call_count == 1 else found)
+
+    task = asyncio.create_task(watcher._watch_poll())
+    await asyncio.sleep(0.05)
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+    # find() itself is unfiltered ("*"); only the .fits file survives add_file's own check
+    watcher._vfs.find.assert_called_with("/watch", "*")
+    queued = []
+    while not watcher._queue.empty():
+        filename, _ = watcher._queue.get_nowait()
+        queued.append(filename)
+    assert queued == ["/watch/2026/keep.fits"]
 
 
 @pytest.mark.asyncio
@@ -550,6 +587,56 @@ async def test_watch_inotify_survives_rename_into_watched_tree(tmp_path: Path) -
         pass
 
     assert added == ["/watch/2026/09/02/result.fits"]
+
+
+@pytest.mark.asyncio
+async def test_watch_inotify_restarts_on_oserror(monkeypatch) -> None:
+    """Regression for a review finding: asyncinotify's own add_watch/rm_watch (inside
+    watch_recursive()) can raise OSError if a directory vanishes between an event being received
+    and the library acting on it -- real under directory churn, not hypothetical. Confirm
+    _watch_inotify catches it and restarts with a fresh RecursiveWatcher instead of letting the
+    whole background task die."""
+    watcher = make_watcher()
+    watcher._vfs.local_path = AsyncMock(return_value="/some/local/path")
+
+    added: list[str] = []
+
+    async def fake_add_file(filename: str) -> None:
+        added.append(filename)
+
+    watcher.add_file = fake_add_file
+
+    class FakeEvent:
+        def __init__(self, path: Path) -> None:
+            self.path = path
+
+    attempts = 0
+
+    class FakeRecursiveWatcher:
+        def __init__(self, path: Path, mask: object) -> None:
+            nonlocal attempts
+            attempts += 1
+            self._attempt = attempts
+
+        async def watch_recursive(self):
+            if self._attempt == 1:
+                # simulate a directory vanishing mid-scan, as asyncinotify's own bookkeeping would
+                raise OSError("directory vanished mid-scan")
+            yield FakeEvent(Path("/some/local/path/test.fits"))
+            await asyncio.sleep(3600)  # stay "alive" until the test cancels it
+
+    monkeypatch.setattr("asyncinotify.RecursiveWatcher", FakeRecursiveWatcher)
+
+    task = asyncio.create_task(watcher._watch_inotify())
+    await asyncio.sleep(0.1)
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+    assert attempts == 2, "expected a fresh RecursiveWatcher after the first one's OSError"
+    assert added == ["/watch/test.fits"]
 
 
 @pytest.mark.xfail(strict=True, reason="known asyncinotify/kernel-level race, see docstring")

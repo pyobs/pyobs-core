@@ -60,13 +60,26 @@ class ImageWatcher(Module):
             wait_time: Time in seconds between adding a file to the list and processing it. Gives a file that is
                 still being written time to finish (relevant for poll mode and the initial scan) and spaces out
                 re-queued files after failed destination copies.
-            pattern: Only watch/process files matching this fnmatch pattern; also applied recursively, i.e. it
-                is matched against the full path, so a pattern like "*.fits" matches files in subdirectories too.
+            pattern: Only watch/process files matching this fnmatch pattern, checked against the full path (so
+                e.g. "*.fits" also matches files found in subdirectories). This is the single point of filtering,
+                applied uniformly in ``add_file`` regardless of watch mode -- inotify events, polling, and the
+                initial scan in ``open()`` all discover candidates first and let ``add_file`` decide, none of
+                them pre-filter by pattern before that.
             flatten: For a non-templated destination (one without ``{placeholder}``s), whether to collapse the
                 file's path to just its basename under that destination (the historical behavior, default) or to
                 preserve its path relative to ``watchpath`` under the destination instead. Files found via
                 recursive watching or polling only keep their subdirectory structure at the destination when this
-                is False.
+                is False. Note this relies on the destination VFS root creating missing parent directories on
+                write (the default for e.g. ``LocalFile``) -- a destination configured to not do that would
+                repeatedly fail and re-queue any file whose relative path needs a parent directory that doesn't
+                exist yet.
+
+        Note:
+            If a directory holding a file that's already queued (added but not yet processed by ``_worker``) is
+            renamed before that happens, the worker's read of the file at its captured (pre-rename) path fails
+            and the file is dropped rather than picked up at its new location -- this is unrelated to, and not
+            covered by, the recursive-watching support for directories renamed after they no longer hold queued
+            files. Avoid renaming directories that may still hold queued/retrying files.
         """
         Module.__init__(self, **kwargs)
 
@@ -101,28 +114,35 @@ class ImageWatcher(Module):
 
         # recursively watch the local directory: watches are added for subdirectories as they're
         # created or moved in, and removed as they're moved out (deletion needs no explicit
-        # removal -- the kernel invalidates the watch on its own, see the plan doc for details)
-        watcher = RecursiveWatcher(Path(local), Mask.CLOSE_WRITE)
-        async for event in watcher.watch_recursive():
-            if event.path is None:
-                continue
+        # removal -- the kernel invalidates the watch on its own, see the plan doc for details).
+        # A directory can also vanish between an event being received and asyncinotify acting on
+        # it (its own add_watch/rm_watch racing a concurrent delete), which raises OSError from
+        # inside the library rather than being handled there. Restart with a fresh watcher (a
+        # full re-walk) on that instead of letting it kill this task outright -- self-heals faster
+        # than falling back to the module's outer background-task restart-with-backoff.
+        while True:
+            try:
+                watcher = RecursiveWatcher(Path(local), Mask.CLOSE_WRITE)
+                async for event in watcher.watch_recursive():
+                    # get filename by replacing local with watchpath
+                    filename = str(event.path).replace(local, self._watchpath)
 
-            # get filename by replacing local with watchpath
-            filename = str(event.path).replace(local, self._watchpath)
-
-            # add file
-            await self.add_file(filename)
+                    # add file
+                    await self.add_file(filename)
+            except OSError as e:
+                log.warning("Inotify watch error (directory likely vanished mid-scan), restarting watch: %s", e)
 
     async def _watch_poll(self) -> None:
-        # init list (recursive, so subdirectories are picked up too)
-        files = set(await self.vfs.find(self._watchpath, self._pattern))
+        # init list (recursive, so subdirectories are picked up too; unfiltered by pattern here --
+        # add_file is the single point of pattern filtering, same as inotify mode)
+        files = set(await self.vfs.find(self._watchpath, "*"))
 
         # run forever
         while True:
             await asyncio.sleep(self._poll_interval)
 
             # get new list
-            new_files = set(await self.vfs.find(self._watchpath, self._pattern))
+            new_files = set(await self.vfs.find(self._watchpath, "*"))
 
             # find all new files and add them
             for f in new_files - files:
@@ -135,8 +155,10 @@ class ImageWatcher(Module):
         """Open image watcher."""
         await Module.open(self)
 
-        # add all files from directory to queue (recursive, so subdirectories are picked up too)
-        for filename in await self.vfs.find(self._watchpath, self._pattern):
+        # add all files from directory to queue (recursive, so subdirectories are picked up too;
+        # unfiltered by pattern here -- add_file is the single point of pattern filtering, same as
+        # inotify mode)
+        for filename in await self.vfs.find(self._watchpath, "*"):
             await self.add_file(os.path.join(self._watchpath, filename))
 
     async def close(self) -> None:

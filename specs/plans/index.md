@@ -202,3 +202,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   of that same guard for `removed` (both silently discarded real changes against
   `PortalObservationArchive`'s permanently-empty schedule cache). **implemented** (issue #848; PR
   #854; Repos: pyobs-core; portal-side signal fix pyobs-portal#134)
+- [2026-09-02-imagewatcher-relative-path-recursive.md](2026-09-02-imagewatcher-relative-path-recursive.md) —
+  `ImageWatcher`: optional relative-path preservation (`flatten=False`) and recursive directory
+  watching, needed so it can relocate a nested directory tree wholesale instead of flattening it.
+  **planned**

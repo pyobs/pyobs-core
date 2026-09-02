@@ -100,8 +100,18 @@ async def test_move_roof_percentage(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_stop_motion() -> None:
+async def test_stop_motion_closed() -> None:
     roof = DummyRoof()
+    roof._change_motion_status = AsyncMock()
+    await roof.stop_motion()
+
+    roof._change_motion_status.assert_awaited_with(MotionStatus.PARKED)
+
+
+@pytest.mark.asyncio
+async def test_stop_motion_open() -> None:
+    roof = DummyRoof()
+    roof._open_percentage = roof._ROOF_OPEN_PERCENTAGE
     roof._change_motion_status = AsyncMock()
     await roof.stop_motion()
 

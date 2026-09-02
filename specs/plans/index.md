@@ -102,6 +102,22 @@ Implementation plans, checklist-style. Newest at the bottom.
   pins bumped to it and pushed (`612d9e4`, `ab02dfc`) (Repos: pyobs-core, pyobs-portal,
   pyobs-auth, pyobs-archive, pyobs-web-admin, pyobs-iagvt, pyobs-monet)
 
+- [2026-08-28-shared-authz-keycloak.md](2026-08-28-shared-authz-keycloak.md) — centralized
+  authorization: Keycloak groups/roles become the source of truth; services gate on token claims
+  instead of per-service `is_active` activation (design: `specs/design/shared-authz-keycloak.md`,
+  ADR `0014`). **implemented, closed 2026-08-31** — verified released across the stack: pyobs-auth,
+  pyobs-archive, pyobs-portal, pyobs-web-admin all on v2.1.0; live-verified on MONET/S web-admin
+  (Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin)
+- [2026-08-28-precreate-pubsub-nodes.md](2026-08-28-precreate-pubsub-nodes.md) — pre-create pubsub
+  event nodes (not state — enforce-state-publishing already narrows that gap) at module startup
+  so subscriptions can land before the first publish (XEP-0060 `create_node`); plus the #824 retry
+  hardening (`_retry_delay` exponent clamp, stuck-key cleanup in both retry loops). **implemented,
+  closed 2026-08-31** (`ea9fe7ef`) — `_retry_delay` now clamps `min(attempt, 60)` before
+  exponentiation; on `develop`, not yet in a tagged release (Repos: pyobs-core)
+- [2026-08-28-structuredconfig-widget.md](2026-08-28-structuredconfig-widget.md) — generic
+  schema-driven `IStructuredConfig` form widget for pyobs-gui, auto-built from `ConfigSchema`.
+  **implemented, closed** (pyobs-gui#154; Repos: pyobs-gui, pyobs-core)
+
 ## Not finished
 - [2026-08-23-iag50-pyobs-core-2x-migration.md](2026-08-23-iag50-pyobs-core-2x-migration.md) —
   pyobs-iag50's `2.0.0.dev2` version bump was premature (still pinned/locked to pyobs-core 1.x);
@@ -141,24 +157,11 @@ Implementation plans, checklist-style. Newest at the bottom.
   tag `Script` module-name fields (`ImagingScript.camera`, etc.) with required `pyobs.interfaces`
   via `typing.Annotated`, for pyobs-portal's module dropdowns. **implemented, closed**
   (closed #808, PR #809)
-- [2026-08-28-shared-authz-keycloak.md](2026-08-28-shared-authz-keycloak.md) — centralized
-  authorization: Keycloak groups/roles become the source of truth; services gate on token claims
-  instead of per-service `is_active` activation (design: `specs/design/shared-authz-keycloak.md`,
-  ADR `0014`). **proposed** (issue #823; Repos: pyobs-auth, pyobs-archive, pyobs-portal,
-  pyobs-web-admin)
 - [2026-08-28-observation-portal-keycloak-auth.md](2026-08-28-observation-portal-keycloak-auth.md) —
   attach observation-portal (MONET fork) to OIDC via generic `mozilla-django-oidc` (no pyobs-auth
   dependency, upstream-submittable), config-gated via `OIDC_ENABLED`, additive next to local
   username/password auth; supersedes Section 0 (portal brokered behind Keycloak) of the
   2026-08-12 plan. **proposed, revised 2026-08-31** (Repos: observation-portal)
-- [2026-08-28-precreate-pubsub-nodes.md](2026-08-28-precreate-pubsub-nodes.md) — pre-create pubsub
-  event nodes (not state — enforce-state-publishing already narrows that gap) at module startup
-  so subscriptions can land before the first publish (XEP-0060 `create_node`); plus the #824 retry
-  hardening (`_retry_delay` exponent clamp, stuck-key cleanup in both retry loops). **proposed**
-  (issue #824; Repos: pyobs-core)
-- [2026-08-28-structuredconfig-widget.md](2026-08-28-structuredconfig-widget.md) — generic
-  schema-driven `IStructuredConfig` form widget for pyobs-gui, auto-built from `ConfigSchema`.
-  **proposed** (pyobs-gui#154; Repos: pyobs-gui, pyobs-core)
 - [2026-09-01-morning-darks-match-science-exptimes.md](2026-09-01-morning-darks-match-science-exptimes.md) —
   robotic/archive side of dark-exptime matching: expose `EXPTIME` on the archive API, derive a
   night's distinct science exptimes, `DarkBiasScript` takes darks at those exptimes.
@@ -168,7 +171,38 @@ Implementation plans, checklist-style. Newest at the bottom.
   reduction/pipeline side: per-exposure-time dark masters, strict exptime matching, reference
   master scales down only (ADR `0015`). **implemented** (issue #832, landed on `develop`
   2026-09-01 via PR #842; depends on `2026-09-01-morning-darks-match-science-exptimes.md`)
-- [2026-09-01-portal-instrument-config-app.md](2026-09-01-portal-instrument-config-app.md) — new
-  `instruments` Django app for pyobs-portal: per-type capability models (camera/telescope/filter
-  wheels), admin-editable via a scoped `instrument-config` group, read-only nested API for the
-  script builder. **proposed** (pyobs-portal#116; Repos: pyobs-portal)
+- [2026-09-02-polymorphic-model-dump-exclude-include.md](2026-09-02-polymorphic-model-dump-exclude-include.md) —
+  `PolymorphicBaseModel`'s hand-rolled `model_serializer` silently ignores `exclude`/`include`/
+  `by_alias`/`exclude_none`/`exclude_defaults`/`exclude_unset`; make it honor flat (non-nested)
+  specs and raise `NotImplementedError` on anything nested rather than silently doing the wrong
+  thing. **implemented, closed 2026-09-02** (issue #855; PR #857, merged `4baeb68e`; Repos:
+  pyobs-core)
+- [2026-09-01-instrument-capability-duration-estimates.md](2026-09-01-instrument-capability-duration-estimates.md) —
+  feed pyobs-portal#133's instrument capability data (readout/filter-change/slew/dome-rotate
+  times) into `Script.estimate_duration()` for `ImagingScript` and 4 other leaf scripts, via a new
+  `TaskData.instrument_capabilities` field; wires the portal's script builder and
+  `OnDemandScheduler` (not `AstroplanScheduler` — see plan's Non-goals). pyobs-portal-side
+  implementation detail (cache helper, `last_instrument_update/` marker, `schema.py` wiring) is
+  its own plan: `../../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md`.
+  **proposed** (no issue yet; Repos: pyobs-core, pyobs-portal)
+- [2026-09-01-scheduler-reschedule-on-portal-task-removal.md](2026-09-01-scheduler-reschedule-on-portal-task-removal.md) —
+  drop `Scheduler._update_schedule()`'s "was it scheduled?" gate, which is unconditionally wrong
+  for `PortalObservationArchive` (permanently empty cache by construction) and stalls
+  rescheduling when a portal task is deactivated/deleted; plus mastermind self-heals an
+  unresolvable *pending* observation by marking it canceled instead of looping forever (review on
+  PR #852 caught and fixed a non-nullable-FK payload bug, a startup-race false-cancel, and scoped
+  the self-heal off `get_current_observation()`). **implemented** (issue #847; PR #852; Repos:
+  pyobs-core)
+- [2026-09-01-scheduler-reschedule-on-project-and-task-changes.md](2026-09-01-scheduler-reschedule-on-project-and-task-changes.md) —
+  `Scheduler._update_schedule()`'s change-detection is task-ID-only, so a project priority change
+  or a same-ID task content change never triggers a reschedule; adds project/task content-diff
+  (`model_dump()`-keyed, mirroring `PortalTaskArchive._update()`) plus a fix for an
+  assignment-order bug that overwrites `self._projects` before it could ever be compared. Also
+  dropped the schedule-membership guard for the new `changed` set, rebasing onto #852's removal
+  of that same guard for `removed` (both silently discarded real changes against
+  `PortalObservationArchive`'s permanently-empty schedule cache). **implemented** (issue #848; PR
+  #854; Repos: pyobs-core; portal-side signal fix pyobs-portal#134)
+- [2026-09-02-imagewatcher-relative-path-recursive.md](2026-09-02-imagewatcher-relative-path-recursive.md) —
+  `ImageWatcher`: optional relative-path preservation (`flatten=False`) and recursive directory
+  watching, needed so it can relocate a nested directory tree wholesale instead of flattening it.
+  **implemented, PR open** (PR #860)

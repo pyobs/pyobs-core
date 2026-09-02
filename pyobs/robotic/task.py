@@ -155,6 +155,10 @@ class Project(BaseModel):
     priority: float | None = Field(ge=0.0, le=9999.0, default=1.0)
     users: list[str] = Field(default_factory=list)
     public: bool = False  # ingest backend `public` flag; default keeps old backends valid
+    updated_at: str | None = None
+    """Last-modification timestamp as emitted by pyobs-portal (DB-derived ``updated_at``,
+    added in pyobs-portal#134). Carried for round-trip fidelity so the strict ``Project`` model
+    (``extra="forbid"``) accepts the field the portal now sends; not used by pyobs itself."""
 
 
 __all__ = ["Task", "TaskData", "Project"]

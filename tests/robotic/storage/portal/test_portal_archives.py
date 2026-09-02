@@ -138,6 +138,29 @@ async def test_task_get_projects_from_portal_accepts_public(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_task_get_projects_from_portal_accepts_updated_at(mocker) -> None:
+    """Projects with the portal `updated_at` field (pyobs-portal#134, pyobs-core#848) ingest
+    without a strict-model ValidationError, and the value round-trips."""
+    archive = make_task_archive()
+    mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(
+            return_value=[
+                {
+                    "code": "test",
+                    "name": "Test",
+                    "priority": 1.0,
+                    "updated_at": "2026-08-20T17:59:29.526066Z",
+                }
+            ]
+        ),
+    )
+    result = await archive._get_projects()
+    assert len(result) == 1
+    assert result[0].updated_at == "2026-08-20T17:59:29.526066Z"
+
+
+@pytest.mark.asyncio
 async def test_task_get_tasks_from_portal(mocker) -> None:
     archive = make_task_archive()
     mock = mocker.patch(
@@ -251,6 +274,121 @@ async def test_obs_get_current_returns_none_when_idle() -> None:
     obs = make_obs(make_task(), state=ObservationState.PENDING)
     archive._observations = ObservationList([obs])
     assert await archive.get_current_observation() is None
+
+
+def make_unresolvable_task_archive(last_changed: Time | None = T0) -> AsyncMock:
+    task_archive = AsyncMock()
+    task_archive.get_task = AsyncMock(return_value=None)
+    task_archive.last_changed = AsyncMock(return_value=last_changed)
+    return task_archive
+
+
+@pytest.mark.asyncio
+async def test_obs_get_next_cancels_unresolvable_task(mocker) -> None:
+    """A portal task that vanished from the active list (e.g. deactivated) resolves obs.task to
+    None; the observation must be marked canceled -- with its task id preserved in the PUT
+    payload, since the portal's task FK is non-nullable -- instead of skipped-and-relogged
+    forever."""
+    archive = make_obs_archive()
+    obs = Observation(task=99, start=T0, end=T1, state=ObservationState.PENDING)
+    archive._observations = ObservationList([obs])
+    task_archive = make_unresolvable_task_archive()
+    mock_request = mocker.patch(
+        "pyobs.robotic.storage.portal.observationarchive.http_request_with_retries",
+        AsyncMock(return_value={}),
+    )
+
+    mid = T0 + TimeDelta(150 * u.second)
+    result = await archive.get_next_observation(mid, task_archive=task_archive)
+
+    assert result is None
+    assert obs.state == ObservationState.CANCELED
+    mock_request.assert_called_once()
+    assert mock_request.call_args[1]["method"] == "put"
+    assert mock_request.call_args[1]["json"]["task"] == 99
+
+
+@pytest.mark.asyncio
+async def test_obs_get_next_skips_unresolvable_task_when_task_archive_never_polled(mocker) -> None:
+    """last_changed() is None until the task archive's first successful poll -- indistinguishable
+    from a genuinely removed task by get_task() alone. Must not cancel on that race (e.g. at
+    startup, if the observation archive's first poll lands before the task archive's)."""
+    archive = make_obs_archive()
+    obs = Observation(task=99, start=T0, end=T1, state=ObservationState.PENDING)
+    archive._observations = ObservationList([obs])
+    task_archive = make_unresolvable_task_archive(last_changed=None)
+    mock_request = mocker.patch(
+        "pyobs.robotic.storage.portal.observationarchive.http_request_with_retries",
+        AsyncMock(return_value={}),
+    )
+
+    mid = T0 + TimeDelta(150 * u.second)
+    result = await archive.get_next_observation(mid, task_archive=task_archive)
+
+    assert result is None
+    assert obs.state == ObservationState.PENDING
+    mock_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_obs_get_current_skips_unresolvable_task_without_canceling(mocker) -> None:
+    """An in-progress observation must not be canceled out from under a running mastermind even
+    if its task was deactivated mid-run -- log-and-skip, same as before this fix."""
+    archive = make_obs_archive()
+    obs = Observation(task=99, start=T0, end=T1, state=ObservationState.IN_PROGRESS)
+    archive._observations = ObservationList([obs])
+    task_archive = make_unresolvable_task_archive()
+    mock_request = mocker.patch(
+        "pyobs.robotic.storage.portal.observationarchive.http_request_with_retries",
+        AsyncMock(return_value={}),
+    )
+
+    result = await archive.get_current_observation(task_archive=task_archive)
+
+    assert result is None
+    assert obs.state == ObservationState.IN_PROGRESS
+    mock_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_obs_get_next_does_not_retry_canceled_observation_in_same_poll(mocker) -> None:
+    """A second call within the same poll cycle must not re-fetch/re-cancel the same
+    observation -- the local state mutation stops it matching the pending filter."""
+    archive = make_obs_archive()
+    obs = Observation(task=99, start=T0, end=T1, state=ObservationState.PENDING)
+    archive._observations = ObservationList([obs])
+    task_archive = make_unresolvable_task_archive()
+    mock_request = mocker.patch(
+        "pyobs.robotic.storage.portal.observationarchive.http_request_with_retries",
+        AsyncMock(return_value={}),
+    )
+
+    mid = T0 + TimeDelta(150 * u.second)
+    await archive.get_next_observation(mid, task_archive=task_archive)
+    await archive.get_next_observation(mid, task_archive=task_archive)
+
+    assert task_archive.get_task.await_count == 1
+    mock_request.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_obs_get_next_cancel_swallows_update_failure(mocker) -> None:
+    """A failed cancel PUT must not propagate out of get_next_observation -- the mastermind's
+    poll loop keeps running; state resyncs on the next successful update."""
+    archive = make_obs_archive()
+    obs = Observation(task=99, start=T0, end=T1, state=ObservationState.PENDING)
+    archive._observations = ObservationList([obs])
+    task_archive = make_unresolvable_task_archive()
+    mocker.patch(
+        "pyobs.robotic.storage.portal.observationarchive.http_request_with_retries",
+        AsyncMock(side_effect=ConnectionError("portal unreachable")),
+    )
+
+    mid = T0 + TimeDelta(150 * u.second)
+    result = await archive.get_next_observation(mid, task_archive=task_archive)
+
+    assert result is None
+    assert obs.state == ObservationState.CANCELED
 
 
 @pytest.mark.asyncio
@@ -410,6 +548,40 @@ async def test_task_update_no_change_no_notification(mocker) -> None:
     mocker.patch(
         "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
         AsyncMock(side_effect=[projects, tasks, projects, tasks]),
+    )
+
+    await archive._update()
+    first_update = archive._last_update
+    cached_projects = archive._projects
+    cached_tasks = archive._tasks
+    assert first_update is not None
+    assert on_tasks_changed.await_count == 1
+
+    await archive._update()
+
+    assert on_tasks_changed.await_count == 1
+    assert archive._last_update == first_update
+    assert archive._projects is cached_projects
+    assert archive._tasks is cached_tasks
+
+
+@pytest.mark.asyncio
+async def test_task_update_ignores_updated_at_only_change(mocker) -> None:
+    """A no-op re-save (unchanged DRF PATCH still bumps `updated_at` via auto_now) must not fire
+    on_tasks_changed or bump _last_update/cache -- see pyobs-core#856."""
+    archive = make_task_archive()
+    on_tasks_changed = AsyncMock()
+    archive._on_tasks_changed = on_tasks_changed
+    mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(
+            side_effect=[
+                [{"code": "test", "name": "Test", "priority": 1.0, "updated_at": T0.isot}],
+                [{"id": 1, "name": "t1", "duration": 300, "updated_at": T0.isot}],
+                [{"code": "test", "name": "Test", "priority": 1.0, "updated_at": T1.isot}],
+                [{"id": 1, "name": "t1", "duration": 300, "updated_at": T1.isot}],
+            ]
+        ),
     )
 
     await archive._update()

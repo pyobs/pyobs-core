@@ -92,13 +92,17 @@ class PortalTaskArchive(TaskArchive):
         ``model_dump()`` rather than pydantic ``==``, which also compares runtime attributes (e.g.
         ``Task._cant_run_reason`` set by ``can_run()``) and would flag unchanged tasks as changed
         on every poll; it is keyed by ID so that a stable reordering of the same items (e.g. an
-        unordered portal queryset) is not mistaken for a change.
+        unordered portal queryset) is not mistaken for a change. ``updated_at`` is excluded from
+        both comparisons via ``exclude=`` so a no-op re-save doesn't trigger a re-download/
+        reschedule cascade (see pyobs-core#856).
         """
         projects = await self._get_projects()
         tasks = await self._get_tasks()
-        if {p.code: p.model_dump() for p in projects} != {p.code: p.model_dump() for p in self._projects} or {
-            t.id: t.model_dump() for t in tasks
-        } != {t.id: t.model_dump() for t in self._tasks}:
+        if {p.code: p.model_dump(exclude={"updated_at"}) for p in projects} != {
+            p.code: p.model_dump(exclude={"updated_at"}) for p in self._projects
+        } or {t.id: t.model_dump(exclude={"updated_at"}) for t in tasks} != {
+            t.id: t.model_dump(exclude={"updated_at"}) for t in self._tasks
+        }:
             self._projects = projects
             self._tasks = tasks
             self._last_update = Time.now()

@@ -5,7 +5,7 @@ import os
 import time
 import warnings
 from dataclasses import dataclass
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from astropy.io import fits
@@ -14,6 +14,12 @@ from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)
+
+# Filename suffixes whose content is attempted to be parsed as FITS (for templated destination
+# names and derived classes' process_extra/cleanup_extra hooks). Files whose names don't match
+# are still watched and copied as-is to non-templated destinations, just never handed to astropy
+# -- which is what produced the header warnings on non-FITS files.
+FITS_FILENAME_SUFFIXES = (".fits", ".fitz", ".fits.gz", ".fits.fz")
 
 
 @dataclass
@@ -47,6 +53,7 @@ class ImageWatcher(Module):
         poll_interval: int = 5,
         wait_time: int = 10,
         pattern: str = "*",
+        flatten: bool = True,
         **kwargs: Any,
     ):
         """Create a new image watcher.
@@ -59,6 +66,26 @@ class ImageWatcher(Module):
             wait_time: Time in seconds between adding a file to the list and processing it. Gives a file that is
                 still being written time to finish (relevant for poll mode and the initial scan) and spaces out
                 re-queued files after failed destination copies.
+            pattern: Only watch/process files matching this fnmatch pattern, checked against the full path (so
+                e.g. "*.fits" also matches files found in subdirectories). This is the single point of filtering,
+                applied uniformly in ``add_file`` regardless of watch mode -- inotify events, polling, and the
+                initial scan in ``open()`` all discover candidates first and let ``add_file`` decide, none of
+                them pre-filter by pattern before that.
+            flatten: For a non-templated destination (one without ``{placeholder}``s), whether to collapse the
+                file's path to just its basename under that destination (the historical behavior, default) or to
+                preserve its path relative to ``watchpath`` under the destination instead. Files found via
+                recursive watching or polling only keep their subdirectory structure at the destination when this
+                is False. Note this relies on the destination VFS root creating missing parent directories on
+                write (the default for e.g. ``LocalFile``) -- a destination configured to not do that would
+                repeatedly fail and re-queue any file whose relative path needs a parent directory that doesn't
+                exist yet.
+
+        Note:
+            If a directory holding a file that's already queued (added but not yet processed by ``_worker``) is
+            renamed before that happens, the worker's read of the file at its captured (pre-rename) path fails
+            and the file is dropped rather than picked up at its new location -- this is unrelated to, and not
+            covered by, the recursive-watching support for directories renamed after they no longer hold queued
+            files. Avoid renaming directories that may still hold queued/retrying files.
         """
         Module.__init__(self, **kwargs)
 
@@ -77,6 +104,7 @@ class ImageWatcher(Module):
         self._poll_interval = poll_interval
         self._wait_time = wait_time
         self._pattern = pattern
+        self._flatten = flatten
         self.current_file: CurrentFile | None = None
 
         # filename patterns
@@ -85,49 +113,58 @@ class ImageWatcher(Module):
         self._destinations = destinations
 
     async def _watch_inotify(self) -> None:
-        from asyncinotify import Inotify, Mask
+        from asyncinotify import Mask, RecursiveWatcher
 
         # get local directory
         local = await self.vfs.local_path(self._watchpath)
 
-        # Context manager to close the inotify handle after use
-        with Inotify() as inotify:
-            # add watch on local directory
-            inotify.add_watch(local, Mask.CLOSE_WRITE)
+        # recursively watch the local directory: watches are added for subdirectories as they're
+        # created or moved in, and removed as they're moved out (deletion needs no explicit
+        # removal -- the kernel invalidates the watch on its own, see the plan doc for details).
+        # A directory can also vanish between an event being received and asyncinotify acting on
+        # it (its own add_watch/rm_watch racing a concurrent delete), which raises OSError from
+        # inside the library rather than being handled there. Restart with a fresh watcher (a
+        # full re-walk) on that instead of letting it kill this task outright -- self-heals faster
+        # than falling back to the module's outer background-task restart-with-backoff.
+        while True:
+            try:
+                watcher = RecursiveWatcher(Path(local), Mask.CLOSE_WRITE)
+                async for event in watcher.watch_recursive():
+                    # get filename by replacing local with watchpath
+                    filename = str(event.path).replace(local, self._watchpath)
 
-            # iterate events forever
-            async for event in inotify:
-                # get filename by replacing local with watchpath
-                filename = str(event.path).replace(local, self._watchpath)
-
-                # add file
-                await self.add_file(filename)
+                    # add file
+                    await self.add_file(filename)
+            except OSError as e:
+                log.warning("Inotify watch error (directory likely vanished mid-scan), restarting watch: %s", e)
 
     async def _watch_poll(self) -> None:
-        # init list
-        files = set(await self.vfs.listdir(self._watchpath))
+        # init list (recursive, so subdirectories are picked up too; unfiltered by pattern here --
+        # add_file is the single point of pattern filtering, same as inotify mode)
+        files = set(await self.vfs.find(self._watchpath, "*"))
 
         # run forever
-        path = PurePosixPath(self._watchpath)
         while True:
+            await asyncio.sleep(self._poll_interval)
+
             # get new list
-            new_files = await self.vfs.listdir(self._watchpath)
+            new_files = set(await self.vfs.find(self._watchpath, "*"))
 
             # find all new files and add them
-            for f in new_files:
-                if f not in files:
-                    print(str(path / f))
-                    await self.add_file(str(path / f))
+            for f in new_files - files:
+                await self.add_file(os.path.join(self._watchpath, f))
 
             # store new list
-            files = set(new_files)
+            files = new_files
 
     async def open(self) -> None:
         """Open image watcher."""
         await Module.open(self)
 
-        # add all files from directory to queue
-        for filename in await self.vfs.listdir(self._watchpath):
+        # add all files from directory to queue (recursive, so subdirectories are picked up too;
+        # unfiltered by pattern here -- add_file is the single point of pattern filtering, same as
+        # inotify mode)
+        for filename in await self.vfs.find(self._watchpath, "*"):
             await self.add_file(os.path.join(self._watchpath, filename))
 
     async def close(self) -> None:
@@ -172,13 +209,20 @@ class ImageWatcher(Module):
                 async with self.vfs.open_file(filename, "rb") as fd:
                     data = await fd.read()
 
-                # try to load as fits file; data may well not be a FITS file at all
-                try:
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore", fits.verify.VerifyWarning)
-                        fits_file = await asyncio.to_thread(fits.HDUList.fromstring, data)
-                except Exception:
-                    fits_file = None
+                # only attempt to load the file as FITS when its name suggests it is one; any
+                # other file (e.g. a raw camera binary like "w123.0") is still copied as-is to
+                # non-templated destinations, just without the parse attempt and the astropy
+                # header warnings it raises on non-FITS content. A matching name is no
+                # guarantee, though -- the data may be corrupt or truncated -- hence the
+                # try/except below.
+                fits_file = None
+                if os.path.basename(filename).lower().endswith(FITS_FILENAME_SUFFIXES):
+                    try:
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", fits.verify.VerifyWarning)
+                            fits_file = await asyncio.to_thread(fits.HDUList.fromstring, data)
+                    except Exception:
+                        fits_file = None
 
                 # fill current file
                 self.current_file = CurrentFile(filename=filename, data=data, hdu_list=fits_file)
@@ -193,9 +237,14 @@ class ImageWatcher(Module):
                         if out_filename is None:
                             raise ValueError("Could not create name for file.")
 
-                    else:
+                    elif self._flatten:
                         # no formatting, so just add filename to destination
                         out_filename = os.path.join(pattern, os.path.basename(filename))
+
+                    else:
+                        # preserve the file's path relative to watchpath under the destination
+                        rel = PurePosixPath(filename).relative_to(self._watchpath)
+                        out_filename = str(PurePosixPath(pattern) / rel)
 
                     # store it
                     log.info("Storing file as %s...", out_filename)
@@ -223,12 +272,32 @@ class ImageWatcher(Module):
                 log.info("Removing file from watch directory...")
                 if not await self.vfs.remove(filename):
                     log.warning("Could not delete %s.", filename)
+                else:
+                    # clean up any now-empty parent directories the file left behind
+                    await self._cleanup_empty_parents(filename)
 
                 # cleanup extra
                 await self.cleanup_extra(filename)
 
             except Exception:
                 log.exception("Something went wrong.")
+
+    async def _cleanup_empty_parents(self, filename: str) -> None:
+        """Remove now-empty parent directories left behind by a just-deleted file.
+
+        Walks from filename's immediate parent up towards (but excluding) watchpath, removing
+        each directory while it's empty and stopping at the first one that isn't (or otherwise
+        can't be removed) -- most commonly a directory that still holds sibling files/dirs, which
+        is the normal, expected way this loop ends. Only relevant for recursive watching
+        (watchpath itself is never removed); a flat watch directory has no subdirectories for
+        this to ever act on.
+        """
+        watchpath = PurePosixPath(self._watchpath)
+        parent = PurePosixPath(filename).parent
+        while parent != watchpath and watchpath in parent.parents:
+            if not await self.vfs.rmdir(str(parent)):
+                break
+            parent = parent.parent
 
     async def process_extra(self, filename: str) -> bool:
         """Can be overwritten by derived classes to do extra processing on files.

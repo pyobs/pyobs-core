@@ -66,6 +66,18 @@ class VFSFile(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
+    @staticmethod
+    async def rmdir(path: str, *args: Any, **kwargs: Any) -> bool:
+        """Remove the (empty) directory at given path.
+
+        Args:
+            path: Path of directory to remove.
+
+        Returns:
+            Success or not.
+        """
+        raise NotImplementedError()
+
     @classmethod
     async def exists(cls, path: str, *args: Any, **kwargs: Any) -> bool:
         """Checks, whether a given path or file exists.

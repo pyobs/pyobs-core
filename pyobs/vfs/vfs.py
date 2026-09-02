@@ -297,8 +297,11 @@ class VirtualFileSystem:
     @overload
     def _get_method(self, path: str, method: Literal["remove"]) -> tuple[Callable[..., Awaitable[bool]], str, str]: ...
 
+    @overload
+    def _get_method(self, path: str, method: Literal["rmdir"]) -> tuple[Callable[..., Awaitable[bool]], str, str]: ...
+
     def _get_method(
-        self, path: str, method: Literal["find", "listdir", "exists", "remove"]
+        self, path: str, method: Literal["find", "listdir", "exists", "remove", "rmdir"]
     ) -> tuple[Callable[..., Any], str, str]:
         # split root
         klass, root, path = self._get_class(path)
@@ -371,6 +374,22 @@ class VirtualFileSystem:
 
         # and call it
         return await remove(path, **self._roots[root])
+
+    async def rmdir(self, path: str) -> bool:
+        """Removes the (empty) directory with given path.
+
+        Args:
+            path: Path to delete.
+
+        Returns:
+            Success of deletion.
+        """
+
+        # get method
+        rmdir, root, path = self._get_method(path, "rmdir")
+
+        # and call it
+        return await rmdir(path, **self._roots[root])
 
 
 __all__ = ["VirtualFileSystem", "VFSFile"]

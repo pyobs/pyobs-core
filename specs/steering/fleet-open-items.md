@@ -17,7 +17,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (9, checked 2026-09-02)
+## Open issues (10, checked 2026-09-02)
 
 One row per issue — same layout for every repo.
 
@@ -27,6 +27,7 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-core | [#858](https://github.com/pyobs/pyobs-core/issues/858) | Use live telescope position for scheduler's first-task slew-distance estimate | *enhancement* — follow-up to the instrument-capability-duration-estimates plan below; solvable now for `OnDemandScheduler`'s first placed task only (one pre-fetched live position), not the harder mid-schedule/portal-UI cases |
+| pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement* — follow-up to #858; needs "last scheduled task's target" state threaded through `OnDemandScheduler`'s greedy recursion, careful of `check_for_better_task`/`can_postpone_task`'s out-of-order yields |
 | pyobs-portal | [#139](https://github.com/pyobs/pyobs-portal/issues/139) | `instruments` app: move `module_name` to Telescope/Dome/CameraCapability, drop `InstrumentDetail` | *blocking* — `Instrument.module_name` (from #133) conflates the grouping's identity with the telescope's, and `CameraCapability` has no module-name field at all; blocks pyobs-core's instrument-capability-duration-estimates plan (§A.1/§A.8) |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
@@ -58,7 +59,8 @@ One row per issue — same layout for every repo.
   `Script.estimate_duration()` for `ImagingScript` and 4 other leaf scripts via a new
   `TaskData.instrument_capabilities` field; wires the portal's script builder and
   `OnDemandScheduler` (not `AstroplanScheduler`). Slew/rotate start-position left as a fixed
-  placeholder except `OnDemandScheduler`'s first placed task, split out as pyobs-core#858.
+  placeholder except `OnDemandScheduler`'s first placed task, split out as pyobs-core#858 (first
+  task) and pyobs-core#859 (every task after).
 ### Design docs still *proposed*
 
 - [gui-standalone-binary.md](../design/gui-standalone-binary.md) — umbrella for the compiled

@@ -1,6 +1,6 @@
 # Plan: honor exclude/include/by_alias/exclude_* on PolymorphicBaseModel
 
-Status: implemented
+Status: implemented, closed 2026-09-02 (PR #857, merged `4baeb68e`)
 
 Tracks issue #855. Repos: pyobs-core only.
 

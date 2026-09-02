@@ -566,6 +566,40 @@ async def test_task_update_no_change_no_notification(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_task_update_ignores_updated_at_only_change(mocker) -> None:
+    """A no-op re-save (unchanged DRF PATCH still bumps `updated_at` via auto_now) must not fire
+    on_tasks_changed or bump _last_update/cache -- see pyobs-core#856."""
+    archive = make_task_archive()
+    on_tasks_changed = AsyncMock()
+    archive._on_tasks_changed = on_tasks_changed
+    mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(
+            side_effect=[
+                [{"code": "test", "name": "Test", "priority": 1.0, "updated_at": T0.isot}],
+                [{"id": 1, "name": "t1", "duration": 300, "updated_at": T0.isot}],
+                [{"code": "test", "name": "Test", "priority": 1.0, "updated_at": T1.isot}],
+                [{"id": 1, "name": "t1", "duration": 300, "updated_at": T1.isot}],
+            ]
+        ),
+    )
+
+    await archive._update()
+    first_update = archive._last_update
+    cached_projects = archive._projects
+    cached_tasks = archive._tasks
+    assert first_update is not None
+    assert on_tasks_changed.await_count == 1
+
+    await archive._update()
+
+    assert on_tasks_changed.await_count == 1
+    assert archive._last_update == first_update
+    assert archive._projects is cached_projects
+    assert archive._tasks is cached_tasks
+
+
+@pytest.mark.asyncio
 async def test_task_update_detects_content_change(mocker) -> None:
     """Same task identity but changed content (e.g. active=False in the portal) must be applied."""
     archive = make_task_archive()

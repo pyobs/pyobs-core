@@ -11,6 +11,7 @@ import astropy.units as u
 from astroplan import FixedTarget, ObservingBlock
 
 from pyobs.object import Object
+from pyobs.robotic.instruments import InstrumentCapabilities
 from pyobs.utils.time import Time
 
 from .targets import SiderealTarget
@@ -44,8 +45,17 @@ class AstroplanScheduler(TaskScheduler):
         self._is_running: bool = False
 
     async def schedule(
-        self, tasks: list[Task], projects: list[Project], start: Time, end: Time
+        self,
+        tasks: list[Task],
+        projects: list[Project],
+        start: Time,
+        end: Time,
+        instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> AsyncIterator[Observation]:
+        # instrument_capabilities: accepted for TaskScheduler interface consistency, unused --
+        # this scheduler reads the stored Task.duration field rather than calling
+        # estimate_duration() live (see specs/plans/2026-09-01-instrument-capability-duration-estimates.md
+        # Non-goals).
         # is lock acquired? send abort signal
         if self._lock.locked():
             await self.abort()

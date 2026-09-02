@@ -359,3 +359,8 @@ async def test_task_remove_task(task_archive) -> None:
 
 def test_task_remove_task_noop_if_not_found(task_archive) -> None:
     task_archive.remove_task(999)  # should not raise
+
+
+def test_get_instrument_capabilities_defaults_to_none(task_archive) -> None:
+    # only PortalTaskArchive overrides this -- every other backend inherits the None default.
+    assert task_archive.get_instrument_capabilities() is None

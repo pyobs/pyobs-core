@@ -334,7 +334,10 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
                     # schedule
                     scheduled_tasks = ObservationList()
                     first = True
-                    async for scheduled_task in self._scheduler.schedule(self._tasks, self._projects, start, end):
+                    instrument_capabilities = self._task_archive.get_instrument_capabilities()
+                    async for scheduled_task in self._scheduler.schedule(
+                        self._tasks, self._projects, start, end, instrument_capabilities=instrument_capabilities
+                    ):
                         # remember for later
                         scheduled_tasks.append(scheduled_task)
 

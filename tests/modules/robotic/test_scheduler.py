@@ -597,6 +597,44 @@ async def test_schedule_worker_schedules_and_submits_tasks(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_schedule_worker_forwards_instrument_capabilities(mocker) -> None:
+    scheduler = make_scheduler(min_safety_time=1.0)
+    scheduler._need_update = True
+    scheduler._initial_update_done = True
+    scheduler._schedule.get_current_observation = AsyncMock(return_value=None)
+    scheduler._schedule.clear_schedule = AsyncMock()
+    scheduler._schedule.add_observations = AsyncMock()
+
+    capabilities = MagicMock()
+    scheduler._task_archive.get_instrument_capabilities = MagicMock(return_value=capabilities)
+
+    received_kwargs: dict = {}
+
+    async def fake_schedule(*args, **kwargs):
+        received_kwargs.update(kwargs)
+        return
+        yield  # pragma: no cover -- unreachable, only makes this an async generator
+
+    scheduler._scheduler.schedule = fake_schedule
+
+    call_count = 0
+
+    async def fake_sleep(t: float) -> None:
+        nonlocal call_count
+        call_count += 1
+        if call_count >= 2:
+            raise asyncio.CancelledError()
+
+    mocker.patch("pyobs.modules.robotic.scheduler.asyncio.sleep", side_effect=fake_sleep)
+
+    with pytest.raises(asyncio.CancelledError):
+        await scheduler._schedule_worker()
+
+    scheduler._task_archive.get_instrument_capabilities.assert_called_once()
+    assert received_kwargs.get("instrument_capabilities") is capabilities
+
+
+@pytest.mark.asyncio
 async def test_schedule_worker_uses_running_observation_end_as_start(mocker) -> None:
     scheduler = make_scheduler()
     scheduler._need_update = True

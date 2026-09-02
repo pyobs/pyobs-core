@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 
 from pyobs.object import Object
+from pyobs.robotic.instruments import InstrumentCapabilities
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
@@ -19,7 +20,12 @@ class TaskScheduler(Object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def schedule(
-        self, tasks: list[Task], projects: list[Project], start: Time, end: Time
+        self,
+        tasks: list[Task],
+        projects: list[Project],
+        start: Time,
+        end: Time,
+        instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> AsyncIterator[Observation]:
         # if we don't yield once here, mypy doesn't like this, see:
         # https://github.com/python/mypy/issues/5385

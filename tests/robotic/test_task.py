@@ -6,6 +6,7 @@ import pytest
 import yaml
 
 from pyobs.robotic import Task
+from pyobs.robotic.instruments import InstrumentCapabilities
 from pyobs.robotic.observation import Observation
 from pyobs.robotic.scheduler.constraints import AirmassConstraint
 from pyobs.robotic.scheduler.targets import SiderealTarget
@@ -19,6 +20,17 @@ from pyobs.utils.time import Time
 class _TimedScript(Script):
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         return 42.0
+
+
+class _CapabilitiesEchoingScript(Script):
+    """Reports whether TaskData.instrument_capabilities was forwarded, via the return value --
+    used to test that Task.estimate_duration()'s parameter reaches the script, without needing a
+    real InstrumentCapabilities instance."""
+
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        if data is not None and data.instrument_capabilities is not None:
+            return 1.0
+        return 0.0
 
 
 class _AlwaysCanRunScript(Script):
@@ -93,6 +105,17 @@ def test_estimate_duration_delegates_to_script() -> None:
         script={"class": "tests.robotic.test_task._TimedScript"},
     )
     assert task.estimate_duration() == 42.0
+
+
+def test_estimate_duration_forwards_instrument_capabilities_to_script() -> None:
+    task = Task(
+        id=1,
+        name="test",
+        duration=300.0,
+        script={"class": "tests.robotic.test_task._CapabilitiesEchoingScript"},
+    )
+    assert task.estimate_duration() == 0.0
+    assert task.estimate_duration(instrument_capabilities=InstrumentCapabilities([])) == 1.0
 
 
 # ── can_run ───────────────────────────────────────────────────────────────────

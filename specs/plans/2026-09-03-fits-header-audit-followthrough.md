@@ -80,6 +80,16 @@ for a straight header-field addition; flagged as a possible follow-up, not done 
 (returns just whatever it chained from `super()`) if the module hasn't published `IFilters`/
 `IFocuser` state yet or has no `comm` at all — safe for a device that hasn't finished `open()`.
 
+**Release note (2026-09-03):** committed (`10ef9d1f`, `14d062de`), pushed, and released as
+pyobs-core **v2.6.0** via `do-python-release -v minor` (tagged, `develop`→`main` PR merged, `main`
+merged back into `develop`). Pin-bumped `pyobs-core>=2.6.0,<3` (+ `uv lock`) in the four repos
+whose plan items below actually consume the new mixins — pyobs-fli, pyobs-zwoeaf, pyobs-alpaca,
+pyobs-brot — since those are the only ones with a structural dependency on 2.6.0 right now; the
+other 11 plan repos' header additions are self-contained and get their pin bumped when their own
+section starts. `pyobs-fli`'s push surfaced a pre-existing, unrelated GitHub Dependabot alert (45
+vulnerabilities: 29 high, 14 moderate, 2 low) on that repo's default branch — flagged to Tim, not
+addressed here.
+
 ### Bug fix, opportunistic (pyobs-gemini, do before that repo's coverage item below)
 
 - [ ] `pyobs-gemini/pyobs_gemini/gemini.py: GeminiFocuserRotator` — `_update_status` has the

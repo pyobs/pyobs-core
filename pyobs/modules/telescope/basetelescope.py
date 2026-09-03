@@ -814,6 +814,17 @@ class BaseTelescope(
             )
             hdr["HEIGHT"] = FitsHeaderEntry(float(self.observer.location.height.value), "Altitude of telescope [m]")
 
+        # tracking mode
+        if self._tracked_body is not None:
+            hdr["TRACKMOD"] = FitsHeaderEntry("body", "Tracking mode (sidereal/body/orbital)")
+            hdr["TRACKOBJ"] = FitsHeaderEntry(self._tracked_body, "Name of tracked body")
+        elif self._tracked_elements is not None:
+            hdr["TRACKMOD"] = FitsHeaderEntry("orbital", "Tracking mode (sidereal/body/orbital)")
+        elif isinstance(self, ITrackingMode) and self._comm is not None:
+            mode_state = self.comm.get_own_state(ITrackingMode)
+            if mode_state is not None:
+                hdr["TRACKMOD"] = FitsHeaderEntry(mode_state.mode.value, "Tracking mode (sidereal/body/orbital)")
+
         # add static fits headers
         for key, value in self._fits_headers.items():
             hdr[key] = FitsHeaderEntry(value[0], value[1])

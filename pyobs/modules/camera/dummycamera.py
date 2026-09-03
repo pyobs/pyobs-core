@@ -357,6 +357,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         image.header["YBINNING"] = image.header["DET-BIN2"] = (self._binning[1], "Binning factor used on Y axis")
         image.header["XORGSUBF"] = (self._window[0], "Subframe origin on X axis")
         image.header["YORGSUBF"] = (self._window[1], "Subframe origin on Y axis")
+        image.header["GAIN"] = (self._gain, "Gain used for exposure")
+        image.header["GAINOFST"] = (self._gain_offset, "Gain offset used for exposure")
         self.set_biassec_trimsec(image.header, *self._full_frame)
 
         log.info("Exposure finished.")

@@ -213,3 +213,14 @@ Implementation plans, checklist-style. Newest at the bottom.
   headers, reusing `loaded_pyobs_packages()` from #759 (design:
   `specs/design/package_versions_fits_header.md`). **implemented, closed** (#739, closed;
   `b197528c`)
+- [2026-09-03-fits-header-audit-followthrough.md](2026-09-03-fits-header-audit-followthrough.md) —
+  checklist from the #872 fleet-wide FITS header audit: new `FilterHeaderMixin`/
+  `FocuserHeaderMixin` + several direct header additions in pyobs-core, plus per-driver header
+  gaps across 15 sibling repos. **proposed** (Repos: pyobs-core, pyobs-qhyccd, pyobs-sbig,
+  pyobs-asi, pyobs-fli, pyobs-flipro, pyobs-aravis, pyobs-tis, pyobs-zwoeaf, pyobs-zaber,
+  pyobs-alpaca, pyobs-brot, pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti)
+- [2026-09-03-comm-unregister-event-task-cancellation.md](2026-09-03-comm-unregister-event-task-cancellation.md) —
+  `Comm.unregister_event()` cancels already-scheduled handler tasks, closing the stale-widget race
+  in `_send_event_to_module()`; pyobs-gui side is docstring updates only, not code removal (both
+  `_state_subscriptions` and `discard_all_widgets()` investigated and found still necessary).
+  **proposed** (issue #871; Repos: pyobs-core, pyobs-gui)

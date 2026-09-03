@@ -319,6 +319,8 @@ class BaseCamera(
             if self._flip_y:
                 tmp = np.flip(tmp, axis=2 if is_3d else 1)
             image.data = np.ascontiguousarray(tmp)
+        image.header["FLIPX"] = (self._flip_x, "Image flipped along first axis at capture time")
+        image.header["FLIPY"] = (self._flip_y, "Image flipped along second axis at capture time")
 
         # add HDU name
         image.header["EXTNAME"] = "SCI"
@@ -604,10 +606,13 @@ class BaseCamera(
         Args:
             image: Image to be flipped.
         """
+        flipped = False
         if "MERIDIAN" in image.header:
             if image.header["MERIDIAN"].upper() == self._meridian_flip_on:
                 # flip both axes
                 image.data = image.data[::-1, ::-1]
+                flipped = True
+        image.header["FLIPDONE"] = (flipped, "Image flipped for meridian side at capture time")
 
 
 __all__ = ["BaseCamera"]

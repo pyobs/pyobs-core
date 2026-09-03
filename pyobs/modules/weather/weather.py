@@ -226,6 +226,9 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             header_value = None if value is None else dtype(value)
             header[key] = FitsHeaderEntry(header_value, comment)
 
+        is_good = True if not self._active else self._weather.is_good
+        header["WSGOOD"] = FitsHeaderEntry(is_good, "Weather system's good/bad verdict at exposure time")
+
         header.update(version_fits_headers(self.name))
         return header
 

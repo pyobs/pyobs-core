@@ -1,4 +1,21 @@
-v2.3.0
+v2.5.0
+*********************
+* Every module implementing ``IFitsHeaderBefore``/``IFitsHeaderAfter`` now writes one
+  ``HIERARCH <MODULE> VERSION <PACKAGE>`` card per loaded ``pyobs-*`` package into FITS headers,
+  reusing ``loaded_pyobs_packages()`` (added for #759). Closes #739. See
+  ``specs/design/package_versions_fits_header.md``.
+
+v2.4.1 (2026-09-03)
+*********************
+* Fixes ``Time.night_obs()`` flipping to the next night around dawn: it anchored the night
+  boundary at "nearest sunset + 12h", which lands close to sunrise near the equinox -- exactly
+  when morning calibration scripts run (e.g. ``DarkBiasScript`` queried the following night,
+  with no science frames yet, instead of the one that just ended). Anchored at local solar noon
+  instead, matching the archive's own night-labeling convention and not drifting with day length.
+  Also affects ``Mastermind``'s night resolution and the ``DAY-OBS`` FITS header, which share the
+  same call.
+
+v2.4.0 (2026-09-03)
 *********************
 * **Breaking:** ``TaskScheduler.schedule()`` (both ``OnDemandScheduler`` and
   ``AstroplanScheduler``) gained a new ``instrument_capabilities: InstrumentCapabilities | None
@@ -9,6 +26,74 @@ v2.3.0
   keyword argument will raise ``TypeError`` once called by ``pyobs/modules/robotic/scheduler.py``'s
   ``_schedule_worker``, which now always passes it. Add the parameter to your override's signature
   (a default of ``None`` is enough if you don't use it) to stay compatible.
+* Added ``InstrumentCapabilities`` (``pyobs/robotic/instruments.py``), mirroring pyobs-portal's
+  instrument JSON with module-name-keyed camera/telescope/dome/filter-wheel capability lookups,
+  and threaded it through ``TaskData``/``TaskArchive``/``Task.estimate_duration()``.
+  ``PortalTaskArchive`` now polls and caches real capability data from ``GET /api/instruments/``
+  (re-fetched only when pyobs-portal's ``last_instrument_update`` marker moves in either
+  direction; a fetch/parse failure keeps serving the last-good data rather than blocking the
+  tasks/projects poll). ``ImagingScript``, ``PointingScript``, ``DarkBiasScript``, and
+  ``AutoFocusScript`` now use real portal-declared readout/filter-change/slew numbers where
+  available, falling back to the previous flat fudge constants otherwise. See
+  ``specs/plans/2026-09-01-instrument-capability-duration-estimates.md``.
+* Fixes the ``Scheduler``'s ``get_schedule()``/``get_current_observation()`` permanently
+  returning an empty schedule: forcing ``auto_update=False`` on the observation archive also
+  silenced the poller that's the only channel by which the scheduler process learns about
+  observation-state changes written by other processes (e.g. ``Mastermind`` marking an
+  observation ``IN_PROGRESS``/``COMPLETED``). Added ``announce_updates`` to
+  ``PortalObservationArchive`` instead, so the poller can stay on without double-logging its own
+  writes.
+* ``VFS`` gained ``rmdir()`` (``LocalFile``/``VirtualFileSystem``); ``ImageWatcher`` now removes
+  now-empty parent directories left behind when it deletes a watched file.
+* ``ImageWatcher`` only attempts FITS header parsing for filenames that look like FITS
+  (``.fits``/``.fitz``/``.fits.gz``/``.fits.fz``); other watched/copied files no longer produce
+  spurious astropy header-parse warnings.
+
+v2.3.0 (2026-09-02)
+*********************
+* ``ImageWatcher`` gained a ``flatten=True`` (default) constructor option: set ``False`` to keep
+  a non-templated destination file's path relative to ``watchpath`` instead of collapsing it to
+  just the basename, so a whole nested directory tree can be relocated while preserving its
+  structure. Also added recursive watching (inotify mode via asyncinotify's
+  ``RecursiveWatcher``, poll mode, and the initial ``open()`` scan), so subdirectories are picked
+  up too, not just the watched root. Fixed two pre-existing bugs while rewriting the poll loop:
+  ``poll_interval`` was stored but never actually awaited between iterations (a busy-loop), and a
+  stray debug ``print()`` was left in the new-file branch. (#860)
+* Issue #855: ``PolymorphicBaseModel``'s custom serializer (used by ``Task``/``Script``/
+  ``Constraint``/``Merit``/``Target`` and their subclasses) now honors ``exclude``/``include``/
+  ``by_alias``/``exclude_none``/``exclude_unset``/``exclude_defaults`` on ``model_dump()``/
+  ``model_dump_json()`` instead of silently ignoring them, for flat top-level field specs (the
+  only pattern any current caller uses); a nested spec now raises ``NotImplementedError`` instead
+  of being silently ignored or partially applied.
+* Issue #844: ``Reduction``'s minimum-darks-per-group threshold is now configurable via
+  ``min_darks_per_group`` (default 3, unchanged), matching the existing ``min_flats`` option.
+* Issue #856: ``PortalTaskArchive._update()`` no longer counts a bare ``updated_at`` bump (e.g. a
+  no-op re-save) as a real content change, which previously triggered an avoidable re-download
+  and reschedule.
+* Issue #851: ``DummyCamera`` gained an optional ``roof`` reference (mirroring the existing
+  ``telescope`` reference) and now skips flat-field/star simulation, producing dark frames,
+  while its ``DummyRoof`` is parked; fails closed until the roof's state has been received.
+* Issue #848: ``Scheduler._update_schedule()`` now also reschedules on a project priority change
+  or a same-ID task content change (e.g. priority), not just on task IDs appearing or
+  disappearing; also fixes an assignment-order bug where ``self._projects`` was overwritten
+  before it could ever be diffed. Follow-up review fixes: preserve the portal task FK when
+  canceling (the cancel PUT was silently rejected every time otherwise), guard against a startup
+  race between the observation- and task-archive pollers, and stop ``get_current_observation()``
+  from self-healing an in-progress observation out from under a running ``Mastermind``.
+* Issue #850: ``AltitudeLimitError`` no longer inherits from ``MotionError``, so refusing a
+  below-horizon target no longer counts toward motion-fault escalation (3 legitimate rejections
+  within 10 minutes used to push the module into ``ERROR`` state, requiring a manual
+  ``reset_error()``).
+* Issue #845: ``Module._on_module_opened`` and ``FocusSeries._run_focus_series`` now also catch
+  the plain ``ValueError`` that ``Comm._resolve_proxy()`` raises (per its documented contract)
+  when a proxy can't be resolved, instead of leaking it to the caller.
+* Issue #847: ``Scheduler._update_schedule()`` no longer skips rescheduling on portal task
+  removal (the observation-archive schedule-cache gate it relied on is permanently empty for
+  ``PortalObservationArchive`` by construction). ``PortalObservationArchive`` also self-heals
+  observations whose task the portal no longer resolves, canceling them locally and on the
+  portal instead of logging-and-skipping forever.
+* Issue #849: ``DummyRoof.stop_motion()`` now reports ``PARKED`` rather than ``IDLE`` on a closed
+  roof, matching ``init()``/``park()``.
 
 v2.2.0 (2026-09-01)
 *********************

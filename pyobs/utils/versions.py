@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from importlib.metadata import PackageNotFoundError, packages_distributions, version
 
+from pyobs.interfaces import FitsHeaderEntry
+
 
 def loaded_pyobs_packages(sys_modules: Mapping[str, object] | None = None) -> dict[str, str]:
     """Return the version of every loaded ``pyobs``-prefixed distribution.
@@ -47,4 +49,35 @@ def loaded_pyobs_packages(sys_modules: Mapping[str, object] | None = None) -> di
     return dict(sorted(loaded.items()))
 
 
-__all__ = ["loaded_pyobs_packages"]
+_version_cache: dict[str, str] | None = None
+
+
+def _cached_loaded_pyobs_packages() -> dict[str, str]:
+    """Process-global, computed once: every module in one process sees the same loaded packages."""
+
+    global _version_cache
+    if _version_cache is None:
+        _version_cache = loaded_pyobs_packages()
+    return _version_cache
+
+
+def version_fits_headers(module_name: str, packages: Mapping[str, str] | None = None) -> dict[str, FitsHeaderEntry]:
+    """Build one ``HIERARCH <module> VERSION <package>`` header card per pyobs package.
+
+    Args:
+        module_name: Name of the module contributing these headers (e.g. ``self.name``).
+        packages: Package name -> version to emit. Defaults to the cached loaded-pyobs-packages
+            snapshot; pass an explicit mapping (e.g. merged with a vendor SDK version) to override.
+
+    Returns:
+        Keyword -> :class:`FitsHeaderEntry`, comment intentionally empty: the keyword
+        (``<MODULE> VERSION <PACKAGE>``) is already self-describing, and a comment on top of it
+        overflows the 80-char FITS card even for common name lengths.
+    """
+
+    versions = packages if packages is not None else _cached_loaded_pyobs_packages()
+    prefix = module_name.upper()
+    return {f"HIERARCH {prefix} VERSION {pkg.upper()}": FitsHeaderEntry(ver, "") for pkg, ver in versions.items()}
+
+
+__all__ = ["loaded_pyobs_packages", "version_fits_headers"]

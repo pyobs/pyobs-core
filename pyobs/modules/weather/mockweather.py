@@ -9,6 +9,7 @@ from pyobs.modules import Module
 from pyobs.modules.weather.weather import FITS_HEADERS, SENSOR_UNITS
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import WeatherSensors
+from pyobs.utils.versions import version_fits_headers
 
 DEFAULT_SENSOR_VALUES: dict[WeatherSensors, float] = {
     WeatherSensors.TEMPERATURE: 15.0,
@@ -140,6 +141,7 @@ class MockWeather(Module, IWeather, IFitsHeaderBefore):
         for sensor, value in self._sensors.items():
             key, comment, dtype = FITS_HEADERS[sensor]
             header[key] = FitsHeaderEntry(dtype(value), comment)
+        header.update(version_fits_headers(self.name))
         return header
 
 

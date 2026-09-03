@@ -55,6 +55,22 @@ async def test_get_fits_header_before_closed():
     assert header["ROOF-OPN"].comment == "True for open, false for closed roof"
 
 
+@pytest.mark.asyncio
+async def test_get_fits_header_before_includes_version_headers(mocker):
+    from pyobs.interfaces import FitsHeaderEntry
+
+    mocker.patch(
+        "pyobs.modules.roof.baseroof.version_fits_headers",
+        return_value={"HIERARCH TESTROOF VERSION PYOBS-CORE": FitsHeaderEntry("2.4.1", "")},
+    )
+    telescope = MockBaseRoof()
+    telescope.motion_status = MagicMock(return_value=MotionStatus.POSITIONED)
+
+    header = await telescope.get_fits_header_before()
+
+    assert header["HIERARCH TESTROOF VERSION PYOBS-CORE"].value == "2.4.1"
+
+
 def test_ready():
     telescope = MockBaseRoof()
     telescope.motion_status = MagicMock(return_value=MotionStatus.TRACKING)

@@ -143,6 +143,14 @@ the pyobs side regardless of what's brokered behind it. `sub`-based joining (abo
 brokered vs. locally-managed users don't need different handling on the pyobs side either. No open
 question remains here.
 
+**Status note (2026-09-03):** for observation-portal specifically, this "brokered upstream" stance
+was superseded by `specs/plans/2026-08-28-observation-portal-keycloak-auth.md` — the portal
+attaches to Keycloak directly as a relying party via generic OIDC (`mozilla-django-oidc`), not
+`pyobs-auth`, and not brokered. Implemented and deployed for MONET; Section 0 of
+`specs/plans/2026-08-12-shared-auth-keycloak.md` is superseded accordingly. The general point
+above (brokering upstream IdPs behind Keycloak is admin-console config, invisible to pyobs) still
+holds for any other upstream provider.
+
 ## Note: observation-portal's own token validation shortcut (context, not adopted)
 
 Archive's current `BearerAuthentication` validates tokens by calling `PROFILE_URL`

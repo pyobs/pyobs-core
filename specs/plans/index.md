@@ -161,7 +161,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   attach observation-portal (MONET fork) to OIDC via generic `mozilla-django-oidc` (no pyobs-auth
   dependency, upstream-submittable), config-gated via `OIDC_ENABLED`, additive next to local
   username/password auth; supersedes Section 0 (portal brokered behind Keycloak) of the
-  2026-08-12 plan. **proposed, revised 2026-08-31** (Repos: observation-portal)
+  2026-08-12 plan. **implemented, 2026-09-03** — deployed and running for MONET on branch
+  `oidc-auth` (open PR #1, not yet merged to `main` by design) (Repos: observation-portal)
 - [2026-09-01-morning-darks-match-science-exptimes.md](2026-09-01-morning-darks-match-science-exptimes.md) —
   robotic/archive side of dark-exptime matching: expose `EXPTIME` on the archive API, derive a
   night's distinct science exptimes, `DarkBiasScript` takes darks at those exptimes.
@@ -207,3 +208,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   `ImageWatcher`: optional relative-path preservation (`flatten=False`) and recursive directory
   watching, needed so it can relocate a nested directory tree wholesale instead of flattening it.
   **implemented, merged, released** (PR #860, `v2.3.0`)
+- [2026-09-03-package-versions-fits-header.md](2026-09-03-package-versions-fits-header.md) —
+  record loaded pyobs-* package versions per module as `HIERARCH <MODULE> VERSION <PACKAGE>` FITS
+  headers, reusing `loaded_pyobs_packages()` from #759 (design:
+  `specs/design/package_versions_fits_header.md`). **implemented, closed** (#739, closed;
+  `b197528c`)

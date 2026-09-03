@@ -1,11 +1,13 @@
 import math
+from unittest.mock import AsyncMock, MagicMock
 
 import astropy.units as u
 import numpy as np
 import pytest
 from astroplan import Observer
 
-from pyobs.interfaces import OrbitalElements
+from pyobs.comm import Comm
+from pyobs.interfaces import FitsHeaderEntry, OrbitalElements
 from pyobs.modules.telescope import DummyRaDecTelescope
 from pyobs.modules.telescope.basetelescope import (
     InvalidOrbitalElementsError,
@@ -15,6 +17,36 @@ from pyobs.modules.telescope.basetelescope import (
     _solve_kepler_equation,
 )
 from pyobs.utils.time import Time
+
+
+def make_dummyradectelescope(**kwargs) -> DummyRaDecTelescope:
+    comm = MagicMock(spec=Comm)
+    comm.get_own_state = MagicMock(return_value=None)
+    comm.get_own_capabilities = MagicMock(return_value=None)
+    comm.set_state = AsyncMock()
+    comm.set_capabilities = AsyncMock()
+    comm.send_event = AsyncMock()
+    comm.register_event = AsyncMock()
+
+    observer = kwargs.pop("observer", None)
+    if observer is None:
+        observer = Observer(latitude=52.0 * u.deg, longitude=10.0 * u.deg, elevation=100.0 * u.m)
+    kwargs.setdefault("min_altitude", -90)
+    kwargs.setdefault("location", observer.location)
+    return DummyRaDecTelescope(comm=comm, observer=observer, **kwargs)
+
+
+@pytest.mark.asyncio
+async def test_get_fits_header_before_includes_version_headers(mocker):
+    mocker.patch(
+        "pyobs.modules.telescope.basetelescope.version_fits_headers",
+        return_value={"HIERARCH TESTTEL VERSION PYOBS-CORE": FitsHeaderEntry("2.4.1", "")},
+    )
+    tel = make_dummyradectelescope()
+
+    header = await tel.get_fits_header_before(sender="test")
+
+    assert header["HIERARCH TESTTEL VERSION PYOBS-CORE"].value == "2.4.1"
 
 
 def test_calculate_derotator_position():

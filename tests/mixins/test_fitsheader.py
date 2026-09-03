@@ -263,6 +263,19 @@ async def test_add_fits_headers_skips_frame_number_when_disabled() -> None:
     assert "FRAMENUM" not in image.header
 
 
+def test_add_local_fits_headers_includes_version_headers(mocker) -> None:
+    mocker.patch(
+        "pyobs.mixins.fitsheader.version_fits_headers",
+        return_value={"HIERARCH TESTCAM VERSION PYOBS-CORE": FitsHeaderEntry("2.4.1", "")},
+    )
+    m = make_module(frame_number=False)
+    image = make_image(**{"DATE-OBS": "2024-01-01T03:00:00.000"})
+
+    m.add_local_fits_headers(image)
+
+    assert image.header["HIERARCH TESTCAM VERSION PYOBS-CORE"] == "2.4.1"
+
+
 def test_add_local_fits_headers_sets_headers_without_vfs_io() -> None:
     m = make_module(frame_number=True)
     m._vfs = MagicMock()

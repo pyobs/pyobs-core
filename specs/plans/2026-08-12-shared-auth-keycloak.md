@@ -8,13 +8,17 @@ cutovers are implemented and released (`pyobs-auth` `2.0.0.dev7`, `pyobs-archive
 `pyobs-robotic-backend` released with the dependency). Live verification done 2026-08-19: browser
 Keycloak login and logout confirmed working end to end against the running Keycloak (PKCE redirect
 → callback → token validation → user mapping → session, and logout ending the SSO session). Section
-0 remains open but is Keycloak admin/deployment config, not pyobs code — tracked separately (see
-#748), not part of this plan's closure.
+0 is superseded, not done — see below.
 
-Keycloak is the single issuer for all services; observation-portal is brokered behind it (Keycloak
-admin config, not pyobs code) rather than integrated as a second, separately-validated provider.
+Keycloak is the single issuer for all services; observation-portal was originally meant to be
+brokered behind it (Section 0), but that's superseded — see Section 0 below.
 
 ## 0. observation-portal (Keycloak admin config + small observation-portal config change)
+
+**Superseded 2026-09-03** by `specs/plans/2026-08-28-observation-portal-keycloak-auth.md`: instead
+of brokering observation-portal *behind* Keycloak (the approach below), the portal became a
+relying party of Keycloak directly via generic OIDC (`mozilla-django-oidc`). Implemented and
+deployed for MONET. The items below were never done and won't be — kept for history only.
 
 The plan's only remaining open section as of 2026-08-19 — the Keycloak server, realm, and
 per-service clients are set up, but observation-portal is not yet brokered behind Keycloak. All

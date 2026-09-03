@@ -10,8 +10,12 @@ and is realistic to submit upstream to OCS. It's **additive and config-gated** o
 existing local username/password auth: `OIDC_ENABLED` unset/false ⇒ portal behaves exactly as
 today.
 
-Status: proposed, 2026-08-31 (revised from 2026-08-28 — see "Direction change" below). No GitHub
-issue filed yet.
+Status: implemented, 2026-09-03. Part A landed on branch `oidc-auth`
+(github.com/thusser/observation-portal), open PR #1 (`oidc-auth` → `main`), last pushed
+2026-08-31 — deployed and running for MONET. Deliberately staying as an open PR rather than
+merged to `main`: the branch is what's deployed, and the upstream-submittable PR against
+`observatorycontrolsystem/observation-portal` (see "Not in this plan") gets filed separately,
+later. No GitHub issue filed yet.
 
 Repos: observation-portal (MONET fork). No pyobs-auth/pyobs-core dependency — this plan does not
 touch pyobs-auth.
@@ -78,9 +82,9 @@ Two layers, deliberately kept separable:
 
 ### A0. Dependency + settings gate
 
-- [ ] `pyproject.toml`: add `mozilla-django-oidc[drf]` (pin latest stable — 5.0.2 as of
+- [x] `pyproject.toml`: add `mozilla-django-oidc[drf]` (pin latest stable — 5.0.2 as of
       2026-08-31; re-check at implementation time).
-- [ ] `observation_portal/settings.py`: single toggle,
+- [x] `observation_portal/settings.py`: single toggle,
       ```python
       OIDC_ENABLED = os.getenv("OIDC_ENABLED", "False").lower() == "true"
       ```
@@ -88,7 +92,7 @@ Two layers, deliberately kept separable:
       processor) is added conditionally on this flag, at settings/urls load time — **this is the
       literal config option**: false ⇒ zero behavioral change from today, no new code path
       executes, no network calls to any OIDC provider happen.
-- [ ] Generic `OIDC_*` env vars, read only when `OIDC_ENABLED` (mirrors mozilla-django-oidc's own
+- [x] Generic `OIDC_*` env vars, read only when `OIDC_ENABLED` (mirrors mozilla-django-oidc's own
       naming, not Keycloak-specific):
       ```python
       if OIDC_ENABLED:
@@ -110,14 +114,14 @@ Two layers, deliberately kept separable:
       "app fails to start" into a new failure mode whenever the OIDC provider is briefly
       unreachable during a deploy/restart. Four explicit endpoint env vars is more typing but keeps
       Django startup independent of the OIDC provider's uptime.
-- [ ] Document the `OIDC_*` env vars in `README.md`'s environment-variable table.
+- [x] Document the `OIDC_*` env vars in `README.md`'s environment-variable table.
 
 ### A1. User mapping — `Profile.oidc_sub` + custom backend
 
-- [ ] `observation_portal/accounts/models.py`: add `oidc_sub = models.CharField(max_length=255,
+- [x] `observation_portal/accounts/models.py`: add `oidc_sub = models.CharField(max_length=255,
       unique=True, blank=True, null=True)` to `Profile` + migration. (Generic name — not
       `keycloak_sub` — since Part A doesn't know it's Keycloak.)
-- [ ] New `observation_portal/accounts/oidc.py`:
+- [x] New `observation_portal/accounts/oidc.py`:
       ```python
       from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
@@ -161,7 +165,7 @@ Two layers, deliberately kept separable:
       `Profile` post-save fires `update_or_create_client_applications_user`
       (`accounts/signals/handlers.py:22`) — harmless, no-ops without `OAUTH_CLIENT_APPS_BASE_URLS`,
       same as the original plan noted.
-- [ ] Auto-link by email is the effective default (`filter_users_by_claims` falls through to the
+- [x] Auto-link by email is the effective default (`filter_users_by_claims` falls through to the
       base class's email match) — same recommendation as the 2026-08-28 version, same
       non-unique-email caveat (base class uses `.filter()`, not `.first()` — check whether multiple
       matches should raise or pick one; mozilla-django-oidc's base `get_or_create_user` raises
@@ -170,7 +174,7 @@ Two layers, deliberately kept separable:
 
 ### A2. URLs
 
-- [ ] `observation_portal/urls.py`:
+- [x] `observation_portal/urls.py`:
       ```python
       if settings.OIDC_ENABLED:
           urlpatterns = [path("oidc/", include("mozilla_django_oidc.urls"))] + urlpatterns
@@ -178,11 +182,11 @@ Two layers, deliberately kept separable:
       Prepend (not append) for the same reason as the original plan's ordering note: the portal's
       `accounts/urls.py` ends in a catch-all `re_path(r'', include('registration.backends...'))`
       that would otherwise swallow `oidc/...`.
-- [ ] Resulting endpoints when enabled: `/oidc/authenticate/`, `/oidc/callback/`, `/oidc/logout/`.
+- [x] Resulting endpoints when enabled: `/oidc/authenticate/`, `/oidc/callback/`, `/oidc/logout/`.
 
 ### A3. DRF authentication — bearer tokens
 
-- [ ] `observation_portal/settings.py`, conditionally on `OIDC_ENABLED`, append
+- [x] `observation_portal/settings.py`, conditionally on `OIDC_ENABLED`, append
       `"mozilla_django_oidc.contrib.drf.OIDCAuthentication"` to
       `REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]`, **after**
       `OAuth2Authentication` — ordering here is load-bearing in a way it wasn't in the original
@@ -190,11 +194,11 @@ Two layers, deliberately kept separable:
 
 ### A4. Login page + context processor
 
-- [ ] New `observation_portal/accounts/context_processors.py`: `oidc(request)` exposing
+- [x] New `observation_portal/accounts/context_processors.py`: `oidc(request)` exposing
       `oidc_login_enabled` (= `settings.OIDC_ENABLED`) and an `oidc_login_url` (reverse of
       `oidc_authentication_init`, preserving `next`); register in `TEMPLATES['OPTIONS']
       ['context_processors']`.
-- [ ] `templates/registration/login.html`: single "Log in with OIDC" / provider-labeled button
+- [x] `templates/registration/login.html`: single "Log in with OIDC" / provider-labeled button
       behind `{% if oidc_login_enabled %}`, `next` preserved via `|urlencode` (and fix the existing
       unescaped `next` in the local form while the file is open). No dual-button/IDP-hint pattern
       here — that's Keycloak-specific UX (multiple upstream IdPs behind one realm), doesn't belong
@@ -202,7 +206,7 @@ Two layers, deliberately kept separable:
 
 ### A5. Logout
 
-- [ ] `mozilla_django_oidc.urls` gives `/oidc/logout/`, which by default only ends the local Django
+- [x] `mozilla_django_oidc.urls` gives `/oidc/logout/`, which by default only ends the local Django
       session. RP-initiated logout at the OP (ending its SSO session too) needs
       `OIDC_OP_LOGOUT_URL_METHOD` pointed at a function that builds the provider's end-session URL
       (`id_token_hint` + `post_logout_redirect_uri`) — generic in shape (reads
@@ -217,43 +221,45 @@ these are touched.
 
 ### A7. Tests
 
-- [ ] `ObservationPortalOIDCBackend`: sub-match on repeat login, email-fallback match on first
+- [x] `ObservationPortalOIDCBackend`: sub-match on repeat login, email-fallback match on first
       login, inactive-user creation with empty Profile fields, `verify_claims` rejects a token with
       the wrong `aud`.
-- [ ] DRF: `OIDCAuthentication` authenticates a valid userinfo response; a portal-issued OAuth2
+- [x] DRF: `OIDCAuthentication` authenticates a valid userinfo response; a portal-issued OAuth2
       token still authenticates (via `OAuth2Authentication`, first in the list) without ever
       reaching the OIDC authenticator.
-- [ ] `OIDC_ENABLED=False` (the default): login page identical to today, no `AUTHENTICATION_BACKENDS`
+- [x] `OIDC_ENABLED=False` (the default): login page identical to today, no `AUTHENTICATION_BACKENDS`
       /DRF-authenticator/URL changes — importing `settings.py` and `urls.py` must not require any
       `OIDC_*` env var to be set.
 
 ## Part B: MONET deployment config (not upstream)
 
-- [ ] Concrete `OIDC_RP_CLIENT_ID`/secret, endpoint URLs, and `OIDC_ENABLED=true` in MONET's
+- [x] Concrete `OIDC_RP_CLIENT_ID`/secret, endpoint URLs, and `OIDC_ENABLED=true` in MONET's
       private site-config repo / `deploy/.env` — not this repo, not the OCS fork's public
       `README.md` example values ([[feedback_no_internal_names_in_public_repos]]).
 - [ ] If MONET wants the dual-button "GWDG SSO vs. local Keycloak account" UX from
       `2026-08-21-keycloak-idp-hint-login.md`: a template override of `login.html` in the private
       config (or a documented extension point in A4's template, e.g. a block tag) rather than
       baking `kc_idp_hint` into the upstream login flow. Worth deciding at implementation time
-      whether this is worth the extra complexity for one deployment.
-- [ ] Keycloak admin config: register `observation-portal` as a client, redirect URIs — operational,
+      whether this is worth the extra complexity for one deployment. Not done — single generic
+      button in production for now, revisit if wanted.
+- [x] Keycloak admin config: register `observation-portal` as a client, redirect URIs — operational,
       outside repo code, same as the original plan's "Not in this plan" item.
 
 ## Docs (pyobs-core)
 
-- [ ] `specs/design/shared-auth-keycloak.md` Section 10: status note — observation-portal attaches
+- [x] `specs/design/shared-auth-keycloak.md` Section 10: status note — observation-portal attaches
       via generic OIDC (`mozilla-django-oidc`), not `pyobs-auth`; Section 0 of the 2026-08-12 plan
       is superseded, same as the original plan intended.
-- [ ] `specs/plans/index.md`: update this entry's one-liner (currently describes the `pyobs-auth`
+- [x] `specs/plans/index.md`: update this entry's one-liner (currently describes the `pyobs-auth`
       approach — needs to say generic OIDC / no pyobs-auth dependency / upstream-submittable).
 
 ## Verification
 
-- [ ] Full portal test suite green (existing + new).
-- [ ] Regression: `OIDC_ENABLED` unset ⇒ login page renders exactly today's form; settings/urls
+- [x] Full portal test suite green (existing + new) — CI (`build`) passing on `oidc-auth` HEAD
+      (`f6dd1f4e`, 2026-08-31).
+- [x] Regression: `OIDC_ENABLED` unset ⇒ login page renders exactly today's form; settings/urls
       import cleanly with zero `OIDC_*` env vars present. (Verifiable from a checkout.)
-- [ ] Live E2E against real Keycloak (operational, not verifiable from a checkout): login button →
+- [x] Live E2E against real Keycloak (operational, not verifiable from a checkout): login button →
       Keycloak → callback → backend resolves user → portal session; logout ends both sessions; a
       Keycloak-issued bearer token authenticates a portal API call; a portal-issued OAuth2 token
       still authenticates unaffected.

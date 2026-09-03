@@ -184,7 +184,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   `OnDemandScheduler` (not `AstroplanScheduler` — see plan's Non-goals). pyobs-portal-side
   implementation detail (cache helper, `last_instrument_update/` marker, `schema.py` wiring) is
   its own plan: `../../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md`.
-  **proposed** (no issue yet; Repos: pyobs-core, pyobs-portal)
+  **implemented, closed 2026-09-03** (pyobs-core#864/#865/#867/#868, released as pyobs-core
+  v2.4.0; pyobs-portal#144/#145; Repos: pyobs-core, pyobs-portal)
 - [2026-09-01-scheduler-reschedule-on-portal-task-removal.md](2026-09-01-scheduler-reschedule-on-portal-task-removal.md) —
   drop `Scheduler._update_schedule()`'s "was it scheduled?" gate, which is unconditionally wrong
   for `PortalObservationArchive` (permanently empty cache by construction) and stalls

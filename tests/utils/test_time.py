@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from datetime import timedelta
 
 import astropy.units as u
 from astroplan import Observer
@@ -19,6 +20,20 @@ def test_night_obs_uses_sunset_date() -> None:
     observer = Observer(location=MID_LATITUDE_LOCATION, timezone="UTC")
     t = Time("2026-07-16T15:45:50")
     assert t.night_obs(observer) == t.to_datetime().date()
+
+
+def test_night_obs_stays_on_previous_night_past_equinox_sunrise() -> None:
+    # near the equinox, sunset + 12h lands close to sunrise -- a query shortly after sunrise
+    # (e.g. a morning calibration script) must still resolve to the night that just ended, not
+    # flip to the following night.
+    observer = Observer(location=MID_LATITUDE_LOCATION, timezone="UTC")
+    before_flip = Time("2026-09-23T05:00:00")
+    after_flip = Time("2026-09-23T07:00:00")
+
+    night_before = before_flip.night_obs(observer)
+    night_after = after_flip.night_obs(observer)
+
+    assert night_before == night_after == before_flip.to_datetime().date() - timedelta(days=1)
 
 
 def test_night_obs_falls_back_to_local_date_during_polar_day() -> None:

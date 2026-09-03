@@ -1,6 +1,6 @@
 # Plan: Feed pyobs-portal instrument capability data into script duration estimates
 
-Status: proposed, unblocked (Repos: pyobs-core, pyobs-portal)
+Status: implemented, closed 2026-09-03 (Repos: pyobs-core, pyobs-portal)
 
 Follow-up to pyobs-portal#133 (merged 2026-09-01/02; `instruments` app: per-instrument
 camera/telescope/dome capability data, incl. task-duration-estimate fields — readout time per
@@ -31,6 +31,17 @@ now has its own plan on the pyobs-portal side:
 `estimate_duration()` is currently at `:766-792`, not `:748-774` as first estimated below). §B
 below is kept for cross-repo context but that doc is the current source of truth for the
 pyobs-portal-side design.
+
+**Fully landed 2026-09-03.** §A shipped across four PRs — models (pyobs-core#864), `TaskData`/
+`TaskArchive`/scheduler plumbing (pyobs-core#865), the 5 leaf scripts (pyobs-core#867, minus
+`SelectorScript` per Non-goals), and `PortalTaskArchive`'s marker-gated poll (pyobs-core#868) —
+and released to PyPI as pyobs-core v2.4.0. §B shipped in pyobs-portal#144 (marker endpoint, cache
+helper, `schema.py` wiring, feature-detected against a pyobs-core release that might predate
+pyobs-core#864) and pyobs-portal#145 (bumped this repo's pin to v2.4.0, confirmed
+`HAS_INSTRUMENT_CAPABILITIES` now `True` and the previously-skipped test exercising for real,
+148/148 passing against the actual PyPI release). Real capability data now reaches both the
+script builder's live auto-estimate and `OnDemandScheduler` end-to-end, pending pyobs-portal's
+own `develop`→`main` release/deploy (tracked separately, not part of this plan).
 
 ## Problem
 
@@ -273,17 +284,19 @@ return {"duration": script.estimate_duration(
 
 ## Test plan
 
-- [ ] pyobs-core: `InstrumentCapabilities` model round-trips the portal's actual
-      `InstrumentSerializer` JSON shape (fixture from pyobs-portal's own test data)
-- [ ] pyobs-core: each of the 5 leaf scripts' `estimate_duration()` — with capability data present
-      (correct math) and absent/partial (falls back to today's constant, unchanged)
-- [ ] pyobs-core: `PortalTaskArchive` instrument-capability fetch — marker-gated refresh, and
-      degrades to last-good cache (not `None`, not raise) on a fetch failure
-- [ ] pyobs-core: `OnDemandScheduler`'s 4 call sites forward `instrument_capabilities` correctly;
-      `AstroplanScheduler` unaffected (still reads `task.duration`)
-- [ ] pyobs-portal: `last_instrument_update/` reflects nested capability edits, not just
-      `Instrument`-row edits
-- [ ] pyobs-portal: `estimate_duration/` returns different durations with vs. without a matching
-      `Instrument` row for the task's `camera`/`telescope`, cache TTL respected
+- [x] pyobs-core: `InstrumentCapabilities` model round-trips the portal's actual
+      `InstrumentSerializer` JSON shape (fixture from pyobs-portal's own test data) — pyobs-core#864
+- [x] pyobs-core: each of the 5 leaf scripts' `estimate_duration()` — with capability data present
+      (correct math) and absent/partial (falls back to today's constant, unchanged) — pyobs-core#867
+- [x] pyobs-core: `PortalTaskArchive` instrument-capability fetch — marker-gated refresh, and
+      degrades to last-good cache (not `None`, not raise) on a fetch failure — pyobs-core#868
+- [x] pyobs-core: `OnDemandScheduler`'s 4 call sites forward `instrument_capabilities` correctly;
+      `AstroplanScheduler` unaffected (still reads `task.duration`) — pyobs-core#865
+- [x] pyobs-portal: `last_instrument_update/` reflects nested capability edits, not just
+      `Instrument`-row edits — pyobs-portal#144
+- [x] pyobs-portal: `estimate_duration/` returns different durations with vs. without a matching
+      `Instrument` row for the task's `camera`/`telescope`, cache TTL respected — pyobs-portal#144
 - [ ] Manual: script builder duration estimate visibly changes after editing an instrument's
-      capability data in the admin
+      capability data in the admin — not yet clicked through by hand; automated coverage above
+      (pyobs-portal#144's `EstimateDurationInstrumentCapabilitiesTests`, real path, 0 skipped as of
+      pyobs-portal#145) exercises the same code path, but nobody has watched it in a browser yet

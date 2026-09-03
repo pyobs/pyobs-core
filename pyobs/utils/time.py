@@ -53,6 +53,11 @@ class Time(astropy.time.Time):
     def night_obs(self, observer: Observer) -> date:
         """Returns the night for this time, i.e. the date of the start of the current night.
 
+        The night boundary is anchored at local solar noon, not the midpoint between sunsets:
+        "nearest sunset" places that midpoint at sunset_time + 12h, which lands close to sunrise
+        near the equinox -- exactly when morning calibration scripts run -- and flips the night
+        one day too early for any time between that point and local noon.
+
         Args:
             observer: Observer object to use.
 
@@ -60,12 +65,14 @@ class Time(astropy.time.Time):
             Night for this time.
         """
 
-        # get closest sunset
-        sunset = observer.sun_set_time(self, which="nearest")
+        local_time = self.to_datetime(timezone=observer.timezone)
+        noon = local_time.replace(hour=12, minute=0, second=0, microsecond=0)
+        which = "previous" if local_time < noon else "next"
+        sunset = observer.sun_set_time(self, which=which)
         if sunset.masked:
             # sun doesn't cross the horizon within the search window, e.g. polar day/night,
             # so fall back to the observer's local calendar date
-            return cast(date, self.to_datetime(timezone=observer.timezone).date())
+            return cast(date, local_time.date())
         return sunset.to_datetime().date()
 
 

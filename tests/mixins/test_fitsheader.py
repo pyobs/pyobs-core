@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pytest
+import pytz
 from astropy.coordinates import EarthLocation
 
 from pyobs.comm import Comm
@@ -33,6 +34,7 @@ def make_observer(
 ) -> MagicMock:
     observer = MagicMock()
     observer.location = location
+    observer.timezone = pytz.UTC
     lst = MagicMock()
     lst.hour = lst_hours
     observer.local_sidereal_time = MagicMock(return_value=lst)

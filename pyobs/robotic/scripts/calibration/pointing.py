@@ -51,8 +51,10 @@ class PointingScript(Script):
 
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         """Estimate duration of slewing to the flat-field pointing."""
-        # TODO: get a better estimate for slewing
-        return 60.0
+        capabilities = data.instrument_capabilities if data is not None else None
+        telescope = capabilities.telescope(self.telescope) if capabilities is not None else None
+        slew_time = telescope.estimate_slew_time_s() if telescope is not None else None
+        return slew_time if slew_time is not None else 60.0
 
 
 __all__ = ["PointingScript"]

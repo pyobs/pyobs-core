@@ -6,7 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import astropy.units as u
 import pytest
 
+from pyobs.robotic.instruments import BinningOption, CameraCapability, Instrument, InstrumentCapabilities
 from pyobs.robotic.scripts.calibration.darkbias import DarkBiasScript
+from pyobs.robotic.task import TaskData
 from pyobs.robotic.utils.archive import Archive, FrameInfo
 from pyobs.robotic.utils.calibration import clear_cache
 from pyobs.utils.enums import ImageType
@@ -341,6 +343,31 @@ async def test_runs_series_longest_first() -> None:
 async def test_estimate_duration_sums_over_exptimes_list() -> None:
     script = make_script(count=2, exptimes=[30.0, 600.0])
     assert script.estimate_duration(None) == 2 * (30.0 + 5.0) + 2 * (600.0 + 5.0)
+
+
+def _capabilities_with_readout(readout_time_s: float, binning: tuple[int, int] = (1, 1)) -> InstrumentCapabilities:
+    camera = CameraCapability(
+        module_name="camera",
+        code="ef01",
+        binnings=[BinningOption(x=binning[0], y=binning[1], readout_time_s=readout_time_s)],
+    )
+    return InstrumentCapabilities([Instrument(cameras=[camera])])
+
+
+@pytest.mark.asyncio
+async def test_estimate_duration_uses_real_readout_time_when_available() -> None:
+    script = make_script(count=2, exptimes=[30.0, 600.0])
+    data = TaskData(task=MagicMock(), instrument_capabilities=_capabilities_with_readout(3.5))
+    assert script.estimate_duration(data) == 2 * (30.0 + 3.5) + 2 * (600.0 + 3.5)
+
+
+@pytest.mark.asyncio
+async def test_estimate_duration_falls_back_when_binning_not_declared() -> None:
+    # capability data exists for the camera, but not for this script's binning (2x2) -- falls
+    # back to the flat 5.0s fudge, same as if there were no capability data at all
+    script = make_script(count=2, exptimes=[30.0], binning=(2, 2))
+    data = TaskData(task=MagicMock(), instrument_capabilities=_capabilities_with_readout(3.5, binning=(1, 1)))
+    assert script.estimate_duration(data) == 2 * (30.0 + 5.0)
 
 
 # ── match_science_exptimes ────────────────────────────────────────────────────

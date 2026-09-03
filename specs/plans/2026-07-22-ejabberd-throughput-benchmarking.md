@@ -4,6 +4,13 @@ Status: closed, out of scope (2026-08-03) — all systems running fine in produc
 shaper mitigation held, and systematic throughput/latency benchmarking is no longer a priority.
 Kept as a record of the investigation, not an active plan.
 
+**Update (2026-09-02):** the mitigation above only ever covered iag50's ejabberd config — the
+underlying unthrottled fan-out in `Module._on_module_opened`/`Comm._get_client` was never fixed in
+pyobs-core, and reproduced again in a different shape (GUI-side event-loop saturation instead of
+capability-fetch timeouts) on `monet`. See
+[`specs/steering/module-opened-fanout-stalls-event-loop.md`](../steering/module-opened-fanout-stalls-event-loop.md)
+for the confirmed mechanism and both occurrences.
+
 Repos: pyobs-brot (the reconnect-storm investigation below concerns BrotDome/BrotRaDecTelescope
 production behavior on pyobs-iag50)
 

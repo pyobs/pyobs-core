@@ -8,12 +8,26 @@ from astropy.coordinates import EarthLocation
 from astropy.time import TimeDelta
 
 from pyobs.robotic import Task
+from pyobs.robotic.instruments import InstrumentCapabilities
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.constraints import Constraint
 from pyobs.robotic.scheduler.merits import ConstantMerit, TimeWindowMerit
 from pyobs.robotic.scheduler.merits.timewindow import TimeWindow
 from pyobs.robotic.scheduler.ondemandscheduler import OnDemandScheduler
+from pyobs.robotic.scripts import Script
+from pyobs.robotic.task import TaskData
 from pyobs.utils.time import Time
+
+
+class _CapabilitiesEchoingScript(Script):
+    """Returns 1.0 if TaskData.instrument_capabilities was forwarded, else 0.0 -- used to check
+    that instrument_capabilities reaches Task.estimate_duration() through the scheduler's call
+    chain, without needing a real InstrumentCapabilities instance at every layer."""
+
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        if data is not None and data.instrument_capabilities is not None:
+            return 1.0
+        return 0.0
 
 
 @pytest.mark.asyncio
@@ -310,3 +324,52 @@ async def test_check_for_better_task_does_not_block_event_loop() -> None:
 
     assert better == tasks[0]
     assert heartbeats >= 4
+
+
+def test_create_scheduled_task_forwards_instrument_capabilities() -> None:
+    scheduler = OnDemandScheduler()
+    start = Time.now()
+    task = Task(
+        id=1,
+        name="1",
+        duration=100,
+        script={"class": "tests.robotic.scheduler.test_ondemandscheduler._CapabilitiesEchoingScript"},
+    )
+
+    without_caps = scheduler.create_scheduled_task(task, merit=1.0, time=start)
+    assert (without_caps.end - without_caps.start).sec == pytest.approx(0.0)
+
+    with_caps = scheduler.create_scheduled_task(
+        task, merit=1.0, time=start, instrument_capabilities=InstrumentCapabilities([])
+    )
+    assert (with_caps.end - with_caps.start).sec == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_schedule_threads_instrument_capabilities_end_to_end() -> None:
+    """schedule() is the only entry point pyobs/modules/robotic/scheduler.py calls -- confirm
+    instrument_capabilities makes it all the way from there down to Task.estimate_duration()."""
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
+    scheduler = OnDemandScheduler(observer=observer)
+    start = Time.now()
+    # short window -- the echoing script's 1s duration means schedule() keeps finding a next
+    # slot for the same task, so this only needs to be wide enough for one, not exhaustively long
+    end = start + TimeDelta(2 * u.second)
+
+    task = Task(
+        id=1,
+        name="1",
+        duration=100,
+        merits=[ConstantMerit(merit=10)],
+        script={"class": "tests.robotic.scheduler.test_ondemandscheduler._CapabilitiesEchoingScript"},
+    )
+
+    observations = [
+        obs
+        async for obs in scheduler.schedule([task], [], start, end, instrument_capabilities=InstrumentCapabilities([]))
+    ]
+
+    assert len(observations) >= 1
+    assert (observations[0].end - observations[0].start).sec == pytest.approx(1.0)

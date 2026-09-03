@@ -9,6 +9,9 @@ warrants it, not for speculative content.
   auto-download can block the event loop from inside `basetelescope.py`.
 - [scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md](scheduler-cpu-bound-merit-evaluation-stalls-event-loop.md) —
   `OnDemandScheduler.evolve()` re-doing an uncached astropy sunset lookup blocks the event loop.
+- [module-opened-fanout-stalls-event-loop.md](module-opened-fanout-stalls-event-loop.md) —
+  `Module._on_module_opened`'s unthrottled per-peer fan-out on connect can saturate a single-loop
+  client's event loop; confirmed on both a module (iag50) and pyobs-gui (`monet`).
 - [finding-module-logs-under-pyobsd.md](finding-module-logs-under-pyobsd.md) — finding a specific
   module's logs on a `pyobsd`-managed host.
 - [pyobs-project-tiers.md](pyobs-project-tiers.md) — the pyobs project fleet: core, connected, and

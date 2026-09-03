@@ -1240,8 +1240,8 @@
     "semantic_hash": "c17f2e474d636160308db39adbca3799"
   },
   "pyobs/modules/telescope/_dummytelescopebase.py": {
-    "mtime": 1787123205.397914,
-    "ast_hash": "e69880a6aabfca06c545cdc2604f2cc3",
+    "mtime": 1787811636.813517,
+    "ast_hash": "21c350da3ed46e8630bede6952246a05",
     "semantic_hash": ""
   },
   "pyobs/modules/telescope/basetelescope.py": {
@@ -2210,8 +2210,8 @@
     "semantic_hash": ""
   },
   "pyproject.toml": {
-    "mtime": 1787744619.4215639,
-    "ast_hash": "ff023904109954e5737a9f16efb5763a",
+    "mtime": 1787812075.26663,
+    "ast_hash": "bb709efdc9b16858812c9d41672ad92d",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {

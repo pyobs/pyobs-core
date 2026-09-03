@@ -171,16 +171,23 @@ def test_init_defaults() -> None:
 #
 # Pins which schedule/scheduler classes get which auto-injected kwarg -- injecting
 # unconditionally used to rely on the target silently absorbing an unwanted kwarg, which stopped
-# being true once Object.__init__ started forwarding leftovers to object.__init__(). Regression
-# coverage for the auto_update bug found in PR #776 review: dropping it unconditionally would have
-# re-enabled PortalObservationArchive's polling loop in two live fleets.
+# being true once Object.__init__ started forwarding leftovers to object.__init__().
+#
+# auto_update is deliberately left alone here: PortalObservationArchive's polling loop is the only
+# channel by which the scheduler process learns about observation-state changes written by other
+# processes (e.g. Mastermind marking an observation IN_PROGRESS/COMPLETED), so it must stay on --
+# forcing it off (the original bug, from PR #776) left get_schedule()/get_current_observation()/
+# get_next_observation() permanently empty. announce_updates=False is injected instead, to
+# suppress the one-line "Downloaded new schedule" echo when the scheduler itself is the one that
+# just computed and posted the schedule (already logged in detail by _log_scheduled_task) --
+# without silencing it for other consumers of the same class, like Mastermind.
 
 
 @pytest.mark.parametrize(
     "class_path,param_name,expected",
     [
-        ("pyobs.robotic.storage.portal.observationarchive.PortalObservationArchive", "auto_update", True),
-        ("pyobs.robotic.storage.lco.observationarchive.LcoObservationArchive", "auto_update", False),
+        ("pyobs.robotic.storage.portal.observationarchive.PortalObservationArchive", "announce_updates", True),
+        ("pyobs.robotic.storage.lco.observationarchive.LcoObservationArchive", "announce_updates", False),
         ("pyobs.robotic.scheduler.ondemandscheduler.OnDemandScheduler", "observation_archive", True),
         ("pyobs.robotic.scheduler.astroplanscheduler.AstroplanScheduler", "observation_archive", False),
     ],
@@ -192,8 +199,8 @@ def test_class_accepts_param_dict_config(class_path: str, param_name: str, expec
 @pytest.mark.parametrize(
     "klass,param_name,expected",
     [
-        (PortalObservationArchive, "auto_update", True),
-        (LcoObservationArchive, "auto_update", False),
+        (PortalObservationArchive, "announce_updates", True),
+        (LcoObservationArchive, "announce_updates", False),
         (OnDemandScheduler, "observation_archive", True),
         (AstroplanScheduler, "observation_archive", False),
     ],
@@ -203,16 +210,18 @@ def test_class_accepts_param_bare_class(klass: type, param_name: str, expected: 
 
 
 def test_class_accepts_param_dict_without_class_key_is_false() -> None:
-    assert _class_accepts_param({}, "auto_update") is False
+    assert _class_accepts_param({}, "announce_updates") is False
 
 
 def test_class_accepts_param_unresolvable_class_path_is_false() -> None:
-    assert _class_accepts_param({"class": "not.a.real.module.Class"}, "auto_update") is False
+    assert _class_accepts_param({"class": "not.a.real.module.Class"}, "announce_updates") is False
 
 
-def test_init_injects_auto_update_false_for_backend_observation_archive() -> None:
-    # regression test for the bug found in PR #776 review: dropping auto_update=False
-    # unconditionally re-enabled this 5s polling loop in two live fleet configs
+def test_init_leaves_auto_update_on_for_portal_observation_archive() -> None:
+    # regression test: auto_update must stay on, or get_schedule()/get_current_observation()/
+    # get_next_observation() never see anything beyond the empty list PortalObservationArchive is
+    # constructed with -- this was the bug (scheduler produced a schedule but it never showed up
+    # anywhere reading it back, e.g. the GUI's scheduler table).
     scheduler = make_scheduler(
         schedule={
             "class": "pyobs.robotic.storage.portal.observationarchive.PortalObservationArchive",
@@ -221,7 +230,20 @@ def test_init_injects_auto_update_false_for_backend_observation_archive() -> Non
         }
     )
     has_poller = any(bg._func.__name__ == "_check_for_changes" for bg, _ in scheduler._schedule._background_tasks)
-    assert has_poller is False
+    assert has_poller is True
+
+
+def test_init_injects_announce_updates_false_for_portal_observation_archive() -> None:
+    # the scheduler already logs its own schedule in detail (_log_scheduled_task), so the poller
+    # picking up that same self-triggered change ~5s later must not also log it at INFO
+    scheduler = make_scheduler(
+        schedule={
+            "class": "pyobs.robotic.storage.portal.observationarchive.PortalObservationArchive",
+            "url": "http://x",
+            "token": "t",
+        }
+    )
+    assert scheduler._schedule._announce_updates is False
 
 
 # ── open ─────────────────────────────────────────────────────────────────────
@@ -336,10 +358,10 @@ async def test_update_schedule_only_current_task_removed_skips_update() -> None:
 
 @pytest.mark.asyncio
 async def test_update_schedule_removed_task_triggers_update_without_consulting_schedule_cache() -> None:
-    # PortalObservationArchive's get_schedule() is a permanently-empty cache by construction
-    # (Scheduler drives it via auto_update=False) -- a removal must trigger a reschedule
-    # regardless, and must not even consult the cache (the removed gate used to, and always found
-    # it empty, which is exactly how this bug hid).
+    # a removal must trigger a reschedule regardless of what's in the schedule cache, and must not
+    # even consult it (the removed gate used to, and -- back when PortalObservationArchive's cache
+    # was permanently empty by construction, see the auto_update history above -- always found it
+    # empty, which is exactly how that bug hid).
     scheduler = make_scheduler()
     task1 = DummyTask(id=1, name="t1", duration=100)
     scheduler._tasks = [task1]
@@ -572,6 +594,44 @@ async def test_schedule_worker_schedules_and_submits_tasks(mocker) -> None:
     assert list(first_call_arg) == [obs1]
     second_call_arg = scheduler._schedule.add_observations.await_args_list[1].args[0]
     assert list(second_call_arg) == [obs2]
+
+
+@pytest.mark.asyncio
+async def test_schedule_worker_forwards_instrument_capabilities(mocker) -> None:
+    scheduler = make_scheduler(min_safety_time=1.0)
+    scheduler._need_update = True
+    scheduler._initial_update_done = True
+    scheduler._schedule.get_current_observation = AsyncMock(return_value=None)
+    scheduler._schedule.clear_schedule = AsyncMock()
+    scheduler._schedule.add_observations = AsyncMock()
+
+    capabilities = MagicMock()
+    scheduler._task_archive.get_instrument_capabilities = MagicMock(return_value=capabilities)
+
+    received_kwargs: dict = {}
+
+    async def fake_schedule(*args, **kwargs):
+        received_kwargs.update(kwargs)
+        return
+        yield  # pragma: no cover -- unreachable, only makes this an async generator
+
+    scheduler._scheduler.schedule = fake_schedule
+
+    call_count = 0
+
+    async def fake_sleep(t: float) -> None:
+        nonlocal call_count
+        call_count += 1
+        if call_count >= 2:
+            raise asyncio.CancelledError()
+
+    mocker.patch("pyobs.modules.robotic.scheduler.asyncio.sleep", side_effect=fake_sleep)
+
+    with pytest.raises(asyncio.CancelledError):
+        await scheduler._schedule_worker()
+
+    scheduler._task_archive.get_instrument_capabilities.assert_called_once()
+    assert received_kwargs.get("instrument_capabilities") is capabilities
 
 
 @pytest.mark.asyncio

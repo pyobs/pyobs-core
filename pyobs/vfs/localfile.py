@@ -42,6 +42,17 @@ def _remove_sync(full_path: str) -> bool:
         return False
 
 
+def _rmdir_sync(full_path: str) -> bool:
+    """Remove the directory at ``full_path`` if it exists and is empty; return False otherwise
+    (including if it's not a directory at all) rather than raising."""
+    try:
+        os.rmdir(full_path)
+        return True
+    except OSError:
+        # covers: doesn't exist, not a directory, or not empty (errno differs by platform)
+        return False
+
+
 class LocalFile(VFSFile):
     """Wraps a local file with the virtual file system.
 
@@ -185,6 +196,26 @@ class LocalFile(VFSFile):
         full_path = os.path.join(root, path)
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _remove_sync, full_path)
+
+    @staticmethod
+    async def rmdir(path: str, *args: Any, **kwargs: Any) -> bool:
+        """Remove the directory at given path, if it's empty.
+
+        Args:
+            path: Path of directory to remove.
+
+        Returns:
+            Success or not (including if the directory doesn't exist, isn't a directory, or
+            isn't empty -- none of those raise, they just return False).
+        """
+
+        # get root from kwargs
+        root = kwargs["root"]
+
+        # build full path and remove off the event loop
+        full_path = os.path.join(root, path)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _rmdir_sync, full_path)
 
     @classmethod
     async def exists(cls, path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:

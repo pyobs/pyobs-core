@@ -17,6 +17,12 @@ pyobs-portal#140: `module_name` now lives on each device-capability model (`Tele
 (§A.1/§A.8) already assumes that flatter shape, no further changes needed there before starting
 implementation.
 
+Filed as a review follow-up on #140 (not a separate blocker — `FilterWheelCapability` was the one
+device-capability model the #139/#140 flattening left out, so there was still no `module_name` key
+to resolve "which filter wheel" for `ImagingScript`'s filter-change estimate). Landed 2026-09-02 in
+pyobs-portal#142: `FilterWheelCapability.module_name` (nullable — a wheel isn't always its own
+addressable module). §A.1/§A.8 below already assume it.
+
 §B's implementation detail (cache helper, `last_instrument_update/` marker, `schema.py` wiring)
 now has its own plan on the pyobs-portal side:
 `../../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md`
@@ -82,24 +88,27 @@ This directly affects two consumers of duration estimates:
 
 ### A. pyobs-core
 
-**1. `InstrumentCapabilities` models** (new: `pyobs/robotic/instruments.py`) — plain pydantic
+**1. `InstrumentCapabilities` models** — **landed 2026-09-02 in pyobs-core#864.** (new: `pyobs/robotic/instruments.py`) — plain pydantic
 models mirroring the shape `InstrumentSerializer` already emits (`pyobs_portal/instruments/serializers.py`),
 post-#139: `Instrument` (`display_name`, `notes`, `cameras: list[CameraCapability]`, `telescope`,
 `dome` — no `module_name` of its own), `CameraCapability` (`module_name`, `code`,
 `binnings: list[BinningOption]`, `filter_wheels: list[FilterWheelCapability]`, ...),
-`BinningOption` (`x`, `y`, `readout_time_s`), `FilterWheelCapability` (`filter_change_time_s`,
-`filters: list[Filter]`), `TelescopeCapability` (`module_name`, `slew_rate_deg_per_s`, ...),
+`BinningOption` (`x`, `y`, `readout_time_s`), `FilterWheelCapability` (`module_name`,
+`filter_change_time_s`, `filters: list[Filter]` — `module_name` nullable, per pyobs-portal#142:
+not every wheel is its own addressable module), `TelescopeCapability` (`module_name`, `slew_rate_deg_per_s`, ...),
 `DomeCapability` (`module_name`, `rotate_rate_deg_per_s`). No Django import — pyobs-core only ever
 deserializes the JSON the portal API already returns.
 
-`InstrumentCapabilities` flattens the nested response into three module-name-keyed dicts built
-once at parse time — `dict[module_name, CameraCapability]`, `dict[module_name, TelescopeCapability]`,
-`dict[module_name, DomeCapability]` — with `camera(module_name)`/`telescope(module_name)`/
-`dome(module_name)` lookups hitting those directly (each script only ever needs one device's
-capability row, never "the instrument" as a concept) plus `by_camera_code(code) ->
-CameraCapability | None` for the fleet-wide-ID case. No two-step "resolve `Instrument`, then search
-its nested list" indirection — `self.camera`/`self.telescope` (already-existing plain module-name
-string fields on the scripts) match directly against a leaf capability's own `module_name`.
+`InstrumentCapabilities` flattens the nested response into module-name-keyed dicts built once at
+parse time — `dict[module_name, CameraCapability]`, `dict[module_name, TelescopeCapability]`,
+`dict[module_name, DomeCapability]`, `dict[module_name, FilterWheelCapability]` (skipping rows
+with a `None` `module_name`) — with `camera(module_name)`/`telescope(module_name)`/
+`dome(module_name)`/`filter_wheel(module_name)` lookups hitting those directly (each script only
+ever needs one device's capability row, never "the instrument" as a concept) plus
+`by_camera_code(code) -> CameraCapability | None` for the fleet-wide-ID case. No two-step "resolve
+`Instrument`, then search its nested list" indirection — `self.camera`/`self.telescope`/
+`self.filters` (already-existing plain module-name string fields on the scripts) match directly
+against a leaf capability's own `module_name`.
 
 **2. `TaskData` gains a field** (`pyobs/robotic/task.py:24-34`):
 ```python
@@ -126,6 +135,22 @@ sibling coroutine on the same cadence) gated on a new portal marker endpoint (§
 memory. On a fetch failure, keep serving the last-good cache (same as the existing
 `_poll_error_throttle` pattern at `taskarchive.py:34-36,63-69`) rather than clearing it.
 
+Two things pyobs-core#864's review flagged as needing a decision here, not before (§A.1's field
+sets match the portal's current payload exactly, so neither is a problem yet):
+- **`extra="forbid"` on the §A.1 models degrade-to-`None` conflict.** They inherit
+  `pyobs.utils.serialization.BaseModel`'s `extra="forbid"`, so a portal field addition/rename (a
+  real risk — #139/#140/#142 just reshaped this exact payload three times) raises `ValidationError`
+  for the *whole* response, not just the new field. Under this section's "fetch failure keeps
+  last-good cache" design, a `ValidationError` needs to be caught and treated as a fetch failure
+  here (or the §A.1 models switched to `extra="ignore"`) — otherwise a first-ever parse failure
+  (before any cache exists) leaves `instrument_capabilities` permanently `None` instead of
+  degrading gracefully once the portal payload drifts.
+- **Pagination truncation.** `GET /api/instruments/` is DRF-paginated (`PAGE_SIZE=100` in portal
+  settings) and `InstrumentCapabilities.from_api_response()` expects the caller to hand it an
+  already-unwrapped `results` list — fine today, but this fetch needs to either page through all
+  results or the portal view needs `pagination_class = None`, or a fleet with >100 instruments
+  silently loses coverage past the first page.
+
 **5. `Task.estimate_duration()` gains an optional parameter** (`pyobs/robotic/task.py:121-123`):
 ```python
 def estimate_duration(self, time: Time | None = None, instrument_capabilities: InstrumentCapabilities | None = None) -> float:
@@ -147,14 +172,14 @@ argument. No other caller of `schedule()` needs changes — this is the only pla
 outside tests.
 
 **8. The five leaf scripts** read `data.instrument_capabilities`, look up by `self.camera`/
-`self.telescope` (already-existing plain module-name string fields), and fall back to today's
-constant whenever the lookup misses at any level (no `data`, no `instrument_capabilities`, no
-`CameraCapability`/`TelescopeCapability` row with that `module_name`, or the specific field is
-`None` on the matched row):
+`self.telescope`/`self.filters` (already-existing plain module-name string fields), and fall back
+to today's constant whenever the lookup misses at any level (no `data`, no
+`instrument_capabilities`, no `CameraCapability`/`TelescopeCapability`/`FilterWheelCapability` row
+with that `module_name`, or the specific field is `None` on the matched row):
 
 | Script | Looks up | Replaces |
 | --- | --- | --- |
-| `ImagingScript` | camera's matching `BinningOption.readout_time_s`, active filter wheel's `filter_change_time_s`, telescope's `slew_rate_deg_per_s` | adds readout + filter-change (currently absent), replaces the `60.0`/`30.0` fudge |
+| `ImagingScript` | camera's matching `BinningOption.readout_time_s`, `self.filters`-matched `FilterWheelCapability.filter_change_time_s` (pyobs-portal#142 gave `FilterWheelCapability` its own `module_name`, so this matches directly like camera/telescope rather than needing an "active wheel" heuristic — falls back to today's constant if `self.filters` is unset or the wheel's `module_name` is `None`/unmatched), telescope's `slew_rate_deg_per_s` | adds readout + filter-change (currently absent), replaces the `60.0`/`30.0` fudge |
 | `PointingScript` | telescope's `slew_rate_deg_per_s` | flat `60.0` |
 | `DarkBiasScript` | camera's matching `BinningOption.readout_time_s` | flat `readout = 5.0` |
 | `AutoFocusScript` | telescope's `slew_rate_deg_per_s` | the `+60.0` slew fudge |

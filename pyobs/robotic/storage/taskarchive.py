@@ -3,6 +3,7 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 
 from pyobs.object import Object
+from pyobs.robotic.instruments import InstrumentCapabilities
 from pyobs.robotic.task import Project, Task
 from pyobs.utils.time import Time
 
@@ -43,6 +44,13 @@ class TaskArchive(Object, metaclass=ABCMeta):
             Task with given ID.
         """
         ...
+
+    def get_instrument_capabilities(self) -> InstrumentCapabilities | None:
+        """Planning-time instrument capability data (readout/filter-change/slew/rotate rates),
+        if this backend has any. None for every backend but the portal one -- this data only
+        ever exists for pyobs-portal's `instruments` app.
+        """
+        return None
 
 
 __all__ = ["TaskArchive"]

@@ -106,13 +106,21 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
 
         # get scheduler
         self._task_archive = self.add_child_object(tasks, TaskArchive, on_tasks_changed=self._update_schedule)
-        # PortalObservationArchive declares auto_update and gates its own polling loop on it --
-        # since we already drive updates via on_tasks_changed above, that poller must stay off.
-        # Other ObservationArchive implementations (e.g. LcoObservationArchive) don't declare it at
-        # all, so it must not be injected unconditionally.
+        # PortalObservationArchive's own polling loop (gated on auto_update) is the only channel
+        # by which this process learns about observation-state changes written by *other*
+        # processes (e.g. Mastermind marking an observation IN_PROGRESS/COMPLETED) -- it must stay
+        # on, or get_schedule()/get_current_observation()/get_next_observation() never see
+        # anything beyond the empty list they're constructed with. What it must NOT do is announce
+        # every update at INFO: when *this* process is the one that just computed and posted the
+        # schedule, _schedule_worker already logs it in detail (see _log_scheduled_task below), so
+        # the poller picking up its own write ~5s later would double-log it. announce_updates=False
+        # suppresses that one-line echo while leaving auto_update's poll (and the INFO log for
+        # externally-driven changes like Mastermind's) intact. Other ObservationArchive
+        # implementations (e.g. LcoObservationArchive) don't declare either param, so injection
+        # must stay conditional, not unconditional.
         extra_schedule_kwargs: dict[str, Any] = {}
-        if _class_accepts_param(schedule, "auto_update"):
-            extra_schedule_kwargs["auto_update"] = False
+        if _class_accepts_param(schedule, "announce_updates"):
+            extra_schedule_kwargs["announce_updates"] = False
         self._schedule = self.add_child_object(schedule, ObservationArchive, **extra_schedule_kwargs)
         extra_scheduler_kwargs: dict[str, Any] = {}
         if _class_accepts_param(scheduler, "observation_archive"):
@@ -326,7 +334,10 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
                     # schedule
                     scheduled_tasks = ObservationList()
                     first = True
-                    async for scheduled_task in self._scheduler.schedule(self._tasks, self._projects, start, end):
+                    instrument_capabilities = self._task_archive.get_instrument_capabilities()
+                    async for scheduled_task in self._scheduler.schedule(
+                        self._tasks, self._projects, start, end, instrument_capabilities=instrument_capabilities
+                    ):
                         # remember for later
                         scheduled_tasks.append(scheduled_task)
 

@@ -282,9 +282,20 @@ class DarkBiasScript(Script):
         peek_cached_science_exptimes_for_night(). Falls back to a placeholder single-series
         estimate at _FALLBACK_MATCH_EXPTIME if nothing is cached yet -- e.g. can_run() hasn't
         run for this site/night within the cache's TTL.
+
+        readout uses the camera's matching BinningOption.readout_time_s (data.instrument_capabilities)
+        when available, falling back to the flat 5.0 s fudge otherwise.
         """
-        # TODO: get a better estimate for readout overhead
         readout = 5.0
+        capabilities = data.instrument_capabilities if data is not None else None
+        camera = capabilities.camera(self.camera) if capabilities is not None else None
+        if camera is not None:
+            x, y = self.binning
+            for binning_option in camera.binnings:
+                if binning_option.x == x and binning_option.y == y and binning_option.readout_time_s is not None:
+                    readout = binning_option.readout_time_s
+                    break
+
         if self.exptimes is not None:
             return sum(self.count * (e + readout) for e in self.exptimes)
 

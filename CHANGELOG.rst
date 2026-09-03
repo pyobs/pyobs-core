@@ -1,3 +1,15 @@
+v2.3.0
+*********************
+* **Breaking:** ``TaskScheduler.schedule()`` (both ``OnDemandScheduler`` and
+  ``AstroplanScheduler``) gained a new ``instrument_capabilities: InstrumentCapabilities | None
+  = None`` parameter, part of pyobs-core#864/#865's plumbing for feeding pyobs-portal instrument
+  capability data into script duration estimates (see
+  ``specs/plans/2026-09-01-instrument-capability-duration-estimates.md``). Any out-of-tree
+  ``TaskScheduler`` subclass overriding ``schedule(tasks, projects, start, end)`` without the new
+  keyword argument will raise ``TypeError`` once called by ``pyobs/modules/robotic/scheduler.py``'s
+  ``_schedule_worker``, which now always passes it. Add the parameter to your override's signature
+  (a default of ``None`` is enough if you don't use it) to stay compatible.
+
 v2.2.0 (2026-09-01)
 *********************
 * Issue #832: ``Calibration``/``Reduction`` now match dark masters to a science frame's

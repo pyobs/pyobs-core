@@ -11,7 +11,8 @@ pyobs-core#861 closed same day — fixed in pyobs-web-client, landed on its `dev
 pyobs-archive#57 closed same day as won't-do — archive's admin surface stays on manual local
 management, no Keycloak-synced archive-admin role; pyobs-portal#143 fixed and closed same day —
 dashboard timeline now forces UTC axis labels via vis-timeline's moment hook, landed on `develop`
-`9cf7d1d`).
+`9cf7d1d`; pyobs-core#872 opened 2026-09-03 — audit modules across the fleet for missing FITS
+header fields, follow-up idea from #739).
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -28,7 +29,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (11, checked 2026-09-03)
+## Open issues (12, checked 2026-09-03)
 
 One row per issue — same layout for every repo.
 
@@ -40,6 +41,7 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
+| pyobs-core | [#872](https://github.com/pyobs/pyobs-core/issues/872) | Audit modules across all pyobs projects for missing FITS header fields | *enhancement* — follow-up idea from #739; survey `IFitsHeaderBefore`/`IFitsHeaderAfter` implementers (and modules that plausibly should implement them) fleet-wide for config/state that should be but isn't in the header |
 | pyobs-core | [#858](https://github.com/pyobs/pyobs-core/issues/858) | Use live telescope position for scheduler's first-task slew-distance estimate | *enhancement* — follow-up to the (now-implemented) instrument-capability-duration-estimates plan; solvable now for `OnDemandScheduler`'s first placed task only (one pre-fetched live position), not the harder mid-schedule/portal-UI cases |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement* — follow-up to #858; needs "last scheduled task's target" state threaded through `OnDemandScheduler`'s greedy recursion, careful of `check_for_better_task`/`can_postpone_task`'s out-of-order yields |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |

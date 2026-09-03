@@ -90,8 +90,10 @@ class AutoFocusScript(Script):
 
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         """Estimate duration of the autofocus run."""
-        # TODO: get a better estimate for slewing
-        return self.count * self.exposure_time + 60.0
+        capabilities = data.instrument_capabilities if data is not None else None
+        telescope = capabilities.telescope(self.telescope) if capabilities is not None else None
+        slew_time = telescope.estimate_slew_time_s() if telescope is not None else None
+        return self.count * self.exposure_time + (slew_time if slew_time is not None else 60.0)
 
 
 __all__ = ["AutoFocusScript"]

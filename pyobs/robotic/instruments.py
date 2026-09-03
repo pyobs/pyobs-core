@@ -65,6 +65,20 @@ class CameraCapability(BaseModel):
     filter_wheels: list[FilterWheelCapability] = Field(default_factory=list)
 
 
+# First-pass placeholder distance for slew-duration estimates -- there's no "current pointing"
+# concept at estimate time, only a real slew *rate*, so this stands in for the actual
+# destination-minus-start-position distance a real estimate would need. See
+# specs/plans/2026-09-01-instrument-capability-duration-estimates.md's "Representative slew/rotate
+# distance" note; pyobs-core#858/#859 track replacing this with a real distance.
+#
+# A default, not a hardcoded constant inside estimate_slew_time_s() below: #858/#859's real
+# distances will likely differ per script (a flat-field PointingScript slew and an
+# ImagingScript/AutoFocusScript target slew aren't the same kind of move), and this keeps that
+# future per-caller distance a parameter on the estimate rather than a policy decision baked into
+# what's meant to stay a pure mirror of the portal's data.
+DEFAULT_SLEW_DISTANCE_DEG = 90.0
+
+
 class TelescopeCapability(BaseModel):
     """Planning-time capability data for one telescope, keyed by `module_name`."""
 
@@ -74,6 +88,19 @@ class TelescopeCapability(BaseModel):
     mount_type: str = ""
     slew_rate_deg_per_s: float | None = None
     updated_at: str | None = None
+
+    def estimate_slew_time_s(self, distance_deg: float = DEFAULT_SLEW_DISTANCE_DEG) -> float | None:
+        """First-pass slew-duration estimate: `distance_deg` divided by the real slew rate. None
+        if `slew_rate_deg_per_s` isn't declared (or isn't positive) -- callers fall back to their
+        own flat constant in that case, same as when no capability data exists at all.
+
+        `distance_deg` defaults to `DEFAULT_SLEW_DISTANCE_DEG`, the same first-pass placeholder
+        every caller uses today; a caller can pass its own once #858/#859 give it a real,
+        script-specific distance instead of this shared guess.
+        """
+        if self.slew_rate_deg_per_s is None or self.slew_rate_deg_per_s <= 0:
+            return None
+        return distance_deg / self.slew_rate_deg_per_s
 
 
 class DomeCapability(BaseModel):
@@ -156,6 +183,7 @@ class InstrumentCapabilities:
 
 
 __all__ = [
+    "DEFAULT_SLEW_DISTANCE_DEG",
     "Filter",
     "BinningOption",
     "FilterWheelCapability",

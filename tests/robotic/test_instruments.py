@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from pyobs.robotic.instruments import Instrument, InstrumentCapabilities
+import pytest
+
+from pyobs.robotic.instruments import Instrument, InstrumentCapabilities, TelescopeCapability
 
 # One Instrument's InstrumentSerializer output, dumped from a live pyobs-portal instance
 # (pyobs-portal#142's schema: module_name lives on CameraCapability/TelescopeCapability/
@@ -155,3 +157,22 @@ class TestInstrumentCapabilities:
         assert capabilities.camera("guidecam") is not None
         assert capabilities.telescope("guidetelescope") is not None
         assert len(capabilities.instruments) == 2
+
+
+class TestTelescopeCapabilityEstimateSlewTime:
+    def test_returns_typical_distance_over_rate(self) -> None:
+        telescope = TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=3.0)
+        # 90.0 deg (the documented placeholder distance) / 3.0 deg/s
+        assert telescope.estimate_slew_time_s() == pytest.approx(30.0)
+
+    def test_none_when_rate_not_declared(self) -> None:
+        telescope = TelescopeCapability(module_name="tel1")
+        assert telescope.estimate_slew_time_s() is None
+
+    def test_none_when_rate_is_zero_or_negative(self) -> None:
+        assert TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=0.0).estimate_slew_time_s() is None
+        assert TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=-1.0).estimate_slew_time_s() is None
+
+    def test_distance_deg_overrides_the_default(self) -> None:
+        telescope = TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=3.0)
+        assert telescope.estimate_slew_time_s(distance_deg=15.0) == pytest.approx(5.0)

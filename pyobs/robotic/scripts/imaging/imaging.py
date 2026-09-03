@@ -21,7 +21,6 @@ from pyobs.interfaces import (
     ITelescope,
     IWindow,
 )
-from pyobs.robotic.instruments import CameraCapability
 from pyobs.robotic.scheduler.targets import SiderealTarget, Target
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.exptime import ExposureTimeProvider
@@ -30,6 +29,7 @@ from pyobs.utils.parallel import Future
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
+    from pyobs.robotic.instruments import CameraCapability
     from pyobs.robotic.task import TaskData
 
 
@@ -377,6 +377,12 @@ class ImagingScript(Script):
         rate wherever `data.instrument_capabilities` has a matching, populated row -- falling
         back to today's flat fudge constants at every point that's missing (no `data`, no
         capabilities, no matching module, or the specific field not set on the matched row).
+
+        Two simplifications carried over from today's flat constants, not new: the slew term is
+        added unconditionally, even for a bias/dark-only sequence that never actually points at
+        anything; and each actual filter transition costs one flat `filter_change_time_s`
+        (the portal's own one-position-step estimate) regardless of how many wheel positions
+        that particular change actually spans.
         """
         capabilities = data.instrument_capabilities if data is not None else None
         camera = capabilities.camera(self.camera) if capabilities is not None else None

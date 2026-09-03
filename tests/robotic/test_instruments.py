@@ -172,3 +172,7 @@ class TestTelescopeCapabilityEstimateSlewTime:
     def test_none_when_rate_is_zero_or_negative(self) -> None:
         assert TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=0.0).estimate_slew_time_s() is None
         assert TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=-1.0).estimate_slew_time_s() is None
+
+    def test_distance_deg_overrides_the_default(self) -> None:
+        telescope = TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=3.0)
+        assert telescope.estimate_slew_time_s(distance_deg=15.0) == pytest.approx(5.0)

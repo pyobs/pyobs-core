@@ -65,6 +65,14 @@ class CameraCapability(BaseModel):
     filter_wheels: list[FilterWheelCapability] = Field(default_factory=list)
 
 
+# First-pass placeholder distance for slew-duration estimates -- there's no "current pointing"
+# concept at estimate time, only a real slew *rate*, so this stands in for the actual
+# destination-minus-start-position distance a real estimate would need. See
+# specs/plans/2026-09-01-instrument-capability-duration-estimates.md's "Representative slew/rotate
+# distance" note; pyobs-core#858/#859 track replacing this with a real distance.
+_TYPICAL_SLEW_DEG = 90.0
+
+
 class TelescopeCapability(BaseModel):
     """Planning-time capability data for one telescope, keyed by `module_name`."""
 
@@ -74,6 +82,15 @@ class TelescopeCapability(BaseModel):
     mount_type: str = ""
     slew_rate_deg_per_s: float | None = None
     updated_at: str | None = None
+
+    def estimate_slew_time_s(self) -> float | None:
+        """First-pass slew-duration estimate: `_TYPICAL_SLEW_DEG` divided by the real slew rate.
+        None if `slew_rate_deg_per_s` isn't declared (or isn't positive) -- callers fall back to
+        their own flat constant in that case, same as when no capability data exists at all.
+        """
+        if self.slew_rate_deg_per_s is None or self.slew_rate_deg_per_s <= 0:
+            return None
+        return _TYPICAL_SLEW_DEG / self.slew_rate_deg_per_s
 
 
 class DomeCapability(BaseModel):

@@ -21,6 +21,7 @@ from pyobs.interfaces import (
     ITelescope,
     IWindow,
 )
+from pyobs.robotic.instruments import CameraCapability
 from pyobs.robotic.scheduler.targets import SiderealTarget, Target
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.exptime import ExposureTimeProvider
@@ -134,6 +135,24 @@ class ImagingScript(Script):
                 if instr.optical_filter is not None
             }
         )
+
+    def _filter_change_count(self) -> int:
+        """Number of times the optical filter actually changes across the full sequence
+        (instrument_configs repeated `repeats` times, back-to-back). A config with no
+        optical_filter set (use the camera's current filter) never counts as a change, since
+        there's no way to know whether that's actually a different filter."""
+        filters = [ic.optical_filter for ic in self.configuration.instrument_configs] * self.configuration.repeats
+        return sum(1 for a, b in zip(filters, filters[1:]) if a is not None and b is not None and a != b)
+
+    @staticmethod
+    def _readout_time_s(camera: CameraCapability | None, instrument_config: InstrumentConfig) -> float:
+        if camera is None:
+            return 0.0
+        x, y = instrument_config.binning
+        for binning in camera.binnings:
+            if binning.x == x and binning.y == y and binning.readout_time_s is not None:
+                return binning.readout_time_s
+        return 0.0
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
@@ -352,19 +371,43 @@ class ImagingScript(Script):
         return hdr
 
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
-        """Estimate the duration of this script in seconds."""
-        # TODO: get some good estimates for slewing/filter/acquisition etc
+        """Estimate the duration of this script in seconds.
+
+        Uses real per-binning readout time, per-wheel filter-change time, and telescope slew
+        rate wherever `data.instrument_capabilities` has a matching, populated row -- falling
+        back to today's flat fudge constants at every point that's missing (no `data`, no
+        capabilities, no matching module, or the specific field not set on the matched row).
+        """
+        capabilities = data.instrument_capabilities if data is not None else None
+        camera = capabilities.camera(self.camera) if capabilities is not None else None
+
         duration = (
             sum(
-                (ic.exposure_time if isinstance(ic.exposure_time, float) else ic.exposure_time.default_exposure_time)
+                (
+                    (
+                        ic.exposure_time
+                        if isinstance(ic.exposure_time, float)
+                        else ic.exposure_time.default_exposure_time
+                    )
+                    + self._readout_time_s(camera, ic)
+                )
                 * ic.count
                 for ic in self.configuration.instrument_configs
             )
             * self.configuration.repeats
-            + 60.0
         )
+
+        telescope = capabilities.telescope(self.telescope) if capabilities is not None and self.telescope else None
+        slew_time = telescope.estimate_slew_time_s() if telescope is not None else None
+        duration += slew_time if slew_time is not None else 60.0
+
         if self.configuration.acquisition_config.enabled:
             duration += 30.0
+
+        filter_wheel = capabilities.filter_wheel(self.filters) if capabilities is not None and self.filters else None
+        if filter_wheel is not None and filter_wheel.filter_change_time_s is not None:
+            duration += filter_wheel.filter_change_time_s * self._filter_change_count()
+
         return duration
 
 

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from pyobs.robotic.instruments import Instrument, InstrumentCapabilities, TelescopeCapability
 from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scripts.imaging.autofocus import AutoFocusScript
 from pyobs.robotic.task import TaskData
@@ -143,3 +144,35 @@ async def test_run_stops_telescope_in_finally() -> None:
 
     # ITelescope always implements IMotion, so stop_motion is always called
     telescope.stop_motion.assert_called_once()
+
+
+# ── estimate_duration ────────────────────────────────────────────────────────
+
+
+def test_estimate_duration_falls_back_without_capabilities() -> None:
+    script = make_script(count=3, exposure_time=2.0)
+    assert script.estimate_duration(None) == 3 * 2.0 + 60.0
+
+
+def test_estimate_duration_uses_real_slew_rate_when_available() -> None:
+    script = make_script(count=3, exposure_time=2.0)
+    telescope_capability = TelescopeCapability(module_name="telescope", slew_rate_deg_per_s=3.0)
+    capabilities = InstrumentCapabilities([Instrument(telescope=telescope_capability)])
+    data = TaskData(task=MagicMock(), instrument_capabilities=capabilities)
+
+    duration = script.estimate_duration(data)
+    slew_time = telescope_capability.estimate_slew_time_s()
+    assert slew_time is not None
+
+    assert duration == 3 * 2.0 + slew_time
+    assert duration != 3 * 2.0 + 60.0  # sanity: the real rate actually changed the estimate
+
+
+def test_estimate_duration_falls_back_when_telescope_module_not_matched() -> None:
+    script = make_script(count=3, exposure_time=2.0)
+    capabilities = InstrumentCapabilities(
+        [Instrument(telescope=TelescopeCapability(module_name="a-different-telescope", slew_rate_deg_per_s=3.0))]
+    )
+    data = TaskData(task=MagicMock(), instrument_capabilities=capabilities)
+
+    assert script.estimate_duration(data) == 3 * 2.0 + 60.0

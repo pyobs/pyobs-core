@@ -7,6 +7,7 @@ import pytest
 from astropy.time import TimeDelta
 
 from pyobs.robotic import Task
+from pyobs.robotic.instruments import InstrumentCapabilities
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
 from pyobs.robotic.storage.portal.observationarchive import PortalObservationArchive
 from pyobs.robotic.storage.portal.taskarchive import PortalTaskArchive
@@ -899,3 +900,110 @@ async def test_obs_poll_downloads_when_marker_newer(mocker) -> None:
     await archive._poll()
     update.assert_awaited_once()
     assert archive._last_marker == T2
+
+
+# ── instrument-capabilities poll (§A.4) ─────────────────────────────────────────
+
+
+def test_get_instrument_capabilities_defaults_to_none() -> None:
+    archive = make_task_archive()
+    assert archive.get_instrument_capabilities() is None
+
+
+@pytest.mark.asyncio
+async def test_instrument_capabilities_poll_downloads_on_first_poll(mocker) -> None:
+    archive = make_task_archive()
+    mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T1))
+    mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(return_value=[{"display_name": "Test", "cameras": []}]),
+    )
+    await archive._poll_instrument_capabilities()
+
+    capabilities = archive.get_instrument_capabilities()
+    assert isinstance(capabilities, InstrumentCapabilities)
+    assert len(capabilities.instruments) == 1
+    assert archive._instrument_capabilities_marker == T1
+
+
+@pytest.mark.asyncio
+async def test_instrument_capabilities_poll_skips_when_marker_unchanged(mocker) -> None:
+    archive = make_task_archive()
+    archive._instrument_capabilities_marker = T1
+    mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T1))
+    fetch = mocker.patch("pyobs.robotic.storage.portal.taskarchive.http_request_paginated", AsyncMock())
+    await archive._poll_instrument_capabilities()
+    fetch.assert_not_awaited()
+    assert archive._instrument_capabilities_marker == T1
+
+
+@pytest.mark.asyncio
+async def test_instrument_capabilities_poll_downloads_when_marker_newer(mocker) -> None:
+    archive = make_task_archive()
+    archive._instrument_capabilities_marker = T1
+    mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T2))
+    fetch = mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(return_value=[{"display_name": "Test", "cameras": []}]),
+    )
+    await archive._poll_instrument_capabilities()
+    fetch.assert_awaited_once()
+    assert archive._instrument_capabilities_marker == T2
+
+
+@pytest.mark.asyncio
+async def test_instrument_capabilities_poll_keeps_last_good_on_marker_fetch_failure(mocker) -> None:
+    archive = make_task_archive()
+    good = InstrumentCapabilities.from_api_response([{"display_name": "Good"}])
+    archive._instrument_capabilities = good
+    archive._instrument_capabilities_marker = T1
+    mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(side_effect=ConnectionError("unreachable")))
+    await archive._poll_instrument_capabilities()
+    assert archive.get_instrument_capabilities() is good
+    assert archive._instrument_capabilities_marker == T1
+
+
+@pytest.mark.asyncio
+async def test_instrument_capabilities_poll_keeps_last_good_on_download_failure(mocker) -> None:
+    archive = make_task_archive()
+    good = InstrumentCapabilities.from_api_response([{"display_name": "Good"}])
+    archive._instrument_capabilities = good
+    archive._instrument_capabilities_marker = T1
+    mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T2))
+    mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(side_effect=ConnectionError("unreachable")),
+    )
+    await archive._poll_instrument_capabilities()
+    assert archive.get_instrument_capabilities() is good
+    assert archive._instrument_capabilities_marker == T1  # not advanced -- retry next poll
+
+
+@pytest.mark.asyncio
+async def test_instrument_capabilities_poll_keeps_last_good_on_unparseable_payload(mocker) -> None:
+    """A portal payload the (extra="forbid") pyobs-core models don't recognize must degrade like
+    any other fetch failure, not raise past _poll_instrument_capabilities()."""
+    archive = make_task_archive()
+    good = InstrumentCapabilities.from_api_response([{"display_name": "Good"}])
+    archive._instrument_capabilities = good
+    archive._instrument_capabilities_marker = T1
+    mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T2))
+    mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(return_value=[{"some_unrecognized_future_field": 1}]),
+    )
+    await archive._poll_instrument_capabilities()
+    assert archive.get_instrument_capabilities() is good
+    assert archive._instrument_capabilities_marker == T1
+
+
+@pytest.mark.asyncio
+async def test_poll_calls_instrument_capabilities_poll(mocker) -> None:
+    """_poll() (the background loop's entry point) must not forget to also poll instrument
+    capabilities alongside tasks/projects."""
+    archive = make_task_archive()
+    mocker.patch.object(archive, "last_update_time", AsyncMock(return_value=T1))
+    mocker.patch.object(archive, "_update", AsyncMock())
+    instrument_poll = mocker.patch.object(archive, "_poll_instrument_capabilities", AsyncMock())
+    await archive._poll()
+    instrument_poll.assert_awaited_once()

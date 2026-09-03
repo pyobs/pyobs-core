@@ -2,7 +2,10 @@
 
 Status: standing snapshot — checked on 2026-09-03 (issues re-queried; #831/#832 landed on
 `develop` via PR #840/#842 so dropped per the maintenance rule below, though both GitHub issues
-stay open pending release to `main`).
+stay open pending release to `main`; observation-portal-keycloak-auth plan dropped, implemented
+and deployed for MONET as of 2026-09-03; full fleet-wide re-check same day: pyobs-portal#141 and
+pyobs-weather#35 closed, pyobs-core#871 and pyobs-web-admin#89 (new repo in this table) opened,
+pyobs-portal's `2026-09-02-instrument-capability-estimate-duration-endpoint.md` added).
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -25,6 +28,7 @@ One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#871](https://github.com/pyobs/pyobs-core/issues/871) | `Comm`: `unregister_event()` doesn't cancel already-scheduled handler tasks (stale-widget race) | pyobs-gui `DataDisplayWidget._on_new_data` hits a `libshiboken` already-deleted-object error when a widget is torn down before its scheduled event-dispatch task runs; caught/logged, not fatal, but a real dispatch-ordering bug in `comm.py`'s `_send_event_to_module()`/`unregister_event()` |
 | pyobs-core | [#866](https://github.com/pyobs/pyobs-core/issues/866) | `Module._on_module_opened` fan-out is unthrottled, saturates event loop with enough peers | confirmed twice (iag50 module-join timeouts, pyobs-gui `monet` GUI-freeze) — see `specs/steering/module-opened-fanout-stalls-event-loop.md` |
 | pyobs-core | [#863](https://github.com/pyobs/pyobs-core/issues/863) | Colors in web projects, especially plots: theme-aware chart colors and user-defined colors that work in both themes | *enhancement* — follow-up to #861 |
 | pyobs-core | [#861](https://github.com/pyobs/pyobs-core/issues/861) | Default theme should correspond to the user's theme across all web projects | *enhancement* — follow-up to #749 |
@@ -36,10 +40,9 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#849](https://github.com/pyobs/pyobs-core/issues/849) | `DummyRoof.stop_motion` always ends in IDLE, even on a parked roof | |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-portal | [#143](https://github.com/pyobs/pyobs-portal/issues/143) | Dashboard schedule timeline shows local browser time instead of UTC | `dashboard.js`'s `observationItem()` builds timeline items with plain `new Date(...)`, no UTC override; tooltip already uses `toUTCString()` |
-| pyobs-portal | [#141](https://github.com/pyobs/pyobs-portal/issues/141) | Serve static files with Whitenoise and drop the nginx container | |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
-| pyobs-weather | [#35](https://github.com/pyobs/pyobs-weather/issues/35) | Serve static files with Whitenoise and drop the nginx container | |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
+| pyobs-web-admin | [#89](https://github.com/pyobs/pyobs-web-admin/issues/89) | Flag running modules as needing restart after their config file changes | new repo in this table. Config drift (on-disk vs. loaded-at-startup) isn't tracked; should probably reuse the UI pattern of the existing package-version "restart-outdated" mechanism (`stale_packages()`/`restart_module()`) |
 
 ## Open plans
 
@@ -55,11 +58,6 @@ One row per issue — same layout for every repo.
   `2.0.0.dev0`/`pyobs-core>=2.0.0.dev93`; actual code migration (grid-API rewrite, `self.proxy()`
   async-context-manager change, missing-await fixes) not yet done, three open questions need
   Tim's input.
-- [2026-08-28-observation-portal-keycloak-auth.md](../plans/2026-08-28-observation-portal-keycloak-auth.md) —
-  *proposed*, revised 2026-08-31 (observation-portal; see "Direction change"). Attach
-  observation-portal (MONET fork) to OIDC via generic `mozilla-django-oidc` (no pyobs-auth
-  dependency, upstream-submittable), config-gated via `OIDC_ENABLED`, additive next to local
-  username/password auth; supersedes Section 0 of the 2026-08-12 shared-auth plan.
 
 ### Design docs still *proposed*
 
@@ -73,6 +71,11 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
+- **pyobs-portal** — [2026-09-02-instrument-capability-estimate-duration-endpoint.md](../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md) —
+  this repo's half of `2026-09-01-instrument-capability-duration-estimates.md` (pyobs-core side,
+  now implemented/closed): a TTL-cached `get_instrument_capabilities()` helper feeding
+  `schema.py`'s `estimate_duration/`, plus a `last_instrument_update/` marker for pyobs-core's
+  `PortalTaskArchive` to poll (*proposed*, no issue yet; Repos: pyobs-portal, pyobs-core)
 - **pyobs-gui** — [2026-09-01-gui-video-widget-split.md](../../pyobs-gui/specs/2026-09-01-gui-video-widget-split.md) —
   split `VideoWidget` into a main widget + paired sidebar widget, D6 follow-up to the (now landed,
   see pyobs-gui's own `specs/index.md`) main-vs-sidebar-widgets plan (#150) (*draft, unblocked*)

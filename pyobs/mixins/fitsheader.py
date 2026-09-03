@@ -448,6 +448,27 @@ class SpectrumFitsHeaderMixin(FitsHeaderMixin):
     pass
 
 
+async def _chain_get_fits_header_before(
+    parent: Any, namespaces: list[str] | None, **kwargs: Any
+) -> dict[str, FitsHeaderEntry]:
+    """Cooperatively call get_fits_header_before() on the next class in the MRO, if any.
+
+    Used by FilterHeaderMixin/FocuserHeaderMixin so they compose with each other and with a real
+    implementation elsewhere in the MRO. getattr() alone isn't enough to detect "nothing real
+    here" -- IFitsHeaderBefore.get_fits_header_before is an abstractmethod, so it's still a
+    perfectly real, callable attribute (that's how ABCMeta lets a mixin earlier in the MRO satisfy
+    the abstract requirement in the first place); calling it directly just runs its `...` body and
+    returns None, not a dict. Skip it via __isabstractmethod__ rather than trusting the return
+    value, so a well-behaved implementation that legitimately returns {} is still handled the same
+    way as one that returns None by mistake.
+    """
+    base = getattr(parent, "get_fits_header_before", None)
+    if base is None or getattr(base, "__isabstractmethod__", False):
+        return {}
+    result = await base(namespaces, **kwargs)
+    return dict(result) if result else {}
+
+
 class FilterHeaderMixin:
     """For IFilters modules: contributes FILTER from the module's own last-published state, so
     drivers don't have to hand-roll get_fits_header_before just for this. Cooperative -- chains to
@@ -459,8 +480,7 @@ class FilterHeaderMixin:
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
     ) -> dict[str, FitsHeaderEntry]:
-        base = getattr(super(), "get_fits_header_before", None)
-        hdr: dict[str, FitsHeaderEntry] = dict(await base(namespaces, **kwargs)) if base is not None else {}
+        hdr: dict[str, FitsHeaderEntry] = await _chain_get_fits_header_before(super(), namespaces, **kwargs)
 
         module = cast(Module, self)
         state = module.comm.get_own_state(IFilters) if module._comm is not None else None
@@ -481,8 +501,7 @@ class FocuserHeaderMixin:
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
     ) -> dict[str, FitsHeaderEntry]:
-        base = getattr(super(), "get_fits_header_before", None)
-        hdr: dict[str, FitsHeaderEntry] = dict(await base(namespaces, **kwargs)) if base is not None else {}
+        hdr: dict[str, FitsHeaderEntry] = await _chain_get_fits_header_before(super(), namespaces, **kwargs)
 
         module = cast(Module, self)
         state = module.comm.get_own_state(IFocuser) if module._comm is not None else None

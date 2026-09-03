@@ -100,12 +100,17 @@ class PortalTaskArchive(TaskArchive):
         the tasks/projects poll, and keeps serving the last-good ``InstrumentCapabilities`` rather
         than clearing it -- the same "optional/degrade to None everywhere, never raise" convention
         as the rest of this plan (see ``get_instrument_capabilities()``'s own ``None`` default).
+
+        Compares with ``!=``, not ``>``: deleting the row that held the current ``max(updated_at)``
+        moves the marker *backward*, and a strict ``>`` would silently miss that (a removed device
+        would linger in the cache until some later edit happened to push the marker forward again).
+        ``!=`` catches a backward move too, at no extra cost.
         """
         try:
             last_instrument_update = await self._last_instrument_update_time()
             if (
                 self._instrument_capabilities_marker is None
-                or last_instrument_update > self._instrument_capabilities_marker
+                or last_instrument_update != self._instrument_capabilities_marker
             ):
                 data = await http_request_paginated(self._session, urljoin(self._url, "/api/instruments/"), strict=True)
                 self._instrument_capabilities = InstrumentCapabilities.from_api_response(data)

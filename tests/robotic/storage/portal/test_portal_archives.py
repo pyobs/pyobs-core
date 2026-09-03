@@ -952,6 +952,22 @@ async def test_instrument_capabilities_poll_downloads_when_marker_newer(mocker) 
 
 
 @pytest.mark.asyncio
+async def test_instrument_capabilities_poll_downloads_when_marker_moves_backward(mocker) -> None:
+    """Deleting the row that held the current max(updated_at) moves the marker backward -- a
+    strict `>` comparison would miss this and leave the removed device cached indefinitely."""
+    archive = make_task_archive()
+    archive._instrument_capabilities_marker = T2
+    mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T1))
+    fetch = mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(return_value=[{"display_name": "Test", "cameras": []}]),
+    )
+    await archive._poll_instrument_capabilities()
+    fetch.assert_awaited_once()
+    assert archive._instrument_capabilities_marker == T1
+
+
+@pytest.mark.asyncio
 async def test_instrument_capabilities_poll_keeps_last_good_on_marker_fetch_failure(mocker) -> None:
     archive = make_task_archive()
     good = InstrumentCapabilities.from_api_response([{"display_name": "Good"}])

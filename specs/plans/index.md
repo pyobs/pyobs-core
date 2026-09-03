@@ -211,4 +211,5 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-09-03-package-versions-fits-header.md](2026-09-03-package-versions-fits-header.md) —
   record loaded pyobs-* package versions per module as `HIERARCH <MODULE> VERSION <PACKAGE>` FITS
   headers, reusing `loaded_pyobs_packages()` from #759 (design:
-  `specs/design/package_versions_fits_header.md`). **proposed** (#739)
+  `specs/design/package_versions_fits_header.md`). **implemented, closed** (#739, closed;
+  `b197528c`)

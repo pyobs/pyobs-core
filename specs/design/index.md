@@ -32,8 +32,8 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [obsnum_fits_header.md](obsnum_fits_header.md) — `OBSNUM` per-night observation counter in FITS
   headers. *implemented, closed* (#738; Repos: pyobs-core, pyobs-portal)
 - [package_versions_fits_header.md](package_versions_fits_header.md) — record loaded pyobs-*
-  package versions per module as `HIERARCH <MODULE> VERSION <PACKAGE>` FITS headers. *proposed*
-  (#739)
+  package versions per module as `HIERARCH <MODULE> VERSION <PACKAGE>` FITS headers. *implemented,
+  closed* (#739; `b197528c`)
 - [pyobs_2_0_wire_protocol.md](pyobs_2_0_wire_protocol.md) — pyobs 2.0 wire protocol, state, and
   access control. *implemented, closed*
 - [rpc_gating_on_startup.md](rpc_gating_on_startup.md) — gating RPC commands until module startup

@@ -1,8 +1,9 @@
 # Plan: Record pyobs package versions in FITS headers
 
-Status: proposed
-Issue: pyobs-core#739
+Status: implemented, closed
+Issue: pyobs-core#739 (closed)
 Design: `specs/design/package_versions_fits_header.md`
+Landed in pyobs-core `b197528c`.
 
 ## Problem
 
@@ -104,20 +105,36 @@ None blocking — design doc resolved scope, keyword format, and the keyword-len
 
 ## Implementation checklist
 
-- [ ] Add `_cached_loaded_pyobs_packages()` and `version_fits_headers()` to `pyobs/utils/versions.py`.
-- [ ] Wire `FitsHeaderMixin._fitsheadermixin_add_fits_headers` (`pyobs/mixins/fitsheader.py`).
-- [ ] Wire `BaseTelescope.get_fits_header_before` (`pyobs/modules/telescope/basetelescope.py`).
-- [ ] Wire `BaseRoof.get_fits_header_before` (`pyobs/modules/roof/baseroof.py`).
-- [ ] Wire `Weather.get_fits_header_before` (`pyobs/modules/weather/weather.py`).
-- [ ] Wire `BaseGuiding.get_fits_header_before`/`get_fits_header_after`
+- [x] Add `_cached_loaded_pyobs_packages()` and `version_fits_headers()` to `pyobs/utils/versions.py`.
+- [x] Wire `FitsHeaderMixin._fitsheadermixin_add_fits_headers` (`pyobs/mixins/fitsheader.py`).
+- [x] Wire `BaseTelescope.get_fits_header_before` (`pyobs/modules/telescope/basetelescope.py`).
+- [x] Wire `BaseRoof.get_fits_header_before` (`pyobs/modules/roof/baseroof.py`).
+- [x] Wire `Weather.get_fits_header_before` (`pyobs/modules/weather/weather.py`).
+- [x] Wire `BaseGuiding.get_fits_header_before`/`get_fits_header_after`
       (`pyobs/modules/pointing/_baseguiding.py`).
-- [ ] Wire `Mastermind.get_fits_header_before` (`pyobs/modules/robotic/mastermind.py`).
-- [ ] Confirm the three test-double modules don't override the header method independently; fix if
-      any do.
-- [ ] Extend `tests/utils/test_versions.py` for the two new functions.
-- [ ] Update/extend per-module tests for the new header cards.
-- [ ] Run full `.venv/bin/pytest`; confirm no regressions.
-- [ ] Run `ruff`/`black`/`pyrefly` per `CLAUDE.md` tooling section.
-- [ ] Update this doc's `Status:` to `implemented` once landed; update
+- [x] Wire `Mastermind.get_fits_header_before` (`pyobs/modules/robotic/mastermind.py`).
+- [x] Confirm the three test-double modules don't override the header method independently; fix if
+      any do. **`MockWeather` did** (implements `IFitsHeaderBefore` directly, doesn't subclass
+      `Weather`) — wired separately (`pyobs/modules/weather/mockweather.py`).
+      `_dummytelescopebase.py`/`dummysolartelescope.py` inherit `BaseTelescope`'s implementation
+      unchanged, no separate wiring needed.
+- [x] Extend `tests/utils/test_versions.py` for the two new functions.
+- [x] Update/extend per-module tests for the new header cards (`tests/mixins/test_fitsheader.py`,
+      `tests/modules/telescope/test_basetelescope.py`, `tests/modules/roof/test_baseroof.py`,
+      `tests/modules/weather/test_weather.py`, `tests/modules/weather/test_mockweather.py`,
+      `tests/modules/pointing/test_autoguiding.py`, new `tests/modules/robotic/test_mastermind.py`).
+- [x] Run full `.venv/bin/pytest`; confirm no regressions (1909 passed, 1 pre-existing unrelated
+      failure — a `/opt/pyobs/storage` permission error in this dev environment, reproduced
+      identically on `develop` before this change).
+- [x] Run `ruff`/`black`/`pyrefly` per `CLAUDE.md` tooling section — all clean.
+- [x] Update this doc's `Status:` to `implemented` once landed; update
       `specs/design/package_versions_fits_header.md`'s `Status:` to `implemented` too; add both to
       `specs/plans/index.md`/`specs/design/index.md` entries.
+
+## Considered mid-implementation, rejected
+
+A concrete `get_fits_header_before`/`after` on `Module` itself (not inheriting the interface),
+called explicitly by each root implementer instead of the free function. See design doc's
+"Considered and rejected" section — technically wouldn't have widened RPC scope, but adds
+identically-named methods to the base of every module type for no real line-count win, and reads
+as "Module implements the interface" when it doesn't. Kept the free function.

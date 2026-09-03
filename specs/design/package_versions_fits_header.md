@@ -1,6 +1,7 @@
 # Package versions in FITS headers
 
-Status: proposed. Tracks #739.
+Status: implemented, closed. Tracks #739. Landed in pyobs-core `b197528c` (plan:
+`specs/plans/2026-09-03-package-versions-fits-header.md`).
 
 ## Problem
 
@@ -163,3 +164,22 @@ consistent with how they already differ from each other today.
   entirely (`FitsHeaderEntry(ver, "")` above) — the keyword is already self-describing
   (`<MODULE> VERSION <PACKAGE>`), unlike other HIERARCH entries in the codebase (e.g.
   `HIERARCH GUIDING RMS`, whose comment adds units/meaning the keyword alone doesn't convey).
+
+## Considered and rejected
+
+**A concrete `get_fits_header_before`/`after` on `Module` itself, without `Module` inheriting
+`IFitsHeaderBefore`/`After`**, so root implementers (`BaseTelescope`, `BaseRoof`, `Weather`,
+`BaseGuiding`, `Mastermind`) would call `Module.get_fits_header_before(self, ...)` instead of
+`version_fits_headers(self.name)` directly. Technically sound — `isinstance`-based interface
+discovery (`clients_with_interface`, `fitsheader.py:86`) isn't affected by a method merely existing
+on `Module`, only by a class actually declaring the interface in its bases, so this wouldn't have
+silently widened the RPC-fanout scope back to "every module."
+
+Rejected anyway: the per-call-site line doesn't get meaningfully shorter (`hdr = await
+Module.get_fits_header_before(self, namespaces, **kwargs)` then merging local headers on top is
+about the same length as `hdr.update(version_fits_headers(self.name))`), and it adds a method to
+`Module` — the base of every module type in the framework, most of which never touch FITS headers
+at all — whose name is identical to the `IFitsHeaderBefore`/`After` abstract method names. That's a
+comprehension trap: a reader who finds `Module.get_fits_header_before` by name would reasonably
+assume `Module` participates in the FITS-header RPC protocol, when it doesn't unless a subclass
+separately declares the interface. Kept the plain free function instead.

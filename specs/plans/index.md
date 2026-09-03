@@ -208,3 +208,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   `ImageWatcher`: optional relative-path preservation (`flatten=False`) and recursive directory
   watching, needed so it can relocate a nested directory tree wholesale instead of flattening it.
   **implemented, merged, released** (PR #860, `v2.3.0`)
+- [2026-09-03-package-versions-fits-header.md](2026-09-03-package-versions-fits-header.md) —
+  record loaded pyobs-* package versions per module as `HIERARCH <MODULE> VERSION <PACKAGE>` FITS
+  headers, reusing `loaded_pyobs_packages()` from #759 (design:
+  `specs/design/package_versions_fits_header.md`). **proposed** (#739)

@@ -17,7 +17,9 @@ dashboard timeline now forces UTC axis labels via vis-timeline's moment hook, la
 `9cf7d1d`; pyobs-core#872 opened 2026-09-03 — audit modules across the fleet for missing FITS
 header fields, follow-up idea from #739; pyobs-gui#150 closed same day — main-vs-sidebar-widgets
 plan released `v2.3.0`, dropped; pyobs-gui's video-widget-split plan (D6 follow-up) also landed
-and released in the same `v2.3.0`, dropped).
+and released in the same `v2.3.0`, dropped; pyobs-core#863 restricted to pyobs-weather-only scope,
+implemented client-side and closed 2026-09-03 — landed on pyobs-weather `develop` `a6dcb65`, see
+pyobs-weather `specs/adrs/0001-per-theme-color-adaptation-stays-client-side.md`, dropped).
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -34,7 +36,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (11, checked 2026-09-03)
+## Open issues (10, checked 2026-09-03)
 
 One row per issue — same layout for every repo.
 
@@ -42,7 +44,6 @@ One row per issue — same layout for every repo.
 |---|---|---|---|
 | pyobs-core | [#871](https://github.com/pyobs/pyobs-core/issues/871) | `Comm`: `unregister_event()` doesn't cancel already-scheduled handler tasks (stale-widget race) | pyobs-gui `DataDisplayWidget._on_new_data` hits a `libshiboken` already-deleted-object error when a widget is torn down before its scheduled event-dispatch task runs; caught/logged, not fatal, but a real dispatch-ordering bug in `comm.py`'s `_send_event_to_module()`/`unregister_event()` |
 | pyobs-core | [#866](https://github.com/pyobs/pyobs-core/issues/866) | `Module._on_module_opened` fan-out is unthrottled, saturates event loop with enough peers | confirmed twice (iag50 module-join timeouts, pyobs-gui `monet` GUI-freeze) — see `specs/steering/module-opened-fanout-stalls-event-loop.md` |
-| pyobs-core | [#863](https://github.com/pyobs/pyobs-core/issues/863) | Colors in web projects, especially plots: theme-aware chart colors and user-defined colors that work in both themes | *enhancement* — follow-up to #861 (now closed/implemented) |
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |

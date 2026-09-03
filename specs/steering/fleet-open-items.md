@@ -1,6 +1,7 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — checked on 2026-09-03 (issues re-queried; #831/#832 landed on
+Status: standing snapshot — checked on 2026-09-03 (pyobs-web-admin#89 closed same day, dropped;
+issues re-queried; #831/#832 landed on
 `develop` via PR #840/#842 so dropped per the maintenance rule below, though both GitHub issues
 stay open pending release to `main`; observation-portal-keycloak-auth plan dropped, implemented
 and deployed for MONET as of 2026-09-03; full fleet-wide re-check same day: pyobs-portal#141 and
@@ -29,7 +30,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (12, checked 2026-09-03)
+## Open issues (11, checked 2026-09-03)
 
 One row per issue — same layout for every repo.
 
@@ -46,7 +47,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement* — follow-up to #858; needs "last scheduled task's target" state threaded through `OnDemandScheduler`'s greedy recursion, careful of `check_for_better_task`/`can_postpone_task`'s out-of-order yields |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
-| pyobs-web-admin | [#89](https://github.com/pyobs/pyobs-web-admin/issues/89) | Flag running modules as needing restart after their config file changes | new repo in this table. Config drift (on-disk vs. loaded-at-startup) isn't tracked; should probably reuse the UI pattern of the existing package-version "restart-outdated" mechanism (`stale_packages()`/`restart_module()`) |
 
 ## Open plans
 

@@ -5,7 +5,8 @@ Status: standing snapshot — checked on 2026-09-03 (issues re-queried; #831/#83
 stay open pending release to `main`; observation-portal-keycloak-auth plan dropped, implemented
 and deployed for MONET as of 2026-09-03; full fleet-wide re-check same day: pyobs-portal#141 and
 pyobs-weather#35 closed, pyobs-core#871 and pyobs-web-admin#89 (new repo in this table) opened,
-pyobs-portal's `2026-09-02-instrument-capability-estimate-duration-endpoint.md` added).
+pyobs-portal's `2026-09-02-instrument-capability-estimate-duration-endpoint.md` added; pyobs-core#849
+closed — fix landed on `develop` `f95da2c6` 2026-09-01, issue itself just hadn't been closed).
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -22,7 +23,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (15, checked 2026-09-03)
+## Open issues (14, checked 2026-09-03)
 
 One row per issue — same layout for every repo.
 
@@ -37,7 +38,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
 | pyobs-core | [#858](https://github.com/pyobs/pyobs-core/issues/858) | Use live telescope position for scheduler's first-task slew-distance estimate | *enhancement* — follow-up to the (now-implemented) instrument-capability-duration-estimates plan; solvable now for `OnDemandScheduler`'s first placed task only (one pre-fetched live position), not the harder mid-schedule/portal-UI cases |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement* — follow-up to #858; needs "last scheduled task's target" state threaded through `OnDemandScheduler`'s greedy recursion, careful of `check_for_better_task`/`can_postpone_task`'s out-of-order yields |
-| pyobs-core | [#849](https://github.com/pyobs/pyobs-core/issues/849) | `DummyRoof.stop_motion` always ends in IDLE, even on a parked roof | |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-portal | [#143](https://github.com/pyobs/pyobs-portal/issues/143) | Dashboard schedule timeline shows local browser time instead of UTC | `dashboard.js`'s `observationItem()` builds timeline items with plain `new Date(...)`, no UTC override; tooltip already uses `toUTCString()` |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |

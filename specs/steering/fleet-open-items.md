@@ -1,6 +1,6 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — checked on 2026-09-02.
+Status: standing snapshot — checked on 2026-09-03.
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -29,7 +29,7 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#739](https://github.com/pyobs/pyobs-core/issues/739) | Record installed pyobs package versions in FITS headers | *enhancement* — per-package version keywords; approach undecided |
-| pyobs-core | [#858](https://github.com/pyobs/pyobs-core/issues/858) | Use live telescope position for scheduler's first-task slew-distance estimate | *enhancement* — follow-up to the instrument-capability-duration-estimates plan below; solvable now for `OnDemandScheduler`'s first placed task only (one pre-fetched live position), not the harder mid-schedule/portal-UI cases |
+| pyobs-core | [#858](https://github.com/pyobs/pyobs-core/issues/858) | Use live telescope position for scheduler's first-task slew-distance estimate | *enhancement* — follow-up to the (now-implemented) instrument-capability-duration-estimates plan; solvable now for `OnDemandScheduler`'s first placed task only (one pre-fetched live position), not the harder mid-schedule/portal-UI cases |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement* — follow-up to #858; needs "last scheduled task's target" state threaded through `OnDemandScheduler`'s greedy recursion, careful of `check_for_better_task`/`can_postpone_task`'s out-of-order yields |
 | pyobs-core | [#849](https://github.com/pyobs/pyobs-core/issues/849) | `DummyRoof.stop_motion` always ends in IDLE, even on a parked roof | |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
@@ -57,17 +57,6 @@ One row per issue — same layout for every repo.
   observation-portal (MONET fork) to OIDC via generic `mozilla-django-oidc` (no pyobs-auth
   dependency, upstream-submittable), config-gated via `OIDC_ENABLED`, additive next to local
   username/password auth; supersedes Section 0 of the 2026-08-12 shared-auth plan.
-- [2026-09-01-instrument-capability-duration-estimates.md](../plans/2026-09-01-instrument-capability-duration-estimates.md) —
-  *proposed, unblocked* (pyobs-core, pyobs-portal). Feed pyobs-portal#133's (merged) instrument
-  capability data (readout/filter-change/slew/dome-rotate times) into `Script.estimate_duration()`
-  for `ImagingScript` and 4 other leaf scripts via a new `TaskData.instrument_capabilities` field;
-  wires the portal's script builder and `OnDemandScheduler` (not `AstroplanScheduler`). Was
-  blocked on pyobs-portal#139, landed 2026-09-02 in pyobs-portal#140. A review follow-up on #140
-  (`FilterWheelCapability` had no `module_name` key for the filter-change lookup) also landed
-  2026-09-02, in pyobs-portal#142 — no more blockers on the design itself. Slew/rotate
-  start-position left as a fixed placeholder except `OnDemandScheduler`'s first placed task, split
-  out as pyobs-core#858 (first task) and pyobs-core#859 (every task after). §B's pyobs-portal-side
-  implementation detail now has its own plan, see the pyobs-portal entry below.
 
 ### Design docs still *proposed*
 
@@ -84,11 +73,6 @@ One line per plan — same layout for every repo.
 - **pyobs-gui** — [2026-09-01-gui-video-widget-split.md](../../pyobs-gui/specs/2026-09-01-gui-video-widget-split.md) —
   split `VideoWidget` into a main widget + paired sidebar widget, D6 follow-up to the (now landed,
   see pyobs-gui's own `specs/index.md`) main-vs-sidebar-widgets plan (#150) (*draft, unblocked*)
-- **pyobs-portal** — [2026-09-02-instrument-capability-estimate-duration-endpoint.md](../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md) —
-  this repo's half of the pyobs-core instrument-capability-duration-estimates plan above: a
-  TTL-cached `get_instrument_capabilities()` helper feeding `schema.py`'s `estimate_duration/`,
-  plus a `last_instrument_update/` marker for pyobs-core's `PortalTaskArchive` to poll
-  (*proposed, no issue yet*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
 - **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —

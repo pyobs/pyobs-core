@@ -7,7 +7,9 @@ and deployed for MONET as of 2026-09-03; full fleet-wide re-check same day: pyob
 pyobs-weather#35 closed, pyobs-core#871 and pyobs-web-admin#89 (new repo in this table) opened,
 pyobs-portal's `2026-09-02-instrument-capability-estimate-duration-endpoint.md` added; pyobs-core#849
 closed — fix landed on `develop` `f95da2c6` 2026-09-01, issue itself just hadn't been closed;
-pyobs-core#861 closed same day — fixed in pyobs-web-client, landed on its `develop` `7fa5061`).
+pyobs-core#861 closed same day — fixed in pyobs-web-client, landed on its `develop` `7fa5061`;
+pyobs-archive#57 closed same day as won't-do — archive's admin surface stays on manual local
+management, no Keycloak-synced archive-admin role).
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -24,7 +26,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (13, checked 2026-09-03)
+## Open issues (12, checked 2026-09-03)
 
 One row per issue — same layout for every repo.
 
@@ -40,7 +42,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement* — follow-up to #858; needs "last scheduled task's target" state threaded through `OnDemandScheduler`'s greedy recursion, careful of `check_for_better_task`/`can_postpone_task`'s out-of-order yields |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-portal | [#143](https://github.com/pyobs/pyobs-portal/issues/143) | Dashboard schedule timeline shows local browser time instead of UTC | `dashboard.js`'s `observationItem()` builds timeline items with plain `new Date(...)`, no UTC override; tooltip already uses `toUTCString()` |
-| pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
 | pyobs-web-admin | [#89](https://github.com/pyobs/pyobs-web-admin/issues/89) | Flag running modules as needing restart after their config file changes | new repo in this table. Config drift (on-disk vs. loaded-at-startup) isn't tracked; should probably reuse the UI pattern of the existing package-version "restart-outdated" mechanism (`stale_packages()`/`restart_module()`) |
 

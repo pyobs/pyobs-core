@@ -10,7 +10,7 @@ from typing import Any, cast
 from astropy.io import fits
 
 from pyobs.images import Image
-from pyobs.interfaces import IFitsHeaderAfter, IFitsHeaderBefore
+from pyobs.interfaces import FitsHeaderEntry, IFilters, IFitsHeaderAfter, IFitsHeaderBefore, IFocuser
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
 from pyobs.utils.fits import format_filename
@@ -448,4 +448,55 @@ class SpectrumFitsHeaderMixin(FitsHeaderMixin):
     pass
 
 
-__all__ = ["FitsHeaderMixin", "ImageFitsHeaderMixin", "SpectrumFitsHeaderMixin"]
+class FilterHeaderMixin:
+    """For IFilters modules: contributes FILTER from the module's own last-published state, so
+    drivers don't have to hand-roll get_fits_header_before just for this. Cooperative -- chains to
+    a get_fits_header_before elsewhere in the MRO if one exists (e.g. a FocuserHeaderMixin on a
+    combo focuser/filter device), otherwise starts from an empty header."""
+
+    __module__ = "pyobs.mixins"
+
+    async def get_fits_header_before(
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, FitsHeaderEntry]:
+        base = getattr(super(), "get_fits_header_before", None)
+        hdr: dict[str, FitsHeaderEntry] = dict(await base(namespaces, **kwargs)) if base is not None else {}
+
+        module = cast(Module, self)
+        state = module.comm.get_own_state(IFilters) if module._comm is not None else None
+        if state is not None:
+            hdr["FILTER"] = FitsHeaderEntry(state.filter, "Current filter")
+
+        return hdr
+
+
+class FocuserHeaderMixin:
+    """For IFocuser modules: contributes FOCUS/FOCOFF from the module's own last-published state,
+    so drivers don't have to hand-roll get_fits_header_before just for this. Cooperative -- chains
+    to a get_fits_header_before elsewhere in the MRO if one exists (e.g. a FilterHeaderMixin on a
+    combo focuser/filter device), otherwise starts from an empty header."""
+
+    __module__ = "pyobs.mixins"
+
+    async def get_fits_header_before(
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, FitsHeaderEntry]:
+        base = getattr(super(), "get_fits_header_before", None)
+        hdr: dict[str, FitsHeaderEntry] = dict(await base(namespaces, **kwargs)) if base is not None else {}
+
+        module = cast(Module, self)
+        state = module.comm.get_own_state(IFocuser) if module._comm is not None else None
+        if state is not None:
+            hdr["FOCUS"] = FitsHeaderEntry(state.focus, "Focus value [mm]")
+            hdr["FOCOFF"] = FitsHeaderEntry(state.focus_offset, "Focus offset [mm]")
+
+        return hdr
+
+
+__all__ = [
+    "FitsHeaderMixin",
+    "ImageFitsHeaderMixin",
+    "SpectrumFitsHeaderMixin",
+    "FilterHeaderMixin",
+    "FocuserHeaderMixin",
+]

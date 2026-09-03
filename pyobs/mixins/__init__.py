@@ -5,7 +5,13 @@ Mixins are classes that can be inherited from to automatically add some function
 __title__ = "Mixins"
 
 from .camerasettings import CameraSettingsMixin
-from .fitsheader import FitsHeaderMixin, ImageFitsHeaderMixin, SpectrumFitsHeaderMixin
+from .fitsheader import (
+    FilterHeaderMixin,
+    FitsHeaderMixin,
+    FocuserHeaderMixin,
+    ImageFitsHeaderMixin,
+    SpectrumFitsHeaderMixin,
+)
 from .fitsnamespace import FitsNamespaceMixin
 from .follow import FollowMixin
 from .motionstatus import MotionStatusMixin
@@ -22,4 +28,6 @@ __all__ = [
     "CameraSettingsMixin",
     "ImageFitsHeaderMixin",
     "SpectrumFitsHeaderMixin",
+    "FilterHeaderMixin",
+    "FocuserHeaderMixin",
 ]

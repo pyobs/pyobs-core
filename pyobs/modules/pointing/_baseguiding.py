@@ -136,6 +136,14 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
         hdr: dict[str, FitsHeaderEntry] = {"AGSTATE": FitsHeaderEntry(state, "Autoguider state")}
 
+        # last applied guiding correction
+        if self._last_offset_frame is not None:
+            hdr["AGOFF-FR"] = FitsHeaderEntry(self._last_offset_frame.value, "Frame of last autoguider offset")
+        if self._last_offset_lon is not None:
+            hdr["AGOFFLON"] = FitsHeaderEntry(self._last_offset_lon, "Last autoguider offset in longitude")
+        if self._last_offset_lat is not None:
+            hdr["AGOFFLAT"] = FitsHeaderEntry(self._last_offset_lat, "Last autoguider offset in latitude")
+
         # add statistics
         hdr = self._statistics.add_to_header(kwargs["sender"], hdr)
         hdr = self._uptime.add_to_header(kwargs["sender"], hdr)

@@ -1,6 +1,8 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — checked on 2026-09-03.
+Status: standing snapshot — checked on 2026-09-03 (issues re-queried; #831/#832 landed on
+`develop` via PR #840/#842 so dropped per the maintenance rule below, though both GitHub issues
+stay open pending release to `main`).
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -17,7 +19,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (14, checked 2026-09-02)
+## Open issues (15, checked 2026-09-03)
 
 One row per issue — same layout for every repo.
 
@@ -33,6 +35,7 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement* — follow-up to #858; needs "last scheduled task's target" state threaded through `OnDemandScheduler`'s greedy recursion, careful of `check_for_better_task`/`can_postpone_task`'s out-of-order yields |
 | pyobs-core | [#849](https://github.com/pyobs/pyobs-core/issues/849) | `DummyRoof.stop_motion` always ends in IDLE, even on a parked roof | |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
+| pyobs-portal | [#143](https://github.com/pyobs/pyobs-portal/issues/143) | Dashboard schedule timeline shows local browser time instead of UTC | `dashboard.js`'s `observationItem()` builds timeline items with plain `new Date(...)`, no UTC override; tooltip already uses `toUTCString()` |
 | pyobs-portal | [#141](https://github.com/pyobs/pyobs-portal/issues/141) | Serve static files with Whitenoise and drop the nginx container | |
 | pyobs-archive | [#57](https://github.com/pyobs/pyobs-archive/issues/57) | Consider a Keycloak-role-synced archive-admin flag (deferred from #56) | |
 | pyobs-weather | [#35](https://github.com/pyobs/pyobs-weather/issues/35) | Serve static files with Whitenoise and drop the nginx container | |
@@ -87,5 +90,4 @@ One line per plan — same layout for every repo.
   telescope page for `ITelescope` modules (*proposed*)
 - **pyobs-web-client** — [vfs-token-auth](../../pyobs-web-client/specs/plans/vfs-token-auth.md) —
   VFS endpoint auth (Basic Auth → Bearer token) (*proposed, unblocked — the pyobs-core release
-  it depended on has shipped; pyobs-web-client's own `specs/plans/index.md` blurb hasn't caught
-  up yet*)
+  it depended on has shipped*)

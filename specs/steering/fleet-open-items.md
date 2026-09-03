@@ -6,14 +6,18 @@ issues re-queried; #831/#832 landed on
 stay open pending release to `main`; observation-portal-keycloak-auth plan dropped, implemented
 and deployed for MONET as of 2026-09-03; full fleet-wide re-check same day: pyobs-portal#141 and
 pyobs-weather#35 closed, pyobs-core#871 and pyobs-web-admin#89 (new repo in this table) opened,
-pyobs-portal's `2026-09-02-instrument-capability-estimate-duration-endpoint.md` added; pyobs-core#849
+pyobs-portal's `2026-09-02-instrument-capability-estimate-duration-endpoint.md` added then dropped
+same day — implemented/closed (schema.py wiring + `last_instrument_update/` marker landed in
+pyobs-portal `e9f3f55`/`b3f6a59`); pyobs-core#849
 closed — fix landed on `develop` `f95da2c6` 2026-09-01, issue itself just hadn't been closed;
 pyobs-core#861 closed same day — fixed in pyobs-web-client, landed on its `develop` `7fa5061`;
 pyobs-archive#57 closed same day as won't-do — archive's admin surface stays on manual local
 management, no Keycloak-synced archive-admin role; pyobs-portal#143 fixed and closed same day —
 dashboard timeline now forces UTC axis labels via vis-timeline's moment hook, landed on `develop`
 `9cf7d1d`; pyobs-core#872 opened 2026-09-03 — audit modules across the fleet for missing FITS
-header fields, follow-up idea from #739).
+header fields, follow-up idea from #739; pyobs-gui#150 closed same day — main-vs-sidebar-widgets
+plan released `v2.3.0`, dropped; pyobs-gui's video-widget-split plan (D6 follow-up) also landed
+and released in the same `v2.3.0`, dropped).
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -75,14 +79,6 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
-- **pyobs-portal** — [2026-09-02-instrument-capability-estimate-duration-endpoint.md](../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md) —
-  this repo's half of `2026-09-01-instrument-capability-duration-estimates.md` (pyobs-core side,
-  now implemented/closed): a TTL-cached `get_instrument_capabilities()` helper feeding
-  `schema.py`'s `estimate_duration/`, plus a `last_instrument_update/` marker for pyobs-core's
-  `PortalTaskArchive` to poll (*proposed*, no issue yet; Repos: pyobs-portal, pyobs-core)
-- **pyobs-gui** — [2026-09-01-gui-video-widget-split.md](../../pyobs-gui/specs/2026-09-01-gui-video-widget-split.md) —
-  split `VideoWidget` into a main widget + paired sidebar widget, D6 follow-up to the (now landed,
-  see pyobs-gui's own `specs/index.md`) main-vs-sidebar-widgets plan (#150) (*draft, unblocked*)
 - **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
 - **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —

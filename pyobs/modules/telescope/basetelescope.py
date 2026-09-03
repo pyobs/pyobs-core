@@ -32,6 +32,7 @@ from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
+from pyobs.utils.versions import version_fits_headers
 
 log = logging.getLogger(__name__)
 
@@ -820,6 +821,9 @@ class BaseTelescope(
         # add celestial headers
         for key, value in self._celestial_headers.items():
             hdr[key] = FitsHeaderEntry(value[0], value[1])
+
+        # loaded pyobs package versions
+        hdr.update(version_fits_headers(self.name))
 
         # finish
         return hdr

@@ -15,6 +15,7 @@ from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
 from pyobs.utils.fits import format_filename
 from pyobs.utils.time import Time
+from pyobs.utils.versions import version_fits_headers
 
 log = logging.getLogger(__name__)
 
@@ -236,6 +237,10 @@ class FitsHeaderMixin:
             hdr["DAY-OBS"] = (date_obs.night_obs(module._observer).strftime("%Y-%m-%d"), "Night of observation")
         else:
             hdr["DAY-OBS"] = (date_obs.strftime("%Y-%m-%d"), "Day of observation")
+
+        # loaded pyobs package versions
+        for key, entry in version_fits_headers(module.name).items():
+            hdr[key] = (entry.value, entry.comment)
 
     async def _fitsheadermixin_add_framenum(self, image: Image | fits.PrimaryHDU) -> None:
         """Add FRAMENUM keyword to header

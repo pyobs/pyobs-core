@@ -164,3 +164,18 @@ async def test_get_fits_header_before() -> None:
 
     assert header["WS-PREC"].value is True
     assert header["WS-PREC"].comment == "Ambient precipitation [0/1]"
+
+
+@pytest.mark.asyncio
+async def test_get_fits_header_before_includes_version_headers(mocker) -> None:
+    from pyobs.interfaces import FitsHeaderEntry
+
+    mocker.patch(
+        "pyobs.modules.weather.mockweather.version_fits_headers",
+        return_value={"HIERARCH TESTWEATHER VERSION PYOBS-CORE": FitsHeaderEntry("2.4.1", "")},
+    )
+    weather = MockWeather()
+
+    header = await weather.get_fits_header_before()
+
+    assert header["HIERARCH TESTWEATHER VERSION PYOBS-CORE"].value == "2.4.1"

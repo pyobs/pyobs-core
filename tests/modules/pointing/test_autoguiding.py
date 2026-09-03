@@ -208,6 +208,38 @@ async def test_get_fits_header_after_includes_statistics() -> None:
     assert hdr["UPTIME"] == "y"
 
 
+@pytest.mark.asyncio
+async def test_get_fits_header_before_includes_version_headers(mocker) -> None:
+    from pyobs.interfaces import FitsHeaderEntry
+
+    mocker.patch(
+        "pyobs.modules.pointing._baseguiding.version_fits_headers",
+        return_value={"HIERARCH TESTGUIDING VERSION PYOBS-CORE": FitsHeaderEntry("2.4.1", "")},
+    )
+    ag = make_guiding()
+    ag._statistics.init_stats = MagicMock()
+    ag._uptime.init_stats = MagicMock()
+
+    hdr = await ag.get_fits_header_before(sender="camera")
+
+    assert hdr["HIERARCH TESTGUIDING VERSION PYOBS-CORE"].value == "2.4.1"
+
+
+@pytest.mark.asyncio
+async def test_get_fits_header_after_includes_version_headers(mocker) -> None:
+    from pyobs.interfaces import FitsHeaderEntry
+
+    mocker.patch(
+        "pyobs.modules.pointing._baseguiding.version_fits_headers",
+        return_value={"HIERARCH TESTGUIDING VERSION PYOBS-CORE": FitsHeaderEntry("2.4.1", "")},
+    )
+    ag = make_guiding()
+
+    hdr = await ag.get_fits_header_after(sender="camera")
+
+    assert hdr["HIERARCH TESTGUIDING VERSION PYOBS-CORE"].value == "2.4.1"
+
+
 # ── _reset_guiding / _set_loop_state ────────────────────────────────────────
 
 

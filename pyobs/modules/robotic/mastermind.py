@@ -27,6 +27,7 @@ from pyobs.robotic import (
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.utils import exceptions as exc
 from pyobs.utils.time import Time
+from pyobs.utils.versions import version_fits_headers
 
 log = logging.getLogger(__name__)
 
@@ -330,6 +331,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
                 hdr["PROJECT"] = FitsHeaderEntry(self._task.project, "Project code")
             if self._obsnum is not None:
                 hdr["OBSNUM"] = FitsHeaderEntry(self._obsnum, "Observation number (night-obsnum)")
+            hdr.update(version_fits_headers(self.name))
             return hdr
         else:
             return {}

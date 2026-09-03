@@ -15,6 +15,7 @@ from pyobs.modules.weather.weather_state import WeatherStatus
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import Unit, WeatherSensors
 from pyobs.utils.time import Time
+from pyobs.utils.versions import version_fits_headers
 
 log = logging.getLogger(__name__)
 
@@ -225,6 +226,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             header_value = None if value is None else dtype(value)
             header[key] = FitsHeaderEntry(header_value, comment)
 
+        header.update(version_fits_headers(self.name))
         return header
 
 

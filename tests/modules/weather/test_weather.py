@@ -113,6 +113,22 @@ async def test_get_fits_header_before(caplog) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_fits_header_before_includes_version_headers(mocker) -> None:
+    from pyobs.interfaces import FitsHeaderEntry
+
+    mocker.patch(
+        "pyobs.modules.weather.weather.version_fits_headers",
+        return_value={"HIERARCH TESTWEATHER VERSION PYOBS-CORE": FitsHeaderEntry("2.4.1", "")},
+    )
+    weather = Weather("")
+    weather._weather.status["sensors"] = {"rain": {"value": 1}}
+
+    header = await weather.get_fits_header_before()
+
+    assert header["HIERARCH TESTWEATHER VERSION PYOBS-CORE"].value == "2.4.1"
+
+
+@pytest.mark.asyncio
 async def test_loop_valid(mocker) -> None:
     weather = Weather("")
     weather._update = AsyncMock()

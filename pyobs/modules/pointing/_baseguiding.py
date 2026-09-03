@@ -12,6 +12,7 @@ from pyobs.interfaces import FitsHeaderEntry, GuidingState, IAutoGuiding, IFitsH
 from pyobs.interfaces.IRunning import RunningState
 from pyobs.utils.enums import OffsetFrame
 from pyobs.utils.time import Time
+from pyobs.utils.versions import version_fits_headers
 
 from ...interfaces import ITelescope
 from ...object import get_object
@@ -115,7 +116,9 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
 
         # return header
-        return {"AGSTATE": FitsHeaderEntry(state, "Autoguider state")}
+        hdr: dict[str, FitsHeaderEntry] = {"AGSTATE": FitsHeaderEntry(state, "Autoguider state")}
+        hdr.update(version_fits_headers(self.name))
+        return hdr
 
     async def get_fits_header_after(
         self, namespaces: list[str] | None = None, **kwargs: Any
@@ -136,6 +139,9 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         # add statistics
         hdr = self._statistics.add_to_header(kwargs["sender"], hdr)
         hdr = self._uptime.add_to_header(kwargs["sender"], hdr)
+
+        # loaded pyobs package versions
+        hdr.update(version_fits_headers(self.name))
 
         # finished
         return hdr

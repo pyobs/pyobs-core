@@ -33,6 +33,7 @@ class ConfigFieldSchema:
     default: Any | None = None
     nested: dict[str, ConfigFieldSchema] | None = None
     level: AccessLevel = AccessLevel.BASIC
+    description: str | None = None
 
 
 @dataclasses.dataclass
@@ -59,6 +60,7 @@ def dataclass_to_schema(cls: type) -> ConfigSchema:
     for f in dataclasses.fields(cls):
         schema = _field_schema(hints[f.name], f.default)
         schema.level = _coerce_level(f.metadata.get("level", AccessLevel.BASIC))
+        schema.description = f.metadata.get("description")
         fields[f.name] = schema
     return ConfigSchema(fields=fields)
 
@@ -114,6 +116,7 @@ def pydantic_to_schema(cls: type[BaseModel]) -> ConfigSchema:
         default = None if info.default is PydanticUndefined else info.default
         schema = _pydantic_field_schema(info.annotation, default)
         schema.level = _pydantic_field_level(info.json_schema_extra)
+        schema.description = _pydantic_field_description(info)
         fields[name] = schema
     return ConfigSchema(fields=fields)
 
@@ -122,6 +125,17 @@ def _pydantic_field_level(json_schema_extra: Any) -> AccessLevel:
     if isinstance(json_schema_extra, dict) and "level" in json_schema_extra:
         return _coerce_level(json_schema_extra["level"])
     return AccessLevel.BASIC
+
+
+def _pydantic_field_description(info: Any) -> str | None:
+    """FTSConfigMain (pyftscontrol) puts the description inside json_schema_extra alongside
+    level, rather than using Pydantic's own Field(description=...) -- prefer that convention
+    when present, but fall back to the native `description` for a model that uses it directly.
+    """
+    extra = info.json_schema_extra
+    if isinstance(extra, dict) and isinstance(extra.get("description"), str):
+        return extra["description"]
+    return info.description
 
 
 def _pydantic_field_schema(annotation: Any, default: Any) -> ConfigFieldSchema:

@@ -232,3 +232,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   `max()`. Descoped from an original live-telescope-position design (see doc's History section)
   after review — no observed accuracy problem justified the added scheduler-threading risk.
   Plain-roof open/close time split out to #877. **implemented** (issue #858; Repos: pyobs-core)
+- [2026-09-04-roof-open-close-capability.md](2026-09-04-roof-open-close-capability.md) — new
+  `RoofCapability` model (pyobs-portal `instruments` app + pyobs-core mirror), `roof` field on
+  `Pointing`/`Imaging`/`AutoFocusScript`, folded into the same `max()` first-task estimate. Real
+  motivating fleet: MONET-N/S/MONTI are plain roofs, no rotating dome (`monet/pyobs-monet#3`).
+  **implemented, pending PR merge** (issue #877; Repos: pyobs-core, pyobs-portal)

@@ -24,3 +24,6 @@ warrants it, not for speculative content.
   and README structure per repo group (driver-module/gui/web-app), with copyable skeletons in
   `docs/templates/` and per-repo current-state gaps. Hand this doc to an agent fixing one repo's
   docs.
+- [gui-field-access-levels.md](gui-field-access-levels.md) — ordinal `AccessLevel`
+  (`BASIC`/`EXPERT`/`HIDDEN`) convention for tagging Pydantic config fields for basic/expert GUI
+  modes, replacing per-field `show_basic`/`show_expert` booleans.

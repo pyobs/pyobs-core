@@ -112,3 +112,38 @@ Checked and found **not applicable** (already genuinely async, e.g. `aiohttp`/`a
 This is a punch list, not a mandate to fix everything at once — but any future touch of these
 files should route the call through `_run_blocking()`/the wait-loop shape rather than leaving
 the existing unwrapped call in place "since it's already like that."
+
+## Status (checked 2026-09-04): punch list clear
+
+Every item above is now fixed, verified by reading current `main`/default-branch code in each
+sibling repo:
+
+- `pyobs-qhyccd` (PR #66, merged 2026-08-18), `pyobs-fli` (#83), `pyobs-tis` (#13), `pyobs-asi`
+  (#32), `pyobs-aravis` (#41), `pyobs-sbig` (#71), `pyobs-flipro` (#35), `pyobs-v4l` (#19) — all
+  eight fix PRs landed the same day. Review comments were left on six of them with concrete
+  residual bugs (lock/buffer/truncation issues, not the original blocking-call pattern); all six
+  are confirmed fixed in current code:
+  - qhyccd: `_run_blocking()`'s `_wrapper()` now takes `self._driver_lock` around every call,
+    including the `_run_blocking_or_raise(driver.get_single_frame)` readout path
+    (`qhyccdcamera.py`).
+  - fli: `get_model()`/`get_serial_string()` `memset()` the `char[1024]` buffer before the SDK
+    call so `bytes(model).split(b'\x00')[0]` can't pick up stack garbage (`flidriver.pyx`).
+  - aravis: `set_exposure_time()` now takes `self._device_lock` (`araviscamera.py`).
+  - sbig: `close()` now takes `self._lock_cam` around `self._cam.close()` (`sbigcamera.py`).
+  - flipro: `get_api_version()` decodes the `wchar_t[100]` buffer with
+    `PyUnicode_FromWideChar` instead of narrow-string NUL truncation (`fliprodriver.pyx`).
+  - v4l: `gui.py`'s `closeEvent()` takes `self._lock` around `self._camera.release()`.
+- `pyobs-zwoeaf`: `EafFocuser` now routes `open()`/`close()`/`set_focus()`/temperature polling
+  through its own `_run_blocking()`.
+- `pyobs-zaber`: `enable_led()` now calls `device.settings.set_async(...)`, matching the rest of
+  the driver.
+- `pyobs-monet`: `bonnshutter.py`'s `send_to_shutter()`/`get_status()`/`_reset_shutter()` now
+  route through a `_run_blocking()` wrapper around the `serial.Serial(...)` calls; the
+  `# TODO: find a way for serial to work with asyncio!` comment is gone.
+- `pyobs-iagvt`: `fibercamera.py`'s `set_gain()`/`_get_gain()` now route through the inherited
+  `AravisCamera._run_blocking()` instead of calling `set_feature()`/`get_feature()` directly.
+
+No open items remain from this survey. Treat this doc as the pattern reference going forward;
+re-run a fleet grep for direct (unwrapped) vendor-SDK calls in `async def` methods if a new
+driver repo is added or an old one gets substantial rework, rather than assuming this list is
+still exhaustive.

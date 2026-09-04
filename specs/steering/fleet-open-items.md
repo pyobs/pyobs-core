@@ -1,32 +1,44 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — checked on 2026-09-03 (pyobs-web-admin#89 closed same day, dropped;
-issues re-queried; #831/#832 landed on
-`develop` via PR #840/#842 so dropped per the maintenance rule below, though both GitHub issues
-stay open pending release to `main`; observation-portal-keycloak-auth plan dropped, implemented
-and deployed for MONET as of 2026-09-03; full fleet-wide re-check same day: pyobs-portal#141 and
-pyobs-weather#35 closed, pyobs-core#871 and pyobs-web-admin#89 (new repo in this table) opened,
-pyobs-portal's `2026-09-02-instrument-capability-estimate-duration-endpoint.md` added then dropped
-same day — implemented/closed (schema.py wiring + `last_instrument_update/` marker landed in
-pyobs-portal `e9f3f55`/`b3f6a59`); pyobs-core#849
-closed — fix landed on `develop` `f95da2c6` 2026-09-01, issue itself just hadn't been closed;
-pyobs-core#861 closed same day — fixed in pyobs-web-client, landed on its `develop` `7fa5061`;
-pyobs-archive#57 closed same day as won't-do — archive's admin surface stays on manual local
-management, no Keycloak-synced archive-admin role; pyobs-portal#143 fixed and closed same day —
-dashboard timeline now forces UTC axis labels via vis-timeline's moment hook, landed on `develop`
-`9cf7d1d`; pyobs-core#872 opened 2026-09-03 — audit modules across the fleet for missing FITS
-header fields, follow-up idea from #739; pyobs-gui#150 closed same day — main-vs-sidebar-widgets
-plan released `v2.3.0`, dropped; pyobs-gui's video-widget-split plan (D6 follow-up) also landed
-and released in the same `v2.3.0`, dropped; pyobs-core#863 restricted to pyobs-weather-only scope,
-implemented client-side and closed 2026-09-03 — landed on pyobs-weather `develop` `a6dcb65`, see
-pyobs-weather `specs/adrs/0001-per-theme-color-adaptation-stays-client-side.md`, dropped;
-pyobs-core#739 closed 2026-09-03 — implemented in `b197528c` per
-`specs/plans/2026-09-03-package-versions-fits-header.md`, dropped; pyobs-core#872 closed same day
-— implemented and released fleet-wide (pyobs-core 2.6.1 + 15 sibling repos) per
-`specs/plans/2026-09-03-fits-header-audit-followthrough.md`, dropped; pyobs-core#871 fix merged to
-`develop` 2026-09-04 via PR #876 (`a9ed16fe`) per
-`specs/plans/2026-09-03-comm-unregister-event-task-cancellation.md`, dropped per the maintenance
-rule below — GitHub issue itself stays open pending release to `main`).
+Status: standing snapshot — last checked 2026-09-04.
+
+<details>
+<summary>Changelog (most recent first)</summary>
+
+- **2026-09-04**: pyobs-core#858 rescoped — review decided against the live-telescope-position
+  piece entirely ("no observed operational symptom motivating this"), kept only the mean-distance
+  dome-rotate-time half (`specs/plans/2026-09-04-first-task-slew-rotate-distance.md`). Plain-roof
+  capability field split out to #877, closed same day
+  (`specs/plans/2026-09-04-roof-open-close-capability.md`). Both pieces landed on `develop`
+  (`2dd30a1b`, PR #878 / pyobs-portal#149) and are released — #858 dropped per the maintenance
+  rule (GitHub issue stays open pending closure). #859 flagged as likely moot: it's a follow-on to
+  the live-position idea #858 just decided not to build; left open pending Tim's call rather than
+  closed unilaterally.
+- **2026-09-04**: pyobs-core#871 fix merged to `develop` via PR #876 (`a9ed16fe`) per
+  `specs/plans/2026-09-03-comm-unregister-event-task-cancellation.md`, dropped per the maintenance
+  rule (issue stays open pending release to `main`).
+- **2026-09-03**: pyobs-web-admin#89 closed, dropped. #831/#832 landed on `develop` via PR
+  #840/#842, dropped per the maintenance rule (issues stay open pending release to `main`).
+  observation-portal-keycloak-auth plan dropped — implemented and deployed for MONET.
+  pyobs-portal#141 and pyobs-weather#35 closed. pyobs-core#871 and pyobs-web-admin#89 opened (new
+  repo in this table). pyobs-portal's
+  `2026-09-02-instrument-capability-estimate-duration-endpoint.md` added then dropped same day —
+  implemented/closed (`e9f3f55`/`b3f6a59`). pyobs-core#849 closed — fix landed `f95da2c6`
+  2026-09-01, issue just hadn't been closed. pyobs-core#861 closed — fixed in pyobs-web-client,
+  landed `7fa5061`. pyobs-archive#57 closed as won't-do — archive admin surface stays manual, no
+  Keycloak-synced role. pyobs-portal#143 fixed and closed — dashboard timeline forces UTC axis
+  labels via vis-timeline's moment hook, landed `9cf7d1d`. pyobs-core#872 opened — audit fleet for
+  missing FITS header fields (follow-up to #739), then closed same day — implemented and released
+  fleet-wide (pyobs-core 2.6.1 + 15 sibling repos) per
+  `specs/plans/2026-09-03-fits-header-audit-followthrough.md`. pyobs-gui#150 closed —
+  main-vs-sidebar-widgets plan released `v2.3.0`, dropped; pyobs-gui's video-widget-split plan (D6
+  follow-up) also landed and released in the same `v2.3.0`, dropped. pyobs-core#863 restricted to
+  pyobs-weather-only scope, implemented client-side and closed — landed on pyobs-weather `develop`
+  `a6dcb65`, see pyobs-weather `specs/adrs/0001-per-theme-color-adaptation-stays-client-side.md`.
+  pyobs-core#739 closed — implemented in `b197528c` per
+  `specs/plans/2026-09-03-package-versions-fits-header.md`.
+
+</details>
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -43,7 +55,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (7, checked 2026-09-04)
+## Open issues (6, checked 2026-09-04)
 
 One row per issue — same layout for every repo.
 
@@ -52,8 +64,7 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#866](https://github.com/pyobs/pyobs-core/issues/866) | `Module._on_module_opened` fan-out is unthrottled, saturates event loop with enough peers | confirmed twice (iag50 module-join timeouts, pyobs-gui `monet` GUI-freeze) — see `specs/steering/module-opened-fanout-stalls-event-loop.md` |
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
-| pyobs-core | [#858](https://github.com/pyobs/pyobs-core/issues/858) | Use live telescope position for scheduler's first-task slew-distance estimate | *enhancement* — follow-up to the (now-implemented) instrument-capability-duration-estimates plan; solvable now for `OnDemandScheduler`'s first placed task only (one pre-fetched live position), not the harder mid-schedule/portal-UI cases |
-| pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement* — follow-up to #858; needs "last scheduled task's target" state threaded through `OnDemandScheduler`'s greedy recursion, careful of `check_for_better_task`/`can_postpone_task`'s out-of-order yields |
+| pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
 

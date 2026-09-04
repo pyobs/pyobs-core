@@ -996,21 +996,28 @@ async def test_instrument_capabilities_poll_keeps_last_good_on_download_failure(
 
 
 @pytest.mark.asyncio
-async def test_instrument_capabilities_poll_keeps_last_good_on_unparseable_payload(mocker) -> None:
-    """A portal payload the (extra="forbid") pyobs-core models don't recognize must degrade like
-    any other fetch failure, not raise past _poll_instrument_capabilities()."""
+async def test_instrument_capabilities_poll_tolerates_unrecognized_fields(mocker) -> None:
+    """A portal running ahead of this pyobs-core release (e.g. the model/sensor_type fields
+    added to CameraCapability/FilterWheelCapability) must not turn into a hard parse failure --
+    the capability models use extra="ignore" (not BaseModel's default extra="forbid") for
+    exactly this: an unrecognized field is dropped, everything else still parses and the poll
+    succeeds normally, advancing the marker rather than falling back to the last-good cache."""
     archive = make_task_archive()
-    good = InstrumentCapabilities.from_api_response([{"display_name": "Good"}])
-    archive._instrument_capabilities = good
+    stale = InstrumentCapabilities.from_api_response([{"display_name": "Stale"}])
+    archive._instrument_capabilities = stale
     archive._instrument_capabilities_marker = T1
     mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T2))
     mocker.patch(
         "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
-        AsyncMock(return_value=[{"some_unrecognized_future_field": 1}]),
+        AsyncMock(return_value=[{"display_name": "Fresh", "some_unrecognized_future_field": 1, "cameras": []}]),
     )
     await archive._poll_instrument_capabilities()
-    assert archive.get_instrument_capabilities() is good
-    assert archive._instrument_capabilities_marker == T1
+
+    capabilities = archive.get_instrument_capabilities()
+    assert capabilities is not stale
+    assert isinstance(capabilities, InstrumentCapabilities)
+    assert capabilities.instruments[0].display_name == "Fresh"
+    assert archive._instrument_capabilities_marker == T2
 
 
 @pytest.mark.asyncio

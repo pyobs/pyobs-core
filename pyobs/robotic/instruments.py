@@ -10,12 +10,29 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from pyobs.utils.serialization import BaseModel
 
 
-class Filter(BaseModel):
+class _ForwardCompatibleModel(BaseModel):
+    """Base for the capability models below, relaxing `BaseModel`'s `extra="forbid"` to
+    `extra="ignore"`.
+
+    A running process (e.g. `mastermind`) can be on an older pyobs-core release than whatever
+    portal it polls -- the portal gaining a field (as it will over time; `model`/`sensor_type`
+    already did once) must not turn into a hard parse failure that starves it of every other
+    field in the response. `extra="forbid"` is a deliberate, useful default elsewhere in pyobs
+    (catching config typos, `2026-08-15-pydantic-extra-validation.md`) but wrong here: this
+    module only ever consumes portal-controlled data, not user-authored config, and the two
+    sides (portal, and every fleet site's own pyobs-core version) are never guaranteed to be on
+    the same release.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class Filter(_ForwardCompatibleModel):
     """A single filter position in a filter wheel."""
 
     name: str
@@ -23,7 +40,7 @@ class Filter(BaseModel):
     updated_at: str | None = None
 
 
-class BinningOption(BaseModel):
+class BinningOption(_ForwardCompatibleModel):
     """Readout time for one binning mode of a camera."""
 
     x: int
@@ -32,25 +49,31 @@ class BinningOption(BaseModel):
     updated_at: str | None = None
 
 
-class FilterWheelCapability(BaseModel):
-    """Planning-time capability data for one filter wheel.
+class FilterWheelCapability(_ForwardCompatibleModel):
+    """Planning-time capability data for one filter wheel, keyed by `module_name`.
 
-    `module_name` is nullable -- not every filter wheel is its own addressable module (some
-    cameras expose filter selection through the camera module itself), per pyobs-portal#142.
+    `module_name` is required, same as every other device here -- a wheel with filter selection
+    exposed through the camera's own module (no independent XMPP identity) should be entered with
+    the *camera's* module_name, not left blank. It used to be nullable (pyobs-portal#142) but a
+    blank value made the row permanently unreachable via `InstrumentCapabilities.filter_wheel()`,
+    which indexes by module_name -- there was no valid case for it in practice.
     """
 
     name: str = ""
-    module_name: str | None = None
+    module_name: str
+    model: str = ""
     filter_change_time_s: float | None = None
     updated_at: str | None = None
     filters: list[Filter] = Field(default_factory=list)
 
 
-class CameraCapability(BaseModel):
+class CameraCapability(_ForwardCompatibleModel):
     """Planning-time capability data for one camera, keyed by `module_name`."""
 
     module_name: str
     code: str
+    model: str = ""
+    sensor_type: str = ""
     pixel_size_um: float | None = None
     sensor_width_px: int | None = None
     sensor_height_px: int | None = None
@@ -79,7 +102,7 @@ class CameraCapability(BaseModel):
 DEFAULT_SLEW_DISTANCE_DEG = 90.0
 
 
-class TelescopeCapability(BaseModel):
+class TelescopeCapability(_ForwardCompatibleModel):
     """Planning-time capability data for one telescope, keyed by `module_name`."""
 
     module_name: str
@@ -103,7 +126,7 @@ class TelescopeCapability(BaseModel):
         return distance_deg / self.slew_rate_deg_per_s
 
 
-class DomeCapability(BaseModel):
+class DomeCapability(_ForwardCompatibleModel):
     """Planning-time capability data for one dome, keyed by `module_name`."""
 
     module_name: str
@@ -120,7 +143,7 @@ class DomeCapability(BaseModel):
         return distance_deg / self.rotate_rate_deg_per_s
 
 
-class RoofCapability(BaseModel):
+class RoofCapability(_ForwardCompatibleModel):
     """Planning-time capability data for one plain open/close roof, keyed by `module_name`.
 
     A plain roof (`IRoof`, no `IPointingAltAz`) has no rate/distance concept -- nothing to rotate
@@ -136,7 +159,7 @@ class RoofCapability(BaseModel):
     updated_at: str | None = None
 
 
-class Instrument(BaseModel):
+class Instrument(_ForwardCompatibleModel):
     """One telescope + dome/roof + camera(s) grouping, as returned by `GET /api/instruments/`.
 
     Purely an organizational grouping on the portal side -- it carries no module identity of its
@@ -176,8 +199,7 @@ class InstrumentCapabilities:
                 self._cameras[camera.module_name] = camera
                 self._cameras_by_code[camera.code] = camera
                 for wheel in camera.filter_wheels:
-                    if wheel.module_name is not None:
-                        self._filter_wheels[wheel.module_name] = wheel
+                    self._filter_wheels[wheel.module_name] = wheel
             if instrument.telescope is not None:
                 self._telescopes[instrument.telescope.module_name] = instrument.telescope
             if instrument.dome is not None:

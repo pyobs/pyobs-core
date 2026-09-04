@@ -237,3 +237,10 @@ Implementation plans, checklist-style. Newest at the bottom.
   `Pointing`/`Imaging`/`AutoFocusScript`, folded into the same `max()` first-task estimate. Real
   motivating fleet: MONET-N/S/MONTI are plain roofs, no rotating dome (`monet/pyobs-monet#3`).
   **implemented, pending PR merge** (issue #877; Repos: pyobs-core, pyobs-portal)
+- [2026-09-04-camera-filterwheel-descriptive-fields.md](2026-09-04-camera-filterwheel-descriptive-fields.md)
+  — `model`/`sensor_type` fields for reference data; `FilterWheelCapability.module_name` made
+  required (was nullable but silently unreachable — dead-data bug); every capability model in
+  `pyobs/robotic/instruments.py` switched to `extra="ignore"` so a portal ahead of a fleet site's
+  pyobs-core release degrades gracefully instead of a hard parse failure (surfaced live: a
+  running `mastermind` started erroring the moment the two new fields landed). **implemented,
+  pending PR merge** (no issue; Repos: pyobs-core, pyobs-portal)

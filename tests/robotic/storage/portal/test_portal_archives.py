@@ -996,9 +996,36 @@ async def test_instrument_capabilities_poll_keeps_last_good_on_download_failure(
 
 
 @pytest.mark.asyncio
-async def test_instrument_capabilities_poll_keeps_last_good_on_unparseable_payload(mocker) -> None:
-    """A portal payload the (extra="forbid") pyobs-core models don't recognize must degrade like
-    any other fetch failure, not raise past _poll_instrument_capabilities()."""
+async def test_instrument_capabilities_poll_tolerates_unrecognized_fields(mocker) -> None:
+    """A portal running ahead of this pyobs-core release (e.g. the model/sensor_type fields
+    added to CameraCapability/FilterWheelCapability) must not turn into a hard parse failure --
+    the capability models use extra="ignore" (not BaseModel's default extra="forbid") for
+    exactly this: an unrecognized field is dropped, everything else still parses and the poll
+    succeeds normally, advancing the marker rather than falling back to the last-good cache."""
+    archive = make_task_archive()
+    stale = InstrumentCapabilities.from_api_response([{"display_name": "Stale"}])
+    archive._instrument_capabilities = stale
+    archive._instrument_capabilities_marker = T1
+    mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T2))
+    mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        AsyncMock(return_value=[{"display_name": "Fresh", "some_unrecognized_future_field": 1, "cameras": []}]),
+    )
+    await archive._poll_instrument_capabilities()
+
+    capabilities = archive.get_instrument_capabilities()
+    assert capabilities is not stale
+    assert isinstance(capabilities, InstrumentCapabilities)
+    assert capabilities.instruments[0].display_name == "Fresh"
+    assert archive._instrument_capabilities_marker == T2
+
+
+@pytest.mark.asyncio
+async def test_instrument_capabilities_poll_keeps_last_good_on_structurally_invalid_payload(mocker) -> None:
+    """extra="ignore" only forgives *unrecognized* fields -- a structurally invalid payload (a
+    required field missing, or the wrong type) still fails to parse and must degrade the same way
+    a download failure does: keep the last-good cache, marker not advanced, so the next poll
+    retries. This is the regression the unrecognized-fields test above can no longer cover."""
     archive = make_task_archive()
     good = InstrumentCapabilities.from_api_response([{"display_name": "Good"}])
     archive._instrument_capabilities = good
@@ -1006,7 +1033,8 @@ async def test_instrument_capabilities_poll_keeps_last_good_on_unparseable_paylo
     mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T2))
     mocker.patch(
         "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
-        AsyncMock(return_value=[{"some_unrecognized_future_field": 1}]),
+        # a camera missing its required module_name/code -- ValidationError, not extra="ignore"
+        AsyncMock(return_value=[{"display_name": "Bad", "cameras": [{"pixel_size_um": 5.4}]}]),
     )
     await archive._poll_instrument_capabilities()
     assert archive.get_instrument_capabilities() is good

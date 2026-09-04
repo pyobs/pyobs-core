@@ -390,6 +390,7 @@ async def test_got_online_completes_despite_broken_presence_callback() -> None:
     comm._peer_sent_events = {}
     comm._presence_callbacks = {"camera": [MagicMock(side_effect=RuntimeError("Signal source has been deleted"))]}
     comm._event_handlers = {ModuleOpenedEvent: [handler]}
+    comm._event_handler_tasks = {}
     comm._get_interfaces = AsyncMock(return_value=["IModule"])
 
     msg = {"from": MagicMock(full="camera@localhost/pyobs", username="camera"), "show": "", "status": ""}

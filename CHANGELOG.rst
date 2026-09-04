@@ -4,6 +4,11 @@ v2.5.0
   ``HIERARCH <MODULE> VERSION <PACKAGE>`` card per loaded ``pyobs-*`` package into FITS headers,
   reusing ``loaded_pyobs_packages()`` (added for #759). Closes #739. See
   ``specs/design/package_versions_fits_header.md``.
+* Fixes ``Comm.unregister_event()`` not cancelling a handler dispatch that
+  ``_send_event_to_module()`` had already scheduled via ``asyncio.create_task()`` before the
+  unregister call -- the task ran later regardless, against whatever the handler was bound to
+  (observed in pyobs-gui as a ``libshiboken: Internal C++ object already deleted`` error on
+  client disconnect). Closes #871.
 
 v2.4.1 (2026-09-03)
 *********************

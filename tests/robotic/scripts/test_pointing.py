@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from pyobs.robotic.instruments import Instrument, InstrumentCapabilities, TelescopeCapability
+from pyobs.robotic.instruments import DomeCapability, Instrument, InstrumentCapabilities, TelescopeCapability
 from pyobs.robotic.scripts.calibration.pointing import PointingScript
 from pyobs.robotic.task import TaskData
 from pyobs.robotic.utils.skyflats.pointing.static import SkyFlatsStaticPointing
@@ -39,3 +39,39 @@ def test_estimate_duration_falls_back_when_telescope_module_not_matched() -> Non
     data = TaskData(task=MagicMock(), instrument_capabilities=capabilities)
 
     assert script.estimate_duration(data) == 60.0
+
+
+def test_estimate_duration_uses_dome_rotate_time_when_slower() -> None:
+    script = make_script(dome="dome1")
+    telescope_capability = TelescopeCapability(module_name="telescope", slew_rate_deg_per_s=3.0)  # 30.0s
+    dome_capability = DomeCapability(module_name="dome1", rotate_rate_deg_per_s=1.0)  # 90.0s, slower
+    capabilities = InstrumentCapabilities([Instrument(telescope=telescope_capability, dome=dome_capability)])
+    data = TaskData(task=MagicMock(), instrument_capabilities=capabilities)
+
+    duration = script.estimate_duration(data)
+
+    assert duration == dome_capability.estimate_rotate_time_s()
+    assert duration != telescope_capability.estimate_slew_time_s()
+
+
+def test_estimate_duration_uses_telescope_slew_time_when_slower() -> None:
+    script = make_script(dome="dome1")
+    telescope_capability = TelescopeCapability(module_name="telescope", slew_rate_deg_per_s=1.0)  # 90.0s, slower
+    dome_capability = DomeCapability(module_name="dome1", rotate_rate_deg_per_s=3.0)  # 30.0s
+    capabilities = InstrumentCapabilities([Instrument(telescope=telescope_capability, dome=dome_capability)])
+    data = TaskData(task=MagicMock(), instrument_capabilities=capabilities)
+
+    duration = script.estimate_duration(data)
+
+    assert duration == telescope_capability.estimate_slew_time_s()
+    assert duration != dome_capability.estimate_rotate_time_s()
+
+
+def test_estimate_duration_ignores_dome_when_not_configured() -> None:
+    script = make_script()  # no dome field set
+    telescope_capability = TelescopeCapability(module_name="telescope", slew_rate_deg_per_s=3.0)
+    dome_capability = DomeCapability(module_name="dome1", rotate_rate_deg_per_s=100.0)  # would dominate if used
+    capabilities = InstrumentCapabilities([Instrument(telescope=telescope_capability, dome=dome_capability)])
+    data = TaskData(task=MagicMock(), instrument_capabilities=capabilities)
+
+    assert script.estimate_duration(data) == telescope_capability.estimate_slew_time_s()

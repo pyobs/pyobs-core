@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from pyobs.robotic.instruments import Instrument, InstrumentCapabilities, TelescopeCapability
+from pyobs.robotic.instruments import DomeCapability, Instrument, InstrumentCapabilities, TelescopeCapability
 
 # One Instrument's InstrumentSerializer output, dumped from a live pyobs-portal instance
 # (pyobs-portal#142's schema: module_name lives on CameraCapability/TelescopeCapability/
@@ -176,3 +176,22 @@ class TestTelescopeCapabilityEstimateSlewTime:
     def test_distance_deg_overrides_the_default(self) -> None:
         telescope = TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=3.0)
         assert telescope.estimate_slew_time_s(distance_deg=15.0) == pytest.approx(5.0)
+
+
+class TestDomeCapabilityEstimateRotateTime:
+    def test_returns_typical_distance_over_rate(self) -> None:
+        dome = DomeCapability(module_name="dome1", rotate_rate_deg_per_s=2.5)
+        # 90.0 deg (the same shared placeholder distance as the telescope) / 2.5 deg/s
+        assert dome.estimate_rotate_time_s() == pytest.approx(36.0)
+
+    def test_none_when_rate_not_declared(self) -> None:
+        dome = DomeCapability(module_name="dome1")
+        assert dome.estimate_rotate_time_s() is None
+
+    def test_none_when_rate_is_zero_or_negative(self) -> None:
+        assert DomeCapability(module_name="dome1", rotate_rate_deg_per_s=0.0).estimate_rotate_time_s() is None
+        assert DomeCapability(module_name="dome1", rotate_rate_deg_per_s=-1.0).estimate_rotate_time_s() is None
+
+    def test_distance_deg_overrides_the_default(self) -> None:
+        dome = DomeCapability(module_name="dome1", rotate_rate_deg_per_s=2.5)
+        assert dome.estimate_rotate_time_s(distance_deg=10.0) == pytest.approx(4.0)

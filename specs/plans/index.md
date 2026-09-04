@@ -226,3 +226,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   `Comm.unregister_event()` cancels already-scheduled handler tasks, closing the stale-widget race
   in `_send_event_to_module()`. **implemented** (issue #871; PR #876, merged `a9ed16fe`; GitHub
   issue stays open pending release to `main`)
+- [2026-09-04-first-task-slew-rotate-distance.md](2026-09-04-first-task-slew-rotate-distance.md) —
+  `DomeCapability.estimate_rotate_time_s()` (mirrors the telescope's mean-distance estimate) +
+  `dome` field on `Pointing`/`Imaging`/`AutoFocusScript`, combined with telescope slew time via
+  `max()`. Descoped from an original live-telescope-position design (see doc's History section)
+  after review — no observed accuracy problem justified the added scheduler-threading risk.
+  Plain-roof open/close time split out to #877. **implemented** (issue #858; Repos: pyobs-core)

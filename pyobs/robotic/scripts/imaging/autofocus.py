@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field
 
-from pyobs.interfaces import IAutoFocus, IMotion, IPointingRaDec, IReady, ITelescope
+from pyobs.interfaces import IAutoFocus, IDome, IMotion, IPointingRaDec, IReady, ITelescope
 from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
 
@@ -23,6 +23,9 @@ class AutoFocusScript(Script):
     )
     telescope: Annotated[str, ITelescope, IPointingRaDec] = Field(
         default="telescope", description="Name of the telescope module, moved to the target and stopped afterwards."
+    )
+    dome: Annotated[str | None, IDome] = Field(
+        default=None, description="Name of the dome module, if the site has a rotating dome (omit for a plain roof)."
     )
     count: int = Field(default=5, description="Number of focus steps to take in the series.")
     step: float = Field(default=0.1, description="Focus step size.")
@@ -89,11 +92,19 @@ class AutoFocusScript(Script):
             log.info("Done.")
 
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
-        """Estimate duration of the autofocus run."""
+        """Estimate duration of the autofocus run.
+
+        Telescope and dome move in parallel, so time-to-ready is the slower of the two, not their
+        sum -- falls back to the flat 60.0 fudge only when neither yields a real estimate.
+        """
         capabilities = data.instrument_capabilities if data is not None else None
         telescope = capabilities.telescope(self.telescope) if capabilities is not None else None
         slew_time = telescope.estimate_slew_time_s() if telescope is not None else None
-        return self.count * self.exposure_time + (slew_time if slew_time is not None else 60.0)
+        dome = capabilities.dome(self.dome) if capabilities is not None and self.dome else None
+        rotate_time = dome.estimate_rotate_time_s() if dome is not None else None
+
+        times = [t for t in (slew_time, rotate_time) if t is not None]
+        return self.count * self.exposure_time + (max(times) if times else 60.0)
 
 
 __all__ = ["AutoFocusScript"]

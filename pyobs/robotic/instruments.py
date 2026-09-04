@@ -110,6 +110,15 @@ class DomeCapability(BaseModel):
     rotate_rate_deg_per_s: float | None = None
     updated_at: str | None = None
 
+    def estimate_rotate_time_s(self, distance_deg: float = DEFAULT_SLEW_DISTANCE_DEG) -> float | None:
+        """First-pass rotate-duration estimate, mirroring `TelescopeCapability.estimate_slew_time_s()`
+        -- same placeholder distance, `None` if `rotate_rate_deg_per_s` isn't declared (or isn't
+        positive), same caller fallback convention.
+        """
+        if self.rotate_rate_deg_per_s is None or self.rotate_rate_deg_per_s <= 0:
+            return None
+        return distance_deg / self.rotate_rate_deg_per_s
+
 
 class Instrument(BaseModel):
     """One telescope + dome + camera(s) grouping, as returned by `GET /api/instruments/`.

@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from pyobs.robotic.instruments import (
+    CameraCapability,
     DomeCapability,
     Instrument,
     InstrumentCapabilities,
@@ -24,6 +26,8 @@ INSTRUMENT_RESPONSE: dict[str, Any] = {
         {
             "module_name": "iag50cam",
             "code": "ef01",
+            "model": "FLI ProLine PL23042",
+            "sensor_type": "e2v CCD230-42, back-illuminated CCD",
             "pixel_size_um": 5.4,
             "sensor_width_px": 4096,
             "sensor_height_px": 4096,
@@ -42,6 +46,7 @@ INSTRUMENT_RESPONSE: dict[str, Any] = {
                 {
                     "name": "",
                     "module_name": "iag50filt",
+                    "model": "FLI CFW-2-7",
                     "filter_change_time_s": 4.5,
                     "updated_at": "2026-09-02T18:34:16.453140Z",
                     "filters": [
@@ -75,9 +80,12 @@ def test_instrument_round_trips_portal_response() -> None:
     camera = instrument.cameras[0]
     assert camera.module_name == "iag50cam"
     assert camera.code == "ef01"
+    assert camera.model == "FLI ProLine PL23042"
+    assert camera.sensor_type == "e2v CCD230-42, back-illuminated CCD"
     assert [(b.x, b.y, b.readout_time_s) for b in camera.binnings] == [(1, 1, 3.2), (2, 2, 1.8)]
     wheel = camera.filter_wheels[0]
     assert wheel.module_name == "iag50filt"
+    assert wheel.model == "FLI CFW-2-7"
     assert wheel.filter_change_time_s == 4.5
     assert [f.name for f in wheel.filters] == ["R", "V"]
     assert instrument.telescope is not None
@@ -105,6 +113,49 @@ def test_instrument_with_plain_roof_round_trips() -> None:
     assert instrument.roof is not None
     assert instrument.roof.module_name == "iag50roof"
     assert instrument.roof.open_close_time_s == 45.0
+
+
+def test_instrument_tolerates_unknown_fields() -> None:
+    # a running process can be on an older pyobs-core release than whatever portal it polls --
+    # an unrecognized field (the portal gained one, or will) must degrade gracefully, not raise,
+    # at every nesting level (every model here shares the same _ForwardCompatibleModel base).
+    response = {
+        **INSTRUMENT_RESPONSE,
+        "some_future_field": "unexpected",
+        "cameras": [
+            {
+                **INSTRUMENT_RESPONSE["cameras"][0],
+                "some_future_camera_field": 123,
+                "binnings": [{**INSTRUMENT_RESPONSE["cameras"][0]["binnings"][0], "some_future_binning_field": 1}],
+                "filter_wheels": [
+                    {
+                        **INSTRUMENT_RESPONSE["cameras"][0]["filter_wheels"][0],
+                        "some_future_wheel_field": 1,
+                        "filters": [
+                            {
+                                **INSTRUMENT_RESPONSE["cameras"][0]["filter_wheels"][0]["filters"][0],
+                                "some_future_filter_field": 1,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+        "telescope": {**INSTRUMENT_RESPONSE["telescope"], "some_future_telescope_field": True},
+        "dome": {**INSTRUMENT_RESPONSE["dome"], "some_future_dome_field": True},
+    }
+    instrument = Instrument.model_validate(response)
+    assert instrument.display_name == "GOE 50cm"
+    camera = instrument.cameras[0]
+    assert camera.module_name == "iag50cam"
+    assert camera.binnings[0].x == 1
+    wheel = camera.filter_wheels[0]
+    assert wheel.module_name == "iag50filt"
+    assert wheel.filters[0].name == "R"
+    assert instrument.telescope is not None
+    assert instrument.telescope.module_name == "iag50telescope"
+    assert instrument.dome is not None
+    assert instrument.dome.module_name == "iag50dome"
 
 
 def test_instrument_with_no_telescope_or_dome() -> None:
@@ -159,10 +210,9 @@ class TestInstrumentCapabilities:
         assert wheel is not None
         assert wheel.filter_change_time_s == 4.5
 
-    def test_filter_wheel_with_no_module_name_is_not_indexed(self) -> None:
-        # pyobs-portal#142: module_name is nullable on FilterWheelCapability -- a wheel with none
-        # set has no key to look it up by, and must not silently collide with another None-named
-        # entry.
+    def test_filter_wheel_requires_module_name(self) -> None:
+        # module_name used to be nullable (pyobs-portal#142) -- dropped since a blank value made
+        # the row permanently unreachable via filter_wheel() lookup, with no valid use case left.
         response = {
             **INSTRUMENT_RESPONSE,
             "cameras": [
@@ -180,8 +230,33 @@ class TestInstrumentCapabilities:
                 }
             ],
         }
-        capabilities = InstrumentCapabilities.from_api_response([response])
-        assert capabilities.filter_wheel("iag50filt") is None
+        with pytest.raises(ValidationError):
+            InstrumentCapabilities.from_api_response([response])
+
+    def test_filter_wheel_rejects_empty_module_name(self) -> None:
+        # str alone only enforces non-None, not non-empty -- min_length=1 closes the same
+        # unreachable-row gap for "" that the None case above closes for null. A pre-#142 row
+        # (blank=True allowed "") or a direct ORM write bypassing the portal's full_clean() could
+        # still produce one.
+        response = {
+            **INSTRUMENT_RESPONSE,
+            "cameras": [
+                {
+                    **INSTRUMENT_RESPONSE["cameras"][0],
+                    "filter_wheels": [
+                        {
+                            "name": "unnamed",
+                            "module_name": "",
+                            "filter_change_time_s": 1.0,
+                            "updated_at": None,
+                            "filters": [],
+                        }
+                    ],
+                }
+            ],
+        }
+        with pytest.raises(ValidationError):
+            InstrumentCapabilities.from_api_response([response])
 
     def test_multiple_instruments_aggregate_into_one_lookup(self) -> None:
         other = {
@@ -196,6 +271,19 @@ class TestInstrumentCapabilities:
         assert capabilities.camera("guidecam") is not None
         assert capabilities.telescope("guidetelescope") is not None
         assert len(capabilities.instruments) == 2
+
+
+def test_module_name_min_length_applies_to_every_capability_model() -> None:
+    # broadened from FilterWheelCapability alone -- str only enforces non-None, and the
+    # unreachable-empty-string gap applies equally to every module_name field here.
+    for cls, kwargs in [
+        (CameraCapability, {"module_name": "", "code": "ef01"}),
+        (TelescopeCapability, {"module_name": ""}),
+        (DomeCapability, {"module_name": ""}),
+        (RoofCapability, {"module_name": ""}),
+    ]:
+        with pytest.raises(ValidationError):
+            cls(**kwargs)
 
 
 class TestTelescopeCapabilityEstimateSlewTime:

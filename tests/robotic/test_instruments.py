@@ -4,7 +4,13 @@ from typing import Any
 
 import pytest
 
-from pyobs.robotic.instruments import DomeCapability, Instrument, InstrumentCapabilities, TelescopeCapability
+from pyobs.robotic.instruments import (
+    DomeCapability,
+    Instrument,
+    InstrumentCapabilities,
+    RoofCapability,
+    TelescopeCapability,
+)
 
 # One Instrument's InstrumentSerializer output, dumped from a live pyobs-portal instance
 # (pyobs-portal#142's schema: module_name lives on CameraCapability/TelescopeCapability/
@@ -59,6 +65,7 @@ INSTRUMENT_RESPONSE: dict[str, Any] = {
         "rotate_rate_deg_per_s": 2.5,
         "updated_at": "2026-09-02T18:34:16.454272Z",
     },
+    "roof": None,
 }
 
 
@@ -79,6 +86,25 @@ def test_instrument_round_trips_portal_response() -> None:
     assert instrument.dome is not None
     assert instrument.dome.module_name == "iag50dome"
     assert instrument.dome.rotate_rate_deg_per_s == 2.5
+    assert instrument.roof is None
+
+
+def test_instrument_with_plain_roof_round_trips() -> None:
+    # a plain-roof site has no dome at all -- MONET-N/S per monet/pyobs-monet#3
+    response = {
+        **INSTRUMENT_RESPONSE,
+        "dome": None,
+        "roof": {
+            "module_name": "iag50roof",
+            "open_close_time_s": 45.0,
+            "updated_at": "2026-09-04T09:00:00.000000Z",
+        },
+    }
+    instrument = Instrument.model_validate(response)
+    assert instrument.dome is None
+    assert instrument.roof is not None
+    assert instrument.roof.module_name == "iag50roof"
+    assert instrument.roof.open_close_time_s == 45.0
 
 
 def test_instrument_with_no_telescope_or_dome() -> None:
@@ -86,6 +112,7 @@ def test_instrument_with_no_telescope_or_dome() -> None:
     instrument = Instrument.model_validate(response)
     assert instrument.telescope is None
     assert instrument.dome is None
+    assert instrument.roof is None
 
 
 class TestInstrumentCapabilities:
@@ -114,6 +141,18 @@ class TestInstrumentCapabilities:
         dome = self.capabilities.dome("iag50dome")
         assert dome is not None
         assert dome.rotate_rate_deg_per_s == 2.5
+
+    def test_roof_lookup_by_module_name(self) -> None:
+        response = {
+            **INSTRUMENT_RESPONSE,
+            "dome": None,
+            "roof": {"module_name": "iag50roof", "open_close_time_s": 45.0, "updated_at": None},
+        }
+        capabilities = InstrumentCapabilities.from_api_response([response])
+        roof = capabilities.roof("iag50roof")
+        assert roof is not None
+        assert roof.open_close_time_s == 45.0
+        assert capabilities.roof("iag50dome") is None
 
     def test_filter_wheel_lookup_by_module_name(self) -> None:
         wheel = self.capabilities.filter_wheel("iag50filt")
@@ -195,3 +234,14 @@ class TestDomeCapabilityEstimateRotateTime:
     def test_distance_deg_overrides_the_default(self) -> None:
         dome = DomeCapability(module_name="dome1", rotate_rate_deg_per_s=2.5)
         assert dome.estimate_rotate_time_s(distance_deg=10.0) == pytest.approx(4.0)
+
+
+class TestRoofCapability:
+    def test_open_close_time_s_defaults_to_none(self) -> None:
+        assert RoofCapability(module_name="roof1").open_close_time_s is None
+
+    def test_open_close_time_s_used_directly_not_a_rate(self) -> None:
+        # unlike TelescopeCapability/DomeCapability, this is already a duration -- no
+        # estimate_*() method, no distance parameter to combine it with.
+        roof = RoofCapability(module_name="roof1", open_close_time_s=45.0)
+        assert roof.open_close_time_s == 45.0

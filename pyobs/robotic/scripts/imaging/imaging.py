@@ -19,6 +19,7 @@ from pyobs.interfaces import (
     IImageType,
     IPointingRaDec,
     IReady,
+    IRoof,
     ITelescope,
     IWindow,
 )
@@ -115,6 +116,9 @@ class ImagingScript(Script):
     )
     dome: Annotated[str | None, IDome] = Field(
         default=None, description="Name of the dome module, if the site has a rotating dome (omit for a plain roof)."
+    )
+    roof: Annotated[str | None, IRoof] = Field(
+        default=None, description="Name of the roof module, if the site has a plain open/close roof (omit for a dome)."
     )
     filters: Annotated[str | None, IFilters] = Field(
         default=None, description="Name of the filter wheel module. Required if any instrument config sets a filter."
@@ -378,11 +382,11 @@ class ImagingScript(Script):
         """Estimate the duration of this script in seconds.
 
         Uses real per-binning readout time, per-wheel filter-change time, and telescope slew /
-        dome rotate rate wherever `data.instrument_capabilities` has a matching, populated row --
-        falling back to today's flat fudge constants at every point that's missing (no `data`, no
-        capabilities, no matching module, or the specific field not set on the matched row).
-        Telescope and dome move in parallel, so the slew/rotate term is the slower of the two, not
-        their sum.
+        dome rotate / roof open-close time wherever `data.instrument_capabilities` has a matching,
+        populated row -- falling back to today's flat fudge constants at every point that's
+        missing (no `data`, no capabilities, no matching module, or the specific field not set on
+        the matched row). Telescope and dome/roof move in parallel, so the slew/rotate/roof term
+        is the slowest of the three, not their sum.
 
         Two simplifications carried over from today's flat constants, not new: the slew term is
         added unconditionally, even for a bias/dark-only sequence that never actually points at
@@ -413,7 +417,9 @@ class ImagingScript(Script):
         slew_time = telescope.estimate_slew_time_s() if telescope is not None else None
         dome = capabilities.dome(self.dome) if capabilities is not None and self.dome else None
         rotate_time = dome.estimate_rotate_time_s() if dome is not None else None
-        times = [t for t in (slew_time, rotate_time) if t is not None]
+        roof = capabilities.roof(self.roof) if capabilities is not None and self.roof else None
+        roof_time = roof.open_close_time_s if roof is not None else None
+        times = [t for t in (slew_time, rotate_time, roof_time) if t is not None]
         duration += max(times) if times else 60.0
 
         if self.configuration.acquisition_config.enabled:

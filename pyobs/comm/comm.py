@@ -39,6 +39,7 @@ class Comm:
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._logging_task: asyncio.Task[Any] | None = None
         self._event_handlers: dict[type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
+        self._event_handler_tasks: dict[tuple[type[Event], Callable[..., Any]], set[asyncio.Task[Any]]] = {}
         self._events_sent: set[type[Event]] = set()
         self._events_subscribed: set[type[Event]] = set()
         self._closing = asyncio.Event()
@@ -479,6 +480,15 @@ class Comm:
                     self._events_subscribed.discard(ev)
                     unsubscribed.append(ev)
 
+                # cancel any dispatch for this handler that _send_event_to_module() already
+                # scheduled via asyncio.create_task() but that hasn't run yet -- otherwise it
+                # fires later against whatever the handler is bound to, even though the handler
+                # is gone from _event_handlers as of this call (see issue #871)
+                pending = self._event_handler_tasks.pop((ev, handler), None)
+                if pending is not None:
+                    for task in pending:
+                        task.cancel()
+
         # only event classes that just lost their last handler need the comm layer to actually
         # tear anything down (e.g. XmppComm unsubscribing from peers' event nodes)
         if unsubscribed and not event_class.local:
@@ -690,16 +700,26 @@ class Comm:
                 ret = handler(event, from_client)
                 if asyncio.iscoroutine(ret):
                     task = asyncio.create_task(ret)
+                    self._event_handler_tasks.setdefault((event.__class__, handler), set()).add(task)
                     task.add_done_callback(functools.partial(self._log_handler_exception, handler=handler, event=event))
 
-    @staticmethod
-    def _log_handler_exception(task: asyncio.Task[Any], handler: Callable[..., Any], event: Event) -> None:
+    def _log_handler_exception(self, task: asyncio.Task[Any], handler: Callable[..., Any], event: Event) -> None:
         """Log an event handler's exception with context, instead of leaving it to asyncio's own
         "Task exception was never retrieved" warning at garbage-collection time, which gives no
         indication of which handler or event actually failed -- every event handler is dispatched
         as a fire-and-forget task (see _send_event_to_module), so this is the only place any of
         them get their exceptions surfaced at all.
+
+        Also drops the task from _event_handler_tasks, the bookkeeping unregister_event() uses to
+        cancel still-pending dispatches for a handler being removed -- without this, a
+        long-running module would accumulate an entry per (event_class, handler) forever.
         """
+        tasks = self._event_handler_tasks.get((event.__class__, handler))
+        if tasks is not None:
+            tasks.discard(task)
+            if not tasks:
+                del self._event_handler_tasks[(event.__class__, handler)]
+
         if task.cancelled():
             return
         exc = task.exception()

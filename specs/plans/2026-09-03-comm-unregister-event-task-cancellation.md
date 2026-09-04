@@ -1,10 +1,8 @@
 # Plan: Comm.unregister_event() cancels already-scheduled handler tasks (#871)
 
-Status: proposed
+Status: implemented
 
 Issue: pyobs-core#871
-
-Repos: pyobs-core, pyobs-gui
 
 ## Problem
 
@@ -60,44 +58,18 @@ unrelated one-shot tasks, and this is the only fire-and-forget dispatch loop in 
 - Existing dispatch/exception-logging tests continue to pass unchanged (`_log_handler_exception`
   behavior for non-cancelled exceptions is untouched).
 
-## pyobs-gui implications (investigated, not a code-removal task)
+## pyobs-gui note
 
-The issue text cites `StatusItem._state_subscriptions` and
-`MainWindow.discard_all_widgets()` as prior ad-hoc workarounds for this race. Checked both against
-the actual current code:
-
-- **`StatusItem`/`StatusWidget._state_subscriptions`** (`pyobs_gui/statuswidget.py:304-321`) is
-  unrelated to this bug. State updates are delivered synchronously —
-  `pyobs/comm/xmpp/xmppcomm.py:1032` (`callback(state_obj)`) and
-  `pyobs/comm/local/localcomm.py:90/109` call the callback directly, with no
-  `asyncio.create_task` in between — so there's no scheduled task for `unregister_event()`'s fix
-  to race with. This unsubscribe-on-discard code stays; it prevents a plain subscription leak, not
-  this race.
-- **`BaseWidget.discard()`/`register_event()` tracking** (`pyobs_gui/base.py:260-293`) and
-  **`MainWindow.discard_all_widgets()`** (`pyobs_gui/mainwindow.py:712-727`) are the actual event
-  path this fix touches, but neither is removable: they're what *calls*
-  `comm.unregister_event()` in the first place, and that call still has to happen or a handler
-  leaks forever (per `discard()`'s own docstring). What the core fix removes is the *ordering
-  requirement* — today `discard_all_widgets()` must run before Qt destroys the widget, or a task
-  already scheduled from `_send_event_to_module()` slips through; after this fix,
-  `unregister_event()` itself cancels that task, so a same-tick discard-then-destroy is safe.
-  `DataDisplayWidget._on_new_data` (`pyobs_gui/datadisplaywidget.py:175`) has no defensive
-  guard to remove — it directly touches `self.checkAutoUpdate` today and simply crashes (caught,
-  logged) under the race, so there's nothing to delete there either.
-
-Follow-up in pyobs-gui, once pinned to a pyobs-core release containing this fix:
-
-- Confirm the `libshiboken: Internal C++ object already deleted` log line stops appearing under
-  the same disconnect/reconnect sequence that originally surfaced it.
-- Update `discard()`'s and `discard_all_widgets()`'s docstrings to note that the strict
-  before-Qt-destroys-the-widget ordering is now a defense-in-depth guard against other teardown
-  bugs, not a requirement for the event-handler race specifically.
-- No deletion of `_registered_event_handlers` tracking, `discard()`, or `_state_subscriptions` —
-  investigation above found none of it dead code.
+The issue cites `StatusItem._state_subscriptions` and `MainWindow.discard_all_widgets()` as prior
+workarounds for this race. Checked: only `discard_all_widgets()`/`BaseWidget.discard()`
+(`pyobs_gui/base.py:260-293`, `pyobs_gui/mainwindow.py:712-727`) are on the affected event path,
+and neither is removable — they're what calls `unregister_event()` at all. This fix just drops the
+requirement that they run strictly before Qt destroys the widget. `_state_subscriptions`
+(`pyobs_gui/statuswidget.py:304-321`) is unrelated — state updates dispatch synchronously, no
+`create_task` involved — so it stays untouched. No pyobs-gui code changes follow from this plan;
+at most a docstring update once pyobs-gui is pinned to a release with this fix.
 
 ## Rollout
 
 Pure `pyobs-core` internal change, no public API change (`unregister_event()`'s signature is
 unchanged). No server or XMPP protocol impact. Rollback is reverting the `comm.py` diff.
-pyobs-gui docstring updates land in a separate, small follow-up PR once pyobs-gui bumps its
-pyobs-core pin.

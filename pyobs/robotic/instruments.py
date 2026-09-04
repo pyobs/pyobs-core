@@ -52,15 +52,19 @@ class BinningOption(_ForwardCompatibleModel):
 class FilterWheelCapability(_ForwardCompatibleModel):
     """Planning-time capability data for one filter wheel, keyed by `module_name`.
 
-    `module_name` is required, same as every other device here -- a wheel with filter selection
-    exposed through the camera's own module (no independent XMPP identity) should be entered with
-    the *camera's* module_name, not left blank. It used to be nullable (pyobs-portal#142) but a
-    blank value made the row permanently unreachable via `InstrumentCapabilities.filter_wheel()`,
-    which indexes by module_name -- there was no valid case for it in practice.
+    `module_name` is required and non-empty, same as every other device here -- a wheel with
+    filter selection exposed through the camera's own module (no independent XMPP identity)
+    should be entered with the *camera's* module_name, not left blank. It used to be nullable
+    (pyobs-portal#142) but a blank value made the row permanently unreachable via
+    `InstrumentCapabilities.filter_wheel()`, which indexes by module_name -- there was no valid
+    case for it in practice. `min_length=1` closes the same gap for `""`, which `str` alone
+    wouldn't catch (only non-`None`, not non-empty) and which the portal side's `blank=False`
+    can't fully guarantee either (pre-#142 `blank=True` rows, or a direct ORM write bypassing
+    `full_clean()`).
     """
 
     name: str = ""
-    module_name: str
+    module_name: str = Field(min_length=1)
     model: str = ""
     filter_change_time_s: float | None = None
     updated_at: str | None = None
@@ -70,7 +74,7 @@ class FilterWheelCapability(_ForwardCompatibleModel):
 class CameraCapability(_ForwardCompatibleModel):
     """Planning-time capability data for one camera, keyed by `module_name`."""
 
-    module_name: str
+    module_name: str = Field(min_length=1)
     code: str
     model: str = ""
     sensor_type: str = ""
@@ -105,7 +109,7 @@ DEFAULT_SLEW_DISTANCE_DEG = 90.0
 class TelescopeCapability(_ForwardCompatibleModel):
     """Planning-time capability data for one telescope, keyed by `module_name`."""
 
-    module_name: str
+    module_name: str = Field(min_length=1)
     aperture_mm: float | None = None
     focal_length_mm: float | None = None
     mount_type: str = ""
@@ -129,7 +133,7 @@ class TelescopeCapability(_ForwardCompatibleModel):
 class DomeCapability(_ForwardCompatibleModel):
     """Planning-time capability data for one dome, keyed by `module_name`."""
 
-    module_name: str
+    module_name: str = Field(min_length=1)
     rotate_rate_deg_per_s: float | None = None
     updated_at: str | None = None
 
@@ -154,7 +158,7 @@ class RoofCapability(_ForwardCompatibleModel):
     directly.
     """
 
-    module_name: str
+    module_name: str = Field(min_length=1)
     open_close_time_s: float | None = None
     updated_at: str | None = None
 

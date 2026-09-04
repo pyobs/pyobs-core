@@ -54,18 +54,57 @@ pyobs-core version are never guaranteed to be on the same release. A portal resp
 an older client doesn't recognize now parses successfully (that field dropped, everything else
 intact) instead of rejecting the whole response.
 
+**`Task`/`Project` are deliberately not covered by this carve-out** — they keep `extra="forbid"`,
+same as `2026-08-15-pydantic-extra-validation.md` decided ("declare the missing fields, use
+`forbid` here too, no carve-out"), and `PortalTaskArchive` already follows that: `updated_at` and
+`public` were each added to the strict models in lockstep with the portal
+(`test_task_get_tasks_from_portal_accepts_updated_at`,
+`test_task_get_projects_from_portal_accepts_public`). Both are also portal-parsed and also
+degrade-to-last-good on failure, so the identical incident *could* recur there the next time
+`/api/tasks/` or `/api/projects/` grows a field before the pyobs-core mirror lands — worth naming
+explicitly so a future field addition doesn't rediscover this the way the `mastermind` incident
+did. The distinction that justifies treating them differently: `Task`/`Project` are curated,
+config-like payloads deliberately kept in lockstep with the portal schema (a mismatch there is
+closer to the "config typo" case `extra="forbid"` exists to catch), where the capability models
+here are open-ended reference data a human can add fields to at will, with no expectation that
+every pyobs-core release tracks every field. If that trade-off stops feeling right in practice,
+the fix is the same shape as this one: add the missing field to the mirror and keep it in lockstep,
+not relax `Task`/`Project` too.
+
+**Robustness note**: `module_name` on every capability model here (not just
+`FilterWheelCapability`) also got `Field(min_length=1)` — plain `str` only enforces non-`None`,
+not non-empty, so an empty-string `module_name` would have reproduced the exact same
+silently-unreachable-row bug §2 above just fixed, in a new disguise. The portal side's
+`blank=False` prevents new empty values through the admin, but can't fully guarantee it (a
+pre-#142 row could already hold `""`, or a direct ORM write bypasses `full_clean()`).
+
+## Deploy ordering
+
+pyobs-core must merge/release before pyobs-portal deploys this — same as the roof-capability pair
+(#877/#149) before it. Currently-released pyobs-core still parses with `extra="forbid"` and has no
+`model`/`sensor_type` fields; if the portal deploys first, the next `mastermind` (or any other
+site still on the old release) polling it reproduces the exact incident this pair fixes: a logged
+parse error every poll, serving a stale cache until that site's pyobs-core is upgraded. pyobs-core
+#882 removes the breakage only once it actually ships to PyPI and the site upgrades to it.
+
 ## Test plan
 
 - [x] pyobs-portal: `model`/`sensor_type` round-trip in serializer shape test; `module_name`
       global-uniqueness test rewritten for the now-required field (was "None is fine, multiple
-      allowed" — no longer a valid case) — `pyobs_portal/instruments/tests.py`, 25 tests in the
-      app, 152 in the full suite.
+      allowed" — no longer a valid case); `sensor_type` added to `list_display` alongside
+      `search_fields` (was searchable but not visible in the list view) —
+      `pyobs_portal/instruments/tests.py`, 25 tests in the app, 152 in the full suite.
 - [x] pyobs-core: `model`/`sensor_type`/wheel-`model` round-trip; `FilterWheelCapability` with
-      `module_name=None` now raises `ValidationError` (was silently unreachable, now a hard
-      failure at parse time instead of silent data loss); a payload with unrecognized fields
-      mixed in with recognized ones now parses successfully and updates the cache (rewrote
+      `module_name=None` or `module_name=""` now raises `ValidationError` (both were silently
+      unreachable before, now a hard failure at parse time instead of silent data loss) —
+      `min_length=1` applied to every capability model's `module_name`, not just
+      `FilterWheelCapability`'s, closing the same empty-string gap everywhere; a payload with
+      unrecognized fields at every nesting level (Instrument/Camera/Binning/FilterWheel/Filter/
+      Telescope/Dome) now parses successfully and updates the cache (rewrote
       `test_instrument_capabilities_poll_keeps_last_good_on_unparseable_payload`, which tested
       the old `extra="forbid"` behavior directly, into
-      `test_instrument_capabilities_poll_tolerates_unrecognized_fields`) —
+      `test_instrument_capabilities_poll_tolerates_unrecognized_fields`); a companion test covers
+      the still-real failure mode `extra="ignore"` doesn't touch — a *structurally* invalid
+      payload (required field missing) still degrades to last-good, marker not advanced —
       `tests/robotic/test_instruments.py`, `tests/robotic/storage/portal/test_portal_archives.py`,
-      504 tests in the full `tests/robotic/` suite.
+      507 tests in the full `tests/robotic/` suite.

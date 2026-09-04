@@ -1021,6 +1021,27 @@ async def test_instrument_capabilities_poll_tolerates_unrecognized_fields(mocker
 
 
 @pytest.mark.asyncio
+async def test_instrument_capabilities_poll_keeps_last_good_on_structurally_invalid_payload(mocker) -> None:
+    """extra="ignore" only forgives *unrecognized* fields -- a structurally invalid payload (a
+    required field missing, or the wrong type) still fails to parse and must degrade the same way
+    a download failure does: keep the last-good cache, marker not advanced, so the next poll
+    retries. This is the regression the unrecognized-fields test above can no longer cover."""
+    archive = make_task_archive()
+    good = InstrumentCapabilities.from_api_response([{"display_name": "Good"}])
+    archive._instrument_capabilities = good
+    archive._instrument_capabilities_marker = T1
+    mocker.patch.object(archive, "_last_instrument_update_time", AsyncMock(return_value=T2))
+    mocker.patch(
+        "pyobs.robotic.storage.portal.taskarchive.http_request_paginated",
+        # a camera missing its required module_name/code -- ValidationError, not extra="ignore"
+        AsyncMock(return_value=[{"display_name": "Bad", "cameras": [{"pixel_size_um": 5.4}]}]),
+    )
+    await archive._poll_instrument_capabilities()
+    assert archive.get_instrument_capabilities() is good
+    assert archive._instrument_capabilities_marker == T1
+
+
+@pytest.mark.asyncio
 async def test_poll_calls_instrument_capabilities_poll(mocker) -> None:
     """_poll() (the background loop's entry point) must not forget to also poll instrument
     capabilities alongside tasks/projects."""

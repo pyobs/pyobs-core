@@ -134,6 +134,40 @@ def test_pydantic_to_schema_reads_level_from_json_schema_extra() -> None:
     assert schema.fields["unset_field"].level == AccessLevel.BASIC
 
 
+def test_dataclass_to_schema_reads_description_from_metadata() -> None:
+    @dataclasses.dataclass
+    class Described:
+        exposure: float = dataclasses.field(default=1.0, metadata={"description": "Exposure time"})
+        unset_field: int = 0
+
+    schema = dataclass_to_schema(Described)
+
+    assert schema.fields["exposure"].description == "Exposure time"
+    assert schema.fields["unset_field"].description is None
+
+
+def test_pydantic_to_schema_prefers_json_schema_extra_description() -> None:
+    """FTSConfigMain's convention: description lives in json_schema_extra, not Field(description=...)."""
+
+    class Described(BaseModel):
+        exposure: float = Field(default=1.0, json_schema_extra={"description": "Exposure time"})
+
+    schema = pydantic_to_schema(Described)
+
+    assert schema.fields["exposure"].description == "Exposure time"
+
+
+def test_pydantic_to_schema_falls_back_to_native_field_description() -> None:
+    class Described(BaseModel):
+        exposure: float = Field(default=1.0, description="Exposure time")
+        unset_field: int = 0
+
+    schema = pydantic_to_schema(Described)
+
+    assert schema.fields["exposure"].description == "Exposure time"
+    assert schema.fields["unset_field"].description is None
+
+
 def test_pydantic_to_schema_accepts_foreign_level_intenum() -> None:
     """A consumer without a pyobs-core dependency (e.g. pyftscontrol) defines its own local
     AccessLevel IntEnum with matching member values, per

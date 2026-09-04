@@ -1,6 +1,7 @@
 # Plan: Comm.unregister_event() cancels already-scheduled handler tasks (#871)
 
-Status: implemented (PR #876)
+Status: implemented (PR #876, merged `a9ed16fe`; on `develop`, GitHub issue stays open pending
+release to `main`)
 
 Issue: pyobs-core#871
 

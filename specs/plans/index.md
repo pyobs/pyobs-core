@@ -224,4 +224,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   pyobs-iagvt, pyobs-monet, pyobs-monti)
 - [2026-09-03-comm-unregister-event-task-cancellation.md](2026-09-03-comm-unregister-event-task-cancellation.md) —
   `Comm.unregister_event()` cancels already-scheduled handler tasks, closing the stale-widget race
-  in `_send_event_to_module()`. **implemented** (issue #871)
+  in `_send_event_to_module()`. **implemented** (issue #871; PR #876, merged `a9ed16fe`; GitHub
+  issue stays open pending release to `main`)

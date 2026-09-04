@@ -23,7 +23,10 @@ pyobs-weather `specs/adrs/0001-per-theme-color-adaptation-stays-client-side.md`,
 pyobs-core#739 closed 2026-09-03 — implemented in `b197528c` per
 `specs/plans/2026-09-03-package-versions-fits-header.md`, dropped; pyobs-core#872 closed same day
 — implemented and released fleet-wide (pyobs-core 2.6.1 + 15 sibling repos) per
-`specs/plans/2026-09-03-fits-header-audit-followthrough.md`, dropped).
+`specs/plans/2026-09-03-fits-header-audit-followthrough.md`, dropped; pyobs-core#871 fix merged to
+`develop` 2026-09-04 via PR #876 (`a9ed16fe`) per
+`specs/plans/2026-09-03-comm-unregister-event-task-cancellation.md`, dropped per the maintenance
+rule below — GitHub issue itself stays open pending release to `main`).
 
 Fleet-wide view of what's open across the pyobs project fleet (see
 `specs/steering/pyobs-project-tiers.md` for the fleet definition). This is a **derived view**, not
@@ -40,13 +43,12 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (8, checked 2026-09-03)
+## Open issues (7, checked 2026-09-04)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#871](https://github.com/pyobs/pyobs-core/issues/871) | `Comm`: `unregister_event()` doesn't cancel already-scheduled handler tasks (stale-widget race) | pyobs-gui `DataDisplayWidget._on_new_data` hits a `libshiboken` already-deleted-object error when a widget is torn down before its scheduled event-dispatch task runs; caught/logged, not fatal, but a real dispatch-ordering bug in `comm.py`'s `_send_event_to_module()`/`unregister_event()` |
 | pyobs-core | [#866](https://github.com/pyobs/pyobs-core/issues/866) | `Module._on_module_opened` fan-out is unthrottled, saturates event loop with enough peers | confirmed twice (iag50 module-join timeouts, pyobs-gui `monet` GUI-freeze) — see `specs/steering/module-opened-fanout-stalls-event-loop.md` |
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |

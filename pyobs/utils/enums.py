@@ -4,7 +4,7 @@ TODO: write doc
 
 __title__ = "Enumerations"
 
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 
 import astropy.units
 
@@ -199,6 +199,28 @@ class OffsetFrame(StrEnum):
     ALT_AZ = "altaz"
 
 
+class AccessLevel(IntEnum):
+    """Ordinal GUI access level for a Pydantic config field, set via
+    ``Field(json_schema_extra={"level": AccessLevel.EXPERT})``. A field is shown when its level is
+    <= the GUI's currently selected level; HIDDEN is above any selectable level, so such fields are
+    never shown regardless of mode.
+
+    Not tied to pyobs's wire protocol like the other enums in this module -- consumers without a
+    pyobs-core dependency (e.g. pyftscontrol) should define their own local IntEnum with matching
+    values rather than adding the dependency; IntEnum compares by value, so the two stay
+    interchangeable without a shared import. See specs/steering/gui-field-access-levels.md.
+
+    Attributes:
+        BASIC: Shown in the default/basic GUI mode.
+        EXPERT: Shown only once expert mode is enabled.
+        HIDDEN: Never shown by the GUI's mode toggle.
+    """
+
+    BASIC = 0
+    EXPERT = 1
+    HIDDEN = 2
+
+
 __all__ = [
     "ModuleState",
     "ExposureStatus",
@@ -208,4 +230,5 @@ __all__ = [
     "WeatherSensors",
     "Unit",
     "OffsetFrame",
+    "AccessLevel",
 ]

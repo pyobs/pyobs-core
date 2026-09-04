@@ -1,6 +1,6 @@
 # Plan: FITS header audit follow-through (#872)
 
-Status: proposed
+Status: implemented, closed 2026-09-03
 
 Repos: pyobs-core, pyobs-qhyccd, pyobs-sbig, pyobs-asi, pyobs-fli, pyobs-flipro, pyobs-aravis,
 pyobs-tis, pyobs-zwoeaf, pyobs-zaber, pyobs-alpaca, pyobs-brot, pyobs-gemini, pyobs-iagvt,
@@ -58,10 +58,10 @@ as soon as each repo bumps its pyobs-core floor to whatever dev tag ships sectio
       `FOCUS`+`FOCOFF`, merging with `super().get_fits_header_before()` so they stack with other
       mixins (needed for combo devices, e.g. `pyobs-gemini`'s `GeminiFocuserRotator`, which is
       both focuser and rotator)
-  - [ ] Retrofit `pyobs-fli/pyobs_fli/flifilterwheel.py: FliFilterWheel` to use
+  - [x] Retrofit `pyobs-fli/pyobs_fli/flifilterwheel.py: FliFilterWheel` to use
         `FilterHeaderMixin`, dropping its current duplicated manual `get_fits_header_before`
         (tracks `self._current_filter` twice: once for `comm.set_state`, once for the header) —
-        deferred to section 2 (pyobs-fli), out of pyobs-core's own repo
+        done in section 2 (pyobs-fli)
 - [x] `pyobs/modules/telescope/basetelescope.py: BaseTelescope` — write `TRACKMOD`/`TRACKOBJ`
       (tracking mode + tracked body/elements name, when non-sidereal)
 - [x] `pyobs/modules/pointing/_baseguiding.py: BaseGuiding` — write `AGOFF-FR`/`AGOFFLON`/
@@ -92,41 +92,44 @@ addressed here.
 
 ### Bug fix, opportunistic (pyobs-gemini, do before that repo's coverage item below)
 
-- [ ] `pyobs-gemini/pyobs_gemini/gemini.py: GeminiFocuserRotator` — `_update_status` has the
+- [x] `pyobs-gemini/pyobs_gemini/gemini.py: GeminiFocuserRotator` — `_update_status` has the
       `self._T` assignment commented out (`# TODO: find out`, ~line 203); wire it back to the
       already-working `self._driver.get_temperature()` call so `GEM-TEMP` stops being written as
       permanently null
 
 ## 2. Cameras (independent of the mixin work; needs pyobs-core dev tag from section 1)
 
-- [ ] `pyobs-qhyccd/pyobs_qhyccd/qhyccdcamera.py: QHYCCDCamera` — `GAIN`, `OFFSET`
-- [ ] `pyobs-sbig/src/pyobs_sbig/sbigcamera.py: SbigCamera` — `DET-COOL` (cooler power, already
+- [x] `pyobs-qhyccd/pyobs_qhyccd/qhyccdcamera.py: QHYCCDCamera` — `GAIN`, `OFFSET`
+- [x] `pyobs-sbig/src/pyobs_sbig/sbigcamera.py: SbigCamera` — `DET-COOL` (cooler power, already
       polled)
-- [ ] `pyobs-asi/pyobs_asi/asicamera.py: AsiCamera` — `OFFSET` (`ASI_OFFSET`)
-- [ ] `pyobs-asi/pyobs_asi/asicamera.py: AsiCoolCamera` — `DET-COOL`/`DET-TSET`
-- [ ] `pyobs-fli/pyobs_fli/flicamera.py: FliCamera` — `DET-ID` (serial number, already fetched at
+- [x] `pyobs-asi/pyobs_asi/asicamera.py: AsiCamera` — `OFFSET` (`ASI_OFFSET`)
+- [x] `pyobs-asi/pyobs_asi/asicamera.py: AsiCoolCamera` — `DET-COOL`/`DET-TSET`
+- [x] `pyobs-fli/pyobs_fli/flicamera.py: FliCamera` — `DET-ID` (serial number, already fetched at
       `open()`, currently only logged)
-- [ ] `pyobs-fli/pyobs_fli/flicamera.py: FliCamera` and
+- [x] `pyobs-fli/pyobs_fli/flicamera.py: FliCamera` and
       `pyobs-flipro/pyobs_flipro/fliprocamera.py: FliProCamera` — `DET-TBAS` (base-plate
       temperature, already polled into `ITemperatures`)
-- [ ] `pyobs-aravis/pyobs_aravis/araviscamera.py: AravisCamera` — `INSTRUME` (device id),
+- [x] `pyobs-aravis/pyobs_aravis/araviscamera.py: AravisCamera` — `INSTRUME` (device id),
       `GAIN`/`TRIGMODE` where present in the connect-time GenICam `settings` dict (this driver
-      currently writes no per-frame headers at all beyond the inherited mixin)
-- [ ] `pyobs-tis/pyobs_tis/tiscamera.py: TisCamera` — `INSTRUME` (serial), `VIDFMT`/`VIDFPS`
+      currently writes no per-frame headers at all beyond the inherited mixin) — `AravisCamera`/
+      `TisCamera` (below) are `BaseVideo` subclasses, not `BaseCamera`, so they have no
+      `add_custom_fits_headers` hook; used a `_finish_image()` override instead, not documented in
+      the plan text above
+- [x] `pyobs-tis/pyobs_tis/tiscamera.py: TisCamera` — `INSTRUME` (serial), `VIDFMT`/`VIDFPS`
 
 ## 3. Mounts, domes, focusers (needs pyobs-core dev tag; focuser items build on the new mixin)
 
-- [ ] `pyobs-zwoeaf/src/pyobs_zwoeaf/eaffocuser.py: EAFFocuser` — adopt `FocuserHeaderMixin`
+- [x] `pyobs-zwoeaf/src/pyobs_zwoeaf/eaffocuser.py: EAFFocuser` — adopt `FocuserHeaderMixin`
       (`FOCUS`/`FOCOFF`); add `FOC-TEMP` (live temperature, already polled every 10s) and
       `FOC-BLSH` (`backlash` config)
-- [ ] `pyobs-zaber/pyobs_zaber/zabermodeselector.py: ZaberModeSelector` — `INSMODE` (current mode,
+- [x] `pyobs-zaber/pyobs_zaber/zabermodeselector.py: ZaberModeSelector` — `INSMODE` (current mode,
       already tracked/published via `IMode`)
-- [ ] `pyobs-alpaca/pyobs_alpaca/dome.py: AlpacaDome` and
+- [x] `pyobs-alpaca/pyobs_alpaca/dome.py: AlpacaDome` and
       `pyobs-brot/pyobs_brot/brotdome.py: BrotDome` — `DOMESHUT` (shutter open/closed; both
       currently inherit only `BaseDome`'s `ROOF-AZ`)
-- [ ] `pyobs-alpaca/pyobs_alpaca/focuser.py: AlpacaFocuser` — adopt `FocuserHeaderMixin` for the
+- [x] `pyobs-alpaca/pyobs_alpaca/focuser.py: AlpacaFocuser` — adopt `FocuserHeaderMixin` for the
       `FOCOFF` gap (currently writes only raw `TEL-FOCU`)
-- [ ] `pyobs-brot/pyobs_brot/brottelescope.py: BrotBaseTelescope` (+ `BrotRaDecTelescope`/
+- [x] `pyobs-brot/pyobs_brot/brottelescope.py: BrotBaseTelescope` (+ `BrotRaDecTelescope`/
       `BrotAltAzTelescope`) — `FOCOFF` (focus offset, already tracked/published via `IFocuser`
       state); `PNTHAOF`/`PNTDCOF` (or `PNTAZOF`/`PNTALOF`) for the applied pointing-model
       correction, distinct from the already-written `HAOFF`/`DECOFF` user offsets; `TEMP-<NAME>`
@@ -135,27 +138,79 @@ addressed here.
 
 ## 4. IAG-internal (independent of pyobs-core mixin work; can start any time)
 
-- [ ] `pyobs-iagvt/pyobs_iagvt/modules/ldp.py: LDP` — implement `IFitsHeaderBefore`:
+- [x] `pyobs-iagvt/pyobs_iagvt/modules/ldp.py: LDP` — implement `IFitsHeaderBefore`:
       `HIERARCH LDP DICHROIC`/`PRIMARY`/`ADDITIONAL` (beam-path selection, currently `IMode`-only)
-- [ ] `pyobs-iagvt/pyobs_iagvt/modules/led.py: LED` (Iodine cell + FP etalon control) — implement
-      `IFitsHeaderBefore`: `HIERARCH CAL IODINE`/`FP`
-- [ ] `pyobs-iagvt/pyobs_iagvt/modules/gregorycamera.py: GregoryCamera` — `FLATCORR`/`CROPIMG`/
+- [x] `pyobs-iagvt/pyobs_iagvt/modules/led.py: LED` (Iodine cell + FP etalon control) — implement
+      `IFitsHeaderBefore`: `HIERARCH CAL IODINE`/`FP`. **Not independently verified against live
+      hardware** — the inserted/not-inserted boolean derivation is inferred from `set_mode()`'s own
+      `"None"→"Off"` translation, not confirmed against the device's actual position vocabulary.
+- [x] `pyobs-iagvt/pyobs_iagvt/modules/gregorycamera.py: GregoryCamera` — `FLATCORR`/`CROPIMG`/
       `NAVGSTK` (runtime `IConfig` toggles that directly change delivered pixel data)
-- [ ] `pyobs-iagvt/pyobs_iagvt/modules/fibercamera.py: FiberCamera` — `FIBERSEL` (human-readable
+- [x] `pyobs-iagvt/pyobs_iagvt/modules/fibercamera.py: FiberCamera` — `FIBERSEL` (human-readable
       fiberhole selection; currently only the derived pixel position is written)
-- [ ] `pyobs-iagvt/pyobs_iagvt/modules/solartelescope.py: SolarTelescope` —
-      `HIERARCH TEL CALOFFAZ`/`CALOFFALT` (fixed siderostat-to-sun-center calibration offset)
-- [ ] `pyobs-iagvt/pyobs_iagvt/modules/sungrid.py: SunGrid` — `HIERARCH GRID OFFALT`/`OFFAZ`
+- [x] `pyobs-iagvt/pyobs_iagvt/modules/solartelescope.py: SolarTelescope` —
+      `HIERARCH TEL CALOFFAZ`/`CALOFFALT` (fixed siderostat-to-sun-center calibration offset).
+      **Not independently verified**: `self._offset` tuple order assumed `(alt, az)` from the
+      `__init__` docstring ("Telescope Alt/Az offset in arcsecs"), not confirmed against actual
+      usage — flag if backwards.
+- [x] `pyobs-iagvt/pyobs_iagvt/modules/sungrid.py: SunGrid` — `HIERARCH GRID OFFALT`/`OFFAZ`
       (per-exposure grid offset; sibling module `pyobs-iag50`'s `AlignGridTest` already does this
       for its own purpose)
-- [ ] `pyobs-monet/pyobs_monet/frontendsouth.py: FrontendSouth` and
+- [x] `pyobs-monet/pyobs_monet/frontendsouth.py: FrontendSouth` and
       `pyobs-monet/pyobs_monet/frontendcamerasouthfli.py: FrontendCameraSouth` — `INSTMODE`
       (instrument mode name, phot/spec; currently only the derived `FOCL-RED` is written)
-- [ ] `pyobs-monti/src/pyobs_monti/montitelescope.py: MontiTelescope` — `PNTMODEL` (pointing-model
+- [x] `pyobs-monti/src/pyobs_monti/montitelescope.py: MontiTelescope` — `PNTMODEL` (pointing-model
       file/version loaded from the `pointing` config param) and
       `HIERARCH PNT MODEL HAOFF`/`DECOFF` (model-derived correction terms, distinct from the
       already-written manual `HAOFF`/`DECOFF`) — this is the exact "mount pointing model version"
       example from #872's own problem statement
+
+## Closing status (2026-09-03)
+
+All sections implemented, committed, pushed, and released. One real bug was found and fixed along
+the way, not in the original scope:
+
+**`FilterHeaderMixin`/`FocuserHeaderMixin` crashed** (`TypeError: 'NoneType' object is not
+iterable`) whenever nothing but `IFitsHeaderBefore`'s abstract stub followed them in the MRO —
+exactly the pattern this plan itself prescribes for section 3's focuser adoptions, so it was hit
+immediately while retrofitting `pyobs-fli`/`pyobs-alpaca`/`pyobs-zwoeaf`. Root cause: the mixins'
+cooperative-chain code checked `getattr(super(), "get_fits_header_before", None)` for "is there
+something to chain to," but an abstract method is still a real, callable attribute (that's how
+`ABCMeta` lets an earlier mixin satisfy the abstract requirement in the first place) — calling it
+runs its `...` body and returns `None`, not `{}`. Fixed in `pyobs/mixins/fitsheader.py` via a new
+`_chain_get_fits_header_before()` helper that checks `__isabstractmethod__` instead. Required an
+extra pyobs-core patch release (2.6.0 → 2.6.1) before the mixin-dependent driver repos could adopt
+it cleanly.
+
+**Release versions:**
+
+| Repo | Version |
+|---|---|
+| pyobs-core | 2.5.0 → 2.6.0 (section 1) → 2.6.1 (mixin bug fix) |
+| pyobs-fli | 2.0.0 → 2.0.1 |
+| pyobs-flipro | 2.0.1 → 2.0.2 |
+| pyobs-qhyccd | 2.0.0 → 2.0.1 |
+| pyobs-sbig | 2.0.1 → 2.0.2 |
+| pyobs-asi | 2.0.0 → 2.0.1 |
+| pyobs-aravis | 2.0.1 → 2.0.2 |
+| pyobs-tis | 2.0.0 → 2.0.1 |
+| pyobs-gemini | 2.0.0 → 2.0.1 |
+| pyobs-zwoeaf | 2.0.2 → 2.0.3 |
+| pyobs-zaber | 2.0.0 → 2.0.1 |
+| pyobs-alpaca | 2.0.0 → 2.0.1 |
+| pyobs-brot | 2.0.1 → 2.0.2 |
+| pyobs-iagvt | 2.3.0 → 2.3.1 |
+| pyobs-monet | 2.0.1 → 2.0.2 |
+| pyobs-monti | 0.0.1 → 0.0.2 |
+
+**Open follow-ups, not blocking closure:**
+- `pyobs-iagvt`'s `LED`/`SolarTelescope` items need a live-hardware check (see notes inline above).
+- `pyobs-fli`, `pyobs-qhyccd`, `pyobs-zaber` pushes surfaced pre-existing, unrelated GitHub
+  Dependabot alerts on their default branches (45/64/2 vulnerabilities respectively) — not
+  addressed as part of this plan.
+- `pyobs-gemini`'s local checkout was found 18 commits stale before this session's push (unrelated
+  upstream work: docs, dependency bumps, a 2.0.0 stable cut) — resolved via rebase, no conflicts;
+  worth checking other local checkouts aren't similarly stale before a future fleet-wide pass.
 
 ## Consequences
 

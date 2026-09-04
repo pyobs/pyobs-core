@@ -4,7 +4,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from pyobs.robotic.instruments import Instrument, InstrumentCapabilities, TelescopeCapability
+from pyobs.robotic.instruments import (
+    DomeCapability,
+    Instrument,
+    InstrumentCapabilities,
+    RoofCapability,
+    TelescopeCapability,
+)
 from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scripts.imaging.autofocus import AutoFocusScript
 from pyobs.robotic.task import TaskData
@@ -176,3 +182,27 @@ def test_estimate_duration_falls_back_when_telescope_module_not_matched() -> Non
     data = TaskData(task=MagicMock(), instrument_capabilities=capabilities)
 
     assert script.estimate_duration(data) == 3 * 2.0 + 60.0
+
+
+def test_estimate_duration_uses_dome_rotate_time_when_slower() -> None:
+    script = make_script(count=3, exposure_time=2.0, dome="dome1")
+    telescope_capability = TelescopeCapability(module_name="telescope", slew_rate_deg_per_s=3.0)  # 30.0s
+    dome_capability = DomeCapability(module_name="dome1", rotate_rate_deg_per_s=1.0)  # 90.0s, slower
+    capabilities = InstrumentCapabilities([Instrument(telescope=telescope_capability, dome=dome_capability)])
+    data = TaskData(task=MagicMock(), instrument_capabilities=capabilities)
+
+    duration = script.estimate_duration(data)
+
+    assert duration == 3 * 2.0 + dome_capability.estimate_rotate_time_s()
+
+
+def test_estimate_duration_uses_roof_open_close_time_when_slower() -> None:
+    script = make_script(count=3, exposure_time=2.0, roof="roof1")
+    telescope_capability = TelescopeCapability(module_name="telescope", slew_rate_deg_per_s=3.0)  # 30.0s
+    roof_capability = RoofCapability(module_name="roof1", open_close_time_s=90.0)  # slower
+    capabilities = InstrumentCapabilities([Instrument(telescope=telescope_capability, roof=roof_capability)])
+    data = TaskData(task=MagicMock(), instrument_capabilities=capabilities)
+
+    duration = script.estimate_duration(data)
+
+    assert duration == 3 * 2.0 + 90.0

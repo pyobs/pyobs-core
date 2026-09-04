@@ -8,9 +8,11 @@ from pydantic import ValidationError
 from pyobs.robotic.instruments import (
     BinningOption,
     CameraCapability,
+    DomeCapability,
     FilterWheelCapability,
     Instrument,
     InstrumentCapabilities,
+    RoofCapability,
     TelescopeCapability,
 )
 from pyobs.robotic.scripts.imaging.imaging import Configuration, ImagingScript, InstrumentConfig
@@ -115,6 +117,58 @@ def test_estimate_duration_uses_real_slew_rate() -> None:
 
     assert duration == 30.0 + slew_time
     assert duration != 30.0 + 60.0
+
+
+def test_estimate_duration_uses_dome_rotate_time_when_slower() -> None:
+    script = make_script(
+        telescope="tel1",
+        dome="dome1",
+        configuration={
+            "instrument_configs": [{"exposure_time": 30.0, "count": 1}],
+            "repeats": 1,
+            "acquisition_config": {"enabled": False},
+        },
+    )
+    telescope_capability = TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=3.0)  # 30.0s
+    dome_capability = DomeCapability(module_name="dome1", rotate_rate_deg_per_s=1.0)  # 90.0s, slower
+    data = TaskData(
+        task=MagicMock(),
+        instrument_capabilities=InstrumentCapabilities(
+            [Instrument(telescope=telescope_capability, dome=dome_capability)]
+        ),
+    )
+
+    duration = script.estimate_duration(data)
+    rotate_time = dome_capability.estimate_rotate_time_s()
+    assert rotate_time is not None
+
+    assert duration == 30.0 + rotate_time
+    assert duration != 30.0 + telescope_capability.estimate_slew_time_s()
+
+
+def test_estimate_duration_uses_roof_open_close_time_when_slower() -> None:
+    script = make_script(
+        telescope="tel1",
+        roof="roof1",
+        configuration={
+            "instrument_configs": [{"exposure_time": 30.0, "count": 1}],
+            "repeats": 1,
+            "acquisition_config": {"enabled": False},
+        },
+    )
+    telescope_capability = TelescopeCapability(module_name="tel1", slew_rate_deg_per_s=3.0)  # 30.0s
+    roof_capability = RoofCapability(module_name="roof1", open_close_time_s=90.0)  # slower
+    data = TaskData(
+        task=MagicMock(),
+        instrument_capabilities=InstrumentCapabilities(
+            [Instrument(telescope=telescope_capability, roof=roof_capability)]
+        ),
+    )
+
+    duration = script.estimate_duration(data)
+
+    assert duration == 30.0 + 90.0
+    assert duration != 30.0 + telescope_capability.estimate_slew_time_s()
 
 
 def test_estimate_duration_acquisition_fudge_still_applies() -> None:

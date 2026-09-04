@@ -216,11 +216,24 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-09-03-fits-header-audit-followthrough.md](2026-09-03-fits-header-audit-followthrough.md) —
   checklist from the #872 fleet-wide FITS header audit: new `FilterHeaderMixin`/
   `FocuserHeaderMixin` + several direct header additions in pyobs-core, plus per-driver header
-  gaps across 15 sibling repos. **proposed** (Repos: pyobs-core, pyobs-qhyccd, pyobs-sbig,
-  pyobs-asi, pyobs-fli, pyobs-flipro, pyobs-aravis, pyobs-tis, pyobs-zwoeaf, pyobs-zaber,
-  pyobs-alpaca, pyobs-brot, pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti)
+  gaps across 15 sibling repos. **implemented, closed 2026-09-03** — all 16 repos released
+  (pyobs-core 2.6.1, includes a patch for a `FilterHeaderMixin`/`FocuserHeaderMixin` abstract-
+  method chaining bug found during rollout); two `pyobs-iagvt` items flagged as unverified against
+  live hardware (Repos: pyobs-core, pyobs-qhyccd, pyobs-sbig, pyobs-asi, pyobs-fli, pyobs-flipro,
+  pyobs-aravis, pyobs-tis, pyobs-zwoeaf, pyobs-zaber, pyobs-alpaca, pyobs-brot, pyobs-gemini,
+  pyobs-iagvt, pyobs-monet, pyobs-monti)
 - [2026-09-03-comm-unregister-event-task-cancellation.md](2026-09-03-comm-unregister-event-task-cancellation.md) —
   `Comm.unregister_event()` cancels already-scheduled handler tasks, closing the stale-widget race
-  in `_send_event_to_module()`; pyobs-gui side is docstring updates only, not code removal (both
-  `_state_subscriptions` and `discard_all_widgets()` investigated and found still necessary).
-  **proposed** (issue #871; Repos: pyobs-core, pyobs-gui)
+  in `_send_event_to_module()`. **implemented** (issue #871; PR #876, merged `a9ed16fe`; GitHub
+  issue stays open pending release to `main`)
+- [2026-09-04-first-task-slew-rotate-distance.md](2026-09-04-first-task-slew-rotate-distance.md) —
+  `DomeCapability.estimate_rotate_time_s()` (mirrors the telescope's mean-distance estimate) +
+  `dome` field on `Pointing`/`Imaging`/`AutoFocusScript`, combined with telescope slew time via
+  `max()`. Descoped from an original live-telescope-position design (see doc's History section)
+  after review — no observed accuracy problem justified the added scheduler-threading risk.
+  Plain-roof open/close time split out to #877. **implemented** (issue #858; Repos: pyobs-core)
+- [2026-09-04-roof-open-close-capability.md](2026-09-04-roof-open-close-capability.md) — new
+  `RoofCapability` model (pyobs-portal `instruments` app + pyobs-core mirror), `roof` field on
+  `Pointing`/`Imaging`/`AutoFocusScript`, folded into the same `max()` first-task estimate. Real
+  motivating fleet: MONET-N/S/MONTI are plain roofs, no rotating dome (`monet/pyobs-monet#3`).
+  **implemented, pending PR merge** (issue #877; Repos: pyobs-core, pyobs-portal)

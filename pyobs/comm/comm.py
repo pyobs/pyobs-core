@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 StateCallback = Callable[[Any], None]
 PresenceCallback = Callable[["ModuleState", str], None]
+EventHandler = Callable[[Event, str], Coroutine[Any, Any, bool]]
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +39,8 @@ class Comm:
         self._module: Module | None = None
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._logging_task: asyncio.Task[Any] | None = None
-        self._event_handlers: dict[type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
+        self._event_handlers: dict[type[Event], list[EventHandler]] = {}
+        self._event_handler_tasks: dict[tuple[type[Event], EventHandler], set[asyncio.Task[Any]]] = {}
         self._events_sent: set[type[Event]] = set()
         self._events_subscribed: set[type[Event]] = set()
         self._closing = asyncio.Event()
@@ -422,9 +424,7 @@ class Comm:
                 event_classes.append(cls[1])
         return event_classes
 
-    async def register_event(
-        self, event_class: type[Event], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
-    ) -> None:
+    async def register_event(self, event_class: type[Event], handler: EventHandler | None = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 
@@ -455,14 +455,21 @@ class Comm:
         if not event_class.local:
             await self._register_events(event_classes, handler)
 
-    async def unregister_event(
-        self, event_class: type[Event], handler: Callable[[Event, str], Coroutine[Any, Any, bool]]
-    ) -> None:
+    async def unregister_event(self, event_class: type[Event], handler: EventHandler) -> None:
         """Remove a handler previously added via register_event().
 
         Leaves the event type itself registered as *sent* if the module also declared it via a
         handler-less register_event() call, only stops calling this handler and, once no handler
         is left for the event, drops it from what's advertised as *subscribed*.
+
+        Also cancels any dispatch of this handler that _send_event_to_module() already scheduled
+        via asyncio.create_task() but that hasn't run yet, so a handler bound to something torn
+        down right before this call can never fire against it afterwards (issue #871). If that
+        dispatch had already started and is currently suspended at an await, cancellation raises
+        CancelledError into it there. This guarantee only holds if the caller awaits
+        unregister_event() directly in the same synchronous stretch as the teardown it's guarding
+        -- scheduling it as a separate task (e.g. `asyncio.create_task(unregister_event(...))`)
+        can still lose the race against an already-scheduled dispatch.
 
         Args:
             event_class: Class of event that was registered.
@@ -479,14 +486,21 @@ class Comm:
                     self._events_subscribed.discard(ev)
                     unsubscribed.append(ev)
 
+                # cancel any dispatch for this handler that _send_event_to_module() already
+                # scheduled via asyncio.create_task() but that hasn't run yet -- otherwise it
+                # fires later against whatever the handler is bound to, even though the handler
+                # is gone from _event_handlers as of this call (see issue #871)
+                pending = self._event_handler_tasks.pop((ev, handler), None)
+                if pending is not None:
+                    for task in pending:
+                        task.cancel()
+
         # only event classes that just lost their last handler need the comm layer to actually
         # tear anything down (e.g. XmppComm unsubscribing from peers' event nodes)
         if unsubscribed and not event_class.local:
             await self._unregister_events(unsubscribed)
 
-    async def _register_events(
-        self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
-    ) -> None:
+    async def _register_events(self, events: list[type[Event]], handler: EventHandler | None = None) -> None:
         pass
 
     async def _unregister_events(self, events: list[type[Event]]) -> None:
@@ -690,16 +704,26 @@ class Comm:
                 ret = handler(event, from_client)
                 if asyncio.iscoroutine(ret):
                     task = asyncio.create_task(ret)
+                    self._event_handler_tasks.setdefault((event.__class__, handler), set()).add(task)
                     task.add_done_callback(functools.partial(self._log_handler_exception, handler=handler, event=event))
 
-    @staticmethod
-    def _log_handler_exception(task: asyncio.Task[Any], handler: Callable[..., Any], event: Event) -> None:
+    def _log_handler_exception(self, task: asyncio.Task[Any], handler: EventHandler, event: Event) -> None:
         """Log an event handler's exception with context, instead of leaving it to asyncio's own
         "Task exception was never retrieved" warning at garbage-collection time, which gives no
         indication of which handler or event actually failed -- every event handler is dispatched
         as a fire-and-forget task (see _send_event_to_module), so this is the only place any of
         them get their exceptions surfaced at all.
+
+        Also drops the task from _event_handler_tasks, the bookkeeping unregister_event() uses to
+        cancel still-pending dispatches for a handler being removed -- without this, a
+        long-running module would accumulate an entry per (event_class, handler) forever.
         """
+        tasks = self._event_handler_tasks.get((event.__class__, handler))
+        if tasks is not None:
+            tasks.discard(task)
+            if not tasks:
+                del self._event_handler_tasks[(event.__class__, handler)]
+
         if task.cancelled():
             return
         exc = task.exception()

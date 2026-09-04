@@ -110,9 +110,34 @@ class DomeCapability(BaseModel):
     rotate_rate_deg_per_s: float | None = None
     updated_at: str | None = None
 
+    def estimate_rotate_time_s(self, distance_deg: float = DEFAULT_SLEW_DISTANCE_DEG) -> float | None:
+        """First-pass rotate-duration estimate, mirroring `TelescopeCapability.estimate_slew_time_s()`
+        -- same placeholder distance, `None` if `rotate_rate_deg_per_s` isn't declared (or isn't
+        positive), same caller fallback convention.
+        """
+        if self.rotate_rate_deg_per_s is None or self.rotate_rate_deg_per_s <= 0:
+            return None
+        return distance_deg / self.rotate_rate_deg_per_s
+
+
+class RoofCapability(BaseModel):
+    """Planning-time capability data for one plain open/close roof, keyed by `module_name`.
+
+    A plain roof (`IRoof`, no `IPointingAltAz`) has no rate/distance concept -- nothing to rotate
+    toward a target, just a fixed open/close cycle time. Distinct from `DomeCapability` (a
+    rotating dome): a site has one or the other, never both, but nothing here enforces that.
+    `open_close_time_s` is already a duration, not a rate, so unlike `estimate_slew_time_s()`/
+    `estimate_rotate_time_s()` there's no distance parameter to combine it with -- callers use it
+    directly.
+    """
+
+    module_name: str
+    open_close_time_s: float | None = None
+    updated_at: str | None = None
+
 
 class Instrument(BaseModel):
-    """One telescope + dome + camera(s) grouping, as returned by `GET /api/instruments/`.
+    """One telescope + dome/roof + camera(s) grouping, as returned by `GET /api/instruments/`.
 
     Purely an organizational grouping on the portal side -- it carries no module identity of its
     own; each device below carries its own `module_name`. `InstrumentCapabilities` is what
@@ -125,6 +150,7 @@ class Instrument(BaseModel):
     cameras: list[CameraCapability] = Field(default_factory=list)
     telescope: TelescopeCapability | None = None
     dome: DomeCapability | None = None
+    roof: RoofCapability | None = None
 
 
 class InstrumentCapabilities:
@@ -142,6 +168,7 @@ class InstrumentCapabilities:
         self._cameras_by_code: dict[str, CameraCapability] = {}
         self._telescopes: dict[str, TelescopeCapability] = {}
         self._domes: dict[str, DomeCapability] = {}
+        self._roofs: dict[str, RoofCapability] = {}
         self._filter_wheels: dict[str, FilterWheelCapability] = {}
 
         for instrument in instruments:
@@ -155,6 +182,8 @@ class InstrumentCapabilities:
                 self._telescopes[instrument.telescope.module_name] = instrument.telescope
             if instrument.dome is not None:
                 self._domes[instrument.dome.module_name] = instrument.dome
+            if instrument.roof is not None:
+                self._roofs[instrument.roof.module_name] = instrument.roof
 
     @classmethod
     def from_api_response(cls, data: list[dict[str, Any]]) -> InstrumentCapabilities:
@@ -177,6 +206,10 @@ class InstrumentCapabilities:
         """The `DomeCapability` whose own `module_name` matches, or None."""
         return self._domes.get(module_name)
 
+    def roof(self, module_name: str) -> RoofCapability | None:
+        """The `RoofCapability` whose own `module_name` matches, or None."""
+        return self._roofs.get(module_name)
+
     def filter_wheel(self, module_name: str) -> FilterWheelCapability | None:
         """The `FilterWheelCapability` whose own `module_name` matches, or None."""
         return self._filter_wheels.get(module_name)
@@ -190,6 +223,7 @@ __all__ = [
     "CameraCapability",
     "TelescopeCapability",
     "DomeCapability",
+    "RoofCapability",
     "Instrument",
     "InstrumentCapabilities",
 ]

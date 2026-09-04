@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Annotated, Literal
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from pyobs.utils.config_schema import ConfigFieldSchema, ConfigSchema, dataclass_to_schema, pydantic_to_schema
-from pyobs.utils.enums import Unit
+from pyobs.utils.enums import AccessLevel, Unit
 
 
 class Mode(Enum):
@@ -57,6 +57,22 @@ def test_dataclass_to_schema_caches_per_class() -> None:
     assert dataclass_to_schema(SiderostatConfig) is dataclass_to_schema(SiderostatConfig)
 
 
+def test_dataclass_to_schema_reads_level_from_metadata() -> None:
+    @dataclasses.dataclass
+    class Tiered:
+        basic_field: float = dataclasses.field(default=1.0, metadata={"level": AccessLevel.BASIC})
+        expert_field: float = dataclasses.field(default=2.0, metadata={"level": AccessLevel.EXPERT})
+        hidden_field: int = dataclasses.field(default=0, metadata={"level": AccessLevel.HIDDEN})
+        unset_field: int = 0
+
+    schema = dataclass_to_schema(Tiered)
+
+    assert schema.fields["basic_field"].level == AccessLevel.BASIC
+    assert schema.fields["expert_field"].level == AccessLevel.EXPERT
+    assert schema.fields["hidden_field"].level == AccessLevel.HIDDEN
+    assert schema.fields["unset_field"].level == AccessLevel.BASIC
+
+
 class InnerModel(BaseModel):
     channel: Literal[1, 3] = 1
 
@@ -101,3 +117,38 @@ def test_pydantic_to_schema_caches_per_class() -> None:
 def test_pydantic_to_schema_rejects_non_model() -> None:
     with pytest.raises(TypeError):
         pydantic_to_schema(dict)  # type: ignore[arg-type]
+
+
+def test_pydantic_to_schema_reads_level_from_json_schema_extra() -> None:
+    class Tiered(BaseModel):
+        basic_field: float = Field(default=1.0, json_schema_extra={"level": AccessLevel.BASIC})
+        expert_field: float = Field(default=2.0, json_schema_extra={"level": AccessLevel.EXPERT})
+        hidden_field: int = Field(default=0, json_schema_extra={"level": AccessLevel.HIDDEN})
+        unset_field: int = 0
+
+    schema = pydantic_to_schema(Tiered)
+
+    assert schema.fields["basic_field"].level == AccessLevel.BASIC
+    assert schema.fields["expert_field"].level == AccessLevel.EXPERT
+    assert schema.fields["hidden_field"].level == AccessLevel.HIDDEN
+    assert schema.fields["unset_field"].level == AccessLevel.BASIC
+
+
+def test_pydantic_to_schema_accepts_foreign_level_intenum() -> None:
+    """A consumer without a pyobs-core dependency (e.g. pyftscontrol) defines its own local
+    AccessLevel IntEnum with matching member values, per
+    specs/steering/gui-field-access-levels.md, instead of importing this one. The schema must
+    still recognize it by value.
+    """
+
+    class LocalAccessLevel(IntEnum):
+        BASIC = 0
+        EXPERT = 1
+        HIDDEN = 2
+
+    class Tiered(BaseModel):
+        expert_field: float = Field(default=2.0, json_schema_extra={"level": LocalAccessLevel.EXPERT})
+
+    schema = pydantic_to_schema(Tiered)
+
+    assert schema.fields["expert_field"].level == AccessLevel.EXPERT

@@ -10,7 +10,19 @@ from typing import Annotated, Any, get_args, get_origin, get_type_hints
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
 
-from pyobs.utils.enums import Unit
+from pyobs.utils.enums import AccessLevel, Unit
+
+
+def _coerce_level(value: Any) -> AccessLevel:
+    """Coerce a raw level value (an int, or any IntEnum with matching member values -- e.g. a
+    consumer's own local AccessLevel copy per specs/steering/gui-field-access-levels.md) into
+    this module's AccessLevel. Falls back to BASIC for anything missing or unrecognized, so a
+    field that never opted into this feature keeps rendering exactly as before.
+    """
+    try:
+        return AccessLevel(int(value))
+    except (TypeError, ValueError):
+        return AccessLevel.BASIC
 
 
 @dataclasses.dataclass
@@ -20,6 +32,7 @@ class ConfigFieldSchema:
     options: list[str] | None = None
     default: Any | None = None
     nested: dict[str, ConfigFieldSchema] | None = None
+    level: AccessLevel = AccessLevel.BASIC
 
 
 @dataclasses.dataclass
@@ -44,7 +57,9 @@ def dataclass_to_schema(cls: type) -> ConfigSchema:
     hints = get_type_hints(cls, include_extras=True)
     fields: dict[str, ConfigFieldSchema] = {}
     for f in dataclasses.fields(cls):
-        fields[f.name] = _field_schema(hints[f.name], f.default)
+        schema = _field_schema(hints[f.name], f.default)
+        schema.level = _coerce_level(f.metadata.get("level", AccessLevel.BASIC))
+        fields[f.name] = schema
     return ConfigSchema(fields=fields)
 
 
@@ -97,8 +112,16 @@ def pydantic_to_schema(cls: type[BaseModel]) -> ConfigSchema:
     fields: dict[str, ConfigFieldSchema] = {}
     for name, info in cls.model_fields.items():
         default = None if info.default is PydanticUndefined else info.default
-        fields[name] = _pydantic_field_schema(info.annotation, default)
+        schema = _pydantic_field_schema(info.annotation, default)
+        schema.level = _pydantic_field_level(info.json_schema_extra)
+        fields[name] = schema
     return ConfigSchema(fields=fields)
+
+
+def _pydantic_field_level(json_schema_extra: Any) -> AccessLevel:
+    if isinstance(json_schema_extra, dict) and "level" in json_schema_extra:
+        return _coerce_level(json_schema_extra["level"])
+    return AccessLevel.BASIC
 
 
 def _pydantic_field_schema(annotation: Any, default: Any) -> ConfigFieldSchema:

@@ -5,6 +5,11 @@ Status: standing snapshot — last checked 2026-09-04.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-04**: pyobs-weather#6 (historic data download) rescoped to a login-gated CSV export
+  now that Keycloak login exists, implemented and merged to `develop` via pyobs-weather#38
+  (`767dec9`), plan doc `pyobs-weather/specs/plans/2026-09-04-historic-data-csv-export.md` —
+  dropped per the maintenance rule (issue stays open pending release to `master`, this repo's
+  default branch).
 - **2026-09-04**: pyobs-core#858 rescoped — review decided against the live-telescope-position
   piece entirely ("no observed operational symptom motivating this"), kept only the mean-distance
   dome-rotate-time half (`specs/plans/2026-09-04-first-task-slew-rotate-distance.md`). Plain-roof
@@ -55,7 +60,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (6, checked 2026-09-04)
+## Open issues (5, checked 2026-09-04)
 
 One row per issue — same layout for every repo.
 
@@ -66,7 +71,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-weather | [#6](https://github.com/pyobs/pyobs-weather/issues/6) | Historic data | *enhancement* |
 
 ## Open plans
 

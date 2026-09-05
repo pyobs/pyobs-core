@@ -50,9 +50,12 @@ repo, published to npm, extracted from the web-client workspace) — see the des
 - Refactor of `pyobs-web-client` to remove three browser couplings: (1) `src/pyobs-codec.ts`
   builds XML via the browser DOM (`document.implementation.createDocument`,
   `document.createElement`) for strophe.js — must move to a platform-neutral XML layer
-  (`@xmpp/xml`/ltx or the stanza.js family); (2) strophe.js itself is browser-first — swap to an
-  RN-capable XMPP core with a WebSocket transport (`@xmpp/client` or stanza.js; verify in a spike
-  on both targets); (3) `src/composables/useXmpp.ts` mixes Vue state (`ref`s, `sessionStorage`,
+  (ltx or the stanza.js family); (2) strophe.js itself is browser-first — swap to an RN-capable
+  XMPP core with a WebSocket transport; selected by spike on 2026-09-05: **stanza.js** (bundles
+  clean on RN; SASL + disco verified in Expo Go on Android), `@xmpp/client` rejected (Metro stub
+  needed for its `node:dns`-importing resolver; SASL fails on-device); stanza.js needs a
+  WebCrypto polyfill (`crypto.getRandomValues`/`randomUUID`) on RN; (3)
+  `src/composables/useXmpp.ts` mixes Vue state (`ref`s, `sessionStorage`,
   `window.location`) with protocol logic — split into core plus a thin Vue adapter.
 - Expo/React Native inside a workspace monorepo needs Metro configuration
   (`watchFolders`/`nodeModulesPaths`) for the shared package.

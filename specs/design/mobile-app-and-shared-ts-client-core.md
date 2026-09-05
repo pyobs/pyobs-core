@@ -159,10 +159,17 @@ Design in dp, not pixels; treat iPad width as a continuous range, not portrait/l
 
 ## Phasing
 
-1. **Spike** (prerequisite, tracked on the issue): verify the XMPP core choice (`@xmpp/client`
-   vs stanza.js) inside an Expo app on both iOS and Android against a pyobs ejabberd; validate
-   the monorepo Metro configuration (`watchFolders`/`nodeModulesPaths`) with the shared package;
-   confirm the Expo development loop (Expo Go / dev client).
+1. **Spike — done 2026-09-05** (artifacts in the scratch dir `pyobs-js-xmpp-test/`): verified the
+   XMPP core choice against a throwaway ejabberd over WebSocket, in Node *and* in Expo Go on
+   Android. **Verdict: stanza.js.** It bundles cleanly on React Native and passes SASL auth +
+   disco#info end-to-end; `@xmpp/client` was rejected — it needs a Metro stub for
+   `@xmpp/resolve` (imports `node:dns`) and its SASL negotiation still fails on-device
+   ("Mechanism undefined not found"). stanza.js on RN requires a WebCrypto polyfill
+   (`crypto.getRandomValues`/`randomUUID`; use `react-native-get-random-values` in the app) and
+   default-import interop for its CommonJS entry. Raw RFC 7395 WebSocket and ltx XML parsing
+   were verified working on Hermes. Remaining pre-implementation checks: iOS device
+   confirmation (only Android was exercised) and the monorepo Metro configuration
+   (`watchFolders`/`nodeModulesPaths`) for the shared package.
 2. **Extract the shared packages into their own repos** (`pyobs-js-core`; `pyobs-js-fits` moves
    out of the web-client workspace — this removes the three browser couplings above) and migrate
    `pyobs-web-client` onto the published packages — the web client's existing unit/e2e suites are

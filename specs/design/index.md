@@ -27,6 +27,10 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [interface_versioning.md](interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...). *proposed* (#819; sanity-checked against `develop`, not yet
   implemented; Repos: pyobs-core, pyobs-gui, driver plugins)
+- [mobile-app-and-shared-ts-client-core.md](mobile-app-and-shared-ts-client-core.md) — mobile
+  client (Android/iOS + tablets) and the shared TypeScript client core for `pyobs-web-client`
+  and the app. *proposed* (issue #884; ADRs 0016–0018; Repos: pyobs-core, pyobs-web-client,
+  pyobs-js-core, pyobs-js-fits (new repos, planned), pyobs-app (planned))
 - [module_observer_location.md](module_observer_location.md) — module observer-location
   capabilities. *implemented, closed*
 - [obsnum_fits_header.md](obsnum_fits_header.md) — `OBSNUM` per-night observation counter in FITS

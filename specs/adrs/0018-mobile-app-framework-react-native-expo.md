@@ -1,6 +1,18 @@
 # Mobile app framework: React Native with the Expo toolchain
 
-status: accepted
+status: superseded 2026-09-06 — reconsidered before any implementation started. The concrete
+requirements driving the mobile app (installable icon, no browser chrome, Keychain/Keystore-backed
+credential storage, push notifications, an offline saved-connections screen) don't need a native
+UI framework at all; they're achievable by wrapping the existing `pyobs-web-client` in Capacitor,
+at a fraction of the cost of a from-scratch RN app plus a shared TypeScript core (ADR 0017,
+also superseded). "Shared TypeScript with the web client" was this ADR's decisive argument for RN
+over Flutter/Qt — but sharing code stops being a reason to rewrite once there's nothing to share
+*with*, since the web client's own code is what ships. True native-widget feel (the one thing
+Capacitor genuinely can't provide, since it's still a WebView) is an open question, deferred until
+real use of the Capacitor app shows whether it's actually missed — see
+`pyobs-web-client/specs/design/native-app-shell-capacitor.md`. If it is, this ADR's
+framework comparison (RN vs. Flutter vs. Qt/QML) is the starting point for reopening the decision.
+
 date: 2026-09-05
 
 Repos: pyobs-core, pyobs-web-client, pyobs-app (planned)

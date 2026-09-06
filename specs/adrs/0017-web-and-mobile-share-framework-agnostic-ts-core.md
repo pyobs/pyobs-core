@@ -1,6 +1,14 @@
 # `pyobs-web-client` and the mobile app share one framework-agnostic TypeScript core
 
-status: accepted
+status: superseded 2026-09-06 — there is no longer a second app to share a core with. The mobile
+client is now a Capacitor wrapper around `pyobs-web-client` itself (same Vue app, same
+strophe.js/browser-DOM protocol code, packaged as an installable native shell) rather than a
+separate React Native app — see `pyobs-web-client/specs/design/native-app-shell-capacitor.md`.
+The three browser-coupling extractions this ADR called for (DOM-based XML building, strophe.js,
+Vue-mixed `useXmpp.ts`) are moot: nothing needs to run outside a WebView anymore. Kept as the
+historical record of why a shared core was considered, in case a from-scratch native client is
+ever built again.
+
 date: 2026-09-05
 
 Repos: pyobs-core, pyobs-web-client, pyobs-js-core (new repo + npm package, planned), pyobs-app (planned)

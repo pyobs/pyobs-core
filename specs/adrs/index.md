@@ -47,15 +47,19 @@ Short decision records for choices that had genuine considered-and-rejected alte
   execution tracked in `specs/plans/2026-09-01-per-exptime-dark-masters.md`)
 - [0016-mobile-client-xmpp-over-websocket-not-direct-tcp.md](0016-mobile-client-xmpp-over-websocket-not-direct-tcp.md) —
   mobile client transports XMPP over WebSocket (RFC 7395) to the existing ejabberd `/ws`
-  endpoint instead of direct TCP. *accepted* (issue #884; design
-  `specs/design/mobile-app-and-shared-ts-client-core.md`; Repos: pyobs-core, pyobs-web-client,
-  pyobs-app (planned))
+  endpoint instead of direct TCP. *superseded 2026-09-06* — the from-scratch mobile app this was
+  written for was dropped for a Capacitor wrapper around `pyobs-web-client`, which already does
+  this (issue #884; `pyobs-web-client/specs/design/native-app-shell-capacitor.md`; Repos:
+  pyobs-core, pyobs-web-client)
 - [0017-web-and-mobile-share-framework-agnostic-ts-core.md](0017-web-and-mobile-share-framework-agnostic-ts-core.md) —
   `pyobs-web-client` and the mobile app share one framework-agnostic TypeScript core
-  (`pyobs-js-core`). *accepted* (issue #884; design
-  `specs/design/mobile-app-and-shared-ts-client-core.md`; Repos: pyobs-core, pyobs-web-client,
-  pyobs-app (planned))
+  (`pyobs-js-core`). *superseded 2026-09-06* — moot once the mobile app *is* `pyobs-web-client`,
+  packaged via Capacitor, rather than a second codebase (issue #884;
+  `pyobs-web-client/specs/design/native-app-shell-capacitor.md`; Repos: pyobs-core,
+  pyobs-web-client)
 - [0018-mobile-app-framework-react-native-expo.md](0018-mobile-app-framework-react-native-expo.md) —
-  mobile app framework: React Native with the Expo toolchain (not Flutter or Qt/QML). *accepted*
-  (issue #884; design `specs/design/mobile-app-and-shared-ts-client-core.md`; Repos: pyobs-core,
-  pyobs-web-client, pyobs-app (planned))
+  mobile app framework: React Native with the Expo toolchain (not Flutter or Qt/QML).
+  *superseded 2026-09-06* — reconsidered before implementation; concrete requirements didn't need
+  a new UI framework, only Capacitor packaging of the existing web client (issue #884;
+  `pyobs-web-client/specs/design/native-app-shell-capacitor.md`; Repos: pyobs-core,
+  pyobs-web-client)

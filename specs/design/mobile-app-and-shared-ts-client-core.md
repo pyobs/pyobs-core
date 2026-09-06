@@ -1,6 +1,22 @@
 # Design: mobile client for pyobs (Android/iOS + tablets) and the shared TypeScript client core
 
-Status: proposed
+Status: superseded 2026-09-06 — reconsidered before any implementation started (the spike in
+Phasing step 1 was the only work actually done). The plan below assumed a new app justified a new
+React Native codebase and a shared TypeScript core; walking through the actual concrete
+requirements (installable app icon, no browser chrome, Keychain/Keystore-backed credential
+storage, push notifications, an offline saved-connections/settings screen) showed none of them
+need a new UI framework — they're achievable by wrapping the existing `pyobs-web-client` in
+Capacitor. That also removes the shared-core rationale (ADR 0017): there's no second codebase to
+share protocol logic with once the mobile app *is* the web client, packaged. See
+`pyobs-web-client/specs/design/native-app-shell-capacitor.md` for the plan that replaced this one,
+and ADRs [0016](../adrs/0016-mobile-client-xmpp-over-websocket-not-direct-tcp.md)/
+[0017](../adrs/0017-web-and-mobile-share-framework-agnostic-ts-core.md)/
+[0018](../adrs/0018-mobile-app-framework-react-native-expo.md) (all superseded) for why each
+individual decision no longer applies. Kept as the historical record of the discussion in issue
+#884, including the transport (ADR 0016) and stanza.js-vs-`@xmpp/client` spike findings, which
+remain accurate if a from-scratch native client is ever revisited. True native-widget feel is the
+one open question Capacitor can't resolve on its own — deferred until real use of that app shows
+whether it's actually missed; if so, this doc's framework comparison is where to restart.
 
 Repos: pyobs-core (wire protocol, reference implementations), pyobs-web-client (core extraction
 and refactor), pyobs-js-core (new shared-core repo + npm package, planned), pyobs-js-fits (new

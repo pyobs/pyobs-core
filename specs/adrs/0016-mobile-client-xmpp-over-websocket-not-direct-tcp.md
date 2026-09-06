@@ -1,6 +1,13 @@
 # Mobile client speaks XMPP over WebSocket (RFC 7395), not direct TCP
 
-status: accepted
+status: superseded 2026-09-06 — the mobile-app plan this ADR was written for (a separate
+React Native app + shared TypeScript core, `pyobs-app`/`pyobs-js-core`) was dropped in favor of
+wrapping the existing `pyobs-web-client` in Capacitor instead — see
+`pyobs-web-client/specs/design/native-app-shell-capacitor.md`. That app already speaks XMPP over
+WebSocket (this ADR's conclusion), so the decision itself wasn't wrong, just scoped to a client
+that stopped being built. Kept as the historical record of the transport comparison, which still
+holds if a from-scratch client is ever built again.
+
 date: 2026-09-05
 
 Repos: pyobs-core, pyobs-web-client, pyobs-app (planned)

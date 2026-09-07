@@ -2,12 +2,17 @@
 #
 # setup-ejabberd.sh — idempotent ejabberd.yml configuration
 #
-# Does three things:
+# Does four things:
 #   1. Adds a host to `hosts:` (appends — safe to run multiple times with
 #      different hostnames to configure multiple vhosts)
 #   2. Adds a loopback-only HTTP API listener on port 5281 for
 #      pyobs-web-admin, plus a scoped api_permissions rule
-#   3. Raises the c2s shaper limits (see step 6/6b below) — see
+#   3. Adds a loopback-only XMPP-over-WebSocket listener on port 5282, meant
+#      to sit behind a reverse proxy (e.g. nginx on 443) rather than be
+#      reachable directly — see step 5 below for why this is a *separate*
+#      port from the existing public 5280/5443 listeners rather than
+#      reusing either.
+#   4. Raises the c2s shaper limits (see step 6/6b below) — see
 #      specs/plans/ejabberd-throughput-benchmarking.md in pyobs-core for why
 #
 # Usage:
@@ -132,26 +137,31 @@ yq eval -i '.api_permissions["pyobs-web-admin readonly"] = {
 
 echo "Added/updated api_permissions: pyobs-web-admin readonly"
 
-# --- 5. Port 5280 listener: disable TLS, ensure /ws handler --------------
-# Merges into the existing listener rather than replacing it outright, so
-# /admin and any other existing request_handlers (e.g. the ACME challenge
-# path) are preserved unless they conflict.
-if yq eval '.listen[] | select(.port == 5280)' "$CONFIG" | grep -q .; then
-    yq eval -i '(.listen[] | select(.port == 5280)).tls = false' "$CONFIG"
-    yq eval -i '(.listen[] | select(.port == 5280)).request_handlers["/ws"] = "ejabberd_http_ws"' "$CONFIG"
-    echo "Updated port 5280 listener: tls=false, /ws -> ejabberd_http_ws"
-else
-    echo "No listener found on port 5280 — adding one from scratch"
+# --- 5. Loopback-only XMPP-over-WebSocket listener on 127.0.0.1:5282 -----
+# Deliberately its own port rather than reusing 5280 or 5443:
+#   - 5280 already serves /admin (ejabberd_web_admin) publicly on existing
+#     installs, and we don't want to assume nothing depends on that still
+#     being reachable directly — so 5280 is left completely alone here.
+#   - 5443 is ejabberd's own public TLS listener (also serving /bosh and
+#     historically /ws directly); once a reverse proxy is in front of ws
+#     traffic, moving clients off a direct wss://host:5443/ws and trimming
+#     /ws (and /api) from 5443's handlers is a deliberate, one-time cutover
+#     per site, not something this idempotent script should do automatically
+#     on every re-run (it gets re-run for unrelated reasons, e.g. adding a
+#     new vhost, and silently cutting off ws clients still on 5443 would be
+#     a bad side effect of that).
+# Same "one listener per port" guard pattern as step 2.
+if ! yq eval '.listen[] | select(.port == 5282)' "$CONFIG" | grep -q .; then
     yq eval -i '.listen += [{
-        "port": 5280,
-        "ip": "::",
+        "port": 5282,
+        "ip": "127.0.0.1",
         "module": "ejabberd_http",
-        "tls": false,
-        "request_handlers": {
-            "/ws": "ejabberd_http_ws",
-            "/admin": "ejabberd_web_admin"
-        }
+        "request_handlers": {"/ws": "ejabberd_http_ws"}
     }]' "$CONFIG"
+    echo "Added loopback ws listener on port 5282"
+else
+    echo "Listener on port 5282 already exists — skipping." \
+         "Check its request_handlers manually if it's not already ejabberd_http_ws."
 fi
 
 # --- 6. Shaper rate/burst_size: raise the "normal" and "fast" tiers -------
@@ -259,5 +269,5 @@ cat <<EOF
 Done. Shared roster group "all" created on $NEW_HOST with all users added.
 
 If you need to double check the listener:
-  ss -tlnp | grep -E '5280|5281'
+  ss -tlnp | grep -E '5280|5281|5282'
 EOF

@@ -27,3 +27,7 @@ warrants it, not for speculative content.
 - [gui-field-access-levels.md](gui-field-access-levels.md) — ordinal `AccessLevel`
   (`BASIC`/`EXPERT`/`HIDDEN`) convention for tagging Pydantic config fields for basic/expert GUI
   modes, replacing per-field `show_basic`/`show_expert` booleans.
+- [rpc-timeout-command-idempotency.md](rpc-timeout-command-idempotency.md) — an RPC timeout means
+  "unknown outcome," not "failed"; clients must resolve via current state before retrying, never
+  blind-retry or queue a mutating command for later replay. Applies to every client (`pyobs-gui`,
+  `pyobs-polaris`, `pyobs-web-client`), not just mobile.

@@ -315,6 +315,10 @@ class BaseTelescope(
         await WeatherAwareMixin.open(self)
         await MotionStatusMixin.open(self)
 
+        # register events
+        await self.comm.register_event(MoveRaDecEvent)
+        await self.comm.register_event(MoveAltAzEvent)
+
     @abstractmethod
     async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.

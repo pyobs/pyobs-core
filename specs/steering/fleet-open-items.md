@@ -99,18 +99,18 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
-- **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/acl-aware-shell-forms.md) —
+- **pyobs-web-client** — [acl-aware-shell-forms](../../pyobs-web-client/specs/plans/2026-08-03-acl-aware-shell-forms.md) —
   ACL-aware Shell forms (*proposed*)
-- **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/auxiliary-interface-widgets.md) —
+- **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/2026-08-04-auxiliary-interface-widgets.md) —
   auxiliary interface widgets (attach-or-standalone) (*proposed*)
-- **pyobs-web-client** — [idatasequence](../../pyobs-web-client/specs/plans/idatasequence.md) —
+- **pyobs-web-client** — [idatasequence](../../pyobs-web-client/specs/plans/2026-08-03-idatasequence.md) —
   `IDataSequence` support ("grab N images") (*proposed*)
-- **pyobs-web-client** — [rpc-fault-call-id](../../pyobs-web-client/specs/plans/rpc-fault-call-id.md) —
+- **pyobs-web-client** — [rpc-fault-call-id](../../pyobs-web-client/specs/plans/2026-08-03-rpc-fault-call-id.md) —
   surface `call_id` on RPC faults (*proposed*)
-- **pyobs-web-client** — [struct-typed-command-params](../../pyobs-web-client/specs/plans/struct-typed-command-params.md) —
+- **pyobs-web-client** — [struct-typed-command-params](../../pyobs-web-client/specs/plans/2026-08-03-struct-typed-command-params.md) —
   `struct<Name>`-typed command params (*blocked on upstream*)
-- **pyobs-web-client** — [telescope-page](../../pyobs-web-client/specs/plans/telescope-page.md) —
+- **pyobs-web-client** — [telescope-page](../../pyobs-web-client/specs/plans/2026-08-03-telescope-page.md) —
   telescope page for `ITelescope` modules (*proposed*)
-- **pyobs-web-client** — [vfs-token-auth](../../pyobs-web-client/specs/plans/vfs-token-auth.md) —
+- **pyobs-web-client** — [vfs-token-auth](../../pyobs-web-client/specs/plans/2026-08-04-vfs-token-auth.md) —
   VFS endpoint auth (Basic Auth → Bearer token) (*proposed, unblocked — the pyobs-core release
   it depended on has shipped*)

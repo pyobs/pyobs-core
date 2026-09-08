@@ -1217,8 +1217,20 @@ class XmppComm(Comm):
         return info
 
     async def _set_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
-        """Store published capabilities for inclusion in disco#info responses."""
+        """Store published capabilities for inclusion in disco#info responses.
+
+        Capabilities are set once in open() and never mutated afterwards, so advertising a
+        disco feature per interface (mirrors _register_events) is enough to change the caps
+        hash the first -- and only -- time an interface's capability appears. Without a feature
+        that a peer hasn't seen advertised before, update_caps() would recompute the same hash
+        (capability payloads aren't part of what feeds it, see XEP_0115.generate_verstring), and
+        ejabberd's mod_caps would keep serving whatever disco#info response it cached under that
+        unchanged hash -- potentially one from before this capability was ever set (#888).
+        """
         self._capabilities[interface] = capabilities
+        self.client.plugin["xep_0030"].add_feature(f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}")
+        await self._safe_send(self.client.plugin["xep_0115"].update_caps)
+        self.client.send_presence()
         log.info("Published capabilities for %s", interface.__name__)
 
     def _get_own_capabilities(self, interface: type[Interface]) -> Any:

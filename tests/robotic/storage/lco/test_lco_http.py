@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from pyobs.robotic.observation import ObservationState
-from pyobs.robotic.storage.lco._portal import LcoObservation, LcoSchedulableRequest
+from pyobs.robotic.storage.lco._portal import LcoObservation, LcoRequest, LcoSchedulableRequest
 from pyobs.robotic.storage.lco.task import LcoTask
 from pyobs.robotic.task import Project
 from pyobs.utils.time import Time
@@ -162,6 +162,21 @@ async def test_observation_archive_get_observations_state_filter(mocker) -> None
 
     pending = await archive.get_observations(task=task, state=ObservationState.PENDING)
     assert len(pending) == 1
+
+
+# ── LcoObservation parsing ──────────────────────────────────────────────────
+
+
+def test_lco_observation_ignores_unknown_request_fields() -> None:
+    """The portal API can add fields (e.g. suspend_until) without notice; parsing must not break."""
+    data = copy.deepcopy(OBSERVATIONS_RESPONSE["results"][0])
+    data["request"]["suspend_until"] = "2026-06-10T00:00:00Z"
+    data["request"]["some_future_field"] = "unknown"
+    data["some_other_future_field"] = "unknown"
+
+    observation = LcoObservation.model_validate(data)
+    assert isinstance(observation.request, LcoRequest)
+    assert observation.request.suspend_until is not None
 
 
 @pytest.mark.asyncio

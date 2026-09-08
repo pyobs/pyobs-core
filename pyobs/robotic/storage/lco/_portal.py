@@ -16,7 +16,17 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class ConfigurationSummary(BaseModel):
+class LcoApiModel(BaseModel):
+    """Base for models parsed from LCO Observation Portal API responses.
+
+    The portal adds fields to its responses without notice, so these ignore unknown
+    fields instead of the stricter extra="forbid" default used elsewhere in pyobs.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class ConfigurationSummary(LcoApiModel):
     end: str = ""
     events: dict[str, str] = Field(default_factory=dict)
     id: Any = 0
@@ -26,7 +36,7 @@ class ConfigurationSummary(BaseModel):
     time_completed: float = 0.0
 
 
-class ConfigurationStatus(BaseModel):
+class ConfigurationStatus(LcoApiModel):
     id: int
     configuration: int
     instrument_name: str
@@ -35,16 +45,16 @@ class ConfigurationStatus(BaseModel):
     summary: ConfigurationSummary
 
 
-class LcoLocation(BaseModel):
+class LcoLocation(LcoApiModel):
     telescope_class: str
 
 
-class LcoAcquisitionConfig(BaseModel):
+class LcoAcquisitionConfig(LcoApiModel):
     mode: str
     extra_params: dict[str, Any] = {}
 
 
-class LcoGuidingConfig(BaseModel):
+class LcoGuidingConfig(LcoApiModel):
     exposure_time: float | None = None
     mode: str
     optical_elements: dict[str, Any] = {}
@@ -52,14 +62,14 @@ class LcoGuidingConfig(BaseModel):
     extra_params: dict[str, Any] = {}
 
 
-class LcoConstraints(BaseModel):
+class LcoConstraints(LcoApiModel):
     max_airmass: float | None = None
     max_lunar_phase: float | None = None
     min_lunar_distance: float | None = None
     extra_params: dict[str, Any] = {}
 
 
-class LcoInstrumentConfig(BaseModel):
+class LcoInstrumentConfig(LcoApiModel):
     exposure_count: int
     exposure_time: float
     mode: str
@@ -69,12 +79,12 @@ class LcoInstrumentConfig(BaseModel):
     extra_params: dict[str, Any] = {}
 
 
-class LcoMerit(BaseModel):
+class LcoMerit(LcoApiModel):
     type: str
     params: dict[str, Any] = {}
 
 
-class LcoTarget(BaseModel):
+class LcoTarget(LcoApiModel):
     name: str
     type: str
     ra: float
@@ -87,7 +97,7 @@ class LcoTarget(BaseModel):
     extra_params: dict[str, Any] = {}
 
 
-class LcoConfiguration(BaseModel):
+class LcoConfiguration(LcoApiModel):
     id: int
     acquisition_config: LcoAcquisitionConfig
     guiding_config: LcoGuidingConfig
@@ -107,12 +117,12 @@ class LcoConfiguration(BaseModel):
     summary: ConfigurationSummary = Field(default_factory=ConfigurationSummary)
 
 
-class LcoWindow(BaseModel):
+class LcoWindow(LcoApiModel):
     start: AstroPydanticTime
     end: AstroPydanticTime
 
 
-class LcoRequest(BaseModel):
+class LcoRequest(LcoApiModel):
     id: int
     modified: AstroPydanticTime
     acceptability_threshold: float
@@ -125,11 +135,12 @@ class LcoRequest(BaseModel):
     configuration_repeats: int = 1
     windows: list[LcoWindow] = []
     extra_params: dict[str, Any]
+    suspend_until: AstroPydanticTime | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
 
-class LcoObservation(BaseModel):
+class LcoObservation(LcoApiModel):
     id: int
     request: int | LcoRequest
     site: str
@@ -150,7 +161,7 @@ class LcoObservation(BaseModel):
     submitter: str | None = None
 
 
-class LcoSchedulableRequest(BaseModel):
+class LcoSchedulableRequest(LcoApiModel):
     created: AstroPydanticTime
     id: int
     ipp_value: float

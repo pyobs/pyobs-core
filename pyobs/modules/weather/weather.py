@@ -131,12 +131,14 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """Update weather info."""
 
         was_good = self._weather.is_good
+        request_error: Exception | None = None
 
         try:
             self._weather.status = await self._api.get_current_status()
         except Exception as e:
             log.warning("Request failed: %s", str(e))
             self._weather.is_good = False  # on error, we're always bad
+            request_error = e
 
         if was_good != self._weather.is_good and self._active:
             if self._weather.is_good:
@@ -149,6 +151,10 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         # publish state
         await self._publish_state()
+
+        # re-raise so the poll loop backs off instead of retrying at the normal interval
+        if request_error is not None:
+            raise request_error
 
     async def _publish_state(self) -> None:
         is_good = True if not self._active else self._weather.is_good

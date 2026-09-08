@@ -157,7 +157,7 @@ async def test_update_invalid_url(caplog) -> None:
     weather = Weather("example.com/")
     weather._api.get_current_status = AsyncMock(side_effect=ValueError("Could not connect to weather station."))
 
-    with caplog.at_level(logging.WARN):
+    with caplog.at_level(logging.WARN), pytest.raises(ValueError, match="Could not connect to weather station."):
         await weather._update()
 
     assert weather._weather.is_good is False
@@ -172,7 +172,10 @@ async def test_update_invalid_response(caplog) -> None:
 
     weather._api.get_current_status = AsyncMock(return_value={})
 
-    with caplog.at_level(logging.WARN):
+    with (
+        caplog.at_level(logging.WARN),
+        pytest.raises(ValueError, match="Good parameter not found in response from weather station."),
+    ):
         await weather._update()
 
     assert weather._weather.is_good is False

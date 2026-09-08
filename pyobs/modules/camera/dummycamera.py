@@ -145,7 +145,9 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
 
     async def open(self) -> None:
         """Opens camera."""
-        # publish capabilities before super().open()
+        await BaseCamera.open(self)
+
+        # publish capabilities
         await self.comm.set_capabilities(
             IWindow,
             WindowCapabilities(
@@ -162,8 +164,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         await self.comm.set_capabilities(
             IImageFormat, ImageFormatCapabilities(image_formats=[ImageFormat.INT8, ImageFormat.INT16])
         )
-
-        await BaseCamera.open(self)
 
         # subscribe to telescope pointing if given
         if self._telescope_module:

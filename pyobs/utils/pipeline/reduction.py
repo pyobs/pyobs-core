@@ -16,7 +16,7 @@ from pyobs.utils.fits import FilenameFormatter
 
 from .pipeline import Pipeline
 from .progress import MasterCalibCreated, ProgressCallback, ScienceFrameProcessed
-from .reduction_base import ReductionBase
+from .reduction_base import ReductionBase, ReductionResult
 
 log = logging.getLogger(__name__)
 
@@ -87,6 +87,9 @@ class Reduction(ReductionBase):
         self._science_frame_cache: dict[tuple[str, str, str], list[FrameInfo]] = {}
         self._frames_done = 0
         self._frames_total = 0
+        self._frames_calibrated = 0
+        self._frames_failed = 0
+        self._calibs_failed = 0
 
     async def _store_master_calib(
         self,
@@ -328,6 +331,7 @@ class Reduction(ReductionBase):
                     await self._output_archive.upload_frames([calibrated])
 
                 self._frames_done += 1
+                self._frames_calibrated += 1
                 self._report_progress(
                     ScienceFrameProcessed(
                         index=self._frames_done, total=self._frames_total, filename=info.filename, status="ok"
@@ -337,6 +341,7 @@ class Reduction(ReductionBase):
             except Exception as e:
                 log.exception("(%d/%d) Error processing image %s.", i, total, info.filename)
                 self._frames_done += 1
+                self._frames_failed += 1
                 self._report_progress(
                     ScienceFrameProcessed(
                         index=self._frames_done,
@@ -347,7 +352,7 @@ class Reduction(ReductionBase):
                     )
                 )
 
-    async def __call__(self, site: str, night: str) -> None:
+    async def __call__(self, site: str, night: str) -> ReductionResult:
         """Reduces all data im this night."""
 
         # get options
@@ -377,12 +382,14 @@ class Reduction(ReductionBase):
                         await self._create_master_calib(night, instrument, ImageType.BIAS, binning)
                     except Exception:
                         log.exception("Error creating master bias for instrument %s, binning %s.", instrument, binning)
+                        self._calibs_failed += 1
                     try:
                         await self._create_master_darks(night, instrument, binning)
                     except Exception:
                         log.exception(
                             "Error creating master dark(s) for instrument %s, binning %s.", instrument, binning
                         )
+                        self._calibs_failed += 1
 
                 # loop filters
                 for filter_name in options["filters"]:
@@ -397,10 +404,17 @@ class Reduction(ReductionBase):
                                 binning,
                                 filter_name,
                             )
+                            self._calibs_failed += 1
 
                     # calibrate science data
                     if self._calib_science:
                         await self._calib_data(night, instrument, binning, filter_name)
+
+        return ReductionResult(
+            frames_calibrated=self._frames_calibrated,
+            frames_failed=self._frames_failed,
+            calibs_failed=self._calibs_failed,
+        )
 
 
 __all__ = ["Reduction"]

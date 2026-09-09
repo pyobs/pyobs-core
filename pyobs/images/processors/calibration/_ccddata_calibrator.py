@@ -30,11 +30,14 @@ class _CCDDataCalibrator:
 
         self._ccd_data = self._image.to_ccddata()
 
-        # only read EXPTIME when it's actually needed -- an unscaled exact-match dark
-        # (dark_scale=False) doesn't require it, and a legacy master combined from raw frames
-        # with no EXPTIME at all (see Reduction._create_master_darks' fallback) doesn't have it
-        if dark is not None and dark_scale:
-            self._dark_exp_time = dark.header["EXPTIME"]
+        # ccdproc.subtract_dark() requires dark_exposure/data_exposure to be Quantity objects
+        # whenever a dark frame is given, even when dark_scale=False -- scale only controls
+        # whether their values are *used* to compute a scale factor, not whether they're
+        # required. A legacy master with no EXPTIME at all (see Reduction._create_master_darks'
+        # fallback, only reachable with dark_scale=False) has no real value to give it, so fall
+        # back to a placeholder there -- it's never read since scale=False skips the division.
+        if dark is not None:
+            self._dark_exp_time = dark.header["EXPTIME"] if "EXPTIME" in dark.header else 1.0
 
     @staticmethod
     def _optional_to_ccddata(image: Image | None) -> CCDData | None:
@@ -60,7 +63,7 @@ class _CCDDataCalibrator:
             bad_pixel_mask=None,
             gain=self._image.header["DET-GAIN"] * u.electron / u.adu,
             readnoise=self._image.header["DET-RON"] * u.electron,
-            dark_exposure=self._dark_exp_time * u.second if (self._dark is not None and self._dark_scale) else None,
+            dark_exposure=self._dark_exp_time * u.second if self._dark is not None else None,
             data_exposure=self._image.header["EXPTIME"] * u.second,
             dark_scale=self._dark_scale,
             gain_corrected=False,

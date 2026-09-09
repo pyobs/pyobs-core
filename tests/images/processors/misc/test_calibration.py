@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 import pytest
+from astropy import units as u
 from astropy.table import Table
 
 import pyobs.utils.pipeline
@@ -358,7 +359,9 @@ async def test_find_dark_master_dark_min_exptime_none_disables_bias_only_branch(
 # ── _CCDDataCalibrator dark_scale ──────────────────────────────────────────────
 
 
-def test_ccddata_calibrator_unscaled_dark_passes_no_dark_exposure(mocker):
+def test_ccddata_calibrator_unscaled_dark_passes_real_dark_exposure(mocker):
+    # ccdproc.subtract_dark() requires dark_exposure to be a Quantity even when dark_scale=False
+    # -- scale only controls whether it's used to compute a factor, not whether it's required
     image = Image(data=np.zeros((2, 2), dtype=np.float32))
     image.header["DET-GAIN"] = 1.0
     image.header["DET-RON"] = 0.0
@@ -372,12 +375,13 @@ def test_ccddata_calibrator_unscaled_dark_passes_no_dark_exposure(mocker):
     calibrator()
 
     assert mock_ccd_process.call_args.kwargs["dark_scale"] is False
-    assert mock_ccd_process.call_args.kwargs["dark_exposure"] is None
+    assert mock_ccd_process.call_args.kwargs["dark_exposure"] == 600.0 * u.second
 
 
 def test_ccddata_calibrator_unscaled_dark_with_no_exptime_header_does_not_crash(mocker):
     # a legacy dark master (Reduction's all-untagged-darks fallback) has no EXPTIME at all --
-    # dark_scale=False must not touch dark.header["EXPTIME"], since it doesn't exist
+    # ccdproc still requires a Quantity, so a placeholder is passed; it's never read since
+    # dark_scale=False skips the division that would otherwise use it
     image = Image(data=np.zeros((2, 2), dtype=np.float32))
     image.header["DET-GAIN"] = 1.0
     image.header["DET-RON"] = 0.0
@@ -390,7 +394,7 @@ def test_ccddata_calibrator_unscaled_dark_with_no_exptime_header_does_not_crash(
     calibrator()
 
     assert mock_ccd_process.call_args.kwargs["dark_scale"] is False
-    assert mock_ccd_process.call_args.kwargs["dark_exposure"] is None
+    assert isinstance(mock_ccd_process.call_args.kwargs["dark_exposure"], u.Quantity)
 
 
 def test_ccddata_calibrator_scaled_dark_passes_dark_exposure(mocker):

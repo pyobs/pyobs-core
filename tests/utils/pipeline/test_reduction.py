@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+from pytest_mock import MockerFixture
 
 from pyobs.images import Image
 from pyobs.robotic.utils.archive import Archive, FrameInfo
@@ -175,11 +176,16 @@ async def test_calibration_failure_for_one_combination_does_not_abort_others(tmp
     reduction = Reduction(archive=archive, pipeline=pipeline, output=output, create_calibs=True, calib_science=True)
 
     # should not raise, despite cam2's calibration-frame lookup blowing up
-    await reduction("siteA", "2024-01-01")
+    result = await reduction("siteA", "2024-01-01")
 
     # science calibration still ran (and uploaded) for both instruments
     assert (tmp_path / "cam1.fits").exists()
     assert (tmp_path / "cam2.fits").exists()
+
+    # cam2's blown-up calibration-frame lookups are visible in the result, not silently eaten
+    assert result.calibs_failed > 0
+    assert result.frames_calibrated == 2
+    assert result.frames_failed == 0
 
 
 # ── progress callback ───────────────────────────────────────────────────────
@@ -209,7 +215,7 @@ async def test_progress_callback_reports_calibs_and_cumulative_science_frames(tm
         min_flats=1,
         progress_callback=events.append,
     )
-    await reduction("siteA", "2024-01-01")
+    result = await reduction("siteA", "2024-01-01")
 
     calib_events = [e for e in events if isinstance(e, MasterCalibCreated)]
     frame_events = [e for e in events if isinstance(e, ScienceFrameProcessed)]
@@ -220,6 +226,58 @@ async def test_progress_callback_reports_calibs_and_cumulative_science_frames(tm
     assert [e.index for e in frame_events] == [1, 2]
     assert all(e.total == 2 for e in frame_events)
     assert all(e.status == "ok" for e in frame_events)
+
+    assert result.frames_calibrated == 2
+    assert result.frames_failed == 0
+    assert result.calibs_failed == 0
+
+
+# ── result counts ───────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_result_counts_science_frame_failures_without_aborting_others(
+    tmp_path: Path, mocker: MockerFixture
+) -> None:
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    write_fits(in_dir / "obj0.fits", **make_frame_headers(fname="obj0.fits"))
+    write_fits(in_dir / "obj1.fits", **make_frame_headers(fname="obj1.fits"))
+
+    archive = LocalArchive(root=str(in_dir))
+    output = LocalArchive(root=str(tmp_path / "out"))
+    pipeline = Pipeline(steps=[])
+
+    events: list[ProgressEvent] = []
+    reduction = Reduction(
+        archive=archive,
+        pipeline=pipeline,
+        output=output,
+        create_calibs=False,
+        progress_callback=events.append,
+    )
+
+    real_calibrate = pipeline.calibrate
+
+    async def flaky_calibrate(image: Image) -> Image:
+        if image.header["FNAME"] == "obj0.fits":
+            raise RuntimeError("boom: calibration blew up for this frame")
+        return await real_calibrate(image)
+
+    mocker.patch.object(pipeline, "calibrate", side_effect=flaky_calibrate)
+
+    result = await reduction("siteA", "2024-01-01")
+
+    # the other frame still got calibrated and uploaded despite obj0's failure
+    assert (tmp_path / "out" / "obj1.fits").exists()
+    assert not (tmp_path / "out" / "obj0.fits").exists()
+
+    assert result.frames_calibrated == 1
+    assert result.frames_failed == 1
+    assert result.calibs_failed == 0
+
+    frame_events = [e for e in events if isinstance(e, ScienceFrameProcessed)]
+    assert [e.status for e in frame_events] == ["error", "ok"]
 
 
 # ── per-exptime dark masters ────────────────────────────────────────────────

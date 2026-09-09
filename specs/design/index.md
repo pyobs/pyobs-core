@@ -39,6 +39,9 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [package_versions_fits_header.md](package_versions_fits_header.md) — record loaded pyobs-*
   package versions per module as `HIERARCH <MODULE> VERSION <PACKAGE>` FITS headers. *implemented,
   closed* (#739; `b197528c`)
+- [push-notification-module.md](push-notification-module.md) — `PushNotifier` module relaying
+  module-`ERROR` state (v1) to FCM/APNs, closing the gap left by `mobile-app-and-shared-ts-client-core.md`'s
+  deferred push notifications. *sketch* (issue #884; Repos: pyobs-core, pyobs-web-client)
 - [pyobs_2_0_wire_protocol.md](pyobs_2_0_wire_protocol.md) — pyobs 2.0 wire protocol, state, and
   access control. *implemented, closed*
 - [rpc_gating_on_startup.md](rpc_gating_on_startup.md) — gating RPC commands until module startup

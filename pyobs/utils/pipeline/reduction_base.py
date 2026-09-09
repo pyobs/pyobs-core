@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any
 
 from pyobs.images import Image
@@ -14,6 +15,25 @@ from .pipeline import Pipeline
 from .progress import ProgressCallback, ProgressEvent
 
 log = logging.getLogger(__name__)
+
+
+@dataclass
+class ReductionResult:
+    """Outcome counts for one __call__ run.
+
+    A per-frame or per-master-calib failure never aborts the run -- other frames/instruments
+    still get processed -- so this is the only way for a caller to tell "ran, nothing failed"
+    apart from "ran, but everything (or something) failed". Individual failures are also
+    reported live via the progress_callback (ScienceFrameProcessed(status="error"), etc.), for
+    callers that need per-item detail rather than end-of-run counts.
+    """
+
+    frames_calibrated: int
+    """Science frames successfully calibrated and stored/uploaded."""
+    frames_failed: int
+    """Science frames that raised while being calibrated."""
+    calibs_failed: int
+    """Master BIAS/DARK/SKYFLAT creation attempts that raised."""
 
 
 class ReductionBase(ABC):
@@ -111,9 +131,9 @@ class ReductionBase(ABC):
             return None
 
     @abstractmethod
-    async def __call__(self, site: str, night: str) -> None:
+    async def __call__(self, site: str, night: str) -> ReductionResult:
         """Reduces all data for the given site and observation period."""
         ...
 
 
-__all__ = ["ReductionBase"]
+__all__ = ["ReductionBase", "ReductionResult"]

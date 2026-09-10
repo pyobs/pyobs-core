@@ -1,10 +1,17 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-09.
+Status: standing snapshot — last checked 2026-09-10.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-10**: pyobs-web-client #40-#47 all verified **fixed and released** (`v0.8.0`/`v0.9.0`)
+  against the pulled `develop` (`b60eacf`) — commits `1a7e834`/`1e3fc34`/`7327f91` (#40, #42),
+  `af58992` (#41, #43), `af4d0b5` (#44), `701ae13` (#45), `6e78ea0` (#46), `5b302aa` (#47) —
+  dropped per the maintenance rule (GitHub issues stay open pending closure). #48 (auth for
+  embedding other pyobs apps) and #49 (don't drop the XMPP connection on brief
+  background/foreground) verified still open in code: no app-lifecycle/`appStateChange` handling
+  and no embedding-auth design yet.
 - **2026-09-09**: added pyobs-core #895 (Mastermind reschedule on a late-skipped start window),
   #891 (weather module never backs off on repeated station failures); pyobs-brot #68 (MQTT client
   no auto-reconnect); pyobs-pipeline #17 (Keycloak login); pyobs-polaris #6 (CameraView renders
@@ -82,7 +89,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (20, checked 2026-09-09)
+## Open issues (12, checked 2026-09-10)
 
 One row per issue — same layout for every repo.
 
@@ -98,16 +105,8 @@ One row per issue — same layout for every repo.
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-pipeline | [#17](https://github.com/pyobs/pyobs-pipeline/issues/17) | Add Keycloak login | |
 | pyobs-polaris | [#6](https://github.com/pyobs/pyobs-polaris/issues/6) | Camera page renders nothing: `CameraView` looks for `ICamera` in the stateful list, but `ICamera` has no state | |
-| pyobs-web-client | [#49](https://github.com/pyobs/pyobs-web-client/issues/49) | Don't drop XMPP connection on brief background/foreground | |
-| pyobs-web-client | [#48](https://github.com/pyobs/pyobs-web-client/issues/48) | Design auth for embedding other pyobs apps (web-admin, portal, weather, pipeline) | |
-| pyobs-web-client | [#47](https://github.com/pyobs/pyobs-web-client/issues/47) | No error message shown when auto-reconnect fails | |
-| pyobs-web-client | [#46](https://github.com/pyobs/pyobs-web-client/issues/46) | Connection label placeholder leaks internal telescope name ("MONET SAAO") | |
-| pyobs-web-client | [#45](https://github.com/pyobs/pyobs-web-client/issues/45) | Confirm-exit dialog: right-edge swipe closes app on some screens | |
-| pyobs-web-client | [#44](https://github.com/pyobs/pyobs-web-client/issues/44) | Form fields show raw wire param names instead of readable labels | |
-| pyobs-web-client | [#43](https://github.com/pyobs/pyobs-web-client/issues/43) | Camera page: window widget needs a full-frame button and binning-aware min/max | *enhancement* — `IWindow` fields are unconstrained number inputs; `ParamForm` has no min/max prop plumbing |
-| pyobs-web-client | [#42](https://github.com/pyobs/pyobs-web-client/issues/42) | Camera page: image type dropdown shows a spurious empty "—" option | *bug* — required-enum `<select>` always renders a leading empty option even when a real default is seeded |
-| pyobs-web-client | [#41](https://github.com/pyobs/pyobs-web-client/issues/41) | Camera page: binning should be a dropdown, not two number inputs | *enhancement* — generic fallback widget used instead of a capability-aware control, ignores capabilities entirely |
-| pyobs-web-client | [#40](https://github.com/pyobs/pyobs-web-client/issues/40) | `ParamForm`: drop the data-type label from rendered fields | *enhancement* — wire-type badge (`string`, `int32`, ...) shown next to every field label serves no user purpose |
+| pyobs-web-client | [#49](https://github.com/pyobs/pyobs-web-client/issues/49) | Don't drop XMPP connection on brief background/foreground | *needs design* — no app-lifecycle/`appStateChange` handling in code yet; decide a grace period and how it interacts with mobile OS background-network limits |
+| pyobs-web-client | [#48](https://github.com/pyobs/pyobs-web-client/issues/48) | Design auth for embedding other pyobs apps (web-admin, portal, weather, pipeline) | *design-stage* — leaning SSO via Keycloak; open risk: a Capacitor webview doesn't share cookies with the system browser, may need an in-app browser tab for the auth hop |
 
 ## Open plans
 

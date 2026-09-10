@@ -1,10 +1,19 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-08.
+Status: standing snapshot — last checked 2026-09-09.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-09**: added pyobs-core #895 (Mastermind reschedule on a late-skipped start window),
+  #891 (weather module never backs off on repeated station failures); pyobs-brot #68 (MQTT client
+  no auto-reconnect); pyobs-pipeline #17 (Keycloak login); pyobs-polaris #6 (CameraView renders
+  nothing — looks for `ICamera` in the stateful list); pyobs-web-client #44-#49 (six new issues:
+  form field labels, confirm-exit swipe, connection-label leak, reconnect error message, auth for
+  embedding other pyobs apps, background/foreground connection drop). Dropped pyobs-web-client #33
+  (closed) and its `auxiliary-interface-widgets` plan (done 2026-09-08). Added plans: pyobs-web-client
+  `2026-09-09-safe-area-insets.md` (*proposed*), pyobs-portal
+  `2026-09-02-instrument-capability-estimate-duration-endpoint.md` (*proposed*).
 - **2026-09-08**: pyobs-core#866 confirmed closed (closed 2026-09-04, same day as the prior
   check — missed being dropped then). pyobs-core#884 opened — mobile app (Android/iOS)
   design-and-reasoning issue, deliberately kept as discussion rather than a `specs/design/`
@@ -73,22 +82,32 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (10, checked 2026-09-08)
+## Open issues (20, checked 2026-09-09)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#895](https://github.com/pyobs/pyobs-core/issues/895) | Mastermind should trigger a reschedule when a task's start window is skipped for lateness | |
+| pyobs-core | [#891](https://github.com/pyobs/pyobs-core/issues/891) | Weather module never backs off on repeated station connection failures | |
 | pyobs-core | [#884](https://github.com/pyobs/pyobs-core/issues/884) | Mobile app for pyobs (Android/iOS): XMPP over WebSocket + shared TS core with pyobs-web-client | *proposal, discussion-stage* — deliberately kept as the design-and-reasoning record rather than a `specs/design/` doc + plan yet |
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
+| pyobs-brot | [#68](https://github.com/pyobs/pyobs-brot/issues/68) | MQTT client does not auto-reconnect after disconnect | |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-web-client | [#33](https://github.com/pyobs/pyobs-web-client/issues/33) | Camera page: settings panel structure/visibility needs rework | *enhancement* — settings bundled behind one manual collapse toggle instead of per-capability-group visibility; follow-on from `mobile-first-redesign` |
-| pyobs-web-client | [#40](https://github.com/pyobs/pyobs-web-client/issues/40) | `ParamForm`: drop the data-type label from rendered fields | *enhancement* — wire-type badge (`string`, `int32`, ...) shown next to every field label serves no user purpose |
-| pyobs-web-client | [#41](https://github.com/pyobs/pyobs-web-client/issues/41) | Camera page: binning should be a dropdown, not two number inputs | *enhancement* — generic fallback widget used instead of a capability-aware control, ignores capabilities entirely |
-| pyobs-web-client | [#42](https://github.com/pyobs/pyobs-web-client/issues/42) | Camera page: image type dropdown shows a spurious empty "—" option | *bug* — required-enum `<select>` always renders a leading empty option even when a real default is seeded |
+| pyobs-pipeline | [#17](https://github.com/pyobs/pyobs-pipeline/issues/17) | Add Keycloak login | |
+| pyobs-polaris | [#6](https://github.com/pyobs/pyobs-polaris/issues/6) | Camera page renders nothing: `CameraView` looks for `ICamera` in the stateful list, but `ICamera` has no state | |
+| pyobs-web-client | [#49](https://github.com/pyobs/pyobs-web-client/issues/49) | Don't drop XMPP connection on brief background/foreground | |
+| pyobs-web-client | [#48](https://github.com/pyobs/pyobs-web-client/issues/48) | Design auth for embedding other pyobs apps (web-admin, portal, weather, pipeline) | |
+| pyobs-web-client | [#47](https://github.com/pyobs/pyobs-web-client/issues/47) | No error message shown when auto-reconnect fails | |
+| pyobs-web-client | [#46](https://github.com/pyobs/pyobs-web-client/issues/46) | Connection label placeholder leaks internal telescope name ("MONET SAAO") | |
+| pyobs-web-client | [#45](https://github.com/pyobs/pyobs-web-client/issues/45) | Confirm-exit dialog: right-edge swipe closes app on some screens | |
+| pyobs-web-client | [#44](https://github.com/pyobs/pyobs-web-client/issues/44) | Form fields show raw wire param names instead of readable labels | |
 | pyobs-web-client | [#43](https://github.com/pyobs/pyobs-web-client/issues/43) | Camera page: window widget needs a full-frame button and binning-aware min/max | *enhancement* — `IWindow` fields are unconstrained number inputs; `ParamForm` has no min/max prop plumbing |
+| pyobs-web-client | [#42](https://github.com/pyobs/pyobs-web-client/issues/42) | Camera page: image type dropdown shows a spurious empty "—" option | *bug* — required-enum `<select>` always renders a leading empty option even when a real default is seeded |
+| pyobs-web-client | [#41](https://github.com/pyobs/pyobs-web-client/issues/41) | Camera page: binning should be a dropdown, not two number inputs | *enhancement* — generic fallback widget used instead of a capability-aware control, ignores capabilities entirely |
+| pyobs-web-client | [#40](https://github.com/pyobs/pyobs-web-client/issues/40) | `ParamForm`: drop the data-type label from rendered fields | *enhancement* — wire-type badge (`string`, `int32`, ...) shown next to every field label serves no user purpose |
 
 ## Open plans
 
@@ -100,10 +119,9 @@ One row per issue — same layout for every repo.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *proposed* (pyobs-gui). `TelescopeWidget` width-floor investigation with candidate fixes.
 - [2026-08-23-iag50-pyobs-core-2x-migration.md](../plans/2026-08-23-iag50-pyobs-core-2x-migration.md) —
-  *in progress* (pyobs-iag50, IAG-internal). `1.x` branch cut, `develop` reset to
-  `2.0.0.dev0`/`pyobs-core>=2.0.0.dev93`; actual code migration (grid-API rewrite, `self.proxy()`
-  async-context-manager change, missing-await fixes) not yet done, three open questions need
-  Tim's input.
+  *in progress* (pyobs-iag50, IAG-internal). `1.x` branch cut, `develop` reset to `2.0.0.dev0`;
+  actual code migration (grid-API rewrite, `self.proxy()` async-context-manager change,
+  missing-await fixes) not yet done, three open questions need Tim's input.
 
 ### Design docs still *proposed*
 
@@ -117,15 +135,20 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
-- **pyobs-web-client** — [auxiliary-interface-widgets](../../pyobs-web-client/specs/plans/2026-08-04-auxiliary-interface-widgets.md) —
-  auxiliary interface widgets (attach-or-standalone) (*proposed*)
+- **pyobs-portal** — [2026-09-02-instrument-capability-estimate-duration-endpoint.md](../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md) —
+  this repo's half of pyobs-core's (now-closed) instrument-capability duration estimates: a
+  TTL-cached `get_instrument_capabilities()` helper feeding `schema.py`'s `estimate_duration/`,
+  plus a `last_instrument_update/` marker for `PortalTaskArchive` to poll (*proposed*, no issue;
+  Repos: pyobs-portal, pyobs-core)
 - **pyobs-web-client** — [idatasequence](../../pyobs-web-client/specs/plans/2026-08-03-idatasequence.md) —
   `IDataSequence` support ("grab N images") (*proposed*)
 - **pyobs-web-client** — [rpc-fault-call-id](../../pyobs-web-client/specs/plans/2026-08-03-rpc-fault-call-id.md) —
   surface `call_id` on RPC faults (*proposed*)
 - **pyobs-web-client** — [struct-typed-command-params](../../pyobs-web-client/specs/plans/2026-08-03-struct-typed-command-params.md) —
   `struct<Name>`-typed command params (*blocked on upstream*)
-- **pyobs-web-client** — [mobile-first-redesign](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
-  mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phase 1 done:
-  Dashboard, Connections/Login, and the ModulePage drill-down migrated; per-widget compact visual
-  passes still outstanding; issues #33/#40/#41/#42/#43 above are follow-ons from this work)
+- **pyobs-web-client** — [2026-09-09-safe-area-insets.md](../../pyobs-web-client/specs/plans/2026-09-09-safe-area-insets.md) —
+  status bar / gesture-nav inset handling for the compact shell + FAB, split out of
+  mobile-first-redesign Phase 3 (*proposed*)
+- **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
+  mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phase 1 done;
+  Phase 2 done except `SettingsView`; Phases 3-4 not started)

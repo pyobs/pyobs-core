@@ -5,7 +5,7 @@ import astropy.units as u
 import pytest
 
 from pyobs.comm import Comm
-from pyobs.events import GoodWeatherEvent, TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
+from pyobs.events import GoodWeatherEvent, TaskFailedEvent, TaskFinishedEvent, TaskSkippedEvent, TaskStartedEvent
 from pyobs.interfaces import IRoboticScheduler, IRunning
 from pyobs.modules.robotic import Scheduler
 from pyobs.modules.robotic.scheduler import _class_accepts_param
@@ -264,6 +264,7 @@ async def test_open_registers_events_and_publishes_state(mocker) -> None:
     assert TaskStartedEvent in registered
     assert TaskFinishedEvent in registered
     assert TaskFailedEvent in registered
+    assert TaskSkippedEvent in registered
     assert GoodWeatherEvent in registered
     state = _state_for(scheduler._comm.set_state, IRunning)
     assert state.running is True
@@ -845,6 +846,29 @@ async def test_on_task_finished_does_not_trigger_by_default() -> None:
     scheduler = make_scheduler()
     await scheduler._on_task_finished(TaskFinishedEvent(name="t", id=1), "sender")
     assert scheduler._need_update is False
+
+
+# ── _on_task_skipped ─────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_on_task_skipped_ignores_wrong_event_type() -> None:
+    scheduler = make_scheduler()
+    result = await scheduler._on_task_skipped(TaskFinishedEvent(name="t", id=1), "sender")
+    assert result is False
+    assert scheduler._need_update is False
+
+
+@pytest.mark.asyncio
+async def test_on_task_skipped_triggers_reschedule() -> None:
+    scheduler = make_scheduler()
+    before = Time.now()
+    result = await scheduler._on_task_skipped(
+        TaskSkippedEvent(name="t", id=1, reason="start window missed by 1119s"), "sender"
+    )
+    assert result is True
+    assert scheduler._need_update is True
+    assert abs((scheduler._schedule_start - before).sec) < 1.0
 
 
 # ── _on_good_weather ─────────────────────────────────────────────────────────

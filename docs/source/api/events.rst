@@ -118,6 +118,11 @@ TaskFinishedEvent
 
 .. autoclass:: pyobs.events.TaskFinishedEvent
 
+TaskSkippedEvent
+^^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.events.TaskSkippedEvent
+
 TaskStartedEvent
 ^^^^^^^^^^^^^^^^
 

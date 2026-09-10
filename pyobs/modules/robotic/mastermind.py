@@ -4,7 +4,7 @@ from typing import Any
 
 import astropy.units as u
 
-from pyobs.events import TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
+from pyobs.events import TaskFailedEvent, TaskFinishedEvent, TaskSkippedEvent, TaskStartedEvent
 from pyobs.interfaces import (
     FitsHeaderEntry,
     IAutonomous,
@@ -118,6 +118,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
         if self._comm:
             await self.comm.register_event(TaskStartedEvent)
             await self.comm.register_event(TaskFinishedEvent)
+            await self.comm.register_event(TaskSkippedEvent)
 
         # start
         self._running = True
@@ -158,6 +159,15 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
             IRobotic, RoboticState(current=current, next=next_task, cant_run_reason=self._cant_run_reason)
         )
 
+    @staticmethod
+    def _same_observation(a: Observation | None, b: Observation) -> bool:
+        """Whether two observations refer to the same scheduled run.
+
+        Compares task id and window (start/end) -- the identity both the published `next` state
+        and the late-start-skip reschedule gate key on. `None` never matches.
+        """
+        return a is not None and a.task.id == b.task.id and a.start == b.start and a.end == b.end
+
     async def _track_next_observation(self, observation: Observation, reason: str | None) -> bool:
         """Update self._next_observation/_cant_run_reason and publish, but only if either
         actually changed since the last publish -- avoids spamming a state update every loop
@@ -166,13 +176,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
         Returns:
             Whether anything had changed (and was therefore published).
         """
-        changed = (
-            reason != self._cant_run_reason
-            or self._next_observation is None
-            or self._next_observation.task.id != observation.task.id
-            or self._next_observation.start != observation.start
-            or self._next_observation.end != observation.end
-        )
+        changed = reason != self._cant_run_reason or not self._same_observation(self._next_observation, observation)
         if changed:
             self._cant_run_reason = reason
             self._next_observation = observation
@@ -183,8 +187,9 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
         # wait a little
         await asyncio.sleep(5)
 
-        # flags
-        first_late_start_warning = True
+        # last observation skipped for starting too late; gates the warning + reschedule request
+        # below so they fire once per distinct stale window, not once per 10s poll
+        late_skipped: Observation | None = None
 
         # run until closed
         while True:
@@ -225,14 +230,22 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
             if not observation.task.can_start_late:
                 late_start = now - observation.start
                 if late_start > self._allowed_late_start * u.second:
-                    # only warn once
-                    if first_late_start_warning:
+                    # warn and ask for a reschedule, once per distinct stale window -- the
+                    # scheduler's handler recomputes around a task it can no longer run on time
+                    if not self._same_observation(late_skipped, observation):
                         log.warning(
                             "Time since start of window (%.1f) too long (>%.1f), skipping task...",
                             late_start.to_value("second"),
                             self._allowed_late_start,
                         )
-                    first_late_start_warning = False
+                        await self.comm.send_event(
+                            TaskSkippedEvent(
+                                name=observation.task.name,
+                                id=observation.task.id,
+                                reason=f"start window missed by {late_start.to_value('second'):.0f}s",
+                            )
+                        )
+                        late_skipped = observation
 
                     # keep the skipped observation visible as `next` rather than leaving
                     # whatever was last published stale for as long as this repeats
@@ -241,9 +254,6 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
                     # sleep a little and skip
                     await asyncio.sleep(10)
                     continue
-
-            # reset warning
-            first_late_start_warning = True
 
             # task is definitely not None here
             self._task = observation.task

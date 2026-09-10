@@ -141,6 +141,9 @@ The :class:`~pyobs.modules.robotic.Scheduler` module recalculates the schedule w
 - A :class:`~pyobs.events.GoodWeatherEvent` arrives, carrying an ETA for when observing can resume
 - A :class:`~pyobs.events.TaskStartedEvent` arrives (if ``trigger_on_task_started: true``)
 - A :class:`~pyobs.events.TaskFinishedEvent` arrives (if ``trigger_on_task_finished: true``)
+- A :class:`~pyobs.events.TaskSkippedEvent` arrives — emitted by the mastermind when a task's
+  scheduled start window was missed by more than ``allowed_late_start``, so the skipped block is
+  re-planned instead of the mastermind re-polling a stale observation
 - The ``run()`` method is called manually (e.g. from the GUI)
 
 To avoid submitting a stale schedule while a new one is being calculated, the scheduler submits

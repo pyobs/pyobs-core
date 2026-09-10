@@ -15,6 +15,7 @@ from pyobs.events import (
     GoodWeatherEvent,
     TaskFailedEvent,
     TaskFinishedEvent,
+    TaskSkippedEvent,
     TaskStartedEvent,
 )
 from pyobs.interfaces import IRoboticScheduler, IRunnable, IRunning, RoboticTask, SchedulerState
@@ -162,6 +163,7 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
             await self.comm.register_event(TaskStartedEvent, self._on_task_started)
             await self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
             await self.comm.register_event(TaskFailedEvent, self._on_task_finished)
+            await self.comm.register_event(TaskSkippedEvent, self._on_task_skipped)
             await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
         await self.comm.set_state(IRunning, RunningState(running=self._running))
@@ -490,6 +492,26 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
             self._need_update = True
             self._schedule_start = Time.now()
 
+        return True
+
+    async def _on_task_skipped(self, event: Event, sender: str) -> bool:
+        """Re-schedule when a task's start window was skipped as too late.
+
+        Unconditional (no ``trigger_on_task_skipped`` flag, unlike started/finished): the event
+        only fires when a window was actually lost and the remedy is always a recompute.
+
+        Args:
+            event: The task skipped event.
+            sender: Who sent it.
+        """
+        if not isinstance(event, TaskSkippedEvent):
+            return False
+
+        log.info("Received task skipped event (%s), triggering new scheduler run...", event.reason)
+
+        # set it
+        self._need_update = True
+        self._schedule_start = Time.now()
         return True
 
     async def _on_good_weather(self, event: Event, sender: str) -> bool:

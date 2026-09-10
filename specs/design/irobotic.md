@@ -131,7 +131,10 @@ class IRoboticScheduler(IStartStop, metaclass=ABCMeta):
   enforces a hard server-side ceiling regardless of what a client requests — a client-supplied
   default alone doesn't stop a client from asking for everything.
 - Re-schedule stays on the existing `IRunnable.run()` — no new method, the GUI calls it via
-  proxy.
+  proxy. Automatic re-schedules stay event-based: `Mastermind` announces a condition
+  (`TaskSkippedEvent` when a start window is skipped for lateness — see the `Scheduler` section)
+  and `Scheduler` decides to recompute, rather than the executor calling `run()` on a planner it
+  would otherwise have to know about.
 
 ## Module implementations
 
@@ -165,6 +168,11 @@ alongside `IAutonomous`/`IRobotic`. Publish `SchedulerState`
 on `open()`, `start()`, `stop()`, and after each `_schedule_worker` pass (`last_reschedule`).
 `get_schedule()` delegates to `self._schedule.get_schedule()`, maps observations to
 `RoboticTask`, filters to pending/in-progress, trims to `limit`.
+
+Re-schedule triggers: `_update_schedule()` on task-archive changes, `_on_task_started()` /
+`_on_task_finished()` (config-gated), `_on_good_weather()`, and `_on_task_skipped()` for a
+`TaskSkippedEvent` — unconditional, because the event only fires once a window was actually lost
+and the scheduler should re-plan around the miss (pyobs-core#895).
 
 ## GUI widgets
 

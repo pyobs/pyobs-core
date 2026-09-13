@@ -871,6 +871,32 @@ async def test_on_task_skipped_triggers_reschedule() -> None:
     assert abs((scheduler._schedule_start - before).sec) < 1.0
 
 
+@pytest.mark.asyncio
+async def test_on_task_skipped_respects_cooldown() -> None:
+    scheduler = make_scheduler(skip_reschedule_cooldown=3600.0)
+    await scheduler._on_task_skipped(TaskSkippedEvent(name="t", id=1, reason="first skip"), "sender")
+    first_schedule_start = scheduler._schedule_start
+
+    scheduler._need_update = False
+    result = await scheduler._on_task_skipped(TaskSkippedEvent(name="t", id=2, reason="second skip"), "sender")
+
+    assert result is True
+    assert scheduler._need_update is False
+    assert scheduler._schedule_start == first_schedule_start
+
+
+@pytest.mark.asyncio
+async def test_on_task_skipped_retriggers_after_cooldown() -> None:
+    scheduler = make_scheduler(skip_reschedule_cooldown=0.0)
+    await scheduler._on_task_skipped(TaskSkippedEvent(name="t", id=1, reason="first skip"), "sender")
+
+    scheduler._need_update = False
+    result = await scheduler._on_task_skipped(TaskSkippedEvent(name="t", id=2, reason="second skip"), "sender")
+
+    assert result is True
+    assert scheduler._need_update is True
+
+
 # ── _on_good_weather ─────────────────────────────────────────────────────────
 
 

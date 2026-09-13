@@ -163,10 +163,9 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
     def _same_observation(a: Observation | None, b: Observation) -> bool:
         """Whether two observations refer to the same scheduled run.
 
-        Compares task id and window (start/end) -- the identity both the published `next` state
-        and the late-start-skip reschedule gate key on. `None` never matches.
+        Delegates to `Observation.__eq__` (task id + window). `None` never matches.
         """
-        return a is not None and a.task.id == b.task.id and a.start == b.start and a.end == b.end
+        return a is not None and a == b
 
     async def _track_next_observation(self, observation: Observation, reason: str | None) -> bool:
         """Update self._next_observation/_cant_run_reason and publish, but only if either
@@ -230,6 +229,12 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
             if not observation.task.can_start_late:
                 late_start = now - observation.start
                 if late_start > self._allowed_late_start * u.second:
+                    # keep the skipped observation visible as `next` rather than leaving
+                    # whatever was last published stale for as long as this repeats -- published
+                    # before the event send below so a concurrent state publish (e.g. a racing
+                    # start()/stop() RPC) never observes the transient cleared-out state
+                    await self._track_next_observation(observation, None)
+
                     # warn and ask for a reschedule, once per distinct stale window -- the
                     # scheduler's handler recomputes around a task it can no longer run on time
                     if not self._same_observation(late_skipped, observation):
@@ -246,10 +251,6 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
                             )
                         )
                         late_skipped = observation
-
-                    # keep the skipped observation visible as `next` rather than leaving
-                    # whatever was last published stale for as long as this repeats
-                    await self._track_next_observation(observation, None)
 
                     # sleep a little and skip
                     await asyncio.sleep(10)

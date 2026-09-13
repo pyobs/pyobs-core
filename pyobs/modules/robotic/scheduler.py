@@ -87,6 +87,7 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         schedule_range: float = 24.0,
         safety_time: float = 300,
         min_safety_time: float = 20,
+        skip_reschedule_cooldown: float = 60.0,
         **kwargs: Any,
     ):
         """Initialize a new scheduler.
@@ -102,6 +103,9 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
                          this time in seconds to make sure that we don't schedule for a time when the scheduler is
                          still running
             min_safety_time: Minimum safety time.
+            skip_reschedule_cooldown: Minimum seconds between reschedules triggered by task-skipped events. Guards
+                         against a persistently-late task (e.g. a chronically overrunning predecessor) causing a
+                         skip -> reschedule -> immediately-late-again loop with no backoff.
         """
         Module.__init__(self, **kwargs)
 
@@ -138,10 +142,12 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         self._schedule_range = schedule_range * u.hour
         self._safety_time = safety_time * u.second
         self._min_safety_time = min_safety_time * u.second
+        self._skip_reschedule_cooldown = skip_reschedule_cooldown * u.second
 
         # time to start next schedule from
         self._schedule_start: Time = Time.now()
         self._last_reschedule: Time | None = None
+        self._last_skip_reschedule: Time | None = None
 
         # ID of currently running task, and current (or last if finished) block
         self._current_task_id = None
@@ -444,6 +450,11 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
             tasks.append(RoboticTask.from_observation(obs))
         return tasks
 
+    def _trigger_reschedule(self, start: Time) -> None:
+        """Flag a reschedule for the next `_schedule_worker` iteration, starting from `start`."""
+        self._need_update = True
+        self._schedule_start = start
+
     async def _on_task_started(self, event: Event, sender: str) -> bool:
         """Re-schedule when task has started and we can predict its end.
 
@@ -463,10 +474,7 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
             # get ETA in minutes
             eta = (event.eta - Time.now()).sec / 60 if event.eta is not None else 0.0
             log.info("Received task started event with ETA of %.0f minutes, triggering new scheduler run...", eta)
-
-            # set it
-            self._need_update = True
-            self._schedule_start = event.eta if event.eta is not None else Time.now()
+            self._trigger_reschedule(event.eta if event.eta is not None else Time.now())
 
         return True
 
@@ -487,10 +495,7 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         if self._trigger_on_task_finished:
             # get ETA in minutes
             log.info("Received task finished event, triggering new scheduler run...")
-
-            # set it
-            self._need_update = True
-            self._schedule_start = Time.now()
+            self._trigger_reschedule(Time.now())
 
         return True
 
@@ -500,6 +505,10 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         Unconditional (no ``trigger_on_task_skipped`` flag, unlike started/finished): the event
         only fires when a window was actually lost and the remedy is always a recompute.
 
+        Rate-limited by ``skip_reschedule_cooldown``: a persistently-late cause (e.g. a
+        chronically overrunning predecessor task) would otherwise make every freshly-recomputed
+        window immediately late again, triggering a reschedule on every ~10s Mastermind poll.
+
         Args:
             event: The task skipped event.
             sender: Who sent it.
@@ -507,11 +516,14 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         if not isinstance(event, TaskSkippedEvent):
             return False
 
-        log.info("Received task skipped event (%s), triggering new scheduler run...", event.reason)
+        now = Time.now()
+        if self._last_skip_reschedule is not None and now - self._last_skip_reschedule < self._skip_reschedule_cooldown:
+            log.info("Received task skipped event (%s), still in cooldown, not re-triggering.", event.reason)
+            return True
 
-        # set it
-        self._need_update = True
-        self._schedule_start = Time.now()
+        log.info("Received task skipped event (%s), triggering new scheduler run...", event.reason)
+        self._last_skip_reschedule = now
+        self._trigger_reschedule(now)
         return True
 
     async def _on_good_weather(self, event: Event, sender: str) -> bool:
@@ -527,10 +539,7 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         # get ETA in minutes
         eta = (event.eta - Time.now()).sec / 60 if event.eta is not None else 0.0
         log.info("Received good weather event with ETA of %.0f minutes, triggering new scheduler run...", eta)
-
-        # set it
-        self._need_update = True
-        self._schedule_start = event.eta if event.eta is not None else Time.now()
+        self._trigger_reschedule(event.eta if event.eta is not None else Time.now())
         return True
 
     async def abort(self, **kwargs: Any) -> None:

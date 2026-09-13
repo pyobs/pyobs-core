@@ -9,6 +9,11 @@ skipped observation's identity (via a new `Mastermind._same_observation()` helpe
 `_track_next_observation`), and `Scheduler._on_task_skipped` registered in `open()`. Tests pass;
 `ruff`, `black`, and `pyrefly` are clean (full standalone suite: 1927 passed, 23 pre-existing
 environmental failures unrelated to this change — astropy IERS offline / read-only cache paths).
+Revised after code review of PR #897: `_same_observation` now delegates to `Observation.__eq__`
+instead of reimplementing it, `Mastermind` publishes the corrected pending state before awaiting
+the event send (closing a state-consistency gap a concurrent `start()`/`stop()` RPC could
+otherwise observe), and `Scheduler`'s reschedule triggers are rate-limited
+(`skip_reschedule_cooldown`) and deduplicated through a shared `_trigger_reschedule` helper.
 
 ## Problem
 
@@ -165,6 +170,12 @@ async def _on_task_skipped(self, event: Event, sender: str) -> bool:
   behind it.
 - `_schedule_start = Time.now()` mirrors `_on_task_finished`; `_schedule_worker` already lifts a
   too-soon start to `now + safety_time`.
+- **Post-review update (code review of PR #897):** the snippet above was the initial
+  implementation; it has since been (a) rate-limited via `skip_reschedule_cooldown` so a
+  persistently-late cause can't retrigger every ~10s poll indefinitely, and (b) factored through a
+  shared `_trigger_reschedule(start)` helper also used by `_on_task_started`, `_on_task_finished`,
+  and `_on_good_weather`, which previously duplicated the same two-line body. See current
+  `pyobs/modules/robotic/scheduler.py`.
 - The triggered reschedule's `clear_schedule(start)` drops still-`PENDING` schedule entries whose
   `end` is after the new start (typically the skipped observation itself, whose window is still
   open), so it stops being re-returned by `get_next_observation()`. An entry whose `end` has
@@ -172,15 +183,9 @@ async def _on_task_skipped(self, event: Event, sender: str) -> bool:
 
 ## Alternatives considered
 
-- **`Mastermind` calls `IRunnable.run()` on the scheduler via `self.safe_proxy(...)`.** Works and
-  needs no new event, but requires `Mastermind` to know the scheduler's module name/JID (a new
-  config field) and couples the executor to the planner; a mastermind configured without it
-  silently loses the behavior. Rejected in favor of the event.
-- **A new `reschedule()` method on `IRoboticScheduler`/`ObservationArchive`.** `IRunnable.run()`
-  already is that method, and `specs/design/irobotic.md` explicitly keeps re-scheduling on it
-  ("no new method"). Rejected.
-- **Command-style event (`RescheduleEvent`, `RescheduleRequestEvent`).** Rejected — see naming
-  rationale above.
+See [ADR 0019](../adrs/0019-task-skip-reschedule-via-fact-event.md) for the considered-and-rejected
+alternatives (a direct `IRunnable.run()` proxy call, a new `IRoboticScheduler`/`ObservationArchive`
+method, a command-style event) and the fact-event decision rationale.
 
 ## Behavior changes
 
@@ -232,3 +237,19 @@ Pure `pyobs-core` change: one new event class, one send site, one handler regist
 compatible in both directions — an older scheduler ignores the unknown event; a newer scheduler
 with an older mastermind simply never receives it and behaves as today (manual `run()` still
 works). Rollback is reverting the event, the send, and the handler registration.
+
+## Acceptance criteria
+
+- [x] `TaskSkippedEvent` added and exported; round-trips through `EventFactory`.
+- [x] `Mastermind` emits it once per distinct stale observation (identity-gated via
+      `_same_observation`, delegating to `Observation.__eq__`), not once per 10s poll.
+- [x] `Scheduler._on_task_skipped` registered in `open()` and triggers a reschedule
+      (`_need_update`/`_schedule_start`) via the shared `_trigger_reschedule` helper.
+- [x] Reschedule triggered by a task-skip is rate-limited (`skip_reschedule_cooldown`, default
+      60s) so a persistently-late cause can't turn into an unthrottled skip → reschedule loop.
+- [x] The event send in `Mastermind` happens after `_track_next_observation` publishes the
+      corrected pending state, not before, so a concurrent `start()`/`stop()` RPC racing the
+      `send_event` await can't observe a transient "nothing scheduled" state.
+- [x] Tests: event round-trip, handler behavior (including cooldown), mastermind emission path.
+- [x] Docs: events reference, robotic scheduler re-triggering, recipe.
+- [x] `ruff`/`black`/`pyrefly` clean.

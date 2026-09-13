@@ -1,10 +1,16 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-10.
+Status: standing snapshot — last checked 2026-09-13.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-13**: pyobs-core#895 fix (branch `895-mastermind-reschedule-on-late-skip`) reviewed
+  (state-consistency gap in `Mastermind`'s event-send await, unthrottled skip-reschedule loop in
+  `Scheduler` — both fixed; `_same_observation`/reschedule-trigger duplication cleaned up;
+  alternatives moved to `specs/adrs/0019-task-skip-reschedule-via-fact-event.md`), opened as PR
+  #897, merged to `develop` (`45a9bf51`) — dropped from the issues table and from open plans per
+  the maintenance rule; issue stays open pending release to `main`.
 - **2026-09-10**: added pyobs-core #896 (`question`, design-stage — how #831/#832's per-exptime
   dark masters map onto an LCO portal + `AstroplanScheduler` site like pyobs-iag50; the reduction
   half and archive API additions apply unchanged, but there's no pyobs task to hang
@@ -98,14 +104,13 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (13, checked 2026-09-10)
+## Open issues (12, checked 2026-09-13)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
 | pyobs-core | [#896](https://github.com/pyobs/pyobs-core/issues/896) | How to solve per-exptime dark masters (#832) with the LCO portal + AstroplanScheduler instead of pyobs-portal + OnDemandScheduler? | *question, design-stage* — reduction half (#832) and archive API additions (#831) work unchanged on an LCO site, but there's no pyobs task to hang `match_science_exptimes` on (`LcoTaskArchive` fetches LCO requests; `LcoTaskRunner` maps `DARK`/`BIAS` to `LcoDefaultScript`, whose exptime is fixed when the request is created), pyobs-core can't submit LCO request groups, and `AstroplanScheduler` plans the whole range in one pass instead of reacting per timestep; four directions sketched (incl. `SCRIPT`-config routing and adding request-group creation to `_portal.py`), unresolved pending Tim's call (Repos: pyobs-core) |
-| pyobs-core | [#895](https://github.com/pyobs/pyobs-core/issues/895) | Mastermind should trigger a reschedule when a task's start window is skipped for lateness | |
 | pyobs-core | [#891](https://github.com/pyobs/pyobs-core/issues/891) | Weather module never backs off on repeated station connection failures | |
 | pyobs-core | [#884](https://github.com/pyobs/pyobs-core/issues/884) | Mobile app for pyobs (Android/iOS): XMPP over WebSocket + shared TS core with pyobs-web-client | *proposal, discussion-stage* — deliberately kept as the design-and-reasoning record rather than a `specs/design/` doc + plan yet |
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
@@ -131,11 +136,6 @@ One row per issue — same layout for every repo.
   *in progress* (pyobs-iag50, IAG-internal). `1.x` branch cut, `develop` reset to `2.0.0.dev0`;
   actual code migration (grid-API rewrite, `self.proxy()` async-context-manager change,
   missing-await fixes) not yet done, three open questions need Tim's input.
-- [2026-09-10-mastermind-reschedule-on-late-skip.md](../plans/2026-09-10-mastermind-reschedule-on-late-skip.md) —
-  *implemented, pending PR* (Repos: pyobs-core). `Mastermind` emits a new `TaskSkippedEvent` once
-  per distinct stale start window and `Scheduler._on_task_skipped` turns it into a recompute,
-  replacing the `first_late_start_warning` global bool with a per-observation gate (branch
-  `895-mastermind-reschedule-on-late-skip`, #895).
 
 ### Design docs still *proposed*
 

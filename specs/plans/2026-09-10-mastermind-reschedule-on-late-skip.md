@@ -1,6 +1,6 @@
 # Plan: Mastermind triggers a reschedule when a start window is skipped for lateness (pyobs-core#895)
 
-Status: implemented, pending PR (branch `895-mastermind-reschedule-on-late-skip`) (Repos: pyobs-core)
+Status: implemented, merged to develop (PR #897, `45a9bf51`) (Repos: pyobs-core)
 
 Issue: pyobs-core#895
 

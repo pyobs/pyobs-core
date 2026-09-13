@@ -255,4 +255,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   DIRECT-scheduled `SCRIPT` request dispatches through the already-built `LcoTaskRunner` →
   `LcoScript` → `DarkBiasScript(match_science_exptimes=True)` chain, sidestepping
   `AstroplanScheduler`'s plan-once limitation entirely. No pyobs-core code change needed; per-site
-  instantiation lives in that site's own repo. **proposed** (issue #896; Repos: pyobs-core)
+  instantiation lives in that site's own repo. **accepted** — iag50cm's instantiation implemented
+  in pyobs-iag50 (issue #896, closed; Repos: pyobs-core)

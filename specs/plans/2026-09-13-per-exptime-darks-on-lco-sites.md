@@ -1,8 +1,9 @@
 # Per-science-exptime darks on LCO-portal + AstroplanScheduler sites
 
-Status: proposed
+Status: accepted — iag50cm's instantiation implemented in pyobs-iag50 (see that repo's
+`specs/plans/2026-09-13-per-science-exptime-darks.md`)
 
-Issue: pyobs-core#896
+Issue: pyobs-core#896 (closed)
 
 ## Problem
 

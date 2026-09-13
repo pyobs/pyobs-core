@@ -5,6 +5,16 @@ Status: standing snapshot — last checked 2026-09-13.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-13**: #896 closed — iag50cm implementation pushed (`pyobs-iag50` `802c85d`, fleet
+  calibration cron `be71ce5`): `darkbias_1x1`/`2x2`/`3x3` script entries + `IAG50cm`'s
+  `_add_morning_zeros` override submitting DIRECT `darkbias_<binning>` requests (3h windows,
+  generous — confirmed `morning_zeros` is the last scheduled item until the next evening's
+  calibration block, and `Mastermind` advances as soon as a script finishes rather than waiting
+  for the window's end). Evening zeros deliberately left unconverted — `match_science_exptimes`
+  defaults to "the night that just ended," which before sunset still resolves to the *previous*
+  night, already covered by morning zeros. Dropped from the issues table and pyobs-core's own
+  open-plans list (design landed, doc-only); pyobs-iag50's sibling-repo entry updated to
+  *implemented, pending deploy* — live verification on `iag50srv` still outstanding.
 - **2026-09-13**: #896's open design question answered and split in two: the general mechanism
   (DIRECT-scheduled `SCRIPT` requests dispatching through the already-built `LcoTaskRunner` →
   `LcoScript` → `DarkBiasScript(match_science_exptimes=True)` chain, sidestepping
@@ -118,13 +128,12 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (11, checked 2026-09-13)
+## Open issues (10, checked 2026-09-13)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#896](https://github.com/pyobs/pyobs-core/issues/896) | How to solve per-exptime dark masters (#832) with the LCO portal + AstroplanScheduler instead of pyobs-portal + OnDemandScheduler? | *design in progress* — general mechanism designed (`specs/plans/2026-09-13-per-exptime-darks-on-lco-sites.md`): DIRECT-scheduled `SCRIPT` requests dispatch through the already-built `LcoTaskRunner`/`LcoScript`/`DarkBiasScript(match_science_exptimes=True)` chain, no pyobs-core code needed; per-site instantiation tracked per-site (iag50cm's in the sibling-repos list below) |
 | pyobs-core | [#884](https://github.com/pyobs/pyobs-core/issues/884) | Mobile app for pyobs (Android/iOS): XMPP over WebSocket + shared TS core with pyobs-web-client | *proposal, discussion-stage* — deliberately kept as the design-and-reasoning record rather than a `specs/design/` doc + plan yet |
 | pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
@@ -149,11 +158,6 @@ One row per issue — same layout for every repo.
   *in progress* (pyobs-iag50, IAG-internal). `1.x` branch cut, `develop` reset to `2.0.0.dev0`;
   actual code migration (grid-API rewrite, `self.proxy()` async-context-manager change,
   missing-await fixes) not yet done, three open questions need Tim's input.
-- [2026-09-13-per-exptime-darks-on-lco-sites.md](../plans/2026-09-13-per-exptime-darks-on-lco-sites.md) —
-  *proposed* (#896). General mechanism for per-science-exptime darks on `LcoTaskArchive` +
-  `AstroplanScheduler` sites via DIRECT-scheduled `SCRIPT` requests; no pyobs-core code change
-  needed, per-site instantiation lives in each site's own repo.
-
 ### Design docs still *proposed*
 
 - [gui-standalone-binary.md](../design/gui-standalone-binary.md) — umbrella for the compiled
@@ -167,10 +171,11 @@ One row per issue — same layout for every repo.
 One line per plan — same layout for every repo.
 
 - **pyobs-iag50** — [2026-09-13-per-science-exptime-darks.md](../../pyobs-iag50/specs/plans/2026-09-13-per-science-exptime-darks.md) —
-  iag50cm's instantiation of pyobs-core's `2026-09-13-per-exptime-darks-on-lco-sites.md` (#896):
-  config-only, no pyobs-core code change needed. Window-sizing and `allowed_overrun` still open
-  (*proposed*;
-  Repos: pyobs-iag50, pyobs-core)
+  iag50cm's instantiation of pyobs-core's (now-implemented) per-exptime-darks-on-LCO-sites
+  mechanism (formerly #896, closed): DIRECT-scheduled `SCRIPT`/`darkbias_<binning>` requests into
+  `DarkBiasScript(match_science_exptimes=True)`, config-only. **Implemented, pending deploy** —
+  pushed to `pyobs-iag50` and the fleet calibration cron; live verification on `iag50srv` still
+  outstanding (Repos: pyobs-iag50, pyobs-core)
 - **pyobs-portal** — [2026-09-02-instrument-capability-estimate-duration-endpoint.md](../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md) —
   this repo's half of pyobs-core's (now-closed) instrument-capability duration estimates: a
   TTL-cached `get_instrument_capabilities()` helper feeding `schema.py`'s `estimate_duration/`,

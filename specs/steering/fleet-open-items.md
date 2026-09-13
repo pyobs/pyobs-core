@@ -5,6 +5,24 @@ Status: standing snapshot — last checked 2026-09-13.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-13**: pyobs-web-client #49 (reconnect on connection drop) and #48 (auth for embedding
+  other pyobs apps) both real-device verified and closed — dropped from the issues table. #49's
+  fix (PR #50) turned out to have a real hang bug found during verification (`DISCONNECTED` firing
+  without a prior `CONNFAIL` left `attemptReconnect()`'s retry loop stuck on the connecting spinner
+  indefinitely — fixed in the same pass, `8808c62`). #48 landed as plain external links (PR #51),
+  not the originally-proposed in-app overlay. Also same day: #52 (show connected server in the
+  header) and #53 (non-native web build fell back to plaintext password storage, unlike
+  pyobs-polaris's `QtKeychain`, which never does — found comparing the two apps' saved-connections
+  models) both filed and closed same day, not added to the table. New: pyobs-web-client#54 and
+  pyobs-gui#167 (both "surface RPC fault `call_id` for correlating with server-side logs",
+  cross-filed same day, both assigned to Tim) — added to the table below, pyobs-gui newly appearing
+  there. `mobile-first-redesign.md` now fully done through Phase 2 (`SettingsView` migrated) and
+  Phase 3 (`safe-area-insets`/`keyboard-avoidance`, both real-device verified) — only Phase 4 (iOS,
+  blocked on Mac access) remains; `safe-area-insets.md` dropped from the open-plans list below
+  (done). Also: `testing/pyobs-gui-configs/xmpp/*.yaml`'s stale `name:`→`label:` rename finished
+  (5 remaining files) plus an independent `port:`→`http_port:` fix found live-testing a new
+  token-protected `IVideo` fixture; new `robotic.yaml` fixture added (no fixture existed before for
+  either interface).
 - **2026-09-13**: pyobs-pipeline#17 (Keycloak login) implemented, released, and deployed live at
   MONET same day — `pyobs_pipeline.authentication` app + `pyobs-auth` wiring (v2.2.0), plus a
   same-day follow-up fix for a template bug found in prod (multi-line `{# #}` Django comment
@@ -160,8 +178,8 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
 | pyobs-brot | [#68](https://github.com/pyobs/pyobs-brot/issues/68) | MQTT client does not auto-reconnect after disconnect | |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-web-client | [#49](https://github.com/pyobs/pyobs-web-client/issues/49) | Don't drop XMPP connection on brief background/foreground | *needs design* — no app-lifecycle/`appStateChange` handling in code yet; decide a grace period and how it interacts with mobile OS background-network limits |
-| pyobs-web-client | [#48](https://github.com/pyobs/pyobs-web-client/issues/48) | Design auth for embedding other pyobs apps (web-admin, portal, weather, pipeline) | *design-stage* — leaning SSO via Keycloak; open risk: a Capacitor webview doesn't share cookies with the system browser, may need an in-app browser tab for the auth hop |
+| pyobs-web-client | [#54](https://github.com/pyobs/pyobs-web-client/issues/54) | Surface RPC fault `call_id` for correlating with server-side logs | *assigned: thusser* — cross-filed with pyobs-gui#167; `specs/plans/2026-08-03-rpc-fault-call-id.md` has the design, held off implementing until a real consumer existed |
+| pyobs-gui | [#167](https://github.com/pyobs/pyobs-gui/issues/167) | Surface RPC fault `call_id` for correlating with server-side logs | *assigned: thusser* — cross-filed with pyobs-web-client#54; `ShellWidget._execute_command()` logs `str(e)` only today, `e.call_id` available but discarded |
 
 ## Open plans
 
@@ -202,12 +220,9 @@ One line per plan — same layout for every repo.
 - **pyobs-web-client** — [idatasequence](../../pyobs-web-client/specs/plans/2026-08-03-idatasequence.md) —
   `IDataSequence` support ("grab N images") (*proposed*)
 - **pyobs-web-client** — [rpc-fault-call-id](../../pyobs-web-client/specs/plans/2026-08-03-rpc-fault-call-id.md) —
-  surface `call_id` on RPC faults (*proposed*)
+  surface `call_id` on RPC faults (*proposed*; tracked via #54 above, cross-filed with pyobs-gui#167)
 - **pyobs-web-client** — [struct-typed-command-params](../../pyobs-web-client/specs/plans/2026-08-03-struct-typed-command-params.md) —
   `struct<Name>`-typed command params (*blocked on upstream*)
-- **pyobs-web-client** — [2026-09-09-safe-area-insets.md](../../pyobs-web-client/specs/plans/2026-09-09-safe-area-insets.md) —
-  status bar / gesture-nav inset handling for the compact shell + FAB, split out of
-  mobile-first-redesign Phase 3 (*proposed*)
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
-  mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phase 1 done;
-  Phase 2 done except `SettingsView`; Phases 3-4 not started)
+  mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
+  and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)

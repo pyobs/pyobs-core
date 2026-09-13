@@ -23,6 +23,7 @@ from .roofclosing import RoofClosingEvent
 from .roofopened import RoofOpenedEvent
 from .taskfailed import TaskFailedEvent
 from .taskfinished import TaskFinishedEvent
+from .taskskipped import TaskSkippedEvent
 from .taskstarted import TaskStartedEvent
 from .testevent import TestEvent
 
@@ -48,6 +49,7 @@ __all__ = [
     "TaskStartedEvent",
     "TaskFailedEvent",
     "TaskFinishedEvent",
+    "TaskSkippedEvent",
     "TestEvent",
     "OffsetsEvent",
     "OffsetsRaDecEvent",

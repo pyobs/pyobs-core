@@ -1,10 +1,26 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-09.
+Status: standing snapshot — last checked 2026-09-10.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-10**: added pyobs-core #896 (`question`, design-stage — how #831/#832's per-exptime
+  dark masters map onto an LCO portal + `AstroplanScheduler` site like pyobs-iag50; the reduction
+  half and archive API additions apply unchanged, but there's no pyobs task to hang
+  `match_science_exptimes` on, pyobs-core can't submit LCO request groups, and
+  `AstroplanScheduler` plans once rather than reacting, so four candidate directions are left
+  open for Tim's call). pyobs-core#895 fix is on branch `895-mastermind-reschedule-on-late-skip`
+  (`4087b5f9`), pending PR — kept in the issues table until it lands on `develop`. Added plan
+  pyobs-core `2026-09-10-mastermind-reschedule-on-late-skip.md` (*implemented, pending PR*).
+  Re-queried all 26 active fleet repos: no other issue/plan changes.
+- **2026-09-10**: pyobs-web-client #40-#47 all verified **fixed and released** (`v0.8.0`/`v0.9.0`)
+  against the pulled `develop` (`b60eacf`) — commits `1a7e834`/`1e3fc34`/`7327f91` (#40, #42),
+  `af58992` (#41, #43), `af4d0b5` (#44), `701ae13` (#45), `6e78ea0` (#46), `5b302aa` (#47) —
+  dropped per the maintenance rule (GitHub issues stay open pending closure). #48 (auth for
+  embedding other pyobs apps) and #49 (don't drop the XMPP connection on brief
+  background/foreground) verified still open in code: no app-lifecycle/`appStateChange` handling
+  and no embedding-auth design yet.
 - **2026-09-09**: added pyobs-core #895 (Mastermind reschedule on a late-skipped start window),
   #891 (weather module never backs off on repeated station failures); pyobs-brot #68 (MQTT client
   no auto-reconnect); pyobs-pipeline #17 (Keycloak login); pyobs-polaris #6 (CameraView renders
@@ -82,12 +98,13 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (20, checked 2026-09-09)
+## Open issues (13, checked 2026-09-10)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#896](https://github.com/pyobs/pyobs-core/issues/896) | How to solve per-exptime dark masters (#832) with the LCO portal + AstroplanScheduler instead of pyobs-portal + OnDemandScheduler? | *question, design-stage* — reduction half (#832) and archive API additions (#831) work unchanged on an LCO site, but there's no pyobs task to hang `match_science_exptimes` on (`LcoTaskArchive` fetches LCO requests; `LcoTaskRunner` maps `DARK`/`BIAS` to `LcoDefaultScript`, whose exptime is fixed when the request is created), pyobs-core can't submit LCO request groups, and `AstroplanScheduler` plans the whole range in one pass instead of reacting per timestep; four directions sketched (incl. `SCRIPT`-config routing and adding request-group creation to `_portal.py`), unresolved pending Tim's call (Repos: pyobs-core) |
 | pyobs-core | [#895](https://github.com/pyobs/pyobs-core/issues/895) | Mastermind should trigger a reschedule when a task's start window is skipped for lateness | |
 | pyobs-core | [#891](https://github.com/pyobs/pyobs-core/issues/891) | Weather module never backs off on repeated station connection failures | |
 | pyobs-core | [#884](https://github.com/pyobs/pyobs-core/issues/884) | Mobile app for pyobs (Android/iOS): XMPP over WebSocket + shared TS core with pyobs-web-client | *proposal, discussion-stage* — deliberately kept as the design-and-reasoning record rather than a `specs/design/` doc + plan yet |
@@ -98,16 +115,8 @@ One row per issue — same layout for every repo.
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-pipeline | [#17](https://github.com/pyobs/pyobs-pipeline/issues/17) | Add Keycloak login | |
 | pyobs-polaris | [#6](https://github.com/pyobs/pyobs-polaris/issues/6) | Camera page renders nothing: `CameraView` looks for `ICamera` in the stateful list, but `ICamera` has no state | |
-| pyobs-web-client | [#49](https://github.com/pyobs/pyobs-web-client/issues/49) | Don't drop XMPP connection on brief background/foreground | |
-| pyobs-web-client | [#48](https://github.com/pyobs/pyobs-web-client/issues/48) | Design auth for embedding other pyobs apps (web-admin, portal, weather, pipeline) | |
-| pyobs-web-client | [#47](https://github.com/pyobs/pyobs-web-client/issues/47) | No error message shown when auto-reconnect fails | |
-| pyobs-web-client | [#46](https://github.com/pyobs/pyobs-web-client/issues/46) | Connection label placeholder leaks internal telescope name ("MONET SAAO") | |
-| pyobs-web-client | [#45](https://github.com/pyobs/pyobs-web-client/issues/45) | Confirm-exit dialog: right-edge swipe closes app on some screens | |
-| pyobs-web-client | [#44](https://github.com/pyobs/pyobs-web-client/issues/44) | Form fields show raw wire param names instead of readable labels | |
-| pyobs-web-client | [#43](https://github.com/pyobs/pyobs-web-client/issues/43) | Camera page: window widget needs a full-frame button and binning-aware min/max | *enhancement* — `IWindow` fields are unconstrained number inputs; `ParamForm` has no min/max prop plumbing |
-| pyobs-web-client | [#42](https://github.com/pyobs/pyobs-web-client/issues/42) | Camera page: image type dropdown shows a spurious empty "—" option | *bug* — required-enum `<select>` always renders a leading empty option even when a real default is seeded |
-| pyobs-web-client | [#41](https://github.com/pyobs/pyobs-web-client/issues/41) | Camera page: binning should be a dropdown, not two number inputs | *enhancement* — generic fallback widget used instead of a capability-aware control, ignores capabilities entirely |
-| pyobs-web-client | [#40](https://github.com/pyobs/pyobs-web-client/issues/40) | `ParamForm`: drop the data-type label from rendered fields | *enhancement* — wire-type badge (`string`, `int32`, ...) shown next to every field label serves no user purpose |
+| pyobs-web-client | [#49](https://github.com/pyobs/pyobs-web-client/issues/49) | Don't drop XMPP connection on brief background/foreground | *needs design* — no app-lifecycle/`appStateChange` handling in code yet; decide a grace period and how it interacts with mobile OS background-network limits |
+| pyobs-web-client | [#48](https://github.com/pyobs/pyobs-web-client/issues/48) | Design auth for embedding other pyobs apps (web-admin, portal, weather, pipeline) | *design-stage* — leaning SSO via Keycloak; open risk: a Capacitor webview doesn't share cookies with the system browser, may need an in-app browser tab for the auth hop |
 
 ## Open plans
 
@@ -122,6 +131,11 @@ One row per issue — same layout for every repo.
   *in progress* (pyobs-iag50, IAG-internal). `1.x` branch cut, `develop` reset to `2.0.0.dev0`;
   actual code migration (grid-API rewrite, `self.proxy()` async-context-manager change,
   missing-await fixes) not yet done, three open questions need Tim's input.
+- [2026-09-10-mastermind-reschedule-on-late-skip.md](../plans/2026-09-10-mastermind-reschedule-on-late-skip.md) —
+  *implemented, pending PR* (Repos: pyobs-core). `Mastermind` emits a new `TaskSkippedEvent` once
+  per distinct stale start window and `Scheduler._on_task_skipped` turns it into a recompute,
+  replacing the `first_late_start_warning` global bool with a per-observation gate (branch
+  `895-mastermind-reschedule-on-late-skip`, #895).
 
 ### Design docs still *proposed*
 

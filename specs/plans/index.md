@@ -244,3 +244,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   pyobs-core release degrades gracefully instead of a hard parse failure (surfaced live: a
   running `mastermind` started erroring the moment the two new fields landed). **implemented,
   pending PR merge** (no issue; Repos: pyobs-core, pyobs-portal)
+- [2026-09-10-mastermind-reschedule-on-late-skip.md](2026-09-10-mastermind-reschedule-on-late-skip.md)
+  — new `TaskSkippedEvent` emitted by `Mastermind` when a task's start window is skipped as too
+  late, and subscribed to by `Scheduler` so it recomputes; replaces the `first_late_start_warning`
+  global bool with a per-observation gate. Event-vs-command decision recorded in
+  [ADR 0019](../adrs/0019-task-skip-reschedule-via-fact-event.md). **implemented, PR #897**
+  (issue #895; Repos: pyobs-core)

@@ -5,6 +5,15 @@ Status: standing snapshot — last checked 2026-09-13.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-13**: `2026-08-23-iag50-pyobs-core-2x-migration.md` moved from pyobs-core's
+  `specs/plans/` to pyobs-iag50's own `specs/plans/` (it's `Repos: pyobs-iag50 only` — a
+  single-sibling-repo doc, misfiled per `CLAUDE.md`'s cross-repo-docs rule). Both repos' plan
+  indexes and this doc's sibling-repos table updated to the new path.
+- **2026-09-13**: pyobs-polaris#6 — MIT `LICENSE` added and README given a
+  proof-of-concept/retired-status notice, per the reporter's follow-up request; commented on the
+  issue with the commit (`8ce297a`). Issue itself had already been closed won't-fix on 2026-09-10
+  (thusser: polaris retiring, pyobs-web-client is the maintained client path) but was missed in
+  that day's table update — dropped now.
 - **2026-09-13**: #896 closed — iag50cm implementation pushed (`pyobs-iag50` `802c85d`, fleet
   calibration cron `be71ce5`): `darkbias_1x1`/`2x2`/`3x3` script entries + `IAG50cm`'s
   `_add_morning_zeros` override submitting DIRECT `darkbias_<binning>` requests (3h windows,
@@ -128,7 +137,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (10, checked 2026-09-13)
+## Open issues (9, checked 2026-09-13)
 
 One row per issue — same layout for every repo.
 
@@ -141,7 +150,6 @@ One row per issue — same layout for every repo.
 | pyobs-brot | [#68](https://github.com/pyobs/pyobs-brot/issues/68) | MQTT client does not auto-reconnect after disconnect | |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-pipeline | [#17](https://github.com/pyobs/pyobs-pipeline/issues/17) | Add Keycloak login | |
-| pyobs-polaris | [#6](https://github.com/pyobs/pyobs-polaris/issues/6) | Camera page renders nothing: `CameraView` looks for `ICamera` in the stateful list, but `ICamera` has no state | |
 | pyobs-web-client | [#49](https://github.com/pyobs/pyobs-web-client/issues/49) | Don't drop XMPP connection on brief background/foreground | *needs design* — no app-lifecycle/`appStateChange` handling in code yet; decide a grace period and how it interacts with mobile OS background-network limits |
 | pyobs-web-client | [#48](https://github.com/pyobs/pyobs-web-client/issues/48) | Design auth for embedding other pyobs apps (web-admin, portal, weather, pipeline) | *design-stage* — leaning SSO via Keycloak; open risk: a Capacitor webview doesn't share cookies with the system browser, may need an in-app browser tab for the auth hop |
 
@@ -154,10 +162,6 @@ One row per issue — same layout for every repo.
   decided + spiked, widget-selection mechanism still open.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *proposed* (pyobs-gui). `TelescopeWidget` width-floor investigation with candidate fixes.
-- [2026-08-23-iag50-pyobs-core-2x-migration.md](../plans/2026-08-23-iag50-pyobs-core-2x-migration.md) —
-  *in progress* (pyobs-iag50, IAG-internal). `1.x` branch cut, `develop` reset to `2.0.0.dev0`;
-  actual code migration (grid-API rewrite, `self.proxy()` async-context-manager change,
-  missing-await fixes) not yet done, three open questions need Tim's input.
 ### Design docs still *proposed*
 
 - [gui-standalone-binary.md](../design/gui-standalone-binary.md) — umbrella for the compiled
@@ -170,6 +174,10 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
+- **pyobs-iag50** — [2026-08-23-iag50-pyobs-core-2x-migration.md](../../pyobs-iag50/specs/plans/2026-08-23-iag50-pyobs-core-2x-migration.md) —
+  *in progress*, IAG-internal. `1.x` branch cut, `develop` reset to `2.0.0.dev0`; actual code
+  migration (grid-API rewrite, `self.proxy()` async-context-manager change, missing-await fixes)
+  not yet done, three open questions need Tim's input.
 - **pyobs-iag50** — [2026-09-13-per-science-exptime-darks.md](../../pyobs-iag50/specs/plans/2026-09-13-per-science-exptime-darks.md) —
   iag50cm's instantiation of pyobs-core's (now-implemented) per-exptime-darks-on-LCO-sites
   mechanism (formerly #896, closed): DIRECT-scheduled `SCRIPT`/`darkbias_<binning>` requests into

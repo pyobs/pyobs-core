@@ -5,6 +5,17 @@ Status: standing snapshot — last checked 2026-09-13.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-13**: pyobs-pipeline#17 (Keycloak login) implemented, released, and deployed live at
+  MONET same day — `pyobs_pipeline.authentication` app + `pyobs-auth` wiring (v2.2.0), plus a
+  same-day follow-up fix for a template bug found in prod (multi-line `{# #}` Django comment
+  leaking into rendered HTML — v2.2.1). Keycloak client `pipeline` + group `/pyobs-pipeline`
+  created via `pyobs-monet`'s `central/auth/create_client.sh`; `thusser` assigned. Closed and
+  dropped from the issues table. `specs/design/shared-auth-keycloak.md` and
+  `shared-authz-keycloak.md` (living docs) updated with a follow-up note + `Repos:` line —
+  this is now a fourth cutover of that design, not just three. ADRs 0011/0014 left untouched
+  (frozen decision records, not living docs — same reason web-admin's earlier cutover never
+  updated ADR 0011's `Repos:` line either). See pyobs-pipeline's own
+  `specs/plans/2026-09-13-keycloak-login.md` for the full writeup.
 - **2026-09-13**: `2026-08-23-iag50-pyobs-core-2x-migration.md` moved from pyobs-core's
   `specs/plans/` to pyobs-iag50's own `specs/plans/` (it's `Repos: pyobs-iag50 only` — a
   single-sibling-repo doc, misfiled per `CLAUDE.md`'s cross-repo-docs rule). Both repos' plan
@@ -137,7 +148,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (9, checked 2026-09-13)
+## Open issues (8, checked 2026-09-13)
 
 One row per issue — same layout for every repo.
 
@@ -149,7 +160,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
 | pyobs-brot | [#68](https://github.com/pyobs/pyobs-brot/issues/68) | MQTT client does not auto-reconnect after disconnect | |
 | pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-pipeline | [#17](https://github.com/pyobs/pyobs-pipeline/issues/17) | Add Keycloak login | |
 | pyobs-web-client | [#49](https://github.com/pyobs/pyobs-web-client/issues/49) | Don't drop XMPP connection on brief background/foreground | *needs design* — no app-lifecycle/`appStateChange` handling in code yet; decide a grace period and how it interacts with mobile OS background-network limits |
 | pyobs-web-client | [#48](https://github.com/pyobs/pyobs-web-client/issues/48) | Design auth for embedding other pyobs apps (web-admin, portal, weather, pipeline) | *design-stage* — leaning SSO via Keycloak; open risk: a Capacitor webview doesn't share cookies with the system browser, may need an in-app browser tab for the auth hop |
 

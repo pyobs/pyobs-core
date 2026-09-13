@@ -250,3 +250,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   global bool with a per-observation gate. Event-vs-command decision recorded in
   [ADR 0019](../adrs/0019-task-skip-reschedule-via-fact-event.md). **implemented, merged to
   develop** (PR #897; issue #895; Repos: pyobs-core)
+- [2026-09-13-per-exptime-darks-on-lco-sites.md](2026-09-13-per-exptime-darks-on-lco-sites.md) —
+  general design for per-science-exptime darks on `LcoTaskArchive` + `AstroplanScheduler` sites: a
+  DIRECT-scheduled `SCRIPT` request dispatches through the already-built `LcoTaskRunner` →
+  `LcoScript` → `DarkBiasScript(match_science_exptimes=True)` chain, sidestepping
+  `AstroplanScheduler`'s plan-once limitation entirely. No pyobs-core code change needed; per-site
+  instantiation lives in that site's own repo. **proposed** (issue #896; Repos: pyobs-core)

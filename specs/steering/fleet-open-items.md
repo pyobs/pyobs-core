@@ -5,6 +5,14 @@ Status: standing snapshot — last checked 2026-09-13.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-13**: #896's open design question answered — checked
+  `~/astro/monet/config/central/calibration/calibrations.py` and confirmed `MonetS` already
+  submits its `darkbias` calibration via DIRECT-scheduled `SCRIPT` requests (Tim confirmed DIRECT
+  submissions work for iag50cm too, and that this is needed now, not deferred); `LcoScript`/
+  `LcoTaskRunner`/`DarkBiasScript(match_science_exptimes=True)` on the pyobs-core side already
+  fully supports it. Wrote up as pyobs-iag50's
+  `specs/plans/2026-09-13-per-science-exptime-darks.md` (*proposed*, added to the sibling-repos
+  list above) rather than in pyobs-core, since it's config-only with no pyobs-core code change.
 - **2026-09-13**: pyobs-core#891 root cause (`_update()` swallowing the API exception, so
   `_loop()`'s 60s outage backoff was dead code) was already fixed in `bfcdc3f4` and released in
   v2.8.7 — closed and dropped from the issues table. The secondary observation in that issue
@@ -153,6 +161,12 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
+- **pyobs-iag50** — [2026-09-13-per-science-exptime-darks.md](../../pyobs-iag50/specs/plans/2026-09-13-per-science-exptime-darks.md) —
+  answers #896: route iag50cm's morning/evening darks through DIRECT-scheduled `SCRIPT`/
+  `darkbias_<binning>` requests into `DarkBiasScript(match_science_exptimes=True)`, mirroring the
+  `MonetS` `darkbias` precedent already live in the fleet calibration cron — config-only, no
+  pyobs-core code change needed. Window-sizing and `allowed_overrun` still open (*proposed*;
+  Repos: pyobs-iag50, pyobs-core)
 - **pyobs-portal** — [2026-09-02-instrument-capability-estimate-duration-endpoint.md](../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md) —
   this repo's half of pyobs-core's (now-closed) instrument-capability duration estimates: a
   TTL-cached `get_instrument_capabilities()` helper feeding `schema.py`'s `estimate_duration/`,

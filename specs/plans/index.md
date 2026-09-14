@@ -268,5 +268,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   domain exception, and deleted `rpc.py`'s separate `except exc.ForbiddenError` branch so it flows
   through the normal `send_fault` path instead of a raw XEP-0009 `forbidden` IQ error; back-compat
   fallback paths (`xmppcomm.py`, `rpc.py`'s `_on_jabber_rpc_error`) upgraded to raise
-  `ForbiddenError` with `call_id` instead of a generic `RemoteError`. **implemented, merged to
-  develop** (`9ceb472e`; issue #899; Repos: pyobs-core)
+  `ForbiddenError` with `call_id` instead of a generic `RemoteError`. **implemented, closed** —
+  released in v2.8.9 (issue #899, closed; Repos: pyobs-core)

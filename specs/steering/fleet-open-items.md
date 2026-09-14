@@ -5,10 +5,10 @@ Status: standing snapshot — last checked 2026-09-14.
 <details>
 <summary>Changelog (most recent first)</summary>
 
-- **2026-09-14**: pyobs-core#899 (ACL-denial faults missing `call_id`/proper fault encoding) fix
-  merged to `develop` (`9ceb472e`) per
-  `specs/plans/2026-09-14-forbidden-error-call-id-and-fault-encoding.md` — dropped from the issues
-  table per the maintenance rule (issue stays open pending release to `main`).
+- **2026-09-14**: pyobs-core#899 (ACL-denial faults missing `call_id`/proper fault encoding) fixed,
+  released in v2.8.9, and closed — per
+  `specs/plans/2026-09-14-forbidden-error-call-id-and-fault-encoding.md`. Dropped from the issues
+  table.
 - **2026-09-14**: pyobs-web-client#54 and pyobs-gui#167 (RPC fault `call_id`) both closed —
   implemented in pyobs-web-client (`86e96c2`, Shell's command log now shows `call_id`) per
   `specs/plans/2026-08-03-rpc-fault-call-id.md`; pyobs-gui's own side of #167 was the same fix

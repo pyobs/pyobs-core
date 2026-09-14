@@ -1,6 +1,11 @@
 # Design: `pyobs-gui` as a standalone binary
 
-Status: proposed
+Status: rejected 2026-09-14 — the real `pyside6-deploy`/Nuitka build (see "Real app build" in
+`specs/plans/2026-07-27-gui-widget-plugins-and-packaging.md`) came out several GB, which Tim
+judged not worth shipping/distributing to a non-technical remote observer (the whole point of a
+one-file download). Kept here, not deleted, since two of the three underlying pieces
+(`gui-interactive-login.md`, `gui-login-window.md`) already shipped and stand on their own merit
+independent of this goal — see "What still stands" below.
 
 Repos: pyobs-core (login-deferral piece), pyobs-gui (login window, plugin loading, packaging)
 
@@ -80,6 +85,14 @@ required before "ship one binary" is actually true end to end.
 |---|---|---|
 | Defer `Application`'s module construction | `gui-interactive-login.md` | implemented, closed |
 | Login window UI | `gui-login-window.md` | implemented, closed |
-| Widget loading mechanism | `gui-widget-plugins-and-packaging.md` | decided + spiked, real implementation not started |
-| Widget selection mechanism | `gui-widget-plugins-and-packaging.md` | open, deliberately postponed |
-| `pyside6-deploy` packaging pipeline | `gui-widget-plugins-and-packaging.md` | real `pyobs-gui` binary builds and boots to the login window (2026-07-29); plugin directory/selection still untested |
+| Widget loading mechanism | `gui-widget-plugins-and-packaging.md` | abandoned — moot without a compiled binary to load plugins into |
+| Widget selection mechanism | `gui-widget-plugins-and-packaging.md` | abandoned, same reason |
+| `pyside6-deploy` packaging pipeline | `gui-widget-plugins-and-packaging.md` | abandoned — the real build that proved it worked is also what surfaced the several-GB size that killed the goal |
+
+## What still stands
+
+The login-deferral/login-window pair (`gui-interactive-login.md`, `gui-login-window.md`) doesn't
+depend on shipping a compiled binary — it's a real UX improvement to `pyobs-gui` on its own
+(saved accounts, no hand-edited YAML) regardless of how the app is distributed. Both already
+shipped and stay shipped; only the packaging/plugin-loading piece (and the "one download, no
+Python install" framing this doc was written around) is off the table.

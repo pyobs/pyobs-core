@@ -5,6 +5,11 @@ Status: standing snapshot — last checked 2026-09-14.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-14**: `gui-standalone-binary.md` rejected (Tim: the real build came out several GB, not
+  a viable one-file download for a non-technical remote observer) — dropped from both the open
+  design docs list and `2026-07-27-gui-widget-plugins-and-packaging.md` from the open plans list
+  (that plan's own purpose was serving this goal, now moot). The login-deferral/login-window pair
+  underneath it already shipped independently and isn't affected.
 - **2026-09-14**: pyobs-core#899 (ACL-denial faults missing `call_id`/proper fault encoding) fixed,
   released in v2.8.9, and closed — per
   `specs/plans/2026-09-14-forbidden-error-call-id-and-fault-encoding.md`. Dropped from the issues
@@ -226,15 +231,10 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
-- [2026-07-27-gui-widget-plugins-and-packaging.md](../plans/2026-07-27-gui-widget-plugins-and-packaging.md) —
-  *draft* (pyobs-gui). Widget plugin mechanism + `pyside6-deploy` packaging; loading mechanism
-  decided + spiked, widget-selection mechanism still open.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *proposed* (pyobs-gui). `TelescopeWidget` width-floor investigation with candidate fixes.
 ### Design docs still *proposed*
 
-- [gui-standalone-binary.md](../design/gui-standalone-binary.md) — umbrella for the compiled
-  pyobs-gui binary; login pieces done, widget plugin/selection + real plugin smoke test still open.
 - [interface_versioning.md](../design/interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.

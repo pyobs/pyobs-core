@@ -12,7 +12,7 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [external_interfaces_registry.md](external_interfaces_registry.md) — external interfaces
   registry. *implemented, closed*
 - [gui-standalone-binary.md](gui-standalone-binary.md) — `pyobs-gui` as a standalone binary.
-  *proposed* (Repos: pyobs-core, pyobs-gui)
+  *rejected 2026-09-14* — real build came out several GB (Repos: pyobs-core, pyobs-gui)
 - [icamera_iexposure.md](icamera_iexposure.md) — decouple camera identity from exposure-progress
   state. *implemented, closed* (#437)
 - [idatasequence.md](idatasequence.md) — server-side counted data sequences. *implemented,

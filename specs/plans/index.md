@@ -120,7 +120,8 @@ Implementation plans, checklist-style. Newest at the bottom.
 
 ## Not finished
 - [2026-07-27-gui-widget-plugins-and-packaging.md](2026-07-27-gui-widget-plugins-and-packaging.md) —
-  widget plugin mechanism + `pyside6-deploy` packaging. **draft** (Repos: pyobs-gui)
+  widget plugin mechanism + `pyside6-deploy` packaging. **abandoned 2026-09-14** — umbrella goal
+  (`gui-standalone-binary.md`) rejected, real build came out several GB (Repos: pyobs-gui)
 - [2026-07-29-gui-telescopewidget-layout.md](2026-07-29-gui-telescopewidget-layout.md) —
   `TelescopeWidget` width-floor investigation. **proposed** (Repos: pyobs-gui)
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —

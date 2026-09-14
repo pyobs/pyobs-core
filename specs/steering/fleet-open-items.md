@@ -14,8 +14,8 @@ Status: standing snapshot — last checked 2026-09-14.
   real PLC source (`~/code/brotlib`)**: the resend does not explain this issue's actual symptom — a
   dropped offset command would show as instant false convergence, not the sustained elevated
   `TARGETDISTANCE` reported. The genuine drive-fault/following-error root cause is still
-  unconfirmed and no longer tracked by any issue now that #61 is closed — worth a fresh issue if
-  it recurs. Dropped from the issues table.
+  unconfirmed. Split out to pyobs-brot#71 (added to the issues table below) so it stays tracked.
+  #61 itself dropped from the issues table.
 - **2026-09-14**: pyobs-brot#68 closed — `MQTTTransport.run()` now auto-reconnects with exponential
   backoff (1s-30s) instead of dying silently on disconnect, and resets `_connected`/
   `_connected_event` immediately so `publish()` correctly blocks through an outage instead of
@@ -194,7 +194,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (5, checked 2026-09-14)
+## Open issues (6, checked 2026-09-14)
 
 One row per issue — same layout for every repo.
 
@@ -205,6 +205,7 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
 | pyobs-web-client | [#54](https://github.com/pyobs/pyobs-web-client/issues/54) | Surface RPC fault `call_id` for correlating with server-side logs | *assigned: thusser* — cross-filed with pyobs-gui#167; `specs/plans/2026-08-03-rpc-fault-call-id.md` has the design, held off implementing until a real consumer existed |
 | pyobs-gui | [#167](https://github.com/pyobs/pyobs-gui/issues/167) | Surface RPC fault `call_id` for correlating with server-side logs | *assigned: thusser* — cross-filed with pyobs-web-client#54; `ShellWidget._execute_command()` logs `str(e)` only today, `e.call_id` available but discarded |
+| pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 
 ## Open plans
 

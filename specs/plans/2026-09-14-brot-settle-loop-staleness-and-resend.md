@@ -169,4 +169,6 @@ detection is the part of this plan that actually targets the diagnosed symptom.
   telemetry for the actual incident window" investigation items are about *why* a mount might
   genuinely fail to settle, not the staleness-detection gap this plan closes — separate follow-up,
   not covered here. **Confirmed still open and still the more likely explanation** for #61's actual
-  symptom, per the PLC-code analysis above.
+  symptom, per the PLC-code analysis above. Split out to
+  [pyobs-brot#71](https://github.com/pyobs/pyobs-brot/issues/71) so it stays tracked now that #61
+  is closed.

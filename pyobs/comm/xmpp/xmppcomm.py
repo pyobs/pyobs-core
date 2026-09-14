@@ -665,8 +665,18 @@ class XmppComm(Comm):
             # slixmpp's own Iq.send() future resolves on the reply's stanza id before the
             # RPC layer's jabber_rpc_error event handling ever gets a chance to act on it,
             # so the IQ-level "forbidden" condition (see Module ACLs) has to be read here.
+            # This branch is a back-compat fallback for a peer running an older pyobs-core that
+            # still sends a raw XEP-0009 forbidden IQ error instead of a normal fault -- a current
+            # server routes ACL denials through the same fault path as every other domain
+            # exception (see Module.execute()/comm/xmpp/rpc.py), so a denied call to a peer
+            # running this fix never reaches this branch at all.
             if e.iq["error"]["condition"] == "forbidden":
-                raise exc.RemoteError(f"Forbidden to invoke {method} on {client}.", module=client)
+                call_id: str | slixmpp.JID = e.iq["id"]
+                if isinstance(call_id, slixmpp.JID):
+                    call_id = call_id.node
+                forbidden = exc.ForbiddenError(f"Forbidden to invoke {method} on {client}.", module=client)
+                setattr(forbidden, "call_id", call_id or None)
+                raise forbidden
             raise exc.RemoteError(f"Could not call {method} on {client}.", module=client)
         except slixmpp.exceptions.IqTimeout:
             raise exc.RemoteTimeoutError(f"Call to {method} on {client} timed out.", module=client)

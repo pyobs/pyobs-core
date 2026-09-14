@@ -262,3 +262,11 @@ Implementation plans, checklist-style. Newest at the bottom.
   (genuine mount struggle / drive fault remains the likelier cause, still uninvestigated — no longer
   tracked by any issue since #61 closed). **implemented, closed** (issue pyobs-brot#61, closed;
   Repos: pyobs-brot, pybrotlib)
+- [2026-09-14-forbidden-error-call-id-and-fault-encoding.md](2026-09-14-forbidden-error-call-id-and-fault-encoding.md)
+  — stop special-casing ACL-denial `ForbiddenError`: widened `Module.execute()`'s existing try
+  block to cover the ACL check so it gets `call_id`/logging/`_record_exception` like every other
+  domain exception, and deleted `rpc.py`'s separate `except exc.ForbiddenError` branch so it flows
+  through the normal `send_fault` path instead of a raw XEP-0009 `forbidden` IQ error; back-compat
+  fallback paths (`xmppcomm.py`, `rpc.py`'s `_on_jabber_rpc_error`) upgraded to raise
+  `ForbiddenError` with `call_id` instead of a generic `RemoteError`. **implemented, pending PR**
+  (issue #899; Repos: pyobs-core)

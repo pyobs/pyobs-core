@@ -115,7 +115,10 @@ async def test_execute_allow_interface_name_sugar_permits_interface_methods():
     # set_config_value is part of IConfig, so it's permitted by the "IConfig" sugar entry --
     # denial happens before argument binding, so a missing "name" arg would still raise
     # ForbiddenError first if this were denied; here we just confirm it isn't ForbiddenError.
-    with pytest.raises(TypeError):
+    # A bad-argument TypeError from binding is classified like any other non-PyobsError escape
+    # (execute()'s try block now wraps binding too, see #899) -- UnclassifiedError, not the raw
+    # TypeError.
+    with pytest.raises(exc.UnclassifiedError):
         await module.execute("set_config_value", sender="scheduler")
 
 
@@ -169,6 +172,45 @@ async def test_execute_deny_blocks_listed_sender():
 async def test_execute_deny_allows_other_senders():
     module = StandAlone(acl={"deny": ["legacy_gui"]})
     assert await module.execute("reset_error", sender="anyone_else") is True
+
+
+@pytest.mark.asyncio
+async def test_execute_forbidden_error_carries_call_id():
+    """ACL denial gets the same call_id stamping as every other domain exception (#899) --
+    it used to raise before execute()'s try block ever ran, so call_id was silently dropped."""
+    module = StandAlone(acl={"deny": ["legacy_gui"]})
+    with pytest.raises(exc.ForbiddenError) as exc_info:
+        await module.execute("reset_error", sender="legacy_gui", call_id="test-call-id-42")
+    assert exc_info.value.call_id == "test-call-id-42"
+
+
+@pytest.mark.asyncio
+async def test_execute_forbidden_error_logs_at_warning(caplog):
+    """ACL denial keeps its former WARNING-level visibility rather than falling back to the
+    default INFO level every other suppressible domain exception logs at (#899)."""
+    module = StandAlone(acl={"deny": ["legacy_gui"]})
+    with caplog.at_level(logging.INFO):
+        with pytest.raises(exc.ForbiddenError):
+            await module.execute("reset_error", sender="legacy_gui")
+    records = [r for r in caplog.records if "reset_error" in r.message]
+    assert records and all(r.levelno == logging.WARNING for r in records)
+
+
+@pytest.mark.asyncio
+async def test_execute_forbidden_error_records_exception():
+    """ACL denial is now recorded via _record_exception like every other domain exception (#899)
+    -- verified indirectly through the severity-handler mechanism _record_exception drives."""
+    module = StandAlone(acl={"deny": ["legacy_gui"]})
+    triggered: list[exc.PyobsError] = []
+
+    async def _on_forbidden(e: exc.PyobsError) -> None:
+        triggered.append(e)
+
+    module._register_exception(exc.ForbiddenError, limit=1, callback=_on_forbidden)
+    with pytest.raises(exc.ForbiddenError):
+        await module.execute("reset_error", sender="legacy_gui")
+    await asyncio.sleep(0)  # let the callback's create_task()'d coroutine run
+    assert len(triggered) == 1
 
 
 @pytest.mark.asyncio

@@ -637,30 +637,6 @@ class Module(Object, IModule, IConfig):
         # neither side pointing at the other. Not set for LocalComm/MultiModule, which are already
         # in the same log stream as the caller.
         call_id = kwargs.get("call_id", None)
-        if method != "get_permitted_methods" and self._acl_denied(sender, method):
-            if self._acl_mode == "enforce":
-                raise exc.ForbiddenError(
-                    f"Caller '{sender}' is not permitted to invoke '{method}'.",
-                    sender=sender,
-                    method=method,
-                    module=sender,
-                )
-            else:
-                log.warning('Caller "%s" would be denied calling "%s" (acl mode=log, allowing).', sender, method)
-
-        # bind parameters
-        ba = signature.bind(*args, **kwargs)
-        ba.apply_defaults()
-
-        # get additional args and kwargs and delete from ba
-        func_args = []
-        func_kwargs = {}
-        if "args" in ba.arguments:
-            func_args = ba.arguments["args"]
-            del ba.arguments["args"]
-        if "kwargs" in ba.arguments:
-            func_kwargs = ba.arguments["kwargs"]
-            del ba.arguments["kwargs"]
 
         # call method — set module name context var so log messages from RPC calls
         # carry the correct module name rather than the caller's context
@@ -669,6 +645,35 @@ class Module(Object, IModule, IConfig):
         _module_name_var.set(self._device_name or "")
 
         try:
+            # ACL check and parameter binding live inside this try too, not just the call to
+            # func() itself -- a denied caller (ForbiddenError) needs the same call_id stamping,
+            # logging, and _record_exception treatment as every other domain exception below,
+            # rather than a special case elsewhere (see comm/xmpp/rpc.py's fault encoding).
+            if method != "get_permitted_methods" and self._acl_denied(sender, method):
+                if self._acl_mode == "enforce":
+                    raise exc.ForbiddenError(
+                        f"Caller '{sender}' is not permitted to invoke '{method}'.",
+                        sender=sender,
+                        method=method,
+                        module=sender,
+                    )
+                else:
+                    log.warning('Caller "%s" would be denied calling "%s" (acl mode=log, allowing).', sender, method)
+
+            # bind parameters
+            ba = signature.bind(*args, **kwargs)
+            ba.apply_defaults()
+
+            # get additional args and kwargs and delete from ba
+            func_args = []
+            func_kwargs = {}
+            if "args" in ba.arguments:
+                func_args = ba.arguments["args"]
+                del ba.arguments["args"]
+            if "kwargs" in ba.arguments:
+                func_kwargs = ba.arguments["kwargs"]
+                del ba.arguments["kwargs"]
+
             response = await func(*func_args, **ba.arguments, **func_kwargs)
         except Exception as raised:
             # classify: anything that isn't a domain PyobsError wasn't part of the deliberate
@@ -691,8 +696,12 @@ class Module(Object, IModule, IConfig):
             else:
                 # every other domain exception logs as a quiet INFO line by default -- a module opts
                 # out per-type via _disable_exception_logging, it doesn't opt in per-method anymore.
+                # ForbiddenError is the one exception kept at WARNING rather than INFO -- an ACL
+                # denial is arguably security-relevant, worth more default visibility than a
+                # routine domain failure.
+                level = "WARNING" if isinstance(e, exc.ForbiddenError) else "INFO"
                 if not isinstance(e, self._disabled_exception_logging):
-                    e.log(log, "INFO", f"Exception was raised in call to {method}{call_id_suffix}: {e}", exc_info=False)
+                    e.log(log, level, f"Exception was raised in call to {method}{call_id_suffix}: {e}", exc_info=False)
                 # else: caller already has it; nothing to log locally
 
             self._record_exception(e)

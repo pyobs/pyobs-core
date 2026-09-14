@@ -1,0 +1,279 @@
+from __future__ import annotations
+
+import asyncio
+import logging
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+from pyobs.events import Event, LogEvent, ModuleOpenedEvent
+from pyobs.interfaces import Interface, IPushNotifications
+from pyobs.modules import Module
+from pyobs.utils.time import Time
+
+if TYPE_CHECKING:
+    from firebase_admin import App
+
+log = logging.getLogger(__name__)
+
+# Maximum number of alerts to buffer before dropping new ones. Keeps RAM bounded during bursts.
+_QUEUE_MAX = 200
+
+# Log levels that trigger a push notification.
+_ALERT_LOG_LEVELS = {"ERROR", "CRITICAL"}
+
+# Timeout for blocking Firebase SDK calls run in a thread -- bounds the wait so a hung network
+# call can't stall the sender thread (and thus the alert queue) forever.
+_FIREBASE_CALL_TIMEOUT = 15.0
+
+# Storage file for registered devices.
+_STORAGE_FILE = "/pyobs/pushnotifier.yaml"
+
+
+@dataclass
+class _Alert:
+    title: str
+    body: str
+
+
+class PushNotifier(Module, IPushNotifications):
+    """Relays fleet-wide module-`ERROR` state and `ERROR`/`CRITICAL` log events to mobile devices
+    via Firebase Cloud Messaging (Android only in v1 -- see specs/design/push-notification-module.md).
+    """
+
+    __module__ = "pyobs.modules.utils"
+
+    def __init__(self, credentials_file: str, **kwargs: Any):
+        """Initialize a new push notifier.
+
+        Args:
+            credentials_file: VFS path to the Firebase service-account credentials JSON file
+                (e.g. "/pyobs/firebase-credentials.json"). Distinct from and never overlapping
+                with the client-side google-services.json/API key.
+        """
+        Module.__init__(self, **kwargs)
+
+        self._credentials_file = credentials_file
+        self._devices: dict[str, list[dict[str, Any]]] = {}
+        self._alert_queue: asyncio.Queue[_Alert] = asyncio.Queue(maxsize=_QUEUE_MAX)
+        self._fcm_app: App | None = None
+
+        self.add_background_task(self._sender_thread)
+
+    async def open(self) -> None:
+        """Open module."""
+        await Module.open(self)
+
+        # load registered devices
+        try:
+            self._devices = await self.vfs.read_yaml(_STORAGE_FILE)
+        except FileNotFoundError:
+            self._devices = {}
+
+        # init Firebase
+        await self._init_firebase()
+
+        # subscribe to state of all currently connected clients, and react to new ones
+        for client in self.comm.clients:
+            await self._subscribe_client(client)
+        await self.comm.register_event(ModuleOpenedEvent, self._on_module_opened)
+
+        # listen to log events
+        await self.comm.register_event(LogEvent, self._process_log_entry)
+
+    async def close(self) -> None:
+        """Close module."""
+        await Module.close(self)
+
+        if self._fcm_app is not None:
+            import firebase_admin
+
+            firebase_admin.delete_app(self._fcm_app)
+            self._fcm_app = None
+
+    async def _init_firebase(self) -> None:
+        """Load the service-account credentials and initialize the Firebase app.
+
+        Runs blocking Firebase SDK calls in a thread -- never call firebase_admin directly on
+        the event loop (see specs/steering/blocking-sdk-calls-must-not-run-on-the-event-loop.md).
+        """
+        try:
+            import firebase_admin
+            from firebase_admin import credentials
+
+            cred_dict = await self.vfs.read_yaml(self._credentials_file)
+
+            def _init() -> App:
+                cred = credentials.Certificate(cred_dict)
+                # unique app name -- the default name collides if more than one PushNotifier
+                # instance (e.g. in tests) initializes firebase_admin in the same process
+                return firebase_admin.initialize_app(cred, name=f"pushnotifier-{id(self)}")
+
+            self._fcm_app = await asyncio.wait_for(asyncio.to_thread(_init), timeout=_FIREBASE_CALL_TIMEOUT)
+
+        except Exception:
+            log.exception("Could not initialize Firebase, push notifications are disabled.")
+            self._fcm_app = None
+
+    async def _subscribe_client(self, module: str) -> None:
+        """Subscribe to state updates for every state-bearing interface of the given module.
+
+        Args:
+            module: Name of the module to subscribe to.
+        """
+        if module == self.comm.name:
+            return
+
+        try:
+            interfaces = await self.comm.get_interfaces(module)
+        except Exception:
+            log.exception("Could not get interfaces for %s.", module)
+            return
+
+        for iface in interfaces:
+            if not iface.has_own_state():
+                continue
+            await self.comm.subscribe_state(module, iface, self._make_state_callback(module, iface))
+
+    def _make_state_callback(self, module: str, iface: type[Interface]) -> Any:
+        """Build a state-update callback bound to a specific module/interface.
+
+        Args:
+            module: Name of the module this callback is for.
+            iface: Interface this callback is for.
+        """
+
+        def _callback(state: Any) -> None:
+            status = getattr(state, "status", None)
+            if status is not None and str(status).upper() == "ERROR":
+                self._enqueue_alert(f"{module}: ERROR", f"{iface.__name__} reports an ERROR state.")
+
+        return _callback
+
+    async def _on_module_opened(self, event: Event, sender: str) -> bool:
+        """React to other modules connecting, subscribing to their state.
+
+        Args:
+            event: The event.
+            sender: Name of sender.
+        """
+        if sender == self.comm.name or not isinstance(event, ModuleOpenedEvent):
+            return False
+
+        await self._subscribe_client(sender)
+        return True
+
+    async def _process_log_entry(self, entry: Event, sender: str) -> bool:
+        """Process a new log entry, alerting on ERROR/CRITICAL.
+
+        Args:
+            entry: The log event.
+            sender: Name of sender.
+        """
+        if not isinstance(entry, LogEvent):
+            return False
+
+        if entry.level not in _ALERT_LOG_LEVELS:
+            return False
+
+        self._enqueue_alert(f"{sender}: {entry.level}", entry.message)
+        return True
+
+    def _enqueue_alert(self, title: str, body: str) -> None:
+        """Queue an alert for sending, dropping it if the queue is full.
+
+        Args:
+            title: Alert title.
+            body: Alert body.
+        """
+        if self._alert_queue.full():
+            log.warning("Push notification queue full, dropping alert.")
+            return
+        self._alert_queue.put_nowait(_Alert(title=title, body=body))
+
+    async def _sender_thread(self) -> None:
+        """Drain the alert queue and send notifications one at a time.
+
+        Consecutive duplicate alerts (same title and body) are suppressed, since one fixed rule
+        set applies fleet-wide -- every registered device gets the exact same alert, so a single
+        global dedup (rather than Telegram's per-user one) is enough.
+        """
+        last: tuple[str, str] | None = None
+        repeat_count = 0
+
+        while True:
+            alert = await self._alert_queue.get()
+
+            try:
+                key = (alert.title, alert.body)
+                if key == last:
+                    repeat_count += 1
+                    continue
+
+                if repeat_count > 0:
+                    log.info("Suppressed %d repeat push notification(s).", repeat_count)
+                    repeat_count = 0
+                last = key
+
+                await self._send_to_all_devices(alert)
+
+            except Exception:
+                log.exception("Failed to send push notification.")
+
+            finally:
+                self._alert_queue.task_done()
+
+    async def _send_to_all_devices(self, alert: _Alert) -> None:
+        """Send an alert to every registered Android device.
+
+        Args:
+            alert: The alert to send.
+        """
+        if self._fcm_app is None:
+            return
+
+        tokens = [
+            device["token"]
+            for devices in self._devices.values()
+            for device in devices
+            if device.get("platform", "android") == "android"
+        ]
+        if not tokens:
+            return
+
+        from firebase_admin import messaging
+
+        def _send() -> None:
+            for token in tokens:
+                try:
+                    messaging.send(
+                        messaging.Message(
+                            notification=messaging.Notification(title=alert.title, body=alert.body),
+                            token=token,
+                        ),
+                        app=self._fcm_app,
+                    )
+                except Exception:
+                    log.exception("Failed to send push notification to a device.")
+
+        try:
+            await asyncio.wait_for(asyncio.to_thread(_send), timeout=_FIREBASE_CALL_TIMEOUT)
+        except TimeoutError:
+            log.error("Sending push notifications timed out.")
+
+    async def register_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
+        """Register a device to receive push notifications.
+
+        Args:
+            token: FCM/APNs device token.
+            platform: Device platform ("android" or "ios").
+        """
+        sender = kwargs.get("sender", "")
+
+        devices = self._devices.setdefault(sender, [])
+        devices[:] = [d for d in devices if d.get("token") != token]
+        devices.append({"token": token, "platform": platform, "registered_at": Time.now().isot})
+
+        await self.vfs.write_yaml(_STORAGE_FILE, self._devices)
+
+
+__all__ = ["PushNotifier"]

@@ -252,7 +252,8 @@ One row per issue — same layout for every repo.
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.
 - [push-notification-module.md](../design/push-notification-module.md) — sketch stage; direction
-  and v1 scope decided, not yet built (Repos: pyobs-core, pyobs-web-client).
+  and v1 scope decided, not yet built (Repos: pyobs-core, pyobs-web-client). Tracked by #902
+  (filed 2026-09-14 after #884 turned out to be closed for an unrelated reason).
 
 ### Sibling repos
 

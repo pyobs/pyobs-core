@@ -1,6 +1,6 @@
 # Plan: route ACL-denial faults through the normal call_id/fault-encoding path (#899)
 
-Status: implemented (`develop`; issue stays open pending release to `main`)
+Status: implemented, merged to `develop` (`9ceb472e`); issue stays open pending release to `main`
 
 Issue: pyobs-core#899
 

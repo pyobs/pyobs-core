@@ -5,6 +5,10 @@ Status: standing snapshot — last checked 2026-09-14.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-14**: pyobs-core#899 (ACL-denial faults missing `call_id`/proper fault encoding) fix
+  merged to `develop` (`9ceb472e`) per
+  `specs/plans/2026-09-14-forbidden-error-call-id-and-fault-encoding.md` — dropped from the issues
+  table per the maintenance rule (issue stays open pending release to `main`).
 - **2026-09-14**: pyobs-web-client#54 and pyobs-gui#167 (RPC fault `call_id`) both closed —
   implemented in pyobs-web-client (`86e96c2`, Shell's command log now shows `call_id`) per
   `specs/plans/2026-08-03-rpc-fault-call-id.md`; pyobs-gui's own side of #167 was the same fix
@@ -207,14 +211,13 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (5, checked 2026-09-14)
+## Open issues (4, checked 2026-09-14)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
 | pyobs-web-admin | [#95](https://github.com/pyobs/pyobs-web-admin/issues/95) | Log filtering should grep the real log/journal on the server, over all history when no date is set | *enhancement, assigned: thusser* |
-| pyobs-core | [#899](https://github.com/pyobs/pyobs-core/issues/899) | ACL-denial faults don't carry `call_id`, arrive as a raw XMPP error not a proper RPC fault | *assigned: thusser* — fix implemented on `develop` per [2026-09-14-forbidden-error-call-id-and-fault-encoding.md](../plans/2026-09-14-forbidden-error-call-id-and-fault-encoding.md); not yet in a PR/merged |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |

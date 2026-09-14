@@ -1,6 +1,8 @@
 # Plan: `pyobs-gui` TelescopeWidget layout — width floor investigation & design notes
 
-Status: proposed — exploratory, not yet implemented.
+Status: partially implemented (pyobs-gui `2ef4b55`, 2026-09-14) — fixes #1 (`MoveStack`) and #3
+(`WrapLongRows`) landed; #2 (moot now that #1 is done) and #4 (breakpoint reflow, likely made
+unnecessary by `2026-09-14-stacked-widget-scroll-fallback.md`) not done.
 
 Repos: pyobs-gui (all implementation here, `pyobs_gui/telescopewidget.py`,
 `pyobs_gui/qt/telescopewidget.ui`, and the composed widgets it embeds (`CompassMoveWidget`,
@@ -185,13 +187,9 @@ enough on their own.
 
 ## Open questions to resolve before implementing anything above
 
-- **Compass icon direction**: `buttonOffsetEast` uses
-  `arrow-alt-circle-left-solid.svg` and `buttonOffsetWest` uses
-  `arrow-alt-circle-right-solid.svg` (`compassmovewidget.ui:19-56`) — east
-  points left, west points right. Could be intentional (some
-  telescope/eyepiece/guider views mirror east-west), could be a leftover
-  icon swap. Worth checking against actual finder/guider view orientation
-  before touching this widget.
+- ~~**Compass icon direction**~~ — confirmed correct (Tim, 2026-09-14, checked against a real
+  render): `buttonOffsetEast`'s left-pointing icon and `buttonOffsetWest`'s right-pointing icon are
+  intentional, not a leftover swap. Not a concern for any of the fixes above.
 - What's the realistic upper bound on fields for a single coordinate-type
   page, looking at the actual `IPointing*` interfaces? If orbit elements (7
   fields) is close to the ceiling, the fixed-page approach is fine

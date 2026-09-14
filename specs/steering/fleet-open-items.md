@@ -239,7 +239,8 @@ One row per issue — same layout for every repo.
 ### pyobs-core `specs/plans/`
 
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
-  *proposed* (pyobs-gui). `TelescopeWidget` width-floor investigation with candidate fixes.
+  *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
+  (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot, see below.
 ### Design docs still *proposed*
 
 - [interface_versioning.md](../design/interface_versioning.md) — additive interface versioning
@@ -260,3 +261,9 @@ One line per plan — same layout for every repo.
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)
+- **pyobs-gui** — [2026-09-14-stacked-widget-scroll-fallback.md](../../pyobs-gui/specs/2026-09-14-stacked-widget-scroll-fallback.md) —
+  wrap `stackedWidget` in a `QScrollArea` as a general fallback once a module page can't shrink
+  further, instead of fixing each width floor individually (*proposed*)
+- **pyobs-gui** — [2026-09-14-fitswidget-toolbar-overflow.md](../../pyobs-gui/specs/2026-09-14-fitswidget-toolbar-overflow.md) —
+  responsive Cuts/Stretch/Colormap toolbar in `qfitswidget`'s `QFitsWidget`: hide-then-overflow as
+  width shrinks (*proposed*; Repos: qfitswidget, hosted in pyobs-gui's specs/)

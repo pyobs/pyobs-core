@@ -135,7 +135,9 @@ class ShellCommand:
             except ValueError as e:
                 return self.__err(f"Invalid parameter: {str(e)}")
             except exc.RemoteError as e:
-                return self.__err(f"Exception raised: {str(e)}")
+                call_id = getattr(e, "call_id", None)
+                suffix = f" (call_id={call_id})" if call_id else ""
+                return self.__err(f"Exception raised: {str(e)}{suffix}")
 
         # log response
         msg = "OK" if response is None else pprint.pformat(response)

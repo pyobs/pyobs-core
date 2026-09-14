@@ -237,7 +237,10 @@ Once the scheduler has run, check ``/opt/pyobs/robotic/observations/`` for a YAM
 the computed schedule. The mastermind will pick it up and begin executing tasks at the right time.
 
 To trigger an immediate reschedule (e.g. after adding a new task file), call the scheduler's
-``run`` method from the GUI or via the CLI.
+``run`` method from the GUI or via the CLI. The mastermind also asks for one automatically when it
+has to skip a task whose start window is already more than ``allowed_late_start`` seconds in the
+past: it emits a :class:`~pyobs.events.TaskSkippedEvent`, which the scheduler turns into a
+re-plan.
 
 
 Where to go next

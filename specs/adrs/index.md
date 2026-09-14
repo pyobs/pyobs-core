@@ -63,3 +63,8 @@ Short decision records for choices that had genuine considered-and-rejected alte
   a new UI framework, only Capacitor packaging of the existing web client (issue #884;
   `pyobs-web-client/specs/design/native-app-shell-capacitor.md`; Repos: pyobs-core,
   pyobs-web-client)
+- [0019-task-skip-reschedule-via-fact-event.md](0019-task-skip-reschedule-via-fact-event.md) —
+  `Mastermind` reports a skipped task via a fact event (`TaskSkippedEvent`), not a command or new
+  `IRoboticScheduler`/`ObservationArchive` method; `Scheduler` independently decides to
+  reschedule. *accepted* (issue #895; execution tracked in
+  `specs/plans/2026-09-10-mastermind-reschedule-on-late-skip.md`)

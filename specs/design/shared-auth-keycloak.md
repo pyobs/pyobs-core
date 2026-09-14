@@ -16,7 +16,12 @@ is configured: "Log in with `<hinted IdP>`" (default, via `IDP_HINT`) and "Log i
 Keycloak account" (via a present-but-empty `?idp_hint=`), keeping the local-account path reachable.
 The alias and button label are per-deployment `PYOBS_AUTH` config (`IDP_HINT`/`IDP_LABEL`) — an
 instance of this design's "upstream wiring is operational config" principle.
-Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin
+
+Follow-up (2026-09-13, `pyobs-pipeline/specs/plans/2026-09-13-keycloak-login.md`): fourth cutover,
+`pyobs-pipeline` — supplements (doesn't replace) its existing shared admin/password login, same
+shape as web-admin's. Shipped in `pyobs-pipeline` `v2.2.0` (plus a same-day `v2.2.1` fix for an
+unrelated template bug found live in prod), deployed and verified at MONET.
+Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin, pyobs-pipeline
 
 ## Problem
 

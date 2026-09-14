@@ -119,11 +119,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   **implemented, closed** (pyobs-gui#154; Repos: pyobs-gui, pyobs-core)
 
 ## Not finished
-- [2026-08-23-iag50-pyobs-core-2x-migration.md](2026-08-23-iag50-pyobs-core-2x-migration.md) —
-  pyobs-iag50's `2.0.0.dev2` version bump was premature (still pinned/locked to pyobs-core 1.x);
-  real migration work — grid-API rewrite, `self.proxy()` context-manager change, missing-await
-  fixes. **in progress** — `1.x` branch cut, `develop` reset to `2.0.0.dev0`, code fixes not yet
-  done, three open questions need Tim's input (Repos: pyobs-iag50)
 - [2026-07-27-gui-widget-plugins-and-packaging.md](2026-07-27-gui-widget-plugins-and-packaging.md) —
   widget plugin mechanism + `pyside6-deploy` packaging. **draft** (Repos: pyobs-gui)
 - [2026-07-29-gui-telescopewidget-layout.md](2026-07-29-gui-telescopewidget-layout.md) —
@@ -244,3 +239,19 @@ Implementation plans, checklist-style. Newest at the bottom.
   pyobs-core release degrades gracefully instead of a hard parse failure (surfaced live: a
   running `mastermind` started erroring the moment the two new fields landed). **implemented,
   pending PR merge** (no issue; Repos: pyobs-core, pyobs-portal)
+- [2026-09-10-mastermind-reschedule-on-late-skip.md](2026-09-10-mastermind-reschedule-on-late-skip.md)
+  — new `TaskSkippedEvent` emitted by `Mastermind` when a task's start window is skipped as too
+  late, and subscribed to by `Scheduler` so it recomputes; replaces the `first_late_start_warning`
+  global bool with a per-observation gate. Event-vs-command decision recorded in
+  [ADR 0019](../adrs/0019-task-skip-reschedule-via-fact-event.md). **implemented, merged to
+  develop** (PR #897; issue #895; Repos: pyobs-core)
+- [2026-09-13-per-exptime-darks-on-lco-sites.md](2026-09-13-per-exptime-darks-on-lco-sites.md) —
+  general design for per-science-exptime darks on `LcoTaskArchive` + `AstroplanScheduler` sites: a
+  DIRECT-scheduled `SCRIPT` request dispatches through the already-built `LcoTaskRunner` →
+  `LcoScript` → `DarkBiasScript(match_science_exptimes=True)` chain, sidestepping
+  `AstroplanScheduler`'s plan-once limitation entirely. No pyobs-core code change needed; per-site
+  instantiation lives in that site's own repo. **accepted** — iag50cm's instantiation implemented
+  in pyobs-iag50 (issue #896, closed; Repos: pyobs-core)
+- [2026-09-14-struct-field-schemas.md](2026-09-14-struct-field-schemas.md) — publish struct field
+  schemas (name/type/unit) in disco#info's `<types>` block, generalizing the existing `enum(Name)`
+  treatment. **implemented, closed** (issue #898, closed)

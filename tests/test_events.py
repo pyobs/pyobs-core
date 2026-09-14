@@ -25,6 +25,7 @@ from pyobs.events import (
     RoofOpenedEvent,
     TaskFailedEvent,
     TaskFinishedEvent,
+    TaskSkippedEvent,
     TaskStartedEvent,
     TestEvent,
 )
@@ -463,6 +464,25 @@ def test_task_failed_roundtrip() -> None:
     result = EventFactory.from_dict(e.to_json())
     assert isinstance(result, TaskFailedEvent)
     assert result.name == "Sirius"
+
+
+# ── TaskSkippedEvent ──────────────────────────────────────────────────────────
+
+
+def test_task_skipped_properties() -> None:
+    e = TaskSkippedEvent(name="Kochab", id=42, reason="start window missed by 1119s")
+    assert e.name == "Kochab"
+    assert e.id == 42
+    assert e.reason == "start window missed by 1119s"
+
+
+def test_task_skipped_roundtrip() -> None:
+    e = TaskSkippedEvent(name="Vega", id=7, reason="start window missed by 300s")
+    result = EventFactory.from_dict(e.to_json())
+    assert isinstance(result, TaskSkippedEvent)
+    assert result.name == "Vega"
+    assert result.id == 7
+    assert result.reason == "start window missed by 300s"
 
 
 # ── TestEvent ─────────────────────────────────────────────────────────────────

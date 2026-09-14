@@ -3,7 +3,12 @@
 Status: implemented — shipped and released (`v2.1.0`) across all four repos, live-verified
 2026-08-31. Decision recorded in ADR `0014-centralized-authorization-via-keycloak-groups.md`;
 checklist in `specs/plans/2026-08-28-shared-authz-keycloak.md` (issue #823, closed).
-Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin
+
+Follow-up (2026-09-13): fifth adopter, `pyobs-pipeline` (`v2.2.0`) — a single
+`REQUIRED_GROUPS=["/pyobs-pipeline"]` login-only gate (no client role, no per-action
+authorization), `ENFORCE_LOCAL_ACTIVE` left at its default `False` since pipeline has no local
+activation UI to layer on top. See `pyobs-pipeline/specs/plans/2026-09-13-keycloak-login.md`.
+Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin, pyobs-pipeline
 
 ## Problem
 

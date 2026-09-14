@@ -255,3 +255,10 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-09-14-struct-field-schemas.md](2026-09-14-struct-field-schemas.md) — publish struct field
   schemas (name/type/unit) in disco#info's `<types>` block, generalizing the existing `enum(Name)`
   treatment. **implemented, closed** (issue #898, closed)
+- [2026-09-14-brot-settle-loop-staleness-and-resend.md](2026-09-14-brot-settle-loop-staleness-and-resend.md)
+  — shared `wait_until_settled()` helper for BROT telescope/dome/roof settle loops: detects stalled
+  telemetry (distinct from a genuinely stuck mount) and resends idempotent setpoint commands. Resend
+  verified safe against the real PLC code but confirmed *not* to explain #61's actual symptom
+  (genuine mount struggle / drive fault remains the likelier cause, still uninvestigated — no longer
+  tracked by any issue since #61 closed). **implemented, closed** (issue pyobs-brot#61, closed;
+  Repos: pyobs-brot, pybrotlib)

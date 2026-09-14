@@ -5,6 +5,22 @@ Status: standing snapshot — last checked 2026-09-14.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-14**: pyobs-brot#61 closed — settle loops across telescope/dome/roof drivers now
+  detect a stalled MQTT telemetry stream (`pybrotlib` 1.2.2's new `Transport.telemetry_age()`) and
+  fail fast with a distinct `MoveError` instead of silently spinning to the outer `@timeout`;
+  offset/focus setpoints also periodically resent as defense-in-depth against MQTT's QoS-0 command
+  delivery. Landed `pybrotlib` 1.2.1→1.2.2, `pyobs-brot` 2.0.3→2.0.4, per
+  `specs/plans/2026-09-14-brot-settle-loop-staleness-and-resend.md`. **Caveat, checked against the
+  real PLC source (`~/code/brotlib`)**: the resend does not explain this issue's actual symptom — a
+  dropped offset command would show as instant false convergence, not the sustained elevated
+  `TARGETDISTANCE` reported. The genuine drive-fault/following-error root cause is still
+  unconfirmed and no longer tracked by any issue now that #61 is closed — worth a fresh issue if
+  it recurs. Dropped from the issues table.
+- **2026-09-14**: pyobs-brot#68 closed — `MQTTTransport.run()` now auto-reconnects with exponential
+  backoff (1s-30s) instead of dying silently on disconnect, and resets `_connected`/
+  `_connected_event` immediately so `publish()` correctly blocks through an outage instead of
+  racing a stale client. Landed `pybrotlib` 1.2.0→1.2.1, `pyobs-brot` 2.0.2→2.0.3, per `pyBROT`'s
+  own `specs/plans/mqtt-reconnect.md`. Dropped from the issues table.
 - **2026-09-14**: pyobs-core#898 closed — struct field schemas (name/type/unit) now published in
   disco#info's `<types>` block alongside `<enum>`, generalizing existing enum treatment; nesting
   capped at one level (the cap doubles as the cycle guard for self-/mutually-recursive structs).
@@ -178,7 +194,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (7, checked 2026-09-14)
+## Open issues (5, checked 2026-09-14)
 
 One row per issue — same layout for every repo.
 
@@ -187,8 +203,6 @@ One row per issue — same layout for every repo.
 | pyobs-web-admin | [#95](https://github.com/pyobs/pyobs-web-admin/issues/95) | Log filtering should grep the real log/journal on the server, over all history when no date is set | *enhancement, assigned: thusser* |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
-| pyobs-brot | [#68](https://github.com/pyobs/pyobs-brot/issues/68) | MQTT client does not auto-reconnect after disconnect | |
-| pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
 | pyobs-web-client | [#54](https://github.com/pyobs/pyobs-web-client/issues/54) | Surface RPC fault `call_id` for correlating with server-side logs | *assigned: thusser* — cross-filed with pyobs-gui#167; `specs/plans/2026-08-03-rpc-fault-call-id.md` has the design, held off implementing until a real consumer existed |
 | pyobs-gui | [#167](https://github.com/pyobs/pyobs-gui/issues/167) | Surface RPC fault `call_id` for correlating with server-side logs | *assigned: thusser* — cross-filed with pyobs-web-client#54; `ShellWidget._execute_command()` logs `str(e)` only today, `e.call_id` available but discarded |
 

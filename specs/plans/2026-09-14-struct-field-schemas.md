@@ -1,6 +1,6 @@
 # Plan: Publish struct field schemas in disco#info
 
-Status: not started (pyobs-core#898)
+Status: implemented, closed (pyobs-core#898, closed — landed on `develop` in `f34184de`)
 
 `enum(Name)`-typed params/fields already publish their possible values in disco#info's
 `<types>` block (`_wire_type()` records `enums[hint.__name__] = hint` as it walks a schema), so a
@@ -81,19 +81,22 @@ account for. Client-side consumption (pyobs-web-client's `pyobs-codec.ts` parser
 
 ## Test plan
 
-- [ ] New `tests/comm/test_xmpp_serializer_schema.py` covering `_wire_type`/`_interface_schema_to_xml`
-      directly (no coverage exists today):
-  - Flat struct param (`OrbitalElements`-shaped fixture) → `<types>` gets a `<struct>` with all
-    fields, correct `type`/`unit` attribs, including an `optional<...>` field.
+- [x] New `tests/comm/test_xmpp_serializer_schema.py` covering `_wire_type`/`_interface_schema_to_xml`
+      directly (no coverage existed before this change), 10 tests:
+  - Flat struct param (synthetic fixture) → `<types>` gets a `<struct>` with all fields, correct
+    `type`/`unit` attribs, including an `optional<...>` field.
   - Struct field that is itself a dataclass (depth 1) → nested struct also appears in `<types>`.
   - Struct field nested two levels deep → inner-most struct type string is still `struct<Name>`,
     but no corresponding `<struct>` entry is emitted for it.
   - Self-referential dataclass (field typed as its own class) → schema build completes (no
     `RecursionError`/hang), outer struct's own fields are still fully expanded.
+  - Mutually-recursive dataclasses (A↔B) → both terminate and expand one level each.
   - Struct containing an enum field → both `<enum>` and `<struct>` appear under the same `<types>`
     block, enum still deduped correctly.
-  - Existing enum-only case (no structs involved) is unaffected — no empty `<struct>`/`<types>`
-    noise when there are no structs to report.
-- [ ] `tests/integration/test_xmpp_dummy_camera.py` (or wherever `track_orbital_elements`'s live
-      disco#info is already exercised, if anywhere) — spot-check the real `OrbitalElements` schema
-      end-to-end, not just via synthetic fixtures.
+  - Existing enum-only / no-types-at-all cases are unaffected — no empty `<struct>` noise.
+  - `test_orbital_elements_real_interface_schema`: end-to-end spot-check against the real
+    `IPointingOrbitalElements`/`OrbitalElements`, not just synthetic fixtures. Surfaced a
+    **pre-existing, unrelated limitation**: `_wire_type()`'s `Union` branch (predates this change)
+    discards the inner type's unit, so `mean_anomaly`'s `Annotated[float, Unit.DEGREES] | None`
+    loses its `deg` unit once wrapped in `optional<...>` — worth a separate follow-up issue, not
+    fixed here.

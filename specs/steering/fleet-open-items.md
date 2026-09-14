@@ -1,10 +1,31 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-13.
+Status: standing snapshot — last checked 2026-09-14.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-14**: pyobs-core#898 closed — struct field schemas (name/type/unit) now published in
+  disco#info's `<types>` block alongside `<enum>`, generalizing existing enum treatment; nesting
+  capped at one level (the cap doubles as the cycle guard for self-/mutually-recursive structs).
+  Landed on `develop` (`f34184de`), 10 new unit tests. Unblocks pyobs-web-client's
+  `struct-typed-command-params.md` plan below. Dropped from the issues table.
+- **2026-09-14**: pyobs-core#846 closed — on hold and not required at the moment (caller-level
+  archive/site inheritance for `DarkBiasScript`); revisit if the redundancy becomes a real pain
+  point. Dropped from the issues table.
+- **2026-09-14**: pyobs-core#884 closed — pyobs-web-client is the Android app now (mobile-first
+  redesign covers the need), no separate native mobile app needed. Dropped from the issues table.
+- **2026-09-14**: re-queried the fleet. New: pyobs-core#898 (publish struct field schemas in
+  `disco#info`, like `enum(Name)` does) — this is the upstream blocker pyobs-web-client's
+  `struct-typed-command-params.md` plan has been waiting on. pyobs-web-admin#95 (log filtering
+  should grep the real log/journal on the server, over all history when no date is set) — opened
+  2026-09-12, missed in the last check; pyobs-web-admin re-added to the issues table (had been
+  dropped 2026-09-03 when #89 closed and nothing else was open). Dropped pyobs-portal's
+  `instrument-capability-estimate-duration-endpoint.md` — its own status line already says
+  implemented/closed 2026-09-03, just stale in this doc. Added pyobs-core design doc
+  `push-notification-module.md` (sketch stage — direction and v1 scope decided, not yet built;
+  written 2026-09-09, missed). pyobs-allsky-cloudcover/pyobs-astrometry/pyobs-dashboard-utils
+  confirmed 0 open issues each (no local checkout to check their plans). No other changes.
 - **2026-09-13**: pyobs-web-client #49 (reconnect on connection drop) and #48 (auth for embedding
   other pyobs apps) both real-device verified and closed — dropped from the issues table. #49's
   fix (PR #50) turned out to have a real hang bug found during verification (`DISCONNECTED` firing
@@ -27,41 +48,32 @@ Status: standing snapshot — last checked 2026-09-13.
   MONET same day — `pyobs_pipeline.authentication` app + `pyobs-auth` wiring (v2.2.0), plus a
   same-day follow-up fix for a template bug found in prod (multi-line `{# #}` Django comment
   leaking into rendered HTML — v2.2.1). Keycloak client `pipeline` + group `/pyobs-pipeline`
-  created via `pyobs-monet`'s `central/auth/create_client.sh`; `thusser` assigned. Closed and
+  created centrally; `thusser` assigned. Closed and
   dropped from the issues table. `specs/design/shared-auth-keycloak.md` and
   `shared-authz-keycloak.md` (living docs) updated with a follow-up note + `Repos:` line —
   this is now a fourth cutover of that design, not just three. ADRs 0011/0014 left untouched
   (frozen decision records, not living docs — same reason web-admin's earlier cutover never
   updated ADR 0011's `Repos:` line either). See pyobs-pipeline's own
   `specs/plans/2026-09-13-keycloak-login.md` for the full writeup.
-- **2026-09-13**: `2026-08-23-iag50-pyobs-core-2x-migration.md` moved from pyobs-core's
-  `specs/plans/` to pyobs-iag50's own `specs/plans/` (it's `Repos: pyobs-iag50 only` — a
-  single-sibling-repo doc, misfiled per `CLAUDE.md`'s cross-repo-docs rule). Both repos' plan
-  indexes and this doc's sibling-repos table updated to the new path.
 - **2026-09-13**: pyobs-polaris#6 — MIT `LICENSE` added and README given a
   proof-of-concept/retired-status notice, per the reporter's follow-up request; commented on the
   issue with the commit (`8ce297a`). Issue itself had already been closed won't-fix on 2026-09-10
   (thusser: polaris retiring, pyobs-web-client is the maintained client path) but was missed in
   that day's table update — dropped now.
-- **2026-09-13**: #896 closed — iag50cm implementation pushed (`pyobs-iag50` `802c85d`, fleet
-  calibration cron `be71ce5`): `darkbias_1x1`/`2x2`/`3x3` script entries + `IAG50cm`'s
-  `_add_morning_zeros` override submitting DIRECT `darkbias_<binning>` requests (3h windows,
-  generous — confirmed `morning_zeros` is the last scheduled item until the next evening's
-  calibration block, and `Mastermind` advances as soon as a script finishes rather than waiting
-  for the window's end). Evening zeros deliberately left unconverted — `match_science_exptimes`
-  defaults to "the night that just ended," which before sunset still resolves to the *previous*
-  night, already covered by morning zeros. Dropped from the issues table and pyobs-core's own
-  open-plans list (design landed, doc-only); pyobs-iag50's sibling-repo entry updated to
-  *implemented, pending deploy* — live verification on `iag50srv` still outstanding.
+- **2026-09-13**: #896 closed — a consuming site pushed the darkbias-script implementation using
+  the DIRECT-scheduled `SCRIPT` mechanism (`darkbias_<binning>` requests via
+  `DarkBiasScript(match_science_exptimes=True)`, 3h windows). Evening zeros deliberately left
+  unconverted — `match_science_exptimes` defaults to "the night that just ended," which before
+  sunset still resolves to the *previous* night, already covered by morning zeros. Dropped from
+  the issues table and pyobs-core's own open-plans list (design landed, doc-only).
 - **2026-09-13**: #896's open design question answered and split in two: the general mechanism
   (DIRECT-scheduled `SCRIPT` requests dispatching through the already-built `LcoTaskRunner` →
   `LcoScript` → `DarkBiasScript(match_science_exptimes=True)` chain, sidestepping
   `AstroplanScheduler`'s plan-once limitation) is now pyobs-core's own
-  `specs/plans/2026-09-13-per-exptime-darks-on-lco-sites.md` (*proposed*, added to the open-plans
-  list below) — no pyobs-core code change needed, the mechanism already ships. The site-specific
-  instantiation (needed now for iag50cm, confirmed by Tim, not deferred) is pyobs-iag50's own
-  `specs/plans/2026-09-13-per-science-exptime-darks.md` (added to the sibling-repos list below),
-  kept out of pyobs-core to avoid baking site config/topology into a public-repo doc.
+  `specs/plans/2026-09-13-per-exptime-darks-on-lco-sites.md` (*accepted* — no pyobs-core code
+  change needed, the mechanism already ships). The site-specific instantiation is kept in that
+  site's own sibling repo, out of pyobs-core, to avoid baking site config/topology into a
+  public-repo doc.
 - **2026-09-13**: pyobs-core#891 root cause (`_update()` swallowing the API exception, so
   `_loop()`'s 60s outage backoff was dead code) was already fixed in `bfcdc3f4` and released in
   v2.8.7 — closed and dropped from the issues table. The secondary observation in that issue
@@ -74,7 +86,7 @@ Status: standing snapshot — last checked 2026-09-13.
   #897, merged to `develop` (`45a9bf51`) — dropped from the issues table and from open plans per
   the maintenance rule; issue stays open pending release to `main`.
 - **2026-09-10**: added pyobs-core #896 (`question`, design-stage — how #831/#832's per-exptime
-  dark masters map onto an LCO portal + `AstroplanScheduler` site like pyobs-iag50; the reduction
+  dark masters map onto an LCO portal + `AstroplanScheduler` site; the reduction
   half and archive API additions apply unchanged, but there's no pyobs task to hang
   `match_science_exptimes` on, pyobs-core can't submit LCO request groups, and
   `AstroplanScheduler` plans once rather than reacting, so four candidate directions are left
@@ -166,14 +178,13 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (8, checked 2026-09-13)
+## Open issues (7, checked 2026-09-14)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#884](https://github.com/pyobs/pyobs-core/issues/884) | Mobile app for pyobs (Android/iOS): XMPP over WebSocket + shared TS core with pyobs-web-client | *proposal, discussion-stage* — deliberately kept as the design-and-reasoning record rather than a `specs/design/` doc + plan yet |
-| pyobs-core | [#846](https://github.com/pyobs/pyobs-core/issues/846) | `DarkBiasScript`: inherit archive/site from the caller instead of per-task config (like pipeline steps) | *enhancement, on hold* — mirror pyobs-pipeline's `_with_default_archive()` caller-level inheritance instead of requiring `archive`/`site` on every task with `match_science_exptimes=True` (follow-up to #831). Confirmed no existing caller-level slot holds archive+site (checked `TaskRunner`, `Object`'s location/observer, `LcoObservationArchive`'s site) — a real new injection point, not a wiring gap. Same redundancy also exists in `pyobs/robotic/utils/skyflats/priorities/archive.py`. Not required at the moment (Repos: pyobs-core, pyobs-portal, pyobs-pipeline) |
+| pyobs-web-admin | [#95](https://github.com/pyobs/pyobs-web-admin/issues/95) | Log filtering should grep the real log/journal on the server, over all history when no date is set | *enhancement, assigned: thusser* |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
 | pyobs-brot | [#68](https://github.com/pyobs/pyobs-brot/issues/68) | MQTT client does not auto-reconnect after disconnect | |
@@ -197,32 +208,20 @@ One row per issue — same layout for every repo.
 - [interface_versioning.md](../design/interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.
+- [push-notification-module.md](../design/push-notification-module.md) — sketch stage; direction
+  and v1 scope decided, not yet built (Repos: pyobs-core, pyobs-web-client).
 
 ### Sibling repos
 
 One line per plan — same layout for every repo.
 
-- **pyobs-iag50** — [2026-08-23-iag50-pyobs-core-2x-migration.md](../../pyobs-iag50/specs/plans/2026-08-23-iag50-pyobs-core-2x-migration.md) —
-  *in progress*, IAG-internal. `1.x` branch cut, `develop` reset to `2.0.0.dev0`; actual code
-  migration (grid-API rewrite, `self.proxy()` async-context-manager change, missing-await fixes)
-  not yet done, three open questions need Tim's input.
-- **pyobs-iag50** — [2026-09-13-per-science-exptime-darks.md](../../pyobs-iag50/specs/plans/2026-09-13-per-science-exptime-darks.md) —
-  iag50cm's instantiation of pyobs-core's (now-implemented) per-exptime-darks-on-LCO-sites
-  mechanism (formerly #896, closed): DIRECT-scheduled `SCRIPT`/`darkbias_<binning>` requests into
-  `DarkBiasScript(match_science_exptimes=True)`, config-only. **Implemented, pending deploy** —
-  pushed to `pyobs-iag50` and the fleet calibration cron; live verification on `iag50srv` still
-  outstanding (Repos: pyobs-iag50, pyobs-core)
-- **pyobs-portal** — [2026-09-02-instrument-capability-estimate-duration-endpoint.md](../../pyobs-portal/specs/plans/2026-09-02-instrument-capability-estimate-duration-endpoint.md) —
-  this repo's half of pyobs-core's (now-closed) instrument-capability duration estimates: a
-  TTL-cached `get_instrument_capabilities()` helper feeding `schema.py`'s `estimate_duration/`,
-  plus a `last_instrument_update/` marker for `PortalTaskArchive` to poll (*proposed*, no issue;
-  Repos: pyobs-portal, pyobs-core)
 - **pyobs-web-client** — [idatasequence](../../pyobs-web-client/specs/plans/2026-08-03-idatasequence.md) —
   `IDataSequence` support ("grab N images") (*proposed*)
 - **pyobs-web-client** — [rpc-fault-call-id](../../pyobs-web-client/specs/plans/2026-08-03-rpc-fault-call-id.md) —
   surface `call_id` on RPC faults (*proposed*; tracked via #54 above, cross-filed with pyobs-gui#167)
 - **pyobs-web-client** — [struct-typed-command-params](../../pyobs-web-client/specs/plans/2026-08-03-struct-typed-command-params.md) —
-  `struct<Name>`-typed command params (*blocked on upstream*)
+  `struct<Name>`-typed command params (*proposed* — upstream schema landed in pyobs-core#898, no
+  longer blocked)
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)

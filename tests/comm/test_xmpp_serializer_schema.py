@@ -19,6 +19,7 @@ from typing import Annotated, Any
 
 from pyobs.comm.xmpp.serializer import StructFields, _interface_schema_to_xml, _wire_type
 from pyobs.interfaces.interface import Interface
+from pyobs.interfaces.IPointingOrbitalElements import IPointingOrbitalElements
 from pyobs.utils.enums import Unit
 
 
@@ -189,3 +190,33 @@ class _TestPlainInterface(Interface, metaclass=ABCMeta):
 def test_no_types_block_when_no_enums_or_structs() -> None:
     root = _interface_schema_to_xml(_TestPlainInterface)
     assert root.find("types") is None
+
+
+def test_orbital_elements_real_interface_schema() -> None:
+    """End-to-end spot-check against the real, live struct-typed command param
+    (IPointingOrbitalElements.track_orbital_elements), not just synthetic fixtures."""
+    root = _interface_schema_to_xml(IPointingOrbitalElements)
+
+    param_elem = root.find("command[@name='track_orbital_elements']/parameter[@name='elements']")
+    assert param_elem is not None
+    assert param_elem.get("type") == "struct<OrbitalElements>"
+
+    types_elem = root.find("types")
+    assert types_elem is not None
+    struct_elem = types_elem.find("struct[@name='OrbitalElements']")
+    assert struct_elem is not None
+
+    fields = {f.get("name"): (f.get("type"), f.get("unit")) for f in struct_elem.findall("field")}
+    assert fields == {
+        "epoch": ("datetime", None),
+        "semi_major_axis": ("float64", "au"),
+        "eccentricity": ("float64", None),
+        "inclination": ("float64", "deg"),
+        "longitude_ascending_node": ("float64", "deg"),
+        "argument_of_periapsis": ("float64", "deg"),
+        # Pre-existing limitation, not introduced by struct-field publishing: the Union
+        # branch of _wire_type() discards the inner type's unit, so an
+        # Annotated[T, Unit] | None field loses its unit once wrapped in optional<>.
+        "mean_anomaly": ("optional<float64>", None),
+        "perihelion_time": ("optional<datetime>", None),
+    }

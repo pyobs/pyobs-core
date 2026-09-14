@@ -1,11 +1,18 @@
 # Plan: Widget plugin mechanism + `pyside6-deploy` packaging for `pyobs-gui`
 
-Status: draft
+Status: abandoned 2026-09-14 — `specs/design/gui-standalone-binary.md`, the umbrella goal this
+plan exists to serve, was rejected (the real build below came out several GB, not viable to
+distribute as a one-file download). The widget plugin-loading/selection problem this plan solves
+only exists *because* of static compilation; a normal `pip install`ed `pyobs-gui` already loads
+arbitrary custom widgets fine via the existing YAML `widgets:` config and `create_object()`, no
+plugin directory needed. Kept here rather than deleted: the packaging spikes below (compiler
+choice, `astropy`/Nuitka incompatibilities, `uv`/`pip` gotchas) are real, verified findings that'd
+have to be rediscovered if a compiled binary is ever revisited for a different reason.
 
 Repos: pyobs-gui (all implementation here)
 
-See `specs/design/gui-standalone-binary.md` for how this fits into the bigger "ship one
-compiled binary" goal.
+See `specs/design/gui-standalone-binary.md` for how this fit into the bigger "ship one
+compiled binary" goal (rejected).
 
 ## Problem
 
@@ -244,6 +251,11 @@ Built and ran the actual `pyobs_gui` app (not the isolated spike) through `pysid
 cleanly on signal — confirmed by running the frozen `.bin` directly, not via any venv Python. This
 is a plain-generic-widgets run only; the plugin mechanism itself (`plugin_paths`, widget selection)
 is still unimplemented, see checklist.
+
+**The build came out several GB** (Tim, 2026-09-14) — this, not any of the three technical
+problems below, is what ended up killing the whole `gui-standalone-binary.md` goal: a "one file,
+double-click it" download isn't really that once it's gigabytes, for a non-technical remote
+observer. See `specs/design/gui-standalone-binary.md`'s Status line.
 
 Three real problems surfaced that the isolated spike didn't hit, in order:
 

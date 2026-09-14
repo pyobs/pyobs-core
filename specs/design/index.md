@@ -12,7 +12,7 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [external_interfaces_registry.md](external_interfaces_registry.md) — external interfaces
   registry. *implemented, closed*
 - [gui-standalone-binary.md](gui-standalone-binary.md) — `pyobs-gui` as a standalone binary.
-  *proposed* (Repos: pyobs-core, pyobs-gui)
+  *rejected 2026-09-14* — real build came out several GB (Repos: pyobs-core, pyobs-gui)
 - [icamera_iexposure.md](icamera_iexposure.md) — decouple camera identity from exposure-progress
   state. *implemented, closed* (#437)
 - [idatasequence.md](idatasequence.md) — server-side counted data sequences. *implemented,
@@ -40,8 +40,9 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   package versions per module as `HIERARCH <MODULE> VERSION <PACKAGE>` FITS headers. *implemented,
   closed* (#739; `b197528c`)
 - [push-notification-module.md](push-notification-module.md) — `PushNotifier` module relaying
-  module-`ERROR` state (v1) to FCM/APNs, closing the gap left by `mobile-app-and-shared-ts-client-core.md`'s
-  deferred push notifications. *sketch* (issue #884; Repos: pyobs-core, pyobs-web-client)
+  module-`ERROR` state and `ERROR`/`CRITICAL` log events (v1) to FCM/APNs, closing the gap left by
+  `mobile-app-and-shared-ts-client-core.md`'s deferred push notifications. *sketch* (issue #902,
+  previously #884 which closed for an unrelated reason; Repos: pyobs-core, pyobs-web-client)
 - [pyobs_2_0_wire_protocol.md](pyobs_2_0_wire_protocol.md) — pyobs 2.0 wire protocol, state, and
   access control. *implemented, closed*
 - [rpc_gating_on_startup.md](rpc_gating_on_startup.md) — gating RPC commands until module startup

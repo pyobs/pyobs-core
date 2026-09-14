@@ -11,6 +11,7 @@ from .fluentlogger import FluentLogger
 from .httpfilecache import HttpFileCache
 from .kiosk import Kiosk
 from .matrix import Matrix
+from .pushnotifier import PushNotifier
 from .telegram import Telegram
 from .trigger import Trigger
 
@@ -21,6 +22,7 @@ __all__ = [
     "HttpFileCache",
     "Kiosk",
     "Matrix",
+    "PushNotifier",
     "Telegram",
     "Trigger",
 ]

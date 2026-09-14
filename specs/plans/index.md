@@ -120,7 +120,8 @@ Implementation plans, checklist-style. Newest at the bottom.
 
 ## Not finished
 - [2026-07-27-gui-widget-plugins-and-packaging.md](2026-07-27-gui-widget-plugins-and-packaging.md) —
-  widget plugin mechanism + `pyside6-deploy` packaging. **draft** (Repos: pyobs-gui)
+  widget plugin mechanism + `pyside6-deploy` packaging. **abandoned 2026-09-14** — umbrella goal
+  (`gui-standalone-binary.md`) rejected, real build came out several GB (Repos: pyobs-gui)
 - [2026-07-29-gui-telescopewidget-layout.md](2026-07-29-gui-telescopewidget-layout.md) —
   `TelescopeWidget` width-floor investigation. **proposed** (Repos: pyobs-gui)
 - [2026-08-11-basevideo-raw-frame-streaming.md](2026-08-11-basevideo-raw-frame-streaming.md) —
@@ -268,5 +269,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   domain exception, and deleted `rpc.py`'s separate `except exc.ForbiddenError` branch so it flows
   through the normal `send_fault` path instead of a raw XEP-0009 `forbidden` IQ error; back-compat
   fallback paths (`xmppcomm.py`, `rpc.py`'s `_on_jabber_rpc_error`) upgraded to raise
-  `ForbiddenError` with `call_id` instead of a generic `RemoteError`. **implemented, merged to
-  develop** (`9ceb472e`; issue #899; Repos: pyobs-core)
+  `ForbiddenError` with `call_id` instead of a generic `RemoteError`. **implemented, closed** —
+  released in v2.8.9 (issue #899, closed; Repos: pyobs-core)

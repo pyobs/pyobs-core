@@ -4,10 +4,13 @@ Status: sketch — decided direction and v1 scope, not yet built. Written 2026-0
 confirming (against current code) that the wire-protocol prerequisite this depended on is already
 satisfied, and that RPC handlers can already access caller identity via `**kwargs: Any` (§3) —
 both were open questions in earlier drafts, now resolved by reading the actual dispatch code.
-Nothing here has been implemented yet.
+Revised 2026-09-14: `ERROR`/`CRITICAL` log events folded into v1 scope (§2b), alongside module
+`ERROR` state. Bad weather / roof-open stays deferred. Nothing here has been implemented yet.
 
 Repos: pyobs-core (module implementation, all new code); pyobs-web-client (one small addition —
 the device-token registration call from `usePushNotifications.ts`)
+
+Tracking issue: pyobs-core#902 (previously #884, closed for an unrelated reason — see below).
 
 ## Context
 
@@ -35,17 +38,20 @@ way any other pyobs client does — no ejabberd config, no separate relay proces
 
 ## Decided for v1 (confirmed with Tim before writing this sketch)
 
-- **Module `ERROR` state only.** Weather and `CRITICAL` log alerts are real future scope (both
-  already wire-available, per above) but deliberately deferred — prove the FCM plumbing on the
-  simplest, most safety-critical signal first, add the other two as a fast-follow once that's
-  solid.
+- **Module `ERROR` state, plus `ERROR`/`CRITICAL` log events.** Bad weather with the roof open is
+  real future scope (already wire-available, per above — `BadWeatherEvent`) but deliberately
+  deferred — prove the FCM plumbing on these two signals first, add weather as a fast-follow once
+  that's solid. Log events are folded in now rather than deferred with weather because the
+  detection side is nearly free: `LogEvent` already carries `level`, and
+  `Telegram._process_log_entry`'s `self.comm.register_event(LogEvent, ...)` is a five-minute port
+  (§2b) — unlike module-`ERROR` detection (§2a), which is genuinely the hard part of this module.
 - **One fixed rule set for the whole deployment, not per-user thresholds.** No per-user
   preferences RPC, no per-user filter config — every registered device gets every module-`ERROR`
   alert. Registration only needs a device token, nothing else.
 
 ## Non-goals (this sketch)
 
-- Bad weather / `CRITICAL` log alerts — real, scoped above, not this pass.
+- Bad weather / roof-open alerts — real, scoped above, not this pass.
 - Per-user alert preferences (severity, module allow/deny-list) — `telegram.py`'s per-user
   `/loglevel` is the shape this *could* take later; not now.
 - iOS/APNs — blocked on the same Apple Developer Program account + Mac access constraint as
@@ -65,7 +71,7 @@ subscribes to pyobs events — worth reading side by side with this sketch.
 `pyobs/modules/utils/pushnotifier.py`, `class PushNotifier(Module)`. `open()` registers for the
 relevant state updates (see §2); `close()` tears them down — mirrors `Telegram.open()`/`close()`.
 
-### 2. Detecting module `ERROR` — the actual hard part, not the FCM call
+### 2a. Detecting module `ERROR` — the actual hard part, not the FCM call
 
 There is no single fleet-wide "a module errored" event. Each interface publishes its own state
 object with its own `status` field (`comm.py`'s `subscribe_state(module, interface, callback)` is
@@ -80,6 +86,16 @@ for its `/modules` command), discover each module's interfaces, `subscribe_state
 callback)` for every state-bearing one, and treat any `status.upper() == "ERROR"` transition as
 alert-worthy. This is the bulk of the new code, not the notification-sending part — flagged here so
 it isn't underestimated as "just subscribe to an event."
+
+### 2b. Detecting log `ERROR`/`CRITICAL` events — the easy part
+
+Unlike §2a, this is a near-direct port of existing code. `Telegram.open()` does
+`self.comm.register_event(LogEvent, self._process_log_entry)`; `PushNotifier` registers the same
+way. The handler differs only in what counts as alert-worthy: instead of Telegram's per-user
+`loglevel` threshold, it's a fixed check — `entry.level in ("ERROR", "CRITICAL")` — matching the
+"one fixed rule set for the whole deployment" decision above. `entry.message` and the `sender`
+argument (the emitting module's client name, per `comm.py`'s event dispatch — not the RPC-caller
+JID that §3's `register_device` sees) give the alert its title/body.
 
 ### 3. Device registration
 
@@ -116,10 +132,11 @@ server-side is a later, not-yet-designed step").
 
 ### 4. Debounce / dedup
 
-A flapping module (brief ERROR↔READY toggling) shouldn't spam a push per transition. Reuse
-`Telegram`'s `asyncio.Queue` + `add_background_task`-driven sender-thread shape, including its
-duplicate-suppression logic (`_log_sender_thread`'s `last_messages`/`repeat_counts`) — same
-problem, same fix.
+Two independent sources, one debounce problem. A flapping module (brief ERROR↔READY toggling)
+shouldn't spam a push per transition (§2a); a module stuck retrying and logging the same `ERROR`
+in a loop shouldn't either (§2b). Reuse `Telegram`'s `asyncio.Queue` + `add_background_task`-driven
+sender-thread shape, including its duplicate-suppression logic (`_log_sender_thread`'s
+`last_messages`/`repeat_counts`) — same problem, same fix, both sources feeding the same queue.
 
 ### 5. Sending
 
@@ -137,3 +154,8 @@ with the client-side `google-services.json`/API key already checked into
   alerting on *any* interface's `ERROR`, fleet-wide, with no allow/deny-list — same blast radius
   as what the dashboard already surfaces. Worth confirming that's actually the desired v1 alert
   surface (vs., say, only modules with real hardware) before building.
+- **Log-message dedup key.** Telegram's `last_messages` dedup keys on exact message-string equality
+  per user. For a retry loop logging `ERROR` with a changing detail (a timestamp, an exception
+  `repr`, a retry count in the text), exact-match dedup won't catch it and every retry pushes
+  separately. Not designed here whether §2b needs a looser key (e.g. `(sender, level)` instead of
+  the message text) — worth checking against a real noisy-retry log before building.

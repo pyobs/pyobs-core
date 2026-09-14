@@ -5,10 +5,47 @@ Status: standing snapshot — last checked 2026-09-14.
 <details>
 <summary>Changelog (most recent first)</summary>
 
-- **2026-09-14**: pyobs-core#899 (ACL-denial faults missing `call_id`/proper fault encoding) fix
-  merged to `develop` (`9ceb472e`) per
-  `specs/plans/2026-09-14-forbidden-error-call-id-and-fault-encoding.md` — dropped from the issues
-  table per the maintenance rule (issue stays open pending release to `main`).
+- **2026-09-14**: pyobs-gui's `2026-09-14-fitswidget-toolbar-overflow.md` implemented (Repos:
+  qfitswidget) — responsive Cuts/Stretch/Colormap toolbar in `QFitsWidget`, hide-then-overflow as
+  width shrinks. Design changed mid-implementation from hardcoded pixel thresholds to
+  runtime-measured ones (Tim's objection: a hand-picked number drifts with font/DPI/style/text
+  changes). Three real bugs found and fixed via headless testing: a dangling `QWidgetAction`
+  widget on restore (needed `releaseWidget()`, not plain reparenting), `addWidget()`'s reparent
+  silently re-hiding a just-restored widget (`setVisible(True)` must come after, not before), and
+  `resizeEvent` reading `self.width()` instead of `event.size().width()`. Dropped from the
+  open-plans list.
+- **2026-09-14**: two stale pyobs-web-client entries corrected. `idatasequence` was listed
+  *proposed*; it's done — count/delay/progress/abort and per-grab image display all
+  implemented and live-verified against `pyobs-core` 2.8.9 (the per-grab image display needed
+  a separate fix, pyobs-web-client#56: event subscription targeted the wrong pubsub host/node
+  id, silently breaking live event delivery fleet-wide in that client — found, fixed, and
+  closed same day, so never added to the issues table above). `struct-typed-command-params`
+  was listed *in progress — uncommitted working-tree changes*; it landed days ago
+  (`a6fbf18`, already on `develop` before this correction). Both dropped from the sibling-repos
+  open-plans list.
+- **2026-09-14**: pyobs-gui's `2026-09-14-stacked-widget-scroll-fallback.md` implemented —
+  `stackedWidget` wrapped in a `QScrollArea` (`stackedWidgetScroll`) as a general fallback once a
+  module page can't shrink further. The flagged mouse-wheel-over-spinbox risk was confirmed real
+  (headless test: an unfocused spinbox's value changed on a wheel event) and fixed with an
+  app-wide event filter (`nowheelfilter.py`). Dropped from the open-plans list.
+- **2026-09-14**: pyobs-web-admin#95 (server-side log grep over full history) fixed, released in
+  v2.3.4 (`d3014c4`), and closed by another session — missed in this doc until Tim asked about it.
+  Dropped from the issues table.
+- **2026-09-14**: pyobs-core#859 closed as not worth it — `Scheduler`'s full reschedule on every
+  task start/finish means a later-slot task from one `OnDemandScheduler.schedule()` pass never
+  executes off that same pass's estimate, so the fudged slew distance this issue would fix
+  self-corrects before it matters, except inside `check_for_better_task`/`can_postpone_task`'s
+  same-pass lookahead — judged unlikely to flip a real decision (same "no observed operational
+  symptom" bar #858 was rejected on). Dropped from the issues table.
+- **2026-09-14**: `gui-standalone-binary.md` rejected (Tim: the real build came out several GB, not
+  a viable one-file download for a non-technical remote observer) — dropped from both the open
+  design docs list and `2026-07-27-gui-widget-plugins-and-packaging.md` from the open plans list
+  (that plan's own purpose was serving this goal, now moot). The login-deferral/login-window pair
+  underneath it already shipped independently and isn't affected.
+- **2026-09-14**: pyobs-core#899 (ACL-denial faults missing `call_id`/proper fault encoding) fixed,
+  released in v2.8.9, and closed — per
+  `specs/plans/2026-09-14-forbidden-error-call-id-and-fault-encoding.md`. Dropped from the issues
+  table.
 - **2026-09-14**: pyobs-web-client#54 and pyobs-gui#167 (RPC fault `call_id`) both closed —
   implemented in pyobs-web-client (`86e96c2`, Shell's command log now shows `call_id`) per
   `specs/plans/2026-08-03-rpc-fault-call-id.md`; pyobs-gui's own side of #167 was the same fix
@@ -211,45 +248,35 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (4, checked 2026-09-14)
+## Open issues (2, checked 2026-09-14)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-web-admin | [#95](https://github.com/pyobs/pyobs-web-admin/issues/95) | Log filtering should grep the real log/journal on the server, over all history when no date is set | *enhancement, assigned: thusser* |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
-| pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 
 ## Open plans
 
 ### pyobs-core `specs/plans/`
 
-- [2026-07-27-gui-widget-plugins-and-packaging.md](../plans/2026-07-27-gui-widget-plugins-and-packaging.md) —
-  *draft* (pyobs-gui). Widget plugin mechanism + `pyside6-deploy` packaging; loading mechanism
-  decided + spiked, widget-selection mechanism still open.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
-  *proposed* (pyobs-gui). `TelescopeWidget` width-floor investigation with candidate fixes.
+  *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
+  (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot, see below.
 ### Design docs still *proposed*
 
-- [gui-standalone-binary.md](../design/gui-standalone-binary.md) — umbrella for the compiled
-  pyobs-gui binary; login pieces done, widget plugin/selection + real plugin smoke test still open.
 - [interface_versioning.md](../design/interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.
 - [push-notification-module.md](../design/push-notification-module.md) — sketch stage; direction
-  and v1 scope decided, not yet built (Repos: pyobs-core, pyobs-web-client).
+  and v1 scope decided, not yet built (Repos: pyobs-core, pyobs-web-client). Tracked by #902
+  (filed 2026-09-14 after #884 turned out to be closed for an unrelated reason).
 
 ### Sibling repos
 
 One line per plan — same layout for every repo.
 
-- **pyobs-web-client** — [idatasequence](../../pyobs-web-client/specs/plans/2026-08-03-idatasequence.md) —
-  `IDataSequence` support ("grab N images") (*proposed*)
-- **pyobs-web-client** — [struct-typed-command-params](../../pyobs-web-client/specs/plans/2026-08-03-struct-typed-command-params.md) —
-  `struct<Name>`-typed command params (*in progress* — uncommitted working-tree changes as of
-  2026-09-14: `pyobs-codec.ts`, `ParamForm.vue`, `useXmpp.ts`, `ShellView.vue`)
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)

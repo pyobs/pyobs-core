@@ -5,6 +5,15 @@ Status: standing snapshot — last checked 2026-09-14.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-14**: pyobs-gui's `2026-09-14-fitswidget-toolbar-overflow.md` implemented (Repos:
+  qfitswidget) — responsive Cuts/Stretch/Colormap toolbar in `QFitsWidget`, hide-then-overflow as
+  width shrinks. Design changed mid-implementation from hardcoded pixel thresholds to
+  runtime-measured ones (Tim's objection: a hand-picked number drifts with font/DPI/style/text
+  changes). Three real bugs found and fixed via headless testing: a dangling `QWidgetAction`
+  widget on restore (needed `releaseWidget()`, not plain reparenting), `addWidget()`'s reparent
+  silently re-hiding a just-restored widget (`setVisible(True)` must come after, not before), and
+  `resizeEvent` reading `self.width()` instead of `event.size().width()`. Dropped from the
+  open-plans list.
 - **2026-09-14**: two stale pyobs-web-client entries corrected. `idatasequence` was listed
   *proposed*; it's done — count/delay/progress/abort and per-grab image display all
   implemented and live-verified against `pyobs-core` 2.8.9 (the per-grab image display needed
@@ -271,6 +280,3 @@ One line per plan — same layout for every repo.
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)
-- **pyobs-gui** — [2026-09-14-fitswidget-toolbar-overflow.md](../../pyobs-gui/specs/2026-09-14-fitswidget-toolbar-overflow.md) —
-  responsive Cuts/Stretch/Colormap toolbar in `qfitswidget`'s `QFitsWidget`: hide-then-overflow as
-  width shrinks (*proposed*; Repos: qfitswidget, hosted in pyobs-gui's specs/)

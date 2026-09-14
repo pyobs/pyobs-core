@@ -236,16 +236,13 @@ class RPC:
             response_params = return_to_xml(return_value, return_type)
             self._client.plugin["xep_0009"].make_iq_method_response(iq["id"], iq["from"], response_params).send()
 
-        except exc.ForbiddenError as e:
-            e.log(log, "WARNING", f"Forbidden call to {pmethod}: {e}")
-            self._client.plugin["xep_0009"].forbidden(iq).send()
-
         except Exception as e:
             # Module.execute() already classified and logged anything raised by the call itself
-            # (every transport gets the same treatment there now), so there's nothing left to do
-            # here but serialize and send the fault -- except for failures that never reached
-            # execute() at all (e.g. malformed RPC parameters during deserialization above), which
-            # this is the only place that will ever log
+            # (every transport gets the same treatment there now -- ForbiddenError included, it's
+            # no longer special-cased here), so there's nothing left to do here but serialize and
+            # send the fault -- except for failures that never reached execute() at all (e.g.
+            # malformed RPC parameters during deserialization above), which this is the only place
+            # that will ever log
             if not isinstance(e, exc.PyobsError):
                 log.exception("Unexpected exception in %s.", pmethod)
             self._client.plugin["xep_0009"].send_fault(iq, fault_to_xml(e))
@@ -322,17 +319,27 @@ class RPC:
         callback = self._futures.pop(jid)
 
         sender = iq["from"].node
-        e = {
-            "item-not-found": exc.RemoteError(f"No remote handler for {pmethod} at {iq['from']}!", module=sender),
-            "forbidden": exc.RemoteError(f"Forbidden to invoke {pmethod} at {iq['from']}!", module=sender),
-            "undefined-condition": exc.RemoteError(
-                f"Unexpected problem invoking {pmethod} at {iq['from']}!", module=sender
-            ),
-            "service-unavailable": exc.RemoteError(f"Service at {iq['from']} is unavailable.", module=sender),
-            "remote-server-not-found": exc.RemoteError(
-                f"Could not find remote server for {iq['from']}.", module=sender
-            ),
-        }.get(condition, exc.RemoteError(f"Unexpected exception at {iq['from']}!", module=sender))
+        # "forbidden" gets its own real type (ForbiddenError, a RemoteError subclass) and a
+        # call_id, matching xmppcomm.py's XmppComm.execute() -- both are back-compat fallbacks
+        # for a peer still sending a raw XEP-0009 IQ error for an ACL denial instead of routing it
+        # through the normal fault path (see Module.execute()/comm/xmpp/rpc.py's fault encoding).
+        # This handler is believed unreachable for "forbidden" in practice, since slixmpp's own
+        # Iq.send() future resolves on the error before this event ever fires (see xmppcomm.py's
+        # comment) -- fixed here too regardless, in case some other call path reaches it.
+        if condition == "forbidden":
+            e: exc.PyobsError = exc.ForbiddenError(f"Forbidden to invoke {pmethod} at {iq['from']}!", module=sender)
+            setattr(e, "call_id", jid)
+        else:
+            e = {
+                "item-not-found": exc.RemoteError(f"No remote handler for {pmethod} at {iq['from']}!", module=sender),
+                "undefined-condition": exc.RemoteError(
+                    f"Unexpected problem invoking {pmethod} at {iq['from']}!", module=sender
+                ),
+                "service-unavailable": exc.RemoteError(f"Service at {iq['from']} is unavailable.", module=sender),
+                "remote-server-not-found": exc.RemoteError(
+                    f"Could not find remote server for {iq['from']}.", module=sender
+                ),
+            }.get(condition, exc.RemoteError(f"Unexpected exception at {iq['from']}!", module=sender))
 
         callback.set_exception(e)
 

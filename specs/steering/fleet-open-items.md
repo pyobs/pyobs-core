@@ -5,6 +5,39 @@ Status: standing snapshot — last checked 2026-09-14.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-14**: pyobs-core#899 (ACL-denial faults missing `call_id`/proper fault encoding) fix
+  merged to `develop` (`9ceb472e`) per
+  `specs/plans/2026-09-14-forbidden-error-call-id-and-fault-encoding.md` — dropped from the issues
+  table per the maintenance rule (issue stays open pending release to `main`).
+- **2026-09-14**: pyobs-web-client#54 and pyobs-gui#167 (RPC fault `call_id`) both closed —
+  implemented in pyobs-web-client (`86e96c2`, Shell's command log now shows `call_id`) per
+  `specs/plans/2026-08-03-rpc-fault-call-id.md`; pyobs-gui's own side of #167 was the same fix
+  landing client-side, no separate pyobs-gui change needed. Dropped from the issues table and the
+  `rpc-fault-call-id` plan dropped from the sibling-repos open-plans list (done). Live-verifying it
+  surfaced a related gap: ACL-denial faults (`ForbiddenError` from `Module.execute()`'s pre-`try`
+  ACL check) carry no `call_id` and don't even arrive as a parseable RPC `<fault>` client-side —
+  raw XMPP-level error instead. Split out to new pyobs-core#899 (`fed5068` references it from
+  pyobs-web-client), added to the issues table below — no plan yet.
+  `struct-typed-command-params.md` (unblocked by #898 landing) is now actively being implemented in
+  pyobs-web-client — uncommitted working-tree changes there (`pyobs-codec.ts`, `ParamForm.vue`,
+  `useXmpp.ts`, `ShellView.vue`, plus a new spec file) build struct-typed params/widgets from the
+  `disco#info` field schema; not yet committed, so left as *in progress* rather than done.
+- **2026-09-14**: pyobs-brot#61 closed — settle loops across telescope/dome/roof drivers now
+  detect a stalled MQTT telemetry stream (`pybrotlib` 1.2.2's new `Transport.telemetry_age()`) and
+  fail fast with a distinct `MoveError` instead of silently spinning to the outer `@timeout`;
+  offset/focus setpoints also periodically resent as defense-in-depth against MQTT's QoS-0 command
+  delivery. Landed `pybrotlib` 1.2.1→1.2.2, `pyobs-brot` 2.0.3→2.0.4, per
+  `specs/plans/2026-09-14-brot-settle-loop-staleness-and-resend.md`. **Caveat, checked against the
+  real PLC source (`~/code/brotlib`)**: the resend does not explain this issue's actual symptom — a
+  dropped offset command would show as instant false convergence, not the sustained elevated
+  `TARGETDISTANCE` reported. The genuine drive-fault/following-error root cause is still
+  unconfirmed. Split out to pyobs-brot#71 (added to the issues table below) so it stays tracked.
+  #61 itself dropped from the issues table.
+- **2026-09-14**: pyobs-brot#68 closed — `MQTTTransport.run()` now auto-reconnects with exponential
+  backoff (1s-30s) instead of dying silently on disconnect, and resets `_connected`/
+  `_connected_event` immediately so `publish()` correctly blocks through an outage instead of
+  racing a stale client. Landed `pybrotlib` 1.2.0→1.2.1, `pyobs-brot` 2.0.2→2.0.3, per `pyBROT`'s
+  own `specs/plans/mqtt-reconnect.md`. Dropped from the issues table.
 - **2026-09-14**: pyobs-core#898 closed — struct field schemas (name/type/unit) now published in
   disco#info's `<types>` block alongside `<enum>`, generalizing existing enum treatment; nesting
   capped at one level (the cap doubles as the cycle guard for self-/mutually-recursive structs).
@@ -178,7 +211,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (7, checked 2026-09-14)
+## Open issues (4, checked 2026-09-14)
 
 One row per issue — same layout for every repo.
 
@@ -187,10 +220,7 @@ One row per issue — same layout for every repo.
 | pyobs-web-admin | [#95](https://github.com/pyobs/pyobs-web-admin/issues/95) | Log filtering should grep the real log/journal on the server, over all history when no date is set | *enhancement, assigned: thusser* |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
-| pyobs-brot | [#68](https://github.com/pyobs/pyobs-brot/issues/68) | MQTT client does not auto-reconnect after disconnect | |
-| pyobs-brot | [#61](https://github.com/pyobs/pyobs-brot/issues/61) | `set_offsets_altaz` times out (120s) repeatedly during autoguiding on MONET South | *bug, assigned: thusser* — three consecutive settle-wait timeouts during a 2026-08-24 autoguiding run on monets1m2; needs mount-side telemetry/drive-fault investigation |
-| pyobs-web-client | [#54](https://github.com/pyobs/pyobs-web-client/issues/54) | Surface RPC fault `call_id` for correlating with server-side logs | *assigned: thusser* — cross-filed with pyobs-gui#167; `specs/plans/2026-08-03-rpc-fault-call-id.md` has the design, held off implementing until a real consumer existed |
-| pyobs-gui | [#167](https://github.com/pyobs/pyobs-gui/issues/167) | Surface RPC fault `call_id` for correlating with server-side logs | *assigned: thusser* — cross-filed with pyobs-web-client#54; `ShellWidget._execute_command()` logs `str(e)` only today, `e.call_id` available but discarded |
+| pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 
 ## Open plans
 
@@ -217,11 +247,9 @@ One line per plan — same layout for every repo.
 
 - **pyobs-web-client** — [idatasequence](../../pyobs-web-client/specs/plans/2026-08-03-idatasequence.md) —
   `IDataSequence` support ("grab N images") (*proposed*)
-- **pyobs-web-client** — [rpc-fault-call-id](../../pyobs-web-client/specs/plans/2026-08-03-rpc-fault-call-id.md) —
-  surface `call_id` on RPC faults (*proposed*; tracked via #54 above, cross-filed with pyobs-gui#167)
 - **pyobs-web-client** — [struct-typed-command-params](../../pyobs-web-client/specs/plans/2026-08-03-struct-typed-command-params.md) —
-  `struct<Name>`-typed command params (*proposed* — upstream schema landed in pyobs-core#898, no
-  longer blocked)
+  `struct<Name>`-typed command params (*in progress* — uncommitted working-tree changes as of
+  2026-09-14: `pyobs-codec.ts`, `ParamForm.vue`, `useXmpp.ts`, `ShellView.vue`)
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)

@@ -1,8 +1,8 @@
 """Integration tests for Phase 8 Access Control (ACLs) over real XMPP.
 
-Verifies that a denied RPC call round-trips as an XMPP IQ `forbidden`
-condition and surfaces as `exc.RemoteError` on the caller side, and that
-an allowed call still succeeds normally.
+Verifies that a denied RPC call round-trips as a normal RPC fault and
+surfaces as `exc.ForbiddenError` (carrying a `call_id`) on the caller
+side, and that an allowed call still succeeds normally.
 
 Requires a live ejabberd server — see tests/xmpp/docker-compose.yml.
 """
@@ -30,7 +30,7 @@ async def wait_for(condition, *, timeout: float = 15.0, interval: float = 0.1) -
 
 
 async def test_acl_deny_forbids_call(make_xmpp_comm, make_camera_comm) -> None:
-    """A caller on the "deny" list gets exc.RemoteError with a forbidden message, not a normal fault."""
+    """A caller on the "deny" list gets exc.ForbiddenError, with a call_id, via a normal fault."""
 
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm, acl={"deny": ["observer"]})
@@ -41,9 +41,10 @@ async def test_acl_deny_forbids_call(make_xmpp_comm, make_camera_comm) -> None:
             assert ok
 
             async with observer_comm.proxy("camera", ICooling) as cam:
-                with pytest.raises(exc.RemoteError) as exc_info:
+                with pytest.raises(exc.ForbiddenError) as exc_info:
                     await cam.set_cooling(enabled=True, setpoint=-20.0)
             assert "forbidden" in str(exc_info.value).lower()
+            assert exc_info.value.call_id is not None
 
         finally:
             await camera.close()
@@ -69,9 +70,10 @@ async def test_acl_allow_interface_name_sugar(make_xmpp_comm, make_camera_comm) 
 
             # set_gain is part of IGain -- not covered by the "ICooling" sugar entry
             async with observer_comm.proxy("camera", IGain) as cam:
-                with pytest.raises(exc.RemoteError) as exc_info:
+                with pytest.raises(exc.ForbiddenError) as exc_info:
                     await cam.set_gain(42.0)
             assert "forbidden" in str(exc_info.value).lower()
+            assert exc_info.value.call_id is not None
 
         finally:
             await camera.close()
@@ -133,9 +135,10 @@ async def test_acl_allow_denies_unlisted_caller(make_xmpp_comm, make_camera_comm
             assert ok
 
             async with observer_comm.proxy("camera", ICooling) as cam:
-                with pytest.raises(exc.RemoteError) as exc_info:
+                with pytest.raises(exc.ForbiddenError) as exc_info:
                     await cam.set_cooling(enabled=True, setpoint=-20.0)
             assert "forbidden" in str(exc_info.value).lower()
+            assert exc_info.value.call_id is not None
 
         finally:
             await camera.close()

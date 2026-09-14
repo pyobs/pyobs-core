@@ -166,3 +166,6 @@ graphify-out/cache/
 graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 graphify-out/.graphify_python
 graphify-out/.graphify_root
+
+# Claude Code local state (machine-specific settings, scratch files, skills)
+.claude/

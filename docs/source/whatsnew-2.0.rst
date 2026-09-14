@@ -707,8 +707,9 @@ while leaving the module open to everyone else, including modules added to the f
      deny: [legacy_gui]   # everyone else keeps full access; legacy_gui is blocked entirely
 
 ``allow`` and ``deny`` are mutually exclusive on one module. A denied call raises
-``exc.ForbiddenError`` (a ``RemoteError``), which maps to the XMPP IQ-level ``forbidden``
-condition on the wire. Setting ``mode: log`` (default is ``mode: enforce``) runs the same
+``exc.ForbiddenError`` (a ``RemoteError``), encoded on the wire as a normal RPC fault — the same
+mechanism, and the same ``call_id`` correlation, as any other domain exception. Setting
+``mode: log`` (default is ``mode: enforce``) runs the same
 allow/deny decision but only logs what *would* have been denied and lets the call through —
 useful for validating a new policy against real traffic before it can block a legitimate
 caller:

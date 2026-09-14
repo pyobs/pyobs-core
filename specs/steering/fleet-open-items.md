@@ -5,6 +5,12 @@ Status: standing snapshot — last checked 2026-09-14.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-14**: pyobs-core#859 closed as not worth it — `Scheduler`'s full reschedule on every
+  task start/finish means a later-slot task from one `OnDemandScheduler.schedule()` pass never
+  executes off that same pass's estimate, so the fudged slew distance this issue would fix
+  self-corrects before it matters, except inside `check_for_better_task`/`can_postpone_task`'s
+  same-pass lookahead — judged unlikely to flip a real decision (same "no observed operational
+  symptom" bar #858 was rejected on). Dropped from the issues table.
 - **2026-09-14**: `gui-standalone-binary.md` rejected (Tim: the real build came out several GB, not
   a viable one-file download for a non-technical remote observer) — dropped from both the open
   design docs list and `2026-07-27-gui-widget-plugins-and-packaging.md` from the open plans list
@@ -216,7 +222,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (4, checked 2026-09-14)
+## Open issues (3, checked 2026-09-14)
 
 One row per issue — same layout for every repo.
 
@@ -224,7 +230,6 @@ One row per issue — same layout for every repo.
 |---|---|---|---|
 | pyobs-web-admin | [#95](https://github.com/pyobs/pyobs-web-admin/issues/95) | Log filtering should grep the real log/journal on the server, over all history when no date is set | *enhancement, assigned: thusser* |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
-| pyobs-core | [#859](https://github.com/pyobs/pyobs-core/issues/859) | Track last-scheduled-task position through `OnDemandScheduler` for slew-distance estimates beyond the first task | *enhancement, likely moot* — this built on #858's live-telescope-position piece, which #858's own review decided against building ("no observed operational symptom motivating this"); worth closing or re-scoping, flagging for Tim rather than acting unilaterally |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 
 ## Open plans

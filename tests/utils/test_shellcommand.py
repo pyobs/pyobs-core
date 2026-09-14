@@ -161,6 +161,24 @@ async def test_execute_remote_error() -> None:
 
     assert response.is_error
     assert "Exception raised" in response.response
+    assert "call_id" not in response.response
+
+
+@pytest.mark.asyncio
+async def test_execute_remote_error_with_call_id() -> None:
+    error = exc.RemoteError("something failed")
+    error.call_id = "abc123:rpc"  # type: ignore[attr-defined]
+    proxy = MagicMock()
+    proxy.execute = AsyncMock(side_effect=error)
+    comm = MagicMock()
+    comm.safe_proxy = MagicMock(return_value=make_proxy_cm(proxy))
+
+    cmd = ShellCommand.parse("camera.abort()")
+    response = await cmd.execute(comm)
+
+    assert response.is_error
+    assert "Exception raised" in response.response
+    assert "(call_id=abc123:rpc)" in response.response
 
 
 # ── ShellCommandResponse ──────────────────────────────────────────────────────

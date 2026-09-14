@@ -5,6 +5,15 @@ Status: standing snapshot — last checked 2026-09-14.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-14**: two stale pyobs-web-client entries corrected. `idatasequence` was listed
+  *proposed*; it's done — count/delay/progress/abort and per-grab image display all
+  implemented and live-verified against `pyobs-core` 2.8.9 (the per-grab image display needed
+  a separate fix, pyobs-web-client#56: event subscription targeted the wrong pubsub host/node
+  id, silently breaking live event delivery fleet-wide in that client — found, fixed, and
+  closed same day, so never added to the issues table above). `struct-typed-command-params`
+  was listed *in progress — uncommitted working-tree changes*; it landed days ago
+  (`a6fbf18`, already on `develop` before this correction). Both dropped from the sibling-repos
+  open-plans list.
 - **2026-09-14**: pyobs-gui's `2026-09-14-stacked-widget-scroll-fallback.md` implemented —
   `stackedWidget` wrapped in a `QScrollArea` (`stackedWidgetScroll`) as a general fallback once a
   module page can't shrink further. The flagged mouse-wheel-over-spinbox risk was confirmed real
@@ -259,11 +268,6 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
-- **pyobs-web-client** — [idatasequence](../../pyobs-web-client/specs/plans/2026-08-03-idatasequence.md) —
-  `IDataSequence` support ("grab N images") (*proposed*)
-- **pyobs-web-client** — [struct-typed-command-params](../../pyobs-web-client/specs/plans/2026-08-03-struct-typed-command-params.md) —
-  `struct<Name>`-typed command params (*in progress* — uncommitted working-tree changes as of
-  2026-09-14: `pyobs-codec.ts`, `ParamForm.vue`, `useXmpp.ts`, `ShellView.vue`)
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)

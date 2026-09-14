@@ -379,7 +379,34 @@ def _parse_scalar(text: str, type_hint: Any) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _wire_type(hint: Any, enums: dict[str, type]) -> tuple[str, str | None]:
+# A struct's collected fields: (field_name, wire_type_string, unit_string|None), in field order.
+StructFields = list[tuple[str, str, str | None]]
+
+# Struct nesting is capped at one level: the top-level struct (depth 0) and one nested struct
+# field (depth 1) get walked and published; anything deeper is left as an unexpanded
+# struct<Name> reference. This cap alone makes self-referential and mutually-recursive
+# dataclasses terminate safely -- no separate cycle/seen-set tracking is needed.
+_MAX_STRUCT_DEPTH = 1
+
+
+def _collect_struct_fields(
+    cls: type, enums: dict[str, type], structs: dict[str, StructFields], depth: int
+) -> StructFields:
+    """Walk a dataclass's fields, collecting (name, wire_type, unit) triples for the <types> block."""
+    try:
+        hints = get_type_hints(cls, include_extras=True)
+    except Exception:
+        hints = {}
+    fields: StructFields = []
+    for f in dataclasses.fields(cls):
+        type_str, unit_str = _wire_type(hints.get(f.name, Any), enums, structs, depth)
+        fields.append((f.name, type_str, unit_str))
+    return fields
+
+
+def _wire_type(
+    hint: Any, enums: dict[str, type], structs: dict[str, StructFields], depth: int = 0
+) -> tuple[str, str | None]:
     """Map a Python type hint to a (wire_type_string, unit_string|None) pair."""
     origin = get_origin(hint)
     args = get_args(hint)
@@ -388,20 +415,20 @@ def _wire_type(hint: Any, enums: dict[str, type]) -> tuple[str, str | None]:
     if origin is Annotated:
         inner = args[0]
         unit = next((a for a in args[1:] if isinstance(a, Unit)), None)
-        type_str, _ = _wire_type(inner, enums)
+        type_str, _ = _wire_type(inner, enums, structs, depth)
         return type_str, unit.value if unit else None
 
     # T | None → optional<T>  (handles typing.Union and builtin types.UnionType)
     if origin is Union or origin is _builtin_types.UnionType:
         non_none = [a for a in args if a is not type(None)]
         if len(non_none) == 1:
-            inner_str, _ = _wire_type(non_none[0], enums)
+            inner_str, _ = _wire_type(non_none[0], enums, structs, depth)
             return f"optional<{inner_str}>", None
         return "any", None
 
     # list[T] → array<T>
     if origin is list:
-        inner_str, _ = _wire_type(args[0] if args else Any, enums)
+        inner_str, _ = _wire_type(args[0] if args else Any, enums, structs, depth)
         return f"array<{inner_str}>", None
 
     # Primitives — bool before int (bool is a subclass of int)
@@ -425,8 +452,10 @@ def _wire_type(hint: Any, enums: dict[str, type]) -> tuple[str, str | None]:
         enums[hint.__name__] = hint
         return f"enum({hint.__name__})", None
 
-    # dataclass → struct<Name>
+    # dataclass → struct<Name> + record fields (up to one level of struct nesting) for <types> block
     if dataclasses.is_dataclass(hint) and isinstance(hint, type):
+        if hint.__name__ not in structs and depth <= _MAX_STRUCT_DEPTH:
+            structs[hint.__name__] = _collect_struct_fields(hint, enums, structs, depth + 1)
         return f"struct<{hint.__name__}>", None
 
     return "any", None
@@ -438,6 +467,7 @@ def _interface_schema_to_xml(interface: type) -> ET.Element:
     root = ET.Element(f"{{{ns}}}interface", attrib={"name": interface.__name__})
 
     enums: dict[str, type] = {}
+    structs: dict[str, StructFields] = {}
 
     # Collect <command> elements from abstract methods, MRO base-first
     seen: set[str] = set()
@@ -465,7 +495,7 @@ def _interface_schema_to_xml(interface: type) -> ET.Element:
                     continue
                 if param_name not in hints:
                     continue
-                type_str, unit_str = _wire_type(hints[param_name], enums)
+                type_str, unit_str = _wire_type(hints[param_name], enums, structs)
                 attrib: dict[str, str] = {"name": param_name, "type": type_str}
                 if unit_str:
                     attrib["unit"] = unit_str
@@ -483,20 +513,27 @@ def _interface_schema_to_xml(interface: type) -> ET.Element:
         except Exception:
             state_hints = {}
         for f in dataclasses.fields(interface.state):
-            type_str, unit_str = _wire_type(state_hints.get(f.name, Any), enums)
+            type_str, unit_str = _wire_type(state_hints.get(f.name, Any), enums, structs)
             fattrib: dict[str, str] = {"name": f.name, "type": type_str}
             if unit_str:
                 fattrib["unit"] = unit_str
             ET.SubElement(state_elem, "field", attrib=fattrib)
 
     # Emit in order: <types> → <command>... → <state>
-    if enums:
+    if enums or structs:
         types_elem = ET.SubElement(root, "types")
         for enum_name, enum_cls in sorted(enums.items()):
             enum_elem = ET.SubElement(types_elem, "enum", attrib={"name": enum_name})
             for member in enum_cls:
                 val_elem = ET.SubElement(enum_elem, "value")
                 val_elem.text = member.value
+        for struct_name, struct_fields in sorted(structs.items()):
+            struct_elem = ET.SubElement(types_elem, "struct", attrib={"name": struct_name})
+            for fname, ftype, funit in struct_fields:
+                sfattrib: dict[str, str] = {"name": fname, "type": ftype}
+                if funit:
+                    sfattrib["unit"] = funit
+                ET.SubElement(struct_elem, "field", attrib=sfattrib)
 
     for cmd in cmd_elems:
         root.append(cmd)
@@ -513,6 +550,7 @@ def _event_schema_to_xml(event_cls: type) -> ET.Element:
     root = ET.Element(f"{{{ns}}}event", attrib={"name": event_cls.__name__})
 
     enums: dict[str, type] = {}
+    structs: dict[str, StructFields] = {}
     field_elems: list[ET.Element] = []
 
     try:
@@ -526,19 +564,26 @@ def _event_schema_to_xml(event_cls: type) -> ET.Element:
             continue
         if param_name not in hints:
             continue
-        type_str, unit_str = _wire_type(hints[param_name], enums)
+        type_str, unit_str = _wire_type(hints[param_name], enums, structs)
         attrib: dict[str, str] = {"name": param_name, "type": type_str}
         if unit_str:
             attrib["unit"] = unit_str
         field_elems.append(ET.Element("field", attrib=attrib))
 
-    if enums:
+    if enums or structs:
         types_elem = ET.SubElement(root, "types")
         for enum_name, enum_cls in sorted(enums.items()):
             enum_elem = ET.SubElement(types_elem, "enum", attrib={"name": enum_name})
             for member in enum_cls:
                 val_elem = ET.SubElement(enum_elem, "value")
                 val_elem.text = member.value
+        for struct_name, struct_fields in sorted(structs.items()):
+            struct_elem = ET.SubElement(types_elem, "struct", attrib={"name": struct_name})
+            for fname, ftype, funit in struct_fields:
+                sfattrib: dict[str, str] = {"name": fname, "type": ftype}
+                if funit:
+                    sfattrib["unit"] = funit
+                ET.SubElement(struct_elem, "field", attrib=sfattrib)
 
     for f in field_elems:
         root.append(f)

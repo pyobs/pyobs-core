@@ -9,6 +9,7 @@ from pyobs.events import LogEvent, ModuleOpenedEvent, TestEvent
 from pyobs.interfaces import ICooling, IMotion, IPushNotifications
 from pyobs.interfaces.IMotion import MotionState
 from pyobs.interfaces.interface import registered_interfaces
+from pyobs.modules import Module
 from pyobs.modules.utils.pushnotifier import PushNotifier, _Alert
 from pyobs.utils.enums import MotionStatus
 
@@ -251,3 +252,52 @@ async def test_send_to_all_devices_noop_without_fcm_app() -> None:
 
     # must not raise even though there's no app to send through
     await pn._send_to_all_devices(_Alert(title="t", body="b"))
+
+
+# ── close() ───────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_close_shuts_down_firebase_app(mocker) -> None:
+    pn = make_pushnotifier()
+    mocker.patch.object(Module, "close", AsyncMock())
+    app = MagicMock()
+    pn._fcm_app = app
+
+    firebase_admin_mock = MagicMock()
+    firebase_admin_mock.delete_app = MagicMock()
+    mocker.patch.dict("sys.modules", {"firebase_admin": firebase_admin_mock})
+
+    await pn.close()
+
+    firebase_admin_mock.delete_app.assert_called_once_with(app)
+    assert pn._fcm_app is None
+
+
+@pytest.mark.asyncio
+async def test_close_survives_firebase_cleanup_failure(mocker) -> None:
+    # reproduces a real production bug: firebase_admin.delete_app() -> messaging service
+    # close() calls asyncio.run() internally, which raises RuntimeError when invoked from
+    # within our own already-running event loop if not offloaded to a thread.
+    pn = make_pushnotifier()
+    mocker.patch.object(Module, "close", AsyncMock())
+    pn._fcm_app = MagicMock()
+
+    firebase_admin_mock = MagicMock()
+    firebase_admin_mock.delete_app = MagicMock(
+        side_effect=RuntimeError("asyncio.run() cannot be called from a running event loop")
+    )
+    mocker.patch.dict("sys.modules", {"firebase_admin": firebase_admin_mock})
+
+    await pn.close()  # must not raise
+
+    assert pn._fcm_app is None
+
+
+@pytest.mark.asyncio
+async def test_close_noop_without_fcm_app(mocker) -> None:
+    pn = make_pushnotifier()
+    mocker.patch.object(Module, "close", AsyncMock())
+    pn._fcm_app = None
+
+    await pn.close()  # must not raise or try to import firebase_admin

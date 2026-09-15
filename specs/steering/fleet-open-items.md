@@ -1,10 +1,21 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-14.
+Status: standing snapshot — last checked 2026-09-15.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-15**: qfitswidget's responsive toolbar (`2026-09-14-fitswidget-toolbar-overflow.md`,
+  hosted in pyobs-gui's specs/) released in qfitswidget v1.1.3; pyobs-gui's floor bumped to match
+  and released in v2.4.2 (also picks up today's TelescopeWidget/sidebar/scroll-fallback fixes).
+  Live testing after the "implemented" changelog entry below surfaced five *more* real bugs beyond
+  the original three — a minimumSizeHint chicken-and-egg deadlock specific to being embedded in a
+  resizable QScrollArea, missing hysteresis causing real flicker, a `uv run` auto-sync trap that
+  silently discarded a manual editable install across several rounds of "still broken" reports (so
+  none of those rounds' fixes were ever actually running), a `QWidgetAction.deleteLater()` crash
+  only reproducible with a real Qt event loop pumped, and a one-tier-deep repeat of the
+  minimumSizeHint bug for the second overflow-able checkbox. See the plan doc's "Implementation
+  notes" for the full account.
 - **2026-09-14**: pyobs-gui's `2026-09-14-fitswidget-toolbar-overflow.md` implemented (Repos:
   qfitswidget) — responsive Cuts/Stretch/Colormap toolbar in `QFitsWidget`, hide-then-overflow as
   width shrinks. Design changed mid-implementation from hardcoded pixel thresholds to

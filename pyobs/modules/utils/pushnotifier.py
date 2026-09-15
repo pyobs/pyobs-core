@@ -87,7 +87,14 @@ class PushNotifier(Module, IPushNotifications):
         if self._fcm_app is not None:
             import firebase_admin
 
-            firebase_admin.delete_app(self._fcm_app)
+            # delete_app() -> messaging service close() calls asyncio.run() internally, which
+            # raises if called from within a running event loop (our own) -- run it in a thread.
+            try:
+                await asyncio.wait_for(
+                    asyncio.to_thread(firebase_admin.delete_app, self._fcm_app), timeout=_FIREBASE_CALL_TIMEOUT
+                )
+            except Exception:
+                log.exception("Failed to cleanly shut down Firebase app.")
             self._fcm_app = None
 
     async def _init_firebase(self) -> None:

@@ -277,5 +277,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   all. Replaces both with one mechanism: bounded exponential backoff, a one-time `ERROR` log once a
   file's been failing longer than `error_after` (required, no default — deployment-specific), and
   internal (in-memory, not a `failed/` dir) failure-state tracking; failures are further split by
-  exception type into terminal (never re-queued) vs. transient (retried). **implemented**, not yet
-  committed (Repos: pyobs-core)
+  exception type into terminal (never re-queued) vs. transient (retried). **implemented, closed**
+  (`061d4f78`; no issue; Repos: pyobs-core)

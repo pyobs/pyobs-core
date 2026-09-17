@@ -1,10 +1,22 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-15.
+Status: standing snapshot — last checked 2026-09-17.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-17**: filed pyobs-web-client#57 (let users choose which push notification types they
+  receive, per-type opt-in/out for `PushNotifier` (#902) notifications) — added to the issues
+  table.
+- **2026-09-17**: re-queried the fleet (org-wide `gh api search/issues`): no issue changes since the
+  2026-09-15 check — nothing opened, closed, or updated in the window, so the issues table stands
+  (pyobs-core#819, pyobs-brot#71, pyobs-gui#168 all still open, none landed on `develop`). Open
+  plans and the *proposed* design doc unchanged (`gui-telescopewidget-layout` still partially
+  implemented; `interface_versioning` still *proposed*; `mobile-first-redesign` still in progress,
+  Phase 4/iOS remaining). New pyobs-core plan `2026-09-17-imagewatcher-retry-hardening.md` (bounded
+  exponential backoff + one-time `ERROR` alerting for `ImageWatcher._worker` failures) was written
+  and its fix (`061d4f78`) landed on `develop` (and `main`) in the same window — never an open item,
+  not added here; its own status line still reads "not yet committed" (stale).
 - **2026-09-15**: re-queried the fleet (org-wide `gh api search/issues`). pyobs-core#902
   (`PushNotifier` module) found already **implemented and on `develop`** (`5b688528`, `90b7ded1`,
   committed directly, no PR) — `pyobs.modules.utils.PushNotifier` implementing a new
@@ -272,7 +284,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (3, checked 2026-09-15)
+## Open issues (4, checked 2026-09-17)
 
 One row per issue — same layout for every repo.
 
@@ -281,6 +293,7 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 | pyobs-gui | [#168](https://github.com/pyobs/pyobs-gui/issues/168) | Desktop notifications for module ERROR / log ERROR-CRITICAL while running | filed 2026-09-14; independent of pyobs-core's `PushNotifier` (#902, now implemented) — same signals, but for an operator already at a running/connected pyobs-gui, via `QSystemTrayIcon::showMessage()` (not decided); no design doc yet |
+| pyobs-web-client | [#57](https://github.com/pyobs/pyobs-web-client/issues/57) | Allow users to choose which push notification types they receive | filed 2026-09-17; per-type opt-in/out for `PushNotifier` (#902) notifications; preference storage (client-only vs. synced) and default (all-on vs. opt-in) still open |
 
 ## Open plans
 

@@ -5,6 +5,19 @@ Status: standing snapshot — last checked 2026-09-15.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-15**: re-queried the fleet (org-wide `gh api search/issues`). pyobs-core#902
+  (`PushNotifier` module) found already **implemented and on `develop`** (`5b688528`, `90b7ded1`,
+  committed directly, no PR) — `pyobs.modules.utils.PushNotifier` implementing a new
+  `IPushNotifications` interface; the `pyobs-web-client` companion `register_device` call also
+  landed (`31538b7`). `push-notification-module.md` updated to *implemented* and dropped from the
+  open design docs list below. Checked the design doc's three open questions against the shipped
+  code: "which interfaces count" was resolved (any state-bearing interface, no allow/deny-list, as
+  sketched); stale-token pruning and the exact-message dedup key are **still open as shipped** —
+  left as caveats in the design doc rather than split into new issues, pending Tim's call on
+  whether either is worth tracking separately. New: pyobs-gui#168 (native desktop notification for
+  the same module-`ERROR`/log-`ERROR`-CRITICAL signals, for an operator with pyobs-gui open but not
+  watching it — explicitly independent of `PushNotifier`, no design doc yet) — added to the issues
+  table. No other org-wide issue changes since the 2026-09-14 check.
 - **2026-09-15**: qfitswidget's responsive toolbar (`2026-09-14-fitswidget-toolbar-overflow.md`,
   hosted in pyobs-gui's specs/) released in qfitswidget v1.1.3; pyobs-gui's floor bumped to match
   and released in v2.4.2 (also picks up today's TelescopeWidget/sidebar/scroll-fallback fixes).
@@ -259,7 +272,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (2, checked 2026-09-14)
+## Open issues (3, checked 2026-09-15)
 
 One row per issue — same layout for every repo.
 
@@ -267,6 +280,7 @@ One row per issue — same layout for every repo.
 |---|---|---|---|
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
+| pyobs-gui | [#168](https://github.com/pyobs/pyobs-gui/issues/168) | Desktop notifications for module ERROR / log ERROR-CRITICAL while running | filed 2026-09-14; independent of pyobs-core's `PushNotifier` (#902, now implemented) — same signals, but for an operator already at a running/connected pyobs-gui, via `QSystemTrayIcon::showMessage()` (not decided); no design doc yet |
 
 ## Open plans
 
@@ -280,9 +294,6 @@ One row per issue — same layout for every repo.
 - [interface_versioning.md](../design/interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.
-- [push-notification-module.md](../design/push-notification-module.md) — sketch stage; direction
-  and v1 scope decided, not yet built (Repos: pyobs-core, pyobs-web-client). Tracked by #902
-  (filed 2026-09-14 after #884 turned out to be closed for an unrelated reason).
 
 ### Sibling repos
 

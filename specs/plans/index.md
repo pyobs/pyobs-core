@@ -271,3 +271,11 @@ Implementation plans, checklist-style. Newest at the bottom.
   fallback paths (`xmppcomm.py`, `rpc.py`'s `_on_jabber_rpc_error`) upgraded to raise
   `ForbiddenError` with `call_id` instead of a generic `RemoteError`. **implemented, closed** —
   released in v2.8.9 (issue #899, closed; Repos: pyobs-core)
+- [2026-09-17-imagewatcher-retry-hardening.md](2026-09-17-imagewatcher-retry-hardening.md) —
+  `ImageWatcher._worker` retry rework: destination-write failures currently retry forever with no
+  cap or alerting, while read/cleanup failures drop the file on the first error with no retry at
+  all. Replaces both with one mechanism: bounded exponential backoff, a one-time `ERROR` log once a
+  file's been failing longer than `error_after` (required, no default — deployment-specific), and
+  internal (in-memory, not a `failed/` dir) failure-state tracking; failures are further split by
+  exception type into terminal (never re-queued) vs. transient (retried). **implemented**, not yet
+  committed (Repos: pyobs-core)

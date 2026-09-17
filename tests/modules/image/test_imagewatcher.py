@@ -18,7 +18,14 @@ from pyobs.vfs import VirtualFileSystem
 
 
 def make_watcher(
-    destinations=None, pattern="*", wait_time=0, flatten=True, poll=False, poll_interval=5
+    destinations=None,
+    pattern="*",
+    wait_time=0,
+    flatten=True,
+    poll=False,
+    poll_interval=5,
+    error_after=9999,
+    backoff_cap=3600,
 ) -> ImageWatcher:
     return ImageWatcher(
         watchpath="/watch",
@@ -28,6 +35,8 @@ def make_watcher(
         flatten=flatten,
         poll=poll,
         poll_interval=poll_interval,
+        error_after=error_after,
+        backoff_cap=backoff_cap,
         comm=DummyComm(),
         vfs=MagicMock(spec=VirtualFileSystem),
     )
@@ -200,7 +209,144 @@ async def test_worker_requeues_on_write_failure(caplog) -> None:
             pass
 
     watcher._vfs.remove.assert_not_called()
-    assert "skipping for now" in caplog.text
+    assert "Retrying" in caplog.text
+
+
+# ── retry / failure handling ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_worker_requeues_on_read_failure() -> None:
+    """Read failures used to be dropped silently (outer generic except, no re-queue); must now
+    be retried like write failures -- this is the bug that started this rework."""
+    watcher = make_watcher(destinations=["/dest"], wait_time=100)
+
+    read_ctx = MagicMock()
+    read_ctx.__aenter__ = AsyncMock(side_effect=OSError("read failed"))
+    read_ctx.__aexit__ = AsyncMock(return_value=False)
+    watcher._vfs.open_file = MagicMock(return_value=read_ctx)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    task = asyncio.create_task(watcher._worker())
+    await asyncio.sleep(0.05)
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+    watcher._vfs.remove.assert_not_called()
+    # the worker's own retry loop has already pulled the re-queued item back out to sleep on it
+    # (backoff for attempt 1 is 200s given wait_time=100), so the queue being empty at this point
+    # is expected -- assert on the retry bookkeeping instead of raw queue contents.
+    assert watcher._retry["/watch/test.fits"].attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_worker_success_clears_retry_state() -> None:
+    watcher = make_watcher(destinations=["/dest"], wait_time=0)
+    watcher._retry["/watch/test.fits"] = imagewatcher_module._RetryState(attempts=3)
+
+    data = b"raw data"
+    read_ctx, write_ctx = make_read_write_ctx(data)
+
+    def open_side_effect(filename, mode):
+        return read_ctx if mode == "rb" else write_ctx
+
+    watcher._vfs.open_file = MagicMock(side_effect=open_side_effect)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    task = asyncio.create_task(watcher._worker())
+    await asyncio.sleep(0.1)
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+    assert "/watch/test.fits" not in watcher._retry
+
+
+@pytest.mark.asyncio
+async def test_worker_cleanup_extra_failure_not_requeued(caplog) -> None:
+    """cleanup_extra runs after the file is already removed from watchpath and copied to every
+    destination -- a failure there can't be fixed by re-running the pipeline, so it must be
+    logged, not re-queued."""
+    watcher = make_watcher(destinations=["/dest"], wait_time=0)
+    data = b"raw data"
+    read_ctx, write_ctx = make_read_write_ctx(data)
+
+    def open_side_effect(filename, mode):
+        return read_ctx if mode == "rb" else write_ctx
+
+    watcher._vfs.open_file = MagicMock(side_effect=open_side_effect)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+    watcher.cleanup_extra = AsyncMock(side_effect=RuntimeError("cleanup broke"))
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    with caplog.at_level(logging.ERROR):
+        task = asyncio.create_task(watcher._worker())
+        await asyncio.sleep(0.1)
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
+
+    watcher._vfs.remove.assert_called_once_with("/watch/test.fits")
+    assert watcher._queue.empty()
+    assert "cleanup_extra failed" in caplog.text
+
+
+@pytest.mark.parametrize("exc", [FileNotFoundError("gone"), PermissionError("denied"), IsADirectoryError("dir")])
+def test_handle_failure_terminal_exception_not_requeued(exc, caplog) -> None:
+    """Terminal exceptions are never re-queued, regardless of which phase raised them -- this
+    test exercises _handle_failure directly, independent of read vs. write call site."""
+    watcher = make_watcher()
+    with caplog.at_level(logging.ERROR):
+        watcher._handle_failure("/watch/test.fits", exc)
+    assert watcher._queue.empty()
+    assert "/watch/test.fits" not in watcher._retry
+    assert "Giving up" in caplog.text
+
+
+def test_handle_failure_backoff_grows_and_caps() -> None:
+    watcher = make_watcher(wait_time=10, error_after=9999, backoff_cap=25)
+    before = time.time()
+
+    watcher._handle_failure("/watch/test.fits", OSError("boom"))  # attempt 1: 10 * 2**1 = 20
+    _, ready_at = watcher._queue.get_nowait()
+    assert 19 <= ready_at - before <= 21
+
+    watcher._handle_failure("/watch/test.fits", OSError("boom"))  # attempt 2: min(10 * 2**2, 25) = 25
+    _, ready_at = watcher._queue.get_nowait()
+    assert 24 <= ready_at - before <= 26
+
+
+def test_handle_failure_alerts_once_after_error_after(monkeypatch, caplog) -> None:
+    watcher = make_watcher(wait_time=10, error_after=30, backoff_cap=3600)
+    clock = [1000.0]
+    monkeypatch.setattr(imagewatcher_module.time, "time", lambda: clock[0])
+    # pre-seed retry state so _handle_failure doesn't build a fresh _RetryState via its dataclass
+    # default_factory=time.time, which was bound to the real time.time at class-definition time
+    # and wouldn't see this monkeypatch.
+    watcher._retry["/watch/test.fits"] = imagewatcher_module._RetryState(first_failed_at=clock[0])
+
+    with caplog.at_level(logging.WARNING):
+        watcher._handle_failure("/watch/test.fits", OSError("boom"))  # elapsed=0 < error_after
+        assert watcher._retry["/watch/test.fits"].alerted is False
+
+        clock[0] += 40  # now past error_after
+        watcher._handle_failure("/watch/test.fits", OSError("boom"))
+        assert watcher._retry["/watch/test.fits"].alerted is True
+
+        clock[0] += 10  # already alerted -- must not fire a second ERROR
+        watcher._handle_failure("/watch/test.fits", OSError("boom"))
+        assert watcher._retry["/watch/test.fits"].attempts == 3
+
+    assert caplog.text.count("Still failing on") == 1
 
 
 # ── FITS-parse gating by filename suffix ──────────────────────────────────────
@@ -380,7 +526,12 @@ async def test_cleanup_extra_is_noop() -> None:
 
 def test_constructor_raises_without_destinations() -> None:
     with pytest.raises(ValueError, match="No filename patterns"):
-        ImageWatcher(watchpath="/watch", destinations=[])
+        ImageWatcher(watchpath="/watch", destinations=[], error_after=0)
+
+
+def test_constructor_requires_error_after() -> None:
+    with pytest.raises(TypeError):
+        ImageWatcher(watchpath="/watch", destinations=["/dest"])  # type: ignore[call-arg]
 
 
 # ── flatten ───────────────────────────────────────────────────────────────────

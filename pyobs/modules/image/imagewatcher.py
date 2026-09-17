@@ -4,7 +4,7 @@ import logging
 import os
 import time
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -30,6 +30,21 @@ class CurrentFile:
     hdu_list: fits.HDUList | None = None
 
 
+@dataclass
+class _RetryState:
+    attempts: int = 0
+    first_failed_at: float = field(default_factory=time.time)
+    alerted: bool = False
+
+
+# Exceptions treated as unrecoverable regardless of which phase (read or write) raises them: no
+# amount of retrying fixes a deleted file or wrong permissions. Everything else is assumed
+# possibly transient (a down destination, a network hiccup) and gets bounded-backoff-forever
+# retries instead. Deliberately coarse and biased towards over-retrying rather than silently
+# dropping a file we misclassified -- see the design doc for the reasoning.
+_TERMINAL_EXCEPTIONS = (FileNotFoundError, PermissionError, IsADirectoryError)
+
+
 class ImageWatcher(Module):
     """Watch for new files and write them to all given destinations.
 
@@ -39,8 +54,11 @@ class ImageWatcher(Module):
     New files are not processed immediately, but only after a wait time (``wait_time``) has passed since they were
     detected. This is mainly to make sure the file is fully written before it is read: while the inotify watcher
     only reports files after they have been closed for writing (``CLOSE_WRITE``), the polling watcher and the
-    initial scan in ``open()`` can see a file while its write is still in progress. The same wait time is also
-    used to delay re-processing of files whose destination copy failed (see ``_worker``).
+    initial scan in ``open()`` can see a file while its write is still in progress.
+
+    A file that fails to process is retried with exponentially growing backoff, up to ``backoff_cap``, unless the
+    failure is unrecoverable (see ``_handle_failure``), in which case it's left in place and never retried. See
+    the ``error_after``/``backoff_cap`` constructor args for details.
     """
 
     __module__ = "pyobs.modules.image"
@@ -54,6 +72,9 @@ class ImageWatcher(Module):
         wait_time: int = 10,
         pattern: str = "*",
         flatten: bool = True,
+        *,
+        error_after: int,
+        backoff_cap: int = 3600,
         **kwargs: Any,
     ):
         """Create a new image watcher.
@@ -64,8 +85,8 @@ class ImageWatcher(Module):
             poll: If True, watchpath is polled instead of watched by inotify.
             poll_interval: Interval for polling in seconds, if poll is True.
             wait_time: Time in seconds between adding a file to the list and processing it. Gives a file that is
-                still being written time to finish (relevant for poll mode and the initial scan) and spaces out
-                re-queued files after failed destination copies.
+                still being written time to finish (relevant for poll mode and the initial scan) and is also the
+                base interval for retrying a file after a transient failure (see ``error_after``).
             pattern: Only watch/process files matching this fnmatch pattern, checked against the full path (so
                 e.g. "*.fits" also matches files found in subdirectories). This is the single point of filtering,
                 applied uniformly in ``add_file`` regardless of watch mode -- inotify events, polling, and the
@@ -79,6 +100,21 @@ class ImageWatcher(Module):
                 write (the default for e.g. ``LocalFile``) -- a destination configured to not do that would
                 repeatedly fail and re-queue any file whose relative path needs a parent directory that doesn't
                 exist yet.
+            error_after: Seconds a file may keep failing with a transient error (see below) before a single
+                ``ERROR`` is logged for it. Required -- no sane default exists, since how long a destination can
+                legitimately be unreachable (a remote archive, an NFS mount, ...) varies per deployment. Set it
+                to how long an outage has to last before it's worth paging someone. The file keeps being retried
+                (with growing backoff, capped at ``backoff_cap``) indefinitely either way; this only controls
+                when the one-time alert fires, not whether retrying continues.
+            backoff_cap: Maximum seconds between retries of a file that keeps failing transiently. The interval
+                starts at ``wait_time`` and doubles on each failure up to this cap.
+
+        Note:
+            A failure is either transient (retried forever, with the backoff/``error_after`` behavior above) or
+            terminal (``FileNotFoundError``, ``PermissionError``, ``IsADirectoryError``, wherever in the pipeline
+            they're raised) -- a terminal failure is logged as an ``ERROR`` immediately and the file is never
+            re-queued; it's simply left where it is in ``watchpath``; neither watch mode re-detects an existing,
+            unchanged file, so it stays visibly stuck rather than being retried forever or silently vanishing.
 
         Note:
             If a directory holding a file that's already queued (added but not yet processed by ``_worker``) is
@@ -105,6 +141,9 @@ class ImageWatcher(Module):
         self._wait_time = wait_time
         self._pattern = pattern
         self._flatten = flatten
+        self._error_after = error_after
+        self._backoff_cap = backoff_cap
+        self._retry: dict[str, _RetryState] = {}
         self.current_file: CurrentFile | None = None
 
         # filename patterns
@@ -203,84 +242,114 @@ class ImageWatcher(Module):
                 await asyncio.sleep(wait)
             log.info("Working on file %s...", filename)
 
-            # better safe than sorry
             try:
-                # get file data
-                async with self.vfs.open_file(filename, "rb") as fd:
-                    data = await fd.read()
+                await self._process_file(filename)
+            except Exception as e:
+                self._handle_failure(filename, e)
+            else:
+                self._retry.pop(filename, None)
 
-                # only attempt to load the file as FITS when its name suggests it is one; any
-                # other file (e.g. a raw camera binary like "w123.0") is still copied as-is to
-                # non-templated destinations, just without the parse attempt and the astropy
-                # header warnings it raises on non-FITS content. A matching name is no
-                # guarantee, though -- the data may be corrupt or truncated -- hence the
-                # try/except below.
-                fits_file = None
-                if os.path.basename(filename).lower().endswith(FITS_FILENAME_SUFFIXES):
-                    try:
-                        with warnings.catch_warnings():
-                            warnings.simplefilter("ignore", fits.verify.VerifyWarning)
-                            fits_file = await asyncio.to_thread(fits.HDUList.fromstring, data)
-                    except Exception:
-                        fits_file = None
+    async def _process_file(self, filename: str) -> None:
+        """Read, archive and clean up a single file. Raises on any failure short of cleanup.
 
-                # fill current file
-                self.current_file = CurrentFile(filename=filename, data=data, hdu_list=fits_file)
+        Args:
+            filename: Local filename of the file to process.
+        """
+        # get file data
+        async with self.vfs.open_file(filename, "rb") as fd:
+            data = await fd.read()
 
-                # loop archive and upload
-                success = True
-                for pattern in self._destinations:
-                    # if it contains {placeholders}, we assume it's a FITS file and format filename
-                    if "{" in pattern and "}" in pattern and fits_file is not None:
-                        # format filename
-                        out_filename = format_filename(fits_file["SCI"].header, pattern)
-                        if out_filename is None:
-                            raise ValueError("Could not create name for file.")
-
-                    elif self._flatten:
-                        # no formatting, so just add filename to destination
-                        out_filename = os.path.join(pattern, os.path.basename(filename))
-
-                    else:
-                        # preserve the file's path relative to watchpath under the destination
-                        rel = PurePosixPath(filename).relative_to(self._watchpath)
-                        out_filename = str(PurePosixPath(pattern) / rel)
-
-                    # store it
-                    log.info("Storing file as %s...", out_filename)
-                    self.current_file.out_filename = out_filename
-                    try:
-                        async with self.vfs.open_file(out_filename, "wb") as fd:
-                            await fd.write(data)
-                    except Exception as e:
-                        log.warning("Error while copying file, skipping for now: %s", e)
-                        success = False
-                        break
-
-                    # do extra processing
-                    if not await self.process_extra(filename):
-                        success = False
-                        break
-
-                # no success?
-                if not success:
-                    # re-queue file and skip file for now
-                    self._queue.put_nowait((filename, time.time() + self._wait_time))
-                    continue
-
-                # close and delete files
-                log.info("Removing file from watch directory...")
-                if not await self.vfs.remove(filename):
-                    log.warning("Could not delete %s.", filename)
-                else:
-                    # clean up any now-empty parent directories the file left behind
-                    await self._cleanup_empty_parents(filename)
-
-                # cleanup extra
-                await self.cleanup_extra(filename)
-
+        # only attempt to load the file as FITS when its name suggests it is one; any
+        # other file (e.g. a raw camera binary like "w123.0") is still copied as-is to
+        # non-templated destinations, just without the parse attempt and the astropy
+        # header warnings it raises on non-FITS content. A matching name is no
+        # guarantee, though -- the data may be corrupt or truncated -- hence the
+        # try/except below.
+        fits_file = None
+        if os.path.basename(filename).lower().endswith(FITS_FILENAME_SUFFIXES):
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", fits.verify.VerifyWarning)
+                    fits_file = await asyncio.to_thread(fits.HDUList.fromstring, data)
             except Exception:
-                log.exception("Something went wrong.")
+                fits_file = None
+
+        # fill current file
+        self.current_file = CurrentFile(filename=filename, data=data, hdu_list=fits_file)
+
+        # loop archive and upload
+        for pattern in self._destinations:
+            # if it contains {placeholders}, we assume it's a FITS file and format filename
+            if "{" in pattern and "}" in pattern and fits_file is not None:
+                # format filename
+                out_filename = format_filename(fits_file["SCI"].header, pattern)
+                if out_filename is None:
+                    raise ValueError("Could not create name for file.")
+
+            elif self._flatten:
+                # no formatting, so just add filename to destination
+                out_filename = os.path.join(pattern, os.path.basename(filename))
+
+            else:
+                # preserve the file's path relative to watchpath under the destination
+                rel = PurePosixPath(filename).relative_to(self._watchpath)
+                out_filename = str(PurePosixPath(pattern) / rel)
+
+            # store it
+            log.info("Storing file as %s...", out_filename)
+            self.current_file.out_filename = out_filename
+            async with self.vfs.open_file(out_filename, "wb") as fd:
+                await fd.write(data)
+
+            # do extra processing
+            if not await self.process_extra(filename):
+                raise RuntimeError(f"process_extra rejected {filename}.")
+
+        # close and delete files
+        log.info("Removing file from watch directory...")
+        if not await self.vfs.remove(filename):
+            log.warning("Could not delete %s.", filename)
+        else:
+            # clean up any now-empty parent directories the file left behind
+            await self._cleanup_empty_parents(filename)
+
+        # cleanup extra -- the file has already been removed from watchpath and copied to every
+        # destination by this point, so a failure here can't be fixed by re-running the pipeline
+        # (it would just re-read a now-deleted file); log it and move on instead of re-queueing.
+        try:
+            await self.cleanup_extra(filename)
+        except Exception:
+            log.error("cleanup_extra failed for %s (file already transferred, not retrying).", filename)
+
+    def _handle_failure(self, filename: str, exc: Exception) -> None:
+        """Handle a failure from ``_process_file``: re-queue transient failures with backoff, give
+        up (without re-queueing) on unrecoverable ones.
+
+        Args:
+            filename: The file that failed to process.
+            exc: The exception raised by ``_process_file``.
+        """
+        if isinstance(exc, _TERMINAL_EXCEPTIONS):
+            log.error("Giving up on %s, unrecoverable error: %s", filename, exc)
+            self._retry.pop(filename, None)
+            return
+
+        state = self._retry.setdefault(filename, _RetryState())
+        state.attempts += 1
+        elapsed = time.time() - state.first_failed_at
+        delay = min(self._wait_time * 2**state.attempts, self._backoff_cap)
+        if elapsed >= self._error_after and not state.alerted:
+            log.error(
+                "Still failing on %s after %.0fs of retries (attempt %d): %s",
+                filename,
+                elapsed,
+                state.attempts,
+                exc,
+            )
+            state.alerted = True
+        else:
+            log.warning("Retrying %s (attempt %d, next in %ds): %s", filename, state.attempts, delay, exc)
+        self._queue.put_nowait((filename, time.time() + delay))
 
     async def _cleanup_empty_parents(self, filename: str) -> None:
         """Remove now-empty parent directories left behind by a just-deleted file.

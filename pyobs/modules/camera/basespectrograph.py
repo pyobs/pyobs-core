@@ -10,6 +10,7 @@ from astropy.io import fits
 
 from pyobs.events import ExposureStatusChangedEvent, NewSpectrumEvent
 from pyobs.interfaces import ExposureState, IExposure, ISpectrograph
+from pyobs.mixins.datasequence import DataSequenceMixin
 from pyobs.mixins.fitsheader import SpectrumFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
@@ -24,7 +25,7 @@ class ExposureInfo(NamedTuple):
     start: datetime
 
 
-class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure, metaclass=ABCMeta):
+class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure, DataSequenceMixin, metaclass=ABCMeta):
     """Base class for all spectrograph modules."""
 
     __module__ = "pyobs.modules.camera"
@@ -66,6 +67,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure
         await self.comm.set_state(
             IExposure, ExposureState(status=self._spectrograph_status, progress=0.0, exposure_time_left=0.0)
         )
+        await self._datasequence_open()
 
     @abstractmethod
     async def _expose(self, abort_event: asyncio.Event) -> fits.HDUList:
@@ -206,13 +208,18 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure
         self._spectrograph_status = status
         await self.comm.set_state(IExposure, ExposureState(status=status, progress=0.0, exposure_time_left=0.0))
 
+    def _sequence_busy(self) -> bool:
+        """Whether the spectrograph is busy exposing outside of a running sequence."""
+        return self._spectrograph_status != ExposureStatus.IDLE
+
     async def abort(self, **kwargs: Any) -> None:
-        """Aborts the current exposure.
+        """Aborts the current exposure and sequence. Derived class must implement the actual
+        hardware abort for this!
 
         Raises:
             ValueError: If exposure could not be aborted.
         """
-        pass
+        self._abort_data_sequence()
 
 
 __all__ = ["BaseSpectrograph"]

@@ -12,16 +12,15 @@ from astropy.io import fits
 from pyobs.events import BadWeatherEvent, Event, ExposureStatusChangedEvent, NewImageEvent
 from pyobs.images import Image
 from pyobs.interfaces import (
-    DataSequenceState,
     ExposureState,
     ExposureTimeState,
     ICamera,
-    IDataSequence,
     IExposure,
     IExposureTime,
     IImageType,
     ImageTypeState,
 )
+from pyobs.mixins.datasequence import DataSequenceMixin
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
@@ -43,7 +42,7 @@ async def calc_expose_timeout(camera: BaseCamera, *args: Any, **kwargs: Any) -> 
 
 
 class BaseCamera(
-    Module, ImageFitsHeaderMixin, ICamera, IExposure, IExposureTime, IImageType, IDataSequence, metaclass=ABCMeta
+    Module, ImageFitsHeaderMixin, ICamera, IExposure, IExposureTime, IImageType, DataSequenceMixin, metaclass=ABCMeta
 ):
     """Base class for all camera modules."""
 
@@ -104,12 +103,6 @@ class BaseCamera(
         # multi-threading
         self.expose_abort = asyncio.Event()
 
-        # grab_sequence() state -- count_left > 0 means a sequence is currently running
-        # (also between individual grabs, while _camera_status is briefly IDLE again)
-        self._sequence_count_left = 0
-        self._sequence_task: asyncio.Task[None] | None = None
-        self._sequence_delay_abort = asyncio.Event()
-
         # register exception
         self._register_exception(exc.GrabImageError, 3, timespan=600, callback=self._default_remote_error_callback)
 
@@ -138,7 +131,7 @@ class BaseCamera(
                 exposure_time_left=0.0,
             ),
         )
-        await self.comm.set_state(IDataSequence, DataSequenceState(count_total=0, count_left=0))
+        await self._datasequence_open()
 
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time in seconds.
@@ -402,69 +395,9 @@ class BaseCamera(
         # return filename
         return filename
 
-    async def grab_sequence(self, count: int, broadcast: bool = True, delay: float = 0, **kwargs: Any) -> None:
-        """Start a sequence of `count` images. Returns immediately; progress is available via
-        the pushed DataSequenceState.
-
-        Args:
-            count: Number of images to take.
-            broadcast: Broadcast existence of each image.
-            delay: Seconds to wait between the end of one image and the start of the next.
-                Does not apply after the last image.
-
-        Raises:
-            InvalidArgumentError: If count or delay is out of range.
-            DeviceBusyError: If camera is already busy (exposing or already running a sequence).
-        """
-        if count < 1:
-            raise exc.InvalidArgumentError("count must be >= 1.")
-        if delay < 0:
-            raise exc.InvalidArgumentError("delay must be >= 0.")
-
-        # already running a sequence, or mid-exposure outside of one?
-        if self._sequence_count_left > 0 or self._camera_status != ExposureStatus.IDLE:
-            raise exc.DeviceBusyError("Cannot start new sequence because camera is not idle.")
-
-        log.info("Starting sequence of %d images...", count)
-        self._sequence_count_left = count
-        await self.comm.set_state(IDataSequence, DataSequenceState(count_total=count, count_left=count))
-        self._sequence_task = asyncio.create_task(self._run_sequence(count, broadcast, delay))
-
-    async def _run_sequence(self, count_total: int, broadcast: bool, delay: float) -> None:
-        """Runs a sequence of grab_data() calls, started by grab_sequence()."""
-        try:
-            while self._sequence_count_left > 0:
-                try:
-                    await self.grab_data(broadcast=broadcast)
-                except exc.PyobsError:
-                    log.exception("Grab failed during sequence, aborting sequence.")
-                    break
-                self._sequence_count_left -= 1
-                await self.comm.set_state(
-                    IDataSequence, DataSequenceState(count_total=count_total, count_left=self._sequence_count_left)
-                )
-
-                # wait between images, unless this was the last one or the sequence was
-                # aborted in the meantime -- either abort_sequence() or abort() cuts this short
-                if self._sequence_count_left > 0 and delay > 0:
-                    self._sequence_delay_abort.clear()
-                    try:
-                        await asyncio.wait_for(self._sequence_delay_abort.wait(), timeout=delay)
-                    except TimeoutError:
-                        pass
-        finally:
-            log.info("Finished sequence.")
-            self._sequence_count_left = 0
-            self._sequence_task = None
-            await self.comm.set_state(IDataSequence, DataSequenceState(count_total=0, count_left=0))
-
-    async def abort_sequence(self, **kwargs: Any) -> None:
-        """Stop the sequence after the current image. The image currently exposing, if any,
-        finishes normally; no further images in the sequence are started.
-        """
-        log.info("Aborting sequence after current image...")
-        self._sequence_count_left = 0
-        self._sequence_delay_abort.set()
+    def _sequence_busy(self) -> bool:
+        """Whether the camera is busy exposing outside of a running sequence."""
+        return self._camera_status != ExposureStatus.IDLE
 
     async def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
@@ -484,8 +417,7 @@ class BaseCamera(
         # set abort event
         log.info("Aborting current image and sequence...")
         self.expose_abort.set()
-        self._sequence_count_left = 0
-        self._sequence_delay_abort.set()
+        self._abort_data_sequence()
 
         # do camera-specific abort
         await self._abort_exposure()

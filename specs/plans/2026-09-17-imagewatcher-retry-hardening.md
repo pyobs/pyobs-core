@@ -1,6 +1,6 @@
 # Plan: Harden ImageWatcher's retry behavior
 
-Status: implemented — built on `develop`, not yet committed. Matches this doc's design as written,
+Status: implemented, closed — landed on `develop` in `061d4f78`. Matches this doc's design as written,
 with one departure: `error_after` ended up keyword-only with no default (Python requires that to
 make a param mandatory after params that do have defaults), documented in the constructor
 docstring rather than the signature alone.

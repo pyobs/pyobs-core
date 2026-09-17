@@ -1,11 +1,14 @@
 # Push notification relay module (`PushNotifier`)
 
-Status: sketch — decided direction and v1 scope, not yet built. Written 2026-09-09 after
-confirming (against current code) that the wire-protocol prerequisite this depended on is already
-satisfied, and that RPC handlers can already access caller identity via `**kwargs: Any` (§3) —
-both were open questions in earlier drafts, now resolved by reading the actual dispatch code.
-Revised 2026-09-14: `ERROR`/`CRITICAL` log events folded into v1 scope (§2b), alongside module
-`ERROR` state. Bad weather / roof-open stays deferred. Nothing here has been implemented yet.
+Status: implemented. Written 2026-09-09 after confirming (against current code) that the
+wire-protocol prerequisite this depended on is already satisfied, and that RPC handlers can
+already access caller identity via `**kwargs: Any` (§3) — both were open questions in earlier
+drafts, now resolved by reading the actual dispatch code. Revised 2026-09-14: `ERROR`/`CRITICAL`
+log events folded into v1 scope (§2b), alongside module `ERROR` state. Bad weather / roof-open
+stays deferred. Built 2026-09-14/15 (`5b688528`, `90b7ded1`) as `pyobs.modules.utils.PushNotifier`
+implementing the new `IPushNotifications` interface; `pyobs-web-client`'s `register_device` call
+landed the same way (`31538b7`). Both on `develop`, no PR (committed directly). Two of the three
+open questions below are still genuinely open as shipped — see the note under each.
 
 Repos: pyobs-core (module implementation, all new code); pyobs-web-client (one small addition —
 the device-token registration call from `usePushNotifications.ts`)
@@ -149,13 +152,15 @@ with the client-side `google-services.json`/API key already checked into
 ## Open questions — not resolved here, flagged for actual design/implementation
 
 - **Stale/uninstalled-app tokens.** FCM returns an "unregistered" error on send to a dead token;
-  the module should prune those, not accumulate them forever. Not designed here.
+  the module should prune those, not accumulate them forever. **Still open as shipped** —
+  `_send_to_all_devices` just logs and moves on (`log.exception("Failed to send push notification
+  to a device.")`), no pruning. Needs Tim's call on whether this is worth a follow-up issue.
 - **Which modules/interfaces count.** Mirroring `DashboardView.vue`'s triage exactly means
   alerting on *any* interface's `ERROR`, fleet-wide, with no allow/deny-list — same blast radius
-  as what the dashboard already surfaces. Worth confirming that's actually the desired v1 alert
-  surface (vs., say, only modules with real hardware) before building.
+  as what the dashboard already surfaces. **Resolved as shipped**: implemented exactly this way
+  (`status.upper() == "ERROR"` on any state-bearing interface), no allow/deny-list added.
 - **Log-message dedup key.** Telegram's `last_messages` dedup keys on exact message-string equality
   per user. For a retry loop logging `ERROR` with a changing detail (a timestamp, an exception
   `repr`, a retry count in the text), exact-match dedup won't catch it and every retry pushes
-  separately. Not designed here whether §2b needs a looser key (e.g. `(sender, level)` instead of
-  the message text) — worth checking against a real noisy-retry log before building.
+  separately. **Still open as shipped** — `_sender_thread`'s dedup key is `(title, body)`, i.e. the
+  literal message text; a changing detail per retry defeats it exactly as flagged here.

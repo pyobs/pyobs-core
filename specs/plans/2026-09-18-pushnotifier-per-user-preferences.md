@@ -1,16 +1,18 @@
 # Plan: Per-user push notification preferences in `PushNotifier`
 
 Status: implemented, uncommitted (2026-09-18) — pyobs-core half only; the pyobs-web-client toggle
-UI + `set_preferences` call is still to do. Implemented as written, with one departure: the
-`set_preferences` signature stays `list[PushNotificationType]` (so an invalid/unknown stored value
-fails loudly), and it tolerates plain string values at runtime via `PushNotificationType(t)`. Not
-covered by a test, since passing strings contradicts the declared signature and only the wire
-(which always delivers enum instances) or a direct caller could do it.
+UI + the get/set preference calls are still to do. Two departures from the draft as written: the
+methods shipped with `push`-prefixed names (`register_push_device`, `get_push_preferences`,
+`set_push_preferences`) rather than the draft's `register_device`/`set_preferences`, and a
+`get_push_preferences` getter was added (the draft only had the setter) so a client can read back
+the account's current selection. The setter signature stays `list[PushNotificationType]` (an
+invalid/unknown stored value fails loudly) and tolerates plain string values at runtime via
+`PushNotificationType(t)`.
 
 Issues: pyobs-web-client#57 (originating — "Allow users to choose which push notification
 types they receive"); pyobs-core#902 (the `PushNotifier` tracking issue, still open). This plan
 covers only the **pyobs-core** half of #57; the pyobs-web-client companion (toggle UI + the
-`set_preferences` RPC call) is listed at the end and tracked separately.
+`set_push_preferences` RPC call) is listed at the end and tracked separately.
 
 ## Problem
 
@@ -41,11 +43,11 @@ per-user-with-multiple-devices (`_devices` is `dict[sender, list[device]]`, `pus
 JID).** Rejected: per-device, which would force a user to set the same choice once per device and
 muddle the "I want X off" intent.
 
-**New RPC vs. extending `register_device`.** `register_device(token, platform)` is per-device, and
+**New RPC vs. extending `register_push_device`.** `register_push_device(token, platform)` is per-device, and
 the client dedupes it (`pyobs-web-client/src/composables/usePushNotifications.ts:44,53-55`), so a
 preference change would not re-fire it. Preferences are also valid *before* any device registers
-(set them, then register later). **Chosen: a new `set_preferences` method** on `IPushNotifications`,
-keyed by `sender` like `register_device`. `register_device` stays unchanged.
+(set them, then register later). **Chosen: a new `set_push_preferences` method** on `IPushNotifications`,
+keyed by `sender` like `register_push_device`. `register_push_device` stays unchanged.
 
 **Storage shape.** Current file is `{sender: [device, ...]}`. Options: (a) restructure to
 `{sender: {"devices": [...], "preferences": [...]}}` with a one-time migration in `open()`; (b) a
@@ -97,11 +99,11 @@ class IPushNotifications(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def register_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
+    async def register_push_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
         ...  # unchanged
 
     @abstractmethod
-    async def set_preferences(self, types: list[PushNotificationType], **kwargs: Any) -> None:
+    async def set_push_preferences(self, types: list[PushNotificationType], **kwargs: Any) -> None:
         """Set which notification types this caller wants to receive.
 
         Keyed by the calling account (`sender`), not by device -- applies to every
@@ -134,7 +136,7 @@ class _Alert:
 
 `_enqueue_alert` signature becomes `_enqueue_alert(kind, title, body)`.
 
-### 3. Storage restructure + migration — `open()` / `register_device` / `set_preferences`
+### 3. Storage restructure + migration — `open()` / `register_push_device` / `set_push_preferences`
 
 `_STORAGE_FILE` becomes `{sender: {"devices": [...], "preferences": [str, ...]}}`. `_ALL_TYPES =
 [t.value for t in PushNotificationType]` is the module-level default set.
@@ -151,9 +153,9 @@ self._devices = {
 
 Legacy list-shaped entries are wrapped as `{"devices": value}` with no `preferences` key; the
 reader treats an absent `preferences` key as all-on. No write-back of the migrated shape is needed
-(the next `register_device`/`set_preferences` persists the new shape).
+(the next `register_push_device`/`set_push_preferences` persists the new shape).
 
-`register_device` (`:270-283`) writes into the `devices` sub-key:
+`register_push_device` (`:270-283`) writes into the `devices` sub-key:
 
 ```python
 sender = kwargs.get("sender", "")
@@ -164,10 +166,10 @@ devices.append({"token": token, "platform": platform, "registered_at": Time.now(
 await self.vfs.write_yaml(_STORAGE_FILE, self._devices)
 ```
 
-New `set_preferences`:
+New `set_push_preferences`:
 
 ```python
-async def set_preferences(self, types: list[PushNotificationType], **kwargs: Any) -> None:
+async def set_push_preferences(self, types: list[PushNotificationType], **kwargs: Any) -> None:
     sender = kwargs.get("sender", "")
     entry = self._devices.setdefault(sender, {"devices": []})
     entry["preferences"] = [t.value for t in types]
@@ -213,7 +215,7 @@ time" caveat (`push-notification-module.md:162-166`) stays out of scope here.
 
 The `_devices` shape and `_Alert` construction change ripple through most of the file:
 
-- `test_register_device_stores_by_sender` / `..._replaces_same_token` / `..._keeps_multiple_devices_per_sender`
+- `test_register_push_device_stores_by_sender` / `..._replaces_same_token` / `..._keeps_multiple_devices_per_sender`
   (`:43-76`) — `pn._devices["tim"][0]` → `pn._devices["tim"]["devices"][0]`.
 - `test_process_log_entry_enqueues_error` / `..._critical` (`:83-102`) — assert `alert.kind` in
   addition to title/body.
@@ -222,14 +224,14 @@ The `_devices` shape and `_Alert` construction change ripple through most of the
 - `test_enqueue_alert_drops_when_queue_full` (`:211-219`) — construct `_Alert` with a `kind`.
 - `test_send_to_all_devices_only_targets_android` / `..._noop_without_fcm_app` (`:223-254`) —
   `_devices` values become `{"devices": [...], "preferences": [...]}`; `_Alert` gains `kind`.
-- `test_interface_is_registered` etc. — add `assert "set_preferences" in pn._methods`
-  (mirrors `test_register_device_is_rpc_dispatchable`, `:34-36`).
+- `test_interface_is_registered` etc. — add `assert "set_push_preferences" in pn._methods`
+  (mirrors `test_register_push_device_is_rpc_dispatchable`, `:34-36`).
 
 ### New tests required
 
-- `set_preferences` stores the type list under `sender` and writes YAML (mirrors
-  `test_register_device_stores_by_sender`).
-- `set_preferences` with `[]` opts out of everything — `_send_to_all_devices` targets zero tokens
+- `set_push_preferences` stores the type list under `sender` and writes YAML (mirrors
+  `test_register_push_device_stores_by_sender`).
+- `set_push_preferences` with `[]` opts out of everything — `_send_to_all_devices` targets zero tokens
   for a matching alert.
 - Filtering: a user who disabled `module_error` receives `log_error` alerts but not `module_error`
   alerts (build `_devices` with two senders, assert the emitted token list).
@@ -262,8 +264,8 @@ The `_devices` shape and `_Alert` construction change ripple through most of the
 
 ## Companion change (pyobs-web-client — out of scope here)
 
-`usePushNotifications.ts` gains a `set_preferences` call wired to a SettingsView toggle row, reading
-the available kinds from `mod.interfaces['IPushNotifications'].commands['set_preferences']`'s param
+`usePushNotifications.ts` gains a `set_push_preferences` call wired to a SettingsView toggle row, reading
+the available kinds from `mod.interfaces['IPushNotifications'].commands['set_push_preferences']`'s param
 schema. Because registration is deduped by `registeredWith`, this is a *separate* RPC (not a
 re-register), fired on toggle change and on reconnect after both modules and token exist.
 

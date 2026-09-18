@@ -27,7 +27,7 @@ class IPushNotifications(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def register_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
+    async def register_push_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
         """Register a device to receive push notifications.
 
         Args:
@@ -38,7 +38,16 @@ class IPushNotifications(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def set_preferences(self, types: list[PushNotificationType], **kwargs: Any) -> None:
+    async def get_push_preferences(self, **kwargs: Any) -> list[PushNotificationType]:
+        """Return the notification types this caller currently receives.
+
+        A caller that has never set a preference returns all types (all-on default); an
+        explicitly empty list means opted out of everything.
+        """
+        ...
+
+    @abstractmethod
+    async def set_push_preferences(self, types: list[PushNotificationType], **kwargs: Any) -> None:
         """Set which notification types this caller wants to receive.
 
         Keyed by the calling account (`sender`), not by device -- applies to every device that

@@ -49,26 +49,31 @@ def test_interface_has_no_own_state() -> None:
     assert IPushNotifications.has_own_state() is False
 
 
-def test_register_device_is_rpc_dispatchable() -> None:
+def test_register_push_device_is_rpc_dispatchable() -> None:
     pn = make_pushnotifier()
-    assert "register_device" in pn._methods
+    assert "register_push_device" in pn._methods
 
 
-def test_set_preferences_is_rpc_dispatchable() -> None:
+def test_set_push_preferences_is_rpc_dispatchable() -> None:
     pn = make_pushnotifier()
-    assert "set_preferences" in pn._methods
+    assert "set_push_preferences" in pn._methods
 
 
-# ── register_device ──────────────────────────────────────────────────────────
+def test_get_push_preferences_is_rpc_dispatchable() -> None:
+    pn = make_pushnotifier()
+    assert "get_push_preferences" in pn._methods
+
+
+# ── register_push_device ──────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_register_device_stores_by_sender() -> None:
+async def test_register_push_device_stores_by_sender() -> None:
     pn = make_pushnotifier()
     pn._vfs = MagicMock()
     pn._vfs.write_yaml = AsyncMock()
 
-    await pn.register_device("token-1", sender="tim")
+    await pn.register_push_device("token-1", sender="tim")
 
     assert pn._devices["tim"]["devices"][0]["token"] == "token-1"
     assert pn._devices["tim"]["devices"][0]["platform"] == "android"
@@ -76,55 +81,89 @@ async def test_register_device_stores_by_sender() -> None:
 
 
 @pytest.mark.asyncio
-async def test_register_device_replaces_same_token() -> None:
+async def test_register_push_device_replaces_same_token() -> None:
     pn = make_pushnotifier()
     pn._vfs = MagicMock()
     pn._vfs.write_yaml = AsyncMock()
 
-    await pn.register_device("token-1", sender="tim")
-    await pn.register_device("token-1", platform="android", sender="tim")
+    await pn.register_push_device("token-1", sender="tim")
+    await pn.register_push_device("token-1", platform="android", sender="tim")
 
     assert len(pn._devices["tim"]["devices"]) == 1
 
 
 @pytest.mark.asyncio
-async def test_register_device_keeps_multiple_devices_per_sender() -> None:
+async def test_register_push_device_keeps_multiple_devices_per_sender() -> None:
     pn = make_pushnotifier()
     pn._vfs = MagicMock()
     pn._vfs.write_yaml = AsyncMock()
 
-    await pn.register_device("token-phone", sender="tim")
-    await pn.register_device("token-tablet", sender="tim")
+    await pn.register_push_device("token-phone", sender="tim")
+    await pn.register_push_device("token-tablet", sender="tim")
 
     assert {d["token"] for d in pn._devices["tim"]["devices"]} == {"token-phone", "token-tablet"}
 
 
-# ── set_preferences ──────────────────────────────────────────────────────────
+# ── push preferences ─────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_set_preferences_stores_by_sender() -> None:
+async def test_set_push_preferences_stores_by_sender() -> None:
     pn = make_pushnotifier()
     pn._vfs = MagicMock()
     pn._vfs.write_yaml = AsyncMock()
 
-    await pn.set_preferences([PushNotificationType.LOG_ERROR], sender="tim")
+    await pn.set_push_preferences([PushNotificationType.LOG_ERROR], sender="tim")
 
     assert pn._devices["tim"]["preferences"] == ["log_error"]
     pn._vfs.write_yaml.assert_awaited_once_with("/pyobs/pushnotifier.yaml", pn._devices)
 
 
 @pytest.mark.asyncio
-async def test_set_preferences_does_not_touch_devices() -> None:
+async def test_set_push_preferences_does_not_touch_devices() -> None:
     pn = make_pushnotifier()
     pn._vfs = MagicMock()
     pn._vfs.write_yaml = AsyncMock()
     pn._devices = {"tim": {"devices": [{"token": "t1", "platform": "android"}]}}
 
-    await pn.set_preferences([], sender="tim")
+    await pn.set_push_preferences([], sender="tim")
 
     assert pn._devices["tim"]["preferences"] == []
     assert pn._devices["tim"]["devices"] == [{"token": "t1", "platform": "android"}]
+
+
+@pytest.mark.asyncio
+async def test_get_push_preferences_defaults_to_all_types() -> None:
+    pn = make_pushnotifier()
+    pn._devices = {}
+
+    result = await pn.get_push_preferences(sender="tim")
+
+    assert result == [
+        PushNotificationType.MODULE_ERROR,
+        PushNotificationType.LOG_ERROR,
+        PushNotificationType.LOG_CRITICAL,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_push_preferences_returns_stored_selection() -> None:
+    pn = make_pushnotifier()
+    pn._devices = {"tim": {"devices": [], "preferences": ["log_error", "log_critical"]}}
+
+    result = await pn.get_push_preferences(sender="tim")
+
+    assert result == [PushNotificationType.LOG_ERROR, PushNotificationType.LOG_CRITICAL]
+
+
+@pytest.mark.asyncio
+async def test_get_push_preferences_returns_empty_when_opted_out_of_everything() -> None:
+    pn = make_pushnotifier()
+    pn._devices = {"tim": {"devices": [], "preferences": []}}
+
+    result = await pn.get_push_preferences(sender="tim")
+
+    assert result == []
 
 
 # ── log event handling (§2b) ─────────────────────────────────────────────────

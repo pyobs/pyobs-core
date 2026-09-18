@@ -190,9 +190,9 @@ targets the same recipient subset every time, so anyone who would receive a repe
 the original. The dedup key gains the alert kind (`(kind, title, body)`) — two alerts with the same
 title/body but different kinds are distinct.
 
-**Still to do (pyobs-web-client):** the toggle UI in `SettingsView.vue` and the
-`get_push_preferences`/`set_push_preferences` calls, fired on connect and on toggle change once
-both modules and a device token exist.
+**Client side (pyobs-web-client): done 2026-09-18** — the toggle UI in `SettingsView.vue` plus the
+`get_push_preferences`/`set_push_preferences` calls (read on connect, write on toggle); plan
+`pyobs-web-client/specs/plans/2026-09-18-push-notification-preferences.md`.
 
 ## Open questions — not resolved here, flagged for actual design/implementation
 

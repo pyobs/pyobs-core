@@ -1,9 +1,12 @@
 # Plan: Harden ImageWatcher's retry behavior
 
-Status: implemented, closed — landed on `develop` in `061d4f78`. Matches this doc's design as written,
-with one departure: `error_after` ended up keyword-only with no default (Python requires that to
-make a param mandatory after params that do have defaults), documented in the constructor
-docstring rather than the signature alone.
+Status: implemented, closed — landed on `develop` in `061d4f78`. Two departures from this doc's
+design as written: (a) `error_after` ended up keyword-only (Python requires either `*` or a
+default after params that have defaults), documented in the constructor docstring rather than in
+the signature alone; (b) it was initially left with **no default** as designed below, but that
+broke every deployed `ImageWatcher` config on upgrade (`TypeError: missing ... 'error_after'`) —
+see "Post-implementation follow-up" at the end, which added a 1800s default and made the param
+optional.
 Issues: none — found by inspection while reviewing `ImageWatcher` at Tim's request.
 
 ## Problem
@@ -45,7 +48,8 @@ opposite, both-wrong behavior:
 here because the retry interval itself grows (backoff) — the wall-clock time to reach N attempts
 depends on the backoff shape, and how long a destination can legitimately be down varies by
 deployment (no real number to bake in). **Chosen: elapsed time since first failure**
-(`error_after: int`, required, no default — see below) — directly expresses "alert once this has
+(`error_after: int`, required with no default as first shipped — see below and the follow-up
+section at the end) — directly expresses "alert once this has
 been broken longer than a normal transient outage for this deployment," independent of backoff
 shape. Attempt count is still tracked (for the backoff exponent and for log context) but doesn't
 drive the alert decision.
@@ -101,10 +105,10 @@ class _RetryState:
 
 New `__init__` params:
 
-- `error_after: int` — **required, no default.** Seconds a file may keep failing before the
-  one-time `ERROR` log. No researched number to default this to — every deployment's destinations
-  (`pyobs-archive`, an NFS mount, whatever else) have different realistic outage windows, so this
-  is left for whoever configures each `ImageWatcher` instance to set deliberately.
+- `error_after: int = 1800` — seconds a file may keep failing before the one-time `ERROR` log.
+  Originally shipped with **no default** on the reasoning that every deployment's destinations
+  (`pyobs-archive`, an NFS mount, whatever else) have different realistic outage windows; that
+  proved wrong in practice — see "Post-implementation follow-up" at the end.
 - `backoff_cap: int = 3600` — max seconds between retries (1h).
 
 `self._retry: dict[str, _RetryState] = {}`
@@ -214,9 +218,9 @@ considered correct (a restart is a legitimate new observation point), not a bug 
 - **Good:** matches the existing `PushNotifier`/module-`ERROR` alerting path Tim just shipped — the
   one-time `ERROR` log is exactly the signal that pipeline is designed to catch, so this gets fleet
   alerting on stuck `ImageWatcher` destinations for free, no new wiring.
-- **Neutral:** `error_after` has no default and must be set per config — every existing config using
-  `ImageWatcher` needs this value added or the module fails to construct. `backoff_cap` keeps a
-  default (1h) since it's a cap, not a deployment-specific alert threshold.
+- **Neutral:** `error_after` is keyword-only and (since the follow-up below) optional, defaulting to
+  1800s; a config that wants a tighter or looser alert threshold sets it explicitly. `backoff_cap`
+  keeps a default (1h) since it's a cap, not a deployment-specific alert threshold.
 - **Risk:** `_retry` is unbounded in principle (one entry per currently-failing filename) — not a
   real concern at expected scale (a handful of files failing at once, not thousands), but worth a
   one-line note if it's ever pointed at a much higher-throughput watch directory.
@@ -229,3 +233,30 @@ considered correct (a restart is a legitimate new observation point), not a bug 
 - **Out of scope:** `vfs.remove` returning falsy after a successful copy is left exactly as today
   (log `WARNING`, continue) — not part of what Tim asked to harden, and changing it has its own
   design questions (retry just the remove? forever?) that weren't discussed.
+
+## Post-implementation follow-up (2026-09-18): `error_after` gets a default
+
+Making `error_after` mandatory was the one part of this design that didn't survive contact with
+deployment. The first `ImageWatcher` started after `061d4f78` landed died at construction:
+
+```
+TypeError: ImageWatcher.__init__() missing 1 required keyword-only argument: 'error_after'
+```
+
+None of the existing configs set it — not the MONET north/south ones, `pyobs-monti`,
+`pyobs-iag50`, `pyobs-iagvt`, or `pytel-dev` — so every deployment would have to be edited before
+its next restart, and the failure mode is a module that won't come up at all rather than a module
+with a suboptimal alert threshold.
+
+**Decision:** default it to `error_after: int = 1800` (30 minutes) and drop the "must be set per
+config" requirement. The reasoning that there's "no researched number" was too strict: the value
+only controls *when the one-time `ERROR` alert fires*, not whether retrying continues (it does,
+indefinitely, under `backoff_cap`). A 30-minute default is defensible for the deployments seen so
+far as the point where a transient outage stops looking transient, and any deployment that wants
+to page sooner or later overrides it in its own config — which is now an optimization rather than
+a precondition for the module starting.
+
+**Changes:** `pyobs/modules/image/imagewatcher.py` (default + docstring),
+`tests/modules/image/test_imagewatcher.py` (`test_constructor_requires_error_after` replaced by
+`test_constructor_defaults_error_after`, asserting the 1800s default; all other tests already pass
+`error_after` explicitly and were unaffected). No config changes were needed — which was the point.

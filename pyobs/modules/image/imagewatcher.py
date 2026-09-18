@@ -73,7 +73,7 @@ class ImageWatcher(Module):
         pattern: str = "*",
         flatten: bool = True,
         *,
-        error_after: int,
+        error_after: int = 1800,
         backoff_cap: int = 3600,
         **kwargs: Any,
     ):
@@ -101,11 +101,12 @@ class ImageWatcher(Module):
                 repeatedly fail and re-queue any file whose relative path needs a parent directory that doesn't
                 exist yet.
             error_after: Seconds a file may keep failing with a transient error (see below) before a single
-                ``ERROR`` is logged for it. Required -- no sane default exists, since how long a destination can
-                legitimately be unreachable (a remote archive, an NFS mount, ...) varies per deployment. Set it
-                to how long an outage has to last before it's worth paging someone. The file keeps being retried
-                (with growing backoff, capped at ``backoff_cap``) indefinitely either way; this only controls
-                when the one-time alert fires, not whether retrying continues.
+                ``ERROR`` is logged for it. Defaults to 1800 (30 minutes), a middle ground for the deployments
+                seen so far; how long a destination can legitimately be unreachable (a remote archive, an NFS
+                mount, ...) varies per deployment, so override it per config where an outage should page someone
+                sooner or later. The file keeps being retried (with growing backoff, capped at ``backoff_cap``)
+                indefinitely either way; this only controls when the one-time alert fires, not whether retrying
+                continues.
             backoff_cap: Maximum seconds between retries of a file that keeps failing transiently. The interval
                 starts at ``wait_time`` and doubles on each failure up to this cap.
 

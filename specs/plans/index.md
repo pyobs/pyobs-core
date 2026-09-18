@@ -275,7 +275,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   `ImageWatcher._worker` retry rework: destination-write failures currently retry forever with no
   cap or alerting, while read/cleanup failures drop the file on the first error with no retry at
   all. Replaces both with one mechanism: bounded exponential backoff, a one-time `ERROR` log once a
-  file's been failing longer than `error_after` (required, no default — deployment-specific), and
+  file's been failing longer than `error_after` (default 1800s since the 2026-09-18 follow-up;
+  originally mandatory with no default, which broke every deployed config on upgrade), and
   internal (in-memory, not a `failed/` dir) failure-state tracking; failures are further split by
   exception type into terminal (never re-queued) vs. transient (retried). **implemented, closed**
   (`061d4f78`; no issue; Repos: pyobs-core)

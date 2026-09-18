@@ -529,9 +529,11 @@ def test_constructor_raises_without_destinations() -> None:
         ImageWatcher(watchpath="/watch", destinations=[], error_after=0)
 
 
-def test_constructor_requires_error_after() -> None:
-    with pytest.raises(TypeError):
-        ImageWatcher(watchpath="/watch", destinations=["/dest"])  # type: ignore[call-arg]
+def test_constructor_defaults_error_after() -> None:
+    """error_after has a default (30 min), so a config that omits it constructs fine -- it is a
+    deployment-tunable alert threshold, not a mandatory setting."""
+    watcher = ImageWatcher(watchpath="/watch", destinations=["/dest"], vfs=MagicMock(spec=VirtualFileSystem))
+    assert watcher._error_after == 1800
 
 
 # ── flatten ───────────────────────────────────────────────────────────────────

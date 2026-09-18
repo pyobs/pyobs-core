@@ -51,7 +51,7 @@ from .IPointingHelioprojective import HelioprojectiveState, IPointingHelioprojec
 from .IPointingOrbitalElements import IPointingOrbitalElements, OrbitalElements
 from .IPointingRaDec import IPointingRaDec, RaDecState
 from .IPointingSeries import IPointingSeries
-from .IPushNotifications import IPushNotifications
+from .IPushNotifications import IPushNotifications, PushNotificationType
 from .IReady import IReady, ReadyState
 from .IRobotic import IRobotic, RoboticState, RoboticTask
 from .IRoboticScheduler import IRoboticScheduler, SchedulerState
@@ -151,6 +151,7 @@ __all__ = [
     "RaDecState",
     "IPointingSeries",
     "IPushNotifications",
+    "PushNotificationType",
     "IReady",
     "ReadyState",
     "IRobotic",

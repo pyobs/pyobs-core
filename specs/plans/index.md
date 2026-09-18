@@ -279,3 +279,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   internal (in-memory, not a `failed/` dir) failure-state tracking; failures are further split by
   exception type into terminal (never re-queued) vs. transient (retried). **implemented, closed**
   (`061d4f78`; no issue; Repos: pyobs-core)
+- [2026-09-18-pushnotifier-per-user-preferences.md](2026-09-18-pushnotifier-per-user-preferences.md) —
+  per-user push-notification type preferences in `PushNotifier`: opt in/out of the three shipped
+  kinds (module `ERROR`, log `ERROR`, log `CRITICAL`) via a new `IPushNotifications.set_preferences`
+  RPC + `PushNotificationType` enum, enforced at send time (all-on default, backward compatible;
+  storage restructured with a read-time migration). **implemented, uncommitted** (2026-09-18;
+  pyobs-web-client#57; pyobs-core#902; Repos: pyobs-core)

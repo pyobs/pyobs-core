@@ -5,6 +5,12 @@ Status: standing snapshot — last checked 2026-09-18.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-18**: pyobs-core half of pyobs-web-client#57 implemented (plan
+  `2026-09-18-pushnotifier-per-user-preferences.md`): `PushNotificationType` enum +
+  `IPushNotifications.set_preferences`, per-account type filtering at send time in `PushNotifier`,
+  all-on default with a read-time storage migration; `push-notification-module.md` gains §6 and its
+  v1 "one fixed rule set" non-goal is marked superseded. Web-client toggle UI still to do, so #57
+  stays in the table.
 - **2026-09-18**: re-checked with per-repo `gh issue list` (authoritative — the org-wide
   `search/issues` query the 2026-09-17 check used lagged the same-day #57). #57 is in the table;
   every other open GitHub issue is one whose fix already landed on `develop` (#40-#47,
@@ -299,7 +305,7 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 | pyobs-gui | [#168](https://github.com/pyobs/pyobs-gui/issues/168) | Desktop notifications for module ERROR / log ERROR-CRITICAL while running | filed 2026-09-14; independent of pyobs-core's `PushNotifier` (#902, now implemented) — same signals, but for an operator already at a running/connected pyobs-gui, via `QSystemTrayIcon::showMessage()` (not decided); no design doc yet |
-| pyobs-web-client | [#57](https://github.com/pyobs/pyobs-web-client/issues/57) | Allow users to choose which push notification types they receive | filed 2026-09-17; per-type opt-in/out for `PushNotifier` (#902) notifications; preference storage (client-only vs. synced) and default (all-on vs. opt-in) still open |
+| pyobs-web-client | [#57](https://github.com/pyobs/pyobs-web-client/issues/57) | Allow users to choose which push notification types they receive | filed 2026-09-17; per-type opt-in/out for `PushNotifier` (#902) notifications. pyobs-core half **implemented** 2026-09-18 (plan `specs/plans/2026-09-18-pushnotifier-per-user-preferences.md`): `PushNotificationType` enum + `IPushNotifications.set_preferences`, server-side per-account filtering, all-on default. Open before: preference storage (resolved: server-side, per `sender`) and default (resolved: all-on) |
 
 ## Open plans
 

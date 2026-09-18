@@ -1,10 +1,16 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-17.
+Status: standing snapshot — last checked 2026-09-18.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-18**: re-checked with per-repo `gh issue list` (authoritative — the org-wide
+  `search/issues` query the 2026-09-17 check used lagged the same-day #57). #57 is in the table;
+  every other open GitHub issue is one whose fix already landed on `develop` (#40-#47,
+  pyobs-core#831/#832/#858/#871/#895/#902), so its absence is correct. No plan or design-doc
+  changes. The stale status lines corrected alongside the 2026-09-17 entry landed in `5ee33df8`
+  (imagewatcher plan + its plans-index entry, and the design index's `irobotic.md`).
 - **2026-09-17**: filed pyobs-web-client#57 (let users choose which push notification types they
   receive, per-type opt-in/out for `PushNotifier` (#902) notifications) — added to the issues
   table.
@@ -284,7 +290,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (4, checked 2026-09-17)
+## Open issues (4, checked 2026-09-18)
 
 One row per issue — same layout for every repo.
 

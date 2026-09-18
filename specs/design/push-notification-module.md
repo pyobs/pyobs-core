@@ -6,7 +6,8 @@ already access caller identity via `**kwargs: Any` (§3) — both were open ques
 drafts, now resolved by reading the actual dispatch code. Revised 2026-09-14: `ERROR`/`CRITICAL`
 log events folded into v1 scope (§2b), alongside module `ERROR` state. Bad weather / roof-open
 stays deferred. Built 2026-09-14/15 (`5b688528`, `90b7ded1`) as `pyobs.modules.utils.PushNotifier`
-implementing the new `IPushNotifications` interface; `pyobs-web-client`'s `register_device` call
+implementing the new `IPushNotifications` interface; `pyobs-web-client`'s `register_push_device`
+call
 landed the same way (`31538b7`). Both on `develop`, no PR (committed directly). Two of the three
 open questions below are still genuinely open as shipped — see the note under each.
 Revised (v2) 2026-09-18: per-user notification-type preferences added — the "one fixed rule set"
@@ -105,7 +106,7 @@ way. The handler differs only in what counts as alert-worthy: instead of Telegra
 `loglevel` threshold, it's a fixed check — `entry.level in ("ERROR", "CRITICAL")` — matching the
 "one fixed rule set for the whole deployment" decision above. `entry.message` and the `sender`
 argument (the emitting module's client name, per `comm.py`'s event dispatch — not the RPC-caller
-JID that §3's `register_device` sees) give the alert its title/body.
+JID that §3's `register_push_device` sees) give the alert its title/body.
 
 ### 3. Device registration
 
@@ -114,7 +115,7 @@ RPC mechanism (the same XEP-0009 machinery `pyobs-web-client` already re-impleme
 other module call):
 
 ```python
-async def register_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
+async def register_push_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
     sender = kwargs.get("sender", "")
     ...
 ```
@@ -125,7 +126,7 @@ checks — `pyobs/comm/xmpp/rpc.py`'s `_on_jabber_rpc_method_call` calls
 `self._handler.execute(pmethod, *params, sender=iq["from"].user, call_id=call_id)` for every RPC;
 `execute()` binds those against the target method's own signature, so a method that declares
 `**kwargs: Any` receives `sender`/`call_id` in it. `get_permitted_methods(self, **kwargs: Any)`
-already does exactly this. `register_device` just needs the same `**kwargs: Any` — no new
+already does exactly this. `register_push_device` just needs the same `**kwargs: Any` — no new
 mechanism, no separate identity scheme to design.
 
 Storage: VFS-backed YAML, same pattern as `Telegram._save_storage`/`self.vfs.write_yaml(...)` —
@@ -168,11 +169,13 @@ interface. Like `TrackingMode`, the enum lands on the wire as `enum(PushNotifica
 disco#info's `<types>` block, so a client can render its toggles from the schema rather than
 hardcoding the names.
 
-Preferences are **per calling account** (`sender` JID, the same identity `register_device` and ACL
-gating already key on), not per device — every device an account registers shares one preference.
-A new `set_preferences(types: list[PushNotificationType], **kwargs: Any)` RPC stores the chosen
-values; it is deliberately separate from `register_device`, which stays per-device and is deduped
-client-side, so a preference change can't ride on it. Storage is still the single
+Preferences are **per calling account** (`sender` JID, the same identity `register_push_device`
+and ACL gating already key on), not per device — every device an account registers shares one
+preference. A `set_push_preferences(types: list[PushNotificationType], **kwargs: Any)` RPC stores
+the chosen values, and `get_push_preferences(**kwargs)` returns the current selection (all types
+when unset) so a client can render the account's actual state on connect. Both are deliberately
+separate from `register_push_device`, which stays per-device and is deduped client-side, so a
+preference change can't ride on it. Storage is still the single
 `/pyobs/pushnotifier.yaml`, restructured to `{sender: {"devices": [...], "preferences": [...]}}`
 with a read-time migration wrapping the legacy list shape.
 
@@ -187,8 +190,9 @@ targets the same recipient subset every time, so anyone who would receive a repe
 the original. The dedup key gains the alert kind (`(kind, title, body)`) — two alerts with the same
 title/body but different kinds are distinct.
 
-**Still to do (pyobs-web-client):** the toggle UI in `SettingsView.vue` and the `set_preferences`
-call, fired on toggle change and on reconnect once both modules and a device token exist.
+**Still to do (pyobs-web-client):** the toggle UI in `SettingsView.vue` and the
+`get_push_preferences`/`set_push_preferences` calls, fired on connect and on toggle change once
+both modules and a device token exist.
 
 ## Open questions — not resolved here, flagged for actual design/implementation
 

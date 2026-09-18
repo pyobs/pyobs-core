@@ -22,7 +22,7 @@ _QUEUE_MAX = 200
 _ALERT_LOG_LEVELS = {"ERROR", "CRITICAL"}
 
 # All notification types, i.e. what a caller that never set a preference receives. Stored as the
-# enum's string values, matching what `set_preferences` persists.
+# enum's string values, matching what `set_push_preferences` persists.
 _ALL_TYPES = [t.value for t in PushNotificationType]
 
 # Timeout for blocking Firebase SDK calls run in a thread -- bounds the wait so a hung network
@@ -44,8 +44,8 @@ class PushNotifier(Module, IPushNotifications):
     """Relays fleet-wide module-`ERROR` state and `ERROR`/`CRITICAL` log events to mobile devices
     via Firebase Cloud Messaging (Android only in v1 -- see specs/design/push-notification-module.md).
 
-    Each caller may opt out of individual alert kinds via `set_preferences`; a caller that never
-    does receives all of them.
+    Each caller may opt out of individual alert kinds via `set_push_preferences`; a caller that
+    never does receives all of them. `get_push_preferences` returns the current selection.
     """
 
     __module__ = "pyobs.modules.utils"
@@ -297,7 +297,7 @@ class PushNotifier(Module, IPushNotifications):
         except TimeoutError:
             log.error("Sending push notifications timed out.")
 
-    async def register_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
+    async def register_push_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
         """Register a device to receive push notifications.
 
         Args:
@@ -313,7 +313,19 @@ class PushNotifier(Module, IPushNotifications):
 
         await self.vfs.write_yaml(_STORAGE_FILE, self._devices)
 
-    async def set_preferences(self, types: list[PushNotificationType], **kwargs: Any) -> None:
+    async def get_push_preferences(self, **kwargs: Any) -> list[PushNotificationType]:
+        """Return the notification types the calling account currently receives.
+
+        A caller that has never set a preference returns all types (all-on default).
+        """
+        sender = kwargs.get("sender", "")
+
+        entry = self._devices.get(sender)
+        prefs = entry.get("preferences") if entry is not None else None
+        values = _ALL_TYPES if prefs is None else prefs
+        return [PushNotificationType(v) for v in values]
+
+    async def set_push_preferences(self, types: list[PushNotificationType], **kwargs: Any) -> None:
         """Set which notification types the calling account wants to receive.
 
         Args:

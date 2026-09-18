@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from pyobs.events import Event, LogEvent, ModuleOpenedEvent
-from pyobs.interfaces import Interface, IPushNotifications
+from pyobs.interfaces import Interface, IPushNotifications, PushNotificationType
 from pyobs.modules import Module
 from pyobs.utils.time import Time
 
@@ -21,6 +21,10 @@ _QUEUE_MAX = 200
 # Log levels that trigger a push notification.
 _ALERT_LOG_LEVELS = {"ERROR", "CRITICAL"}
 
+# All notification types, i.e. what a caller that never set a preference receives. Stored as the
+# enum's string values, matching what `set_preferences` persists.
+_ALL_TYPES = [t.value for t in PushNotificationType]
+
 # Timeout for blocking Firebase SDK calls run in a thread -- bounds the wait so a hung network
 # call can't stall the sender thread (and thus the alert queue) forever.
 _FIREBASE_CALL_TIMEOUT = 15.0
@@ -31,6 +35,7 @@ _STORAGE_FILE = "/pyobs/pushnotifier.yaml"
 
 @dataclass
 class _Alert:
+    kind: PushNotificationType
     title: str
     body: str
 
@@ -38,6 +43,9 @@ class _Alert:
 class PushNotifier(Module, IPushNotifications):
     """Relays fleet-wide module-`ERROR` state and `ERROR`/`CRITICAL` log events to mobile devices
     via Firebase Cloud Messaging (Android only in v1 -- see specs/design/push-notification-module.md).
+
+    Each caller may opt out of individual alert kinds via `set_preferences`; a caller that never
+    does receives all of them.
     """
 
     __module__ = "pyobs.modules.utils"
@@ -53,7 +61,7 @@ class PushNotifier(Module, IPushNotifications):
         Module.__init__(self, **kwargs)
 
         self._credentials_file = credentials_file
-        self._devices: dict[str, list[dict[str, Any]]] = {}
+        self._devices: dict[str, dict[str, Any]] = {}
         self._alert_queue: asyncio.Queue[_Alert] = asyncio.Queue(maxsize=_QUEUE_MAX)
         self._fcm_app: App | None = None
 
@@ -63,11 +71,16 @@ class PushNotifier(Module, IPushNotifications):
         """Open module."""
         await Module.open(self)
 
-        # load registered devices
+        # load registered devices, migrating the legacy {sender: [devices]} shape in place -- a
+        # value that is still a bare list predates per-user preferences, and gets wrapped with an
+        # absent `preferences` key, which the reader treats as "all types on".
         try:
-            self._devices = await self.vfs.read_yaml(_STORAGE_FILE)
+            raw = await self.vfs.read_yaml(_STORAGE_FILE)
         except FileNotFoundError:
-            self._devices = {}
+            raw = {}
+        self._devices = {
+            sender: ({"devices": value} if isinstance(value, list) else value) for sender, value in (raw or {}).items()
+        }
 
         # init Firebase
         await self._init_firebase()
@@ -152,7 +165,11 @@ class PushNotifier(Module, IPushNotifications):
         def _callback(state: Any) -> None:
             status = getattr(state, "status", None)
             if status is not None and str(status).upper() == "ERROR":
-                self._enqueue_alert(f"{module}: ERROR", f"{iface.__name__} reports an ERROR state.")
+                self._enqueue_alert(
+                    PushNotificationType.MODULE_ERROR,
+                    f"{module}: ERROR",
+                    f"{iface.__name__} reports an ERROR state.",
+                )
 
         return _callback
 
@@ -182,36 +199,39 @@ class PushNotifier(Module, IPushNotifications):
         if entry.level not in _ALERT_LOG_LEVELS:
             return False
 
-        self._enqueue_alert(f"{sender}: {entry.level}", entry.message)
+        kind = PushNotificationType.LOG_CRITICAL if entry.level == "CRITICAL" else PushNotificationType.LOG_ERROR
+        self._enqueue_alert(kind, f"{sender}: {entry.level}", entry.message)
         return True
 
-    def _enqueue_alert(self, title: str, body: str) -> None:
+    def _enqueue_alert(self, kind: PushNotificationType, title: str, body: str) -> None:
         """Queue an alert for sending, dropping it if the queue is full.
 
         Args:
+            kind: Notification type of the alert.
             title: Alert title.
             body: Alert body.
         """
         if self._alert_queue.full():
             log.warning("Push notification queue full, dropping alert.")
             return
-        self._alert_queue.put_nowait(_Alert(title=title, body=body))
+        self._alert_queue.put_nowait(_Alert(kind=kind, title=title, body=body))
 
     async def _sender_thread(self) -> None:
         """Drain the alert queue and send notifications one at a time.
 
-        Consecutive duplicate alerts (same title and body) are suppressed, since one fixed rule
-        set applies fleet-wide -- every registered device gets the exact same alert, so a single
-        global dedup (rather than Telegram's per-user one) is enough.
+        Consecutive duplicate alerts (same kind, title and body) are suppressed. A single global
+        dedup (rather than Telegram's per-user one) is enough: for stable preferences a given
+        alert always targets the same recipient subset, so anyone who would receive a repeat
+        already received the original.
         """
-        last: tuple[str, str] | None = None
+        last: tuple[PushNotificationType, str, str] | None = None
         repeat_count = 0
 
         while True:
             alert = await self._alert_queue.get()
 
             try:
-                key = (alert.title, alert.body)
+                key = (alert.kind, alert.title, alert.body)
                 if key == last:
                     repeat_count += 1
                     continue
@@ -229,8 +249,18 @@ class PushNotifier(Module, IPushNotifications):
             finally:
                 self._alert_queue.task_done()
 
+    @staticmethod
+    def _wants(entry: dict[str, Any], kind: PushNotificationType) -> bool:
+        """Whether the user an entry belongs to wants the given notification kind.
+
+        An entry with no `preferences` key at all (never set, or migrated from the legacy storage
+        shape) receives everything; an explicitly empty list means opted out of all kinds.
+        """
+        prefs = entry.get("preferences")
+        return kind.value in (_ALL_TYPES if prefs is None else prefs)
+
     async def _send_to_all_devices(self, alert: _Alert) -> None:
-        """Send an alert to every registered Android device.
+        """Send an alert to every registered Android device whose owner wants this kind.
 
         Args:
             alert: The alert to send.
@@ -240,9 +270,9 @@ class PushNotifier(Module, IPushNotifications):
 
         tokens = [
             device["token"]
-            for devices in self._devices.values()
-            for device in devices
-            if device.get("platform", "android") == "android"
+            for entry in self._devices.values()
+            for device in entry.get("devices", [])
+            if device.get("platform", "android") == "android" and self._wants(entry, alert.kind)
         ]
         if not tokens:
             return
@@ -276,9 +306,23 @@ class PushNotifier(Module, IPushNotifications):
         """
         sender = kwargs.get("sender", "")
 
-        devices = self._devices.setdefault(sender, [])
+        entry = self._devices.setdefault(sender, {"devices": []})
+        devices = entry.setdefault("devices", [])
         devices[:] = [d for d in devices if d.get("token") != token]
         devices.append({"token": token, "platform": platform, "registered_at": Time.now().isot})
+
+        await self.vfs.write_yaml(_STORAGE_FILE, self._devices)
+
+    async def set_preferences(self, types: list[PushNotificationType], **kwargs: Any) -> None:
+        """Set which notification types the calling account wants to receive.
+
+        Args:
+            types: Notification types to receive; an empty list opts out of everything.
+        """
+        sender = kwargs.get("sender", "")
+
+        entry = self._devices.setdefault(sender, {"devices": []})
+        entry["preferences"] = [PushNotificationType(t).value for t in types]
 
         await self.vfs.write_yaml(_STORAGE_FILE, self._devices)
 

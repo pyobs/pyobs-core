@@ -9,9 +9,13 @@ stays deferred. Built 2026-09-14/15 (`5b688528`, `90b7ded1`) as `pyobs.modules.u
 implementing the new `IPushNotifications` interface; `pyobs-web-client`'s `register_device` call
 landed the same way (`31538b7`). Both on `develop`, no PR (committed directly). Two of the three
 open questions below are still genuinely open as shipped — see the note under each.
+Revised (v2) 2026-09-18: per-user notification-type preferences added — the "one fixed rule set"
+v1 decision below is now superseded, §6. Plan:
+`specs/plans/2026-09-18-pushnotifier-per-user-preferences.md`; originating issue
+pyobs-web-client#57.
 
-Repos: pyobs-core (module implementation, all new code); pyobs-web-client (one small addition —
-the device-token registration call from `usePushNotifications.ts`)
+Repos: pyobs-core (module implementation, all new code); pyobs-web-client (device-token
+registration from `usePushNotifications.ts`, plus the v2 preference call — still to do)
 
 Tracking issue: pyobs-core#902 (previously #884, closed for an unrelated reason — see below).
 
@@ -50,13 +54,16 @@ way any other pyobs client does — no ejabberd config, no separate relay proces
   (§2b) — unlike module-`ERROR` detection (§2a), which is genuinely the hard part of this module.
 - **One fixed rule set for the whole deployment, not per-user thresholds.** No per-user
   preferences RPC, no per-user filter config — every registered device gets every module-`ERROR`
-  alert. Registration only needs a device token, nothing else.
+  alert. Registration only needs a device token, nothing else. **Superseded in v2** (§6): per-user
+  opt-in/out per notification *type* is now supported; what remains deliberately absent is a
+  per-user *severity* threshold / module allow- and deny-lists.
 
 ## Non-goals (this sketch)
 
 - Bad weather / roof-open alerts — real, scoped above, not this pass.
-- Per-user alert preferences (severity, module allow/deny-list) — `telegram.py`'s per-user
-  `/loglevel` is the shape this *could* take later; not now.
+- ~~Per-user alert preferences (severity, module allow/deny-list)~~ — **partly done in v2** (§6:
+  per-user type opt-in/out, which is what pyobs-web-client#57 asked for). Severity thresholds and
+  module allow/deny-lists (`telegram.py`'s per-user `/loglevel` shape) remain deferred.
 - iOS/APNs — blocked on the same Apple Developer Program account + Mac access constraint as
   `pyobs-web-client`'s Phase 4 (`specs/plans/2026-09-06-mobile-first-redesign.md`). FCM/Android
   only for v1.
@@ -149,6 +156,40 @@ with the client-side `google-services.json`/API key already checked into
 `pyobs-web-client/android/app/`. New optional dependency (likely `firebase-admin`), added to
 `pyproject.toml`'s `full` extras group alongside `python-telegram-bot`/`matrix-nio`.
 
+### 6. Per-user type preferences (v2)
+
+Added 2026-09-18 (pyobs-web-client#57; plan `specs/plans/2026-09-18-pushnotifier-per-user-preferences.md`).
+v1's "one fixed rule set" decision is superseded for *type selection* only — severity thresholds
+and module allow/deny-lists stay out of scope.
+
+The three alert kinds v1 already emits become a `PushNotificationType(StrEnum)` defined in
+`IPushNotifications.py` (`MODULE_ERROR`, `LOG_ERROR`, `LOG_CRITICAL`), exported alongside the
+interface. Like `TrackingMode`, the enum lands on the wire as `enum(PushNotificationType)` in
+disco#info's `<types>` block, so a client can render its toggles from the schema rather than
+hardcoding the names.
+
+Preferences are **per calling account** (`sender` JID, the same identity `register_device` and ACL
+gating already key on), not per device — every device an account registers shares one preference.
+A new `set_preferences(types: list[PushNotificationType], **kwargs: Any)` RPC stores the chosen
+values; it is deliberately separate from `register_device`, which stays per-device and is deduped
+client-side, so a preference change can't ride on it. Storage is still the single
+`/pyobs/pushnotifier.yaml`, restructured to `{sender: {"devices": [...], "preferences": [...]}}`
+with a read-time migration wrapping the legacy list shape.
+
+**Default is all-on**: a sender with no `preferences` key (never set, or migrated) receives every
+kind — byte-for-byte the v1 behavior, so nothing changes for an existing device until a preference
+is set. An explicitly empty list means opted out of everything. Filtering happens at send time in
+`_send_to_all_devices`, per sender, which is the only place it can work: the app runs no code while
+closed or backgrounded, so the system tray would otherwise show whatever FCM delivered.
+
+This is what makes §4's single global dedup still correct: for stable preferences a given alert
+targets the same recipient subset every time, so anyone who would receive a repeat already received
+the original. The dedup key gains the alert kind (`(kind, title, body)`) — two alerts with the same
+title/body but different kinds are distinct.
+
+**Still to do (pyobs-web-client):** the toggle UI in `SettingsView.vue` and the `set_preferences`
+call, fired on toggle change and on reconnect once both modules and a device token exist.
+
 ## Open questions — not resolved here, flagged for actual design/implementation
 
 - **Stale/uninstalled-app tokens.** FCM returns an "unregistered" error on send to a dead token;
@@ -162,5 +203,6 @@ with the client-side `google-services.json`/API key already checked into
 - **Log-message dedup key.** Telegram's `last_messages` dedup keys on exact message-string equality
   per user. For a retry loop logging `ERROR` with a changing detail (a timestamp, an exception
   `repr`, a retry count in the text), exact-match dedup won't catch it and every retry pushes
-  separately. **Still open as shipped** — `_sender_thread`'s dedup key is `(title, body)`, i.e. the
-  literal message text; a changing detail per retry defeats it exactly as flagged here.
+  separately. **Still open as shipped** — `_sender_thread`'s dedup key is `(kind, title, body)`, i.e.
+  the literal message text (plus the alert kind since v2, §6); a changing detail per retry defeats
+  it exactly as flagged here.

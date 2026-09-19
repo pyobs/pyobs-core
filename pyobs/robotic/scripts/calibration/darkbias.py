@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Annotated, ClassVar, Self
 
+import aiohttp
 from pydantic import Field, model_validator
 
 from pyobs.interfaces import (
@@ -16,12 +17,19 @@ from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.archive import Archive
 from pyobs.robotic.utils.calibration import peek_cached_science_exptimes_for_night, science_exptimes_for_night
 from pyobs.utils.enums import ImageType
+from pyobs.utils.exceptions import ArchiveError
+from pyobs.utils.logging.resolvableerror import ResolvableErrorLogger
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
 
 log = logging.getLogger(__name__)
+
+# Module-level, not a Script attribute: Task.create_script() re-validates a fresh Script (and
+# Archive) on every call -- see can_run()'s note on the exptime cache -- so per-instance state
+# would never survive long enough to throttle anything.
+_archive_error_log = ResolvableErrorLogger(log, error_level=logging.WARNING)
 
 
 class DarkBiasScript(Script):
@@ -198,10 +206,29 @@ class DarkBiasScript(Script):
                 # module-level cache here instead, so its later (sync, archive-less) lookup can
                 # hit it.
                 await science_exptimes_for_night(self.archive, self.site, night)
+            except (ArchiveError, aiohttp.ClientError, TimeoutError) as e:
+                # The archive didn't answer -- unreachable, timed out, or a non-200 (PyobsArchive
+                # itself already wraps all of those into ArchiveError; the aiohttp/timeout types
+                # are here for any other Archive backend that lets them through). That is an
+                # operational condition, not a code fault, and it recurs on every scheduling pass:
+                # keep it to a single throttled WARNING rather than a full traceback each time.
+                # Mastermind already reports the outcome at INFO via _cant_run_reason, so nothing
+                # is lost. Collapse whitespace so this line can never carry newlines into the
+                # journal (a 5xx body used to arrive here as a whole multi-line HTML page).
+                _archive_error_log.error(
+                    "Could not determine night or query archive for science exptimes: %s",
+                    " ".join(str(e).split()),
+                )
+                self._cant_run_reason = "Could not determine night or query archive for science exptimes."
+                return False
             except Exception:
+                # Anything else is unexpected -- a malformed archive response, a broken config, a
+                # real bug -- and keeps its traceback, so the throttling above can't hide it.
                 log.exception("Could not determine night or query archive for science exptimes.")
                 self._cant_run_reason = "Could not determine night or query archive for science exptimes."
                 return False
+
+            _archive_error_log.resolve("Querying the archive for science exptimes succeeded again.")
 
         # seems alright
         self._cant_run_reason = None

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -7,11 +8,13 @@ import astropy.units as u
 import pytest
 
 from pyobs.robotic.instruments import BinningOption, CameraCapability, Instrument, InstrumentCapabilities
+from pyobs.robotic.scripts.calibration import darkbias
 from pyobs.robotic.scripts.calibration.darkbias import DarkBiasScript
 from pyobs.robotic.task import TaskData
 from pyobs.robotic.utils.archive import Archive, FrameInfo
 from pyobs.robotic.utils.calibration import clear_cache
 from pyobs.utils.enums import ImageType
+from pyobs.utils.exceptions import ArchiveError
 from pyobs.utils.time import Time
 from tests.helpers import isinstance_class, make_proxy_cm
 
@@ -19,6 +22,17 @@ from tests.helpers import isinstance_class, make_proxy_cm
 @pytest.fixture(autouse=True)
 def _clear_exptime_cache() -> None:
     clear_cache()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_archive_error_log(monkeypatch: pytest.MonkeyPatch) -> None:
+    """darkbias's archive-failure logging is module-level -- it has to outlive the fresh Script
+    instance Task.create_script() builds for every scheduling pass -- so give each test its own
+    unthrottled state instead of inheriting whatever a previous test logged. Resets the real
+    instance rather than substituting one, so these tests exercise production's own configuration
+    (a changed error level here is a changed test result, not a silently-ignored difference)."""
+    monkeypatch.setattr(darkbias._archive_error_log, "_time_of_last_error", 0.0)
+    monkeypatch.setattr(darkbias._archive_error_log, "_last_error_message", "")
 
 
 class _FakeArchive(Archive):
@@ -456,3 +470,94 @@ async def test_can_run_false_when_archive_query_raises() -> None:
 
     assert await script.can_run(None) is False
     assert "archive" in script.cant_run_reason()
+
+
+# ── can_run: archive-failure logging ─────────────────────────────────────────
+
+
+def _archive_failure_script(error: Exception) -> DarkBiasScript:
+    """A match_science_exptimes script whose archive always raises `error`."""
+
+    class _BrokenArchive(_FakeArchive):
+        async def list_options(self, **kwargs: Any) -> dict[str, list[Any]]:
+            raise error
+
+    script = make_script(match_science_exptimes=True, archive=_BrokenArchive(), site="siteA", night="2024-01-01")
+    script._comm.has_proxy = AsyncMock(return_value=True)
+    return script
+
+
+def _darkbias_records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
+    return [r for r in caplog.records if r.name == darkbias.log.name]
+
+
+@pytest.mark.asyncio
+async def test_can_run_logs_archive_failure_as_single_line_warning(caplog: pytest.LogCaptureFixture) -> None:
+    # an archive 5xx: ArchiveError's message used to embed the whole multi-line HTML body
+    script = _archive_failure_script(ArchiveError("Could not query frames: <html>\n502 Bad Gateway\n</html>"))
+
+    with caplog.at_level(logging.WARNING):
+        assert await script.can_run(None) is False
+
+    records = _darkbias_records(caplog)
+    assert len(records) == 1
+    assert records[0].levelno == logging.WARNING
+    # what the old log.exception() here did instead: a full traceback on every scheduling pass,
+    # whose message (and journald's own encoding of it) could carry newlines
+    assert records[0].exc_info is None
+    assert "\n" not in records[0].getMessage()
+    assert "502 Bad Gateway" in records[0].getMessage()
+
+
+@pytest.mark.asyncio
+async def test_can_run_does_not_relog_archive_failure_within_min_interval(caplog: pytest.LogCaptureFixture) -> None:
+    script = _archive_failure_script(ArchiveError("archive unreachable"))
+
+    with caplog.at_level(logging.WARNING):
+        assert await script.can_run(None) is False
+        assert await script.can_run(None) is False  # the next scheduling pass, same failure
+
+    # one WARNING, not one per pass -- ResolvableErrorLogger suppresses identical repeats until
+    # min_interval has elapsed since the last *log* (it deliberately does not advance that
+    # timestamp on suppressed calls; the interval behaviour itself is covered by
+    # tests/utils/logging/test_resolvableerror.py)
+    assert len(_darkbias_records(caplog)) == 1
+
+
+@pytest.mark.asyncio
+async def test_can_run_keeps_traceback_for_unexpected_errors(caplog: pytest.LogCaptureFixture) -> None:
+    """Only the operational types get the throttled one-liner: an unexpected failure -- a
+    malformed archive response, a broken config, a real bug -- must still be logged with its
+    traceback, or the throttling above would hide it."""
+    script = _archive_failure_script(RuntimeError("unexpected boom"))
+
+    with caplog.at_level(logging.WARNING):
+        assert await script.can_run(None) is False
+
+    records = _darkbias_records(caplog)
+    assert len(records) == 1
+    assert records[0].levelno == logging.ERROR
+    assert records[0].exc_info is not None
+    assert str(records[0].exc_info[1]) == "unexpected boom"
+    assert "archive" in script.cant_run_reason()
+
+
+@pytest.mark.asyncio
+async def test_can_run_logs_recovery_after_archive_failure(caplog: pytest.LogCaptureFixture) -> None:
+    broken = _archive_failure_script(ArchiveError("archive unreachable"))
+
+    with caplog.at_level(logging.INFO):
+        assert await broken.can_run(None) is False
+
+        # a fresh instance, as the next scheduling pass would build -- only the module-level log
+        # state is shared between the two
+        healthy = make_script(
+            match_science_exptimes=True, archive=_FakeArchive(exptimes=[600.0]), site="siteA", night="2024-01-01"
+        )
+        healthy._comm.has_proxy = AsyncMock(return_value=True)
+        assert await healthy.can_run(None) is True
+
+    assert [r.getMessage() for r in _darkbias_records(caplog)] == [
+        "Could not determine night or query archive for science exptimes: <ArchiveError> archive unreachable",
+        "Querying the archive for science exptimes succeeded again.",
+    ]

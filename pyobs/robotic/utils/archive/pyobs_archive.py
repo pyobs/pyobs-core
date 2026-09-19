@@ -8,12 +8,38 @@ from pydantic import PrivateAttr
 
 from pyobs.images import Image
 from pyobs.utils.enums import ImageType
+from pyobs.utils.exceptions import ArchiveError
 from pyobs.utils.exptime_grouping import exptimes_close
 from pyobs.utils.time import Time
 
 from .archive import Archive, FrameInfo
 
 log = logging.getLogger(__name__)
+
+
+async def _get_json(
+    session: aiohttp.ClientSession,
+    url: str,
+    params: dict[str, Any],
+    headers: dict[str, str],
+    timeout: aiohttp.ClientTimeout,
+) -> Any:
+    """GETs `url` and returns its decoded JSON, raising ArchiveError for every way the archive
+    can fail to answer.
+
+    A non-200 raises with the status and URL only -- never the response body, which for a failing
+    archive/nginx is a whole HTML error page that would otherwise end up verbatim (newlines and
+    all) in the caller's log line. Connection-level failures (unreachable host, TLS, timeout) are
+    wrapped into the same ArchiveError, so callers need a single `except ArchiveError` for "the
+    archive didn't answer" instead of also knowing aiohttp's exception hierarchy.
+    """
+    try:
+        async with session.get(url, params=params, headers=headers, timeout=timeout) as response:
+            if response.status != 200:
+                raise ArchiveError(f"Could not query frames from {url}: HTTP {response.status}")
+            return await response.json()
+    except (aiohttp.ClientError, TimeoutError) as e:
+        raise ArchiveError(f"Could not reach archive at {url}: {e}") from e
 
 
 class PyobsArchiveFrameInfoDict(TypedDict):
@@ -88,10 +114,8 @@ class PyobsArchive(Archive):
             exptime=exptime,
         )
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
-                if response.status != 200:
-                    raise ValueError(f"Could not query frames: {str(await response.text())}")
-                return cast(dict[str, list[Any]], await response.json())
+            data = await _get_json(session, url, params, self._headers, self._timeout)
+            return cast(dict[str, list[Any]], data)
 
     async def list_frames(
         self,
@@ -128,24 +152,21 @@ class PyobsArchive(Archive):
         params["limit"] = 1000
         async with aiohttp.ClientSession() as session:
             while True:
-                async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
-                    if response.status != 200:
-                        raise ValueError("Could not query frames")
-                    res = await response.json()
-                    new_frames = [PyobsArchiveFrameInfo(frame) for frame in res["results"]]
-                    frames.extend(new_frames)
-                    if len(frames) >= res["count"]:
-                        if exptime is not None:
-                            # Server-side EXPTIME filtering may not exist or may be exact-only;
-                            # re-filter client-side to apply the tolerance regardless. This only
-                            # recovers near-matches the server itself returned -- an exact-only
-                            # server has already dropped them before we get here, so it still
-                            # matters that the server side supports (or ignores) EXPTIME. Harmless
-                            # today since science_exptimes_for_night() never passes exptime= to
-                            # list_frames().
-                            frames = [f for f in frames if f.exptime is not None and exptimes_close(f.exptime, exptime)]
-                        return frames
-                    params["offset"] += len(new_frames)
+                res = await _get_json(session, url, params, self._headers, self._timeout)
+                new_frames = [PyobsArchiveFrameInfo(frame) for frame in res["results"]]
+                frames.extend(new_frames)
+                if len(frames) >= res["count"]:
+                    if exptime is not None:
+                        # Server-side EXPTIME filtering may not exist or may be exact-only;
+                        # re-filter client-side to apply the tolerance regardless. This only
+                        # recovers near-matches the server itself returned -- an exact-only
+                        # server has already dropped them before we get here, so it still
+                        # matters that the server side supports (or ignores) EXPTIME. Harmless
+                        # today since science_exptimes_for_night() never passes exptime= to
+                        # list_frames().
+                        frames = [f for f in frames if f.exptime is not None and exptimes_close(f.exptime, exptime)]
+                    return frames
+                params["offset"] += len(new_frames)
 
     @staticmethod
     def _build_query(

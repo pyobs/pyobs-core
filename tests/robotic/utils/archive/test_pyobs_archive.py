@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
+import aiohttp
 import numpy as np
 import pytest
 
 from pyobs.images import Image
 from pyobs.robotic.utils.archive.pyobs_archive import PyobsArchive, PyobsArchiveFrameInfo
 from pyobs.utils.enums import ImageType
+from pyobs.utils.exceptions import ArchiveError
 from pyobs.utils.time import Time
 
 
@@ -148,10 +150,20 @@ async def test_list_options_returns_json_on_success(mocker) -> None:
 @pytest.mark.asyncio
 async def test_list_options_raises_on_non_200(mocker) -> None:
     archive = make_archive()
-    mocker.patch("aiohttp.ClientSession.get", return_value=MockResponse(text="server error", status=500))
+    mocker.patch(
+        "aiohttp.ClientSession.get",
+        return_value=MockResponse(text="<html>502 Bad Gateway</html>", status=502),
+    )
 
-    with pytest.raises(ValueError):
+    # Status and URL only: a real failing archive answers with an HTML error page, and embedding
+    # that body (as this used to) put the whole multi-line page into the caller's log line.
+    with pytest.raises(ArchiveError) as excinfo:
         await archive.list_options()
+
+    message = str(excinfo.value)
+    assert "HTTP 502" in message
+    assert "http://archive.example/frames/aggregate/" in message
+    assert "Bad Gateway" not in message
 
 
 @pytest.mark.asyncio
@@ -207,8 +219,41 @@ async def test_list_frames_raises_on_non_200(mocker) -> None:
     archive = make_archive()
     mocker.patch("aiohttp.ClientSession.get", return_value=MockResponse(status=404))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ArchiveError) as excinfo:
         await archive.list_frames()
+
+    assert "HTTP 404" in str(excinfo.value)
+    assert "http://archive.example/frames/" in str(excinfo.value)
+
+
+# ── connection-level failures ────────────────────────────────────────────────
+# Wrapped into the same ArchiveError as a non-200, so callers only need one `except` for
+# "the archive didn't answer" -- and an aiohttp error can't escape as a type the caller never
+# anticipated.
+
+
+@pytest.mark.asyncio
+async def test_list_options_wraps_connection_error_in_archive_error(mocker) -> None:
+    archive = make_archive()
+    mocker.patch("aiohttp.ClientSession.get", side_effect=aiohttp.ClientError("connection refused"))
+
+    with pytest.raises(ArchiveError) as excinfo:
+        await archive.list_options()
+
+    assert "connection refused" in str(excinfo.value)
+    assert "http://archive.example/frames/aggregate/" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_list_frames_wraps_timeout_in_archive_error(mocker) -> None:
+    archive = make_archive()
+    mocker.patch("aiohttp.ClientSession.get", side_effect=TimeoutError("timed out"))
+
+    with pytest.raises(ArchiveError) as excinfo:
+        await archive.list_frames()
+
+    assert "timed out" in str(excinfo.value)
+    assert "http://archive.example/frames/" in str(excinfo.value)
 
 
 @pytest.mark.asyncio

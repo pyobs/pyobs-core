@@ -52,3 +52,50 @@ def test_logger(capsys):
     rel.resolve("Resolved")
     _, err = capsys.readouterr()
     assert "INFO - Resolved" in err
+
+
+class _FakeTime:
+    """Stand-in for the `time` module whose clock the test advances by hand."""
+
+    def __init__(self, now: float = 1000.0) -> None:
+        self.now = now
+
+    def time(self) -> float:
+        return self.now
+
+
+def test_identical_error_is_relogged_after_min_interval(capsys, monkeypatch):
+    logger = create_logger()
+    rel = ResolvableErrorLogger(logger, min_interval=600)
+    clock = _FakeTime()
+    monkeypatch.setattr("pyobs.utils.logging.resolvableerror.time", clock)
+
+    rel.error("Some error")
+    _, err = capsys.readouterr()
+    assert "ERROR - Some error" in err
+
+    # min_interval measures the gap between logs, not between calls: polling the same error
+    # every few seconds neither re-logs nor pushes the deadline further out
+    clock.now += 10
+    rel.error("Some error")
+    clock.now += 10
+    rel.error("Some error")
+    _, err = capsys.readouterr()
+    assert err == ""
+
+    # ...but once min_interval has passed since that log, the reminder goes out
+    clock.now += 620
+    rel.error("Some error")
+    _, err = capsys.readouterr()
+    assert "ERROR - Some error" in err
+
+
+def test_resolve_is_silent_when_no_error_was_ever_logged(capsys, monkeypatch):
+    logger = create_logger()
+    rel = ResolvableErrorLogger(logger)
+    clock = _FakeTime()
+    monkeypatch.setattr("pyobs.utils.logging.resolvableerror.time", clock)
+
+    rel.resolve("Resolved")
+    _, err = capsys.readouterr()
+    assert err == ""

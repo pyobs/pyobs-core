@@ -529,19 +529,29 @@ class Object(PrivateAttrMixin):
 
     @staticmethod
     def config_or_object_get_param(config_or_object: dict[str, Any] | Any, param: str) -> Any:
-        """Checks, whether a config_or_object has the given parameter.
+        """Returns the given parameter's value from a config dict or object, or None if it does not
+        define it.
+
+        A class passed in place of a config/object is only used as the type to instantiate, so it
+        carries no configured values of its own and always reports None. Inspecting it with
+        hasattr() would instead report every property as present -- `observer`, `vfs`, and
+        `timezone` are all properties on PrivateAttrMixin -- so the parent's value would look like
+        the child's own and never be inherited; a class-created child such as
+        LcoObservationArchive's LcoScheduleReader then ended up without an observer, breaking
+        observer-dependent scripts (e.g. DarkBiasScript's night resolution) downstream.
 
         Args:
             config_or_object: Dict config or object.
             param: Parameter name to check.
 
         Returns:
-
+            Value of the parameter, or None if it is not configured.
         """
-        is_dict = isinstance(config_or_object, dict)
-        if is_dict and param in config_or_object:
-            return config_or_object[param]
-        if not is_dict and hasattr(config_or_object, param):
+        if isinstance(config_or_object, dict):
+            return config_or_object.get(param)
+        if inspect.isclass(config_or_object):
+            return None
+        if hasattr(config_or_object, param):
             return getattr(config_or_object, param)
         return None
 

@@ -29,13 +29,16 @@ class ResolvableErrorLogger:
     def error(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log an error message."""
 
+        now = time.time()
         # we log, if last message is old enough or text changed
-        if self._time_of_last_error - time.time() > self._min_interval or msg != self._last_error_message:
+        if now - self._time_of_last_error > self._min_interval or msg != self._last_error_message:
             self._log.log(self._error_level, msg, *args, **kwargs)
-
-        # store it
-        self._time_of_last_error = time.time()
-        self._last_error_message = msg
+            # Only remember what we actually logged, and when: min_interval has to measure the
+            # gap between logs, not between calls. Storing every (suppressed) call's timestamp
+            # would let a recurring error polled every few seconds push it forward forever and
+            # never re-log, even though the comparison here is what decides that.
+            self._time_of_last_error = now
+            self._last_error_message = msg
 
     def resolve(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Resolve an error."""

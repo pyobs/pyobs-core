@@ -79,6 +79,17 @@ class ImageError(PyobsError):
     pass
 
 
+class ArchiveError(PyobsError):
+    """An archive backend couldn't answer a query -- it was unreachable, or it returned a non-200
+    response. Distinct from an archive that answers fine but has no matching frames, which is a
+    normal empty result rather than an error. Deliberately one type across list_options/
+    list_frames and every backend, not split by failure mode: callers react the same way to all of
+    them (back off and retry later), and only the message distinguishes "HTTP 502 from <url>" from
+    "connection refused"."""
+
+    pass
+
+
 class MotionError(PyobsError):
     pass
 

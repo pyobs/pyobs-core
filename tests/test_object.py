@@ -136,3 +136,31 @@ def test_get_object_keeps_childs_own_vfs_over_parents():
 
     assert child.vfs is not parent.vfs
     assert "cache" in child.vfs._roots
+
+
+def test_get_object_from_class_inherits_parents_vfs_timezone_and_observer():
+    """A class passed in place of a config/object carries no configured values of its own, so the
+    child must inherit the parent's vfs/timezone/observer. config_or_object_get_param() used to
+    hasattr() the class itself, which reports the observer/vfs/timezone *properties* as present
+    and made the child look like it had configured its own -- so a class-created child (e.g.
+    LcoObservationArchive's LcoScheduleReader, which then builds every task Mastermind runs) was
+    left without an observer."""
+    parent = Object(location={"longitude": 9.94, "latitude": 51.56, "elevation": 201.0})
+
+    child = parent.get_object(Object, copy_comm=False)
+
+    assert child._observer is parent._observer
+    assert child._observer is not None
+    assert child._vfs is parent._vfs
+    assert child._timezone is parent._timezone
+
+
+def test_add_child_object_from_class_inherits_parents_observer():
+    """Same as above for the add_child_object() form actually used in the field
+    (LcoObservationArchive passes LcoScheduleReader as a bare class)."""
+    parent = Object(location={"longitude": 9.94, "latitude": 51.56, "elevation": 201.0})
+
+    child = parent.add_child_object(Object, Object)
+
+    assert child._observer is parent._observer
+    assert child in parent._child_objects

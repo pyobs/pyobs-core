@@ -148,3 +148,54 @@ def test_from_observation(schedulable_request: LcoSchedulableRequest) -> None:
     assert task.name == str(obs.request.id)
     assert isinstance(task.target, SiderealTarget)
     assert task.target.name == "Kochab"
+
+
+# ── run ───────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_run_reports_only_the_final_config_status(mocker, task: LcoTask) -> None:
+    """run() leaves ATTEMPTED to update_observation() and reports just the result of each config."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from pyobs.robotic.storage.lco.task import ConfigStatus
+
+    from .helpers import make_observation_archive
+
+    archive = make_observation_archive()
+    send_mock = mocker.patch.object(archive, "send_update", AsyncMock())
+    script = MagicMock(can_run=AsyncMock(return_value=True))
+    mocker.patch.object(LcoTask, "pyobs_model_validate", return_value=script)
+    mocker.patch.object(
+        LcoTask,
+        "_run_script",
+        AsyncMock(return_value=ConfigStatus().finish(state="COMPLETED", time_completed=12.0)),
+    )
+
+    await task.run(MagicMock(observation_archive=archive))
+
+    send_mock.assert_called_once()
+    assert send_mock.call_args[0][1]["state"] == "COMPLETED"
+    assert send_mock.call_args[0][1]["summary"]["time_completed"] == 12.0
+    assert task.request.configurations[0].state == "COMPLETED"
+
+
+@pytest.mark.asyncio
+async def test_run_reports_not_attempted_if_config_cannot_run(mocker, task: LcoTask) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    from .helpers import make_observation_archive
+
+    archive = make_observation_archive()
+    send_mock = mocker.patch.object(archive, "send_update", AsyncMock())
+    script = MagicMock(can_run=AsyncMock(return_value=False))
+    mocker.patch.object(LcoTask, "pyobs_model_validate", return_value=script)
+    run_script = mocker.patch.object(LcoTask, "_run_script", AsyncMock())
+
+    await task.run(MagicMock(observation_archive=archive))
+
+    run_script.assert_not_called()
+    send_mock.assert_called_once()
+    assert send_mock.call_args[0][1]["state"] == "NOT_ATTEMPTED"
+    assert send_mock.call_args[0][1]["summary"]["reason"] == "Cannot run config."
+    assert task.request.configurations[0].state == "NOT_ATTEMPTED"

@@ -23,6 +23,22 @@ STATE_MAP = {
 }
 
 
+# LCO/OCS ConfigurationStatus choices are PENDING, ATTEMPTED, NOT_ATTEMPTED, COMPLETED, FAILED and BAD_DATA
+# (observation_portal/observations/models.py) -- there is no IN_PROGRESS and no ABORTED.
+CONFIG_STATE_MAP = {
+    ObservationState.PENDING: "PENDING",
+    ObservationState.IN_PROGRESS: "ATTEMPTED",
+    ObservationState.COMPLETED: "COMPLETED",
+    ObservationState.FAILED: "FAILED",
+    ObservationState.ABORTED: "FAILED",
+    ObservationState.CANCELED: "NOT_ATTEMPTED",
+    ObservationState.WINDOW_EXPIRED: "NOT_ATTEMPTED",
+}
+
+# once the portal has one of these, it ignores further state changes
+_FINISHED_CONFIG_STATES = ("COMPLETED", "FAILED", "NOT_ATTEMPTED")
+
+
 class LcoObservationArchive(ObservationArchive):
     """Scheduler for using the LCO portal"""
 
@@ -102,9 +118,19 @@ class LcoObservationArchive(ObservationArchive):
 
         if not isinstance(observation.task, LcoTask):
             return
+        state = CONFIG_STATE_MAP[observation.state]
         for config in observation.task.request.configurations:
-            status = ConfigStatus(state=observation.state)
-            status.finish(state=observation.state)
+            # LcoTask.run() already reported this config with its result (reason, time_completed). The portal
+            # ignores a further state change, but it would overwrite that summary with an empty one.
+            if config.state in _FINISHED_CONFIG_STATES:
+                continue
+            status = ConfigStatus(state=state)
+            if state in _FINISHED_CONFIG_STATES:
+                status.finish(state=state)
+            else:
+                # still running or not started: the portal needs a valid end time, and it charges the time
+                # allocation for summary.end - summary.start on every summary save, so charge nothing yet
+                status.end = status.start
             await self.send_update(config.configuration_status, status.to_json())
 
     async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:

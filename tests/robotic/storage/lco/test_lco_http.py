@@ -215,6 +215,58 @@ async def test_observation_archive_update_observation(mocker) -> None:
     assert send_mock.call_args_list[0][0][0] == task.request.configurations[0].configuration_status
 
 
+def test_config_state_map_covers_all_observation_states() -> None:
+    from pyobs.robotic.storage.lco.observationarchive import CONFIG_STATE_MAP
+
+    assert set(CONFIG_STATE_MAP) == set(ObservationState)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "state, lco_state",
+    [
+        (ObservationState.IN_PROGRESS, "ATTEMPTED"),
+        (ObservationState.COMPLETED, "COMPLETED"),
+        (ObservationState.FAILED, "FAILED"),
+        (ObservationState.ABORTED, "FAILED"),
+        (ObservationState.CANCELED, "NOT_ATTEMPTED"),
+    ],
+)
+async def test_observation_archive_update_observation_sends_lco_state(mocker, state, lco_state) -> None:
+    """update_observation sends LCO config states, not ObservationState values, with a valid summary end."""
+    from pyobs.robotic.observation import Observation
+
+    archive = make_observation_archive()
+    task = make_lco_task()
+    obs = Observation(task=task, start=Time.now(), end=Time.now(), state=state)
+
+    send_mock = mocker.patch.object(archive, "send_update", AsyncMock())
+    await archive.update_observation(obs)
+
+    status = send_mock.call_args_list[0][0][1]
+    assert status["state"] == lco_state
+    assert status["summary"]["state"] == lco_state
+    assert status["summary"]["end"] != ""
+    if lco_state == "ATTEMPTED":
+        # the portal charges summary.end - summary.start, so a running observation must not charge anything yet
+        assert status["summary"]["end"] == status["summary"]["start"]
+
+
+@pytest.mark.asyncio
+async def test_observation_archive_update_observation_keeps_reported_config(mocker) -> None:
+    """A config that LcoTask.run() already reported is not overwritten with an empty summary."""
+    from pyobs.robotic.observation import Observation
+
+    archive = make_observation_archive()
+    task = make_lco_task()
+    task.request.configurations[0].state = "COMPLETED"
+    obs = Observation(task=task, start=Time.now(), end=Time.now(), state=ObservationState.COMPLETED)
+
+    send_mock = mocker.patch.object(archive, "send_update", AsyncMock())
+    await archive.update_observation(obs)
+    send_mock.assert_not_called()
+
+
 @pytest.mark.asyncio
 async def test_observation_archive_update_observation_skips_non_lco(mocker) -> None:
     from pyobs.robotic import Task

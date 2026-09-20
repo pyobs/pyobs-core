@@ -141,37 +141,35 @@ class LcoTask(Task):
         if data is None:
             raise ValueError("No TaskData given.")
 
-        # get request
-        req = self.request
-
-        # loop configurations
-        status: ConfigStatus | None
-        for config in req.configurations:
-            # send an ATTEMPTED status
-            if isinstance(data.observation_archive, LcoObservationArchive):
-                status = ConfigStatus()
-                config.state = "ATTEMPTED"
-                await data.observation_archive.send_update(config.configuration_status, status.finish().to_json())
+        archive = data.observation_archive
+        for config in self.request.configurations:
+            # the portal already got ATTEMPTED from LcoObservationArchive.update_observation(), but
+            # is_finished() needs it locally
+            config.state = "ATTEMPTED"
 
             # can run?
             script = self.pyobs_model_validate(Script, self.script, by_alias=True)
             if not await script.can_run(data):
                 log.warning("Cannot run config.")
+                status = ConfigStatus().finish(state="NOT_ATTEMPTED", reason="Cannot run config.")
+                config.state = status.state
+                if isinstance(archive, LcoObservationArchive):
+                    await archive.send_update(config.configuration_status, status.to_json())
                 continue
 
             # run config
             log.info("Running config...")
             status = await self._run_script(data)
 
-            # send status
-            if status is not None and isinstance(data.observation_archive, LcoObservationArchive):
-                config.state = status.state
-                await data.observation_archive.send_update(config.configuration_status, status.to_json())
+            # report the result of this config, with reason and time_completed
+            config.state = status.state
+            if isinstance(archive, LcoObservationArchive):
+                await archive.send_update(config.configuration_status, status.to_json())
 
         # finished task
         log.info("Finished task.")
 
-    async def _run_script(self, data: TaskData) -> ConfigStatus | None:
+    async def _run_script(self, data: TaskData) -> ConfigStatus:
         """Run a config
 
         Args:

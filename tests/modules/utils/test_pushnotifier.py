@@ -11,7 +11,13 @@ from pyobs.interfaces import ICooling, IMotion, IPushNotifications, PushNotifica
 from pyobs.interfaces.IMotion import MotionState
 from pyobs.interfaces.interface import registered_interfaces
 from pyobs.modules import Module
-from pyobs.modules.utils.pushnotifier import PushNotifier, _Alert
+from pyobs.modules.utils.pushnotifier import (
+    _FIREBASE_HTTP_TIMEOUT,
+    _MAX_BODY_BYTES,
+    PushNotifier,
+    _Alert,
+    _notification_body,
+)
 from pyobs.utils.enums import MotionStatus
 
 
@@ -215,6 +221,97 @@ async def test_process_log_entry_ignores_non_log_events() -> None:
     assert pn._alert_queue.qsize() == 0
 
 
+@pytest.mark.asyncio
+async def test_process_log_entry_ignores_own_module_logs() -> None:
+    pn = make_pushnotifier()  # comm.name == "pushnotifier"
+    entry = LogEvent(time="t", level="ERROR", filename="f", function="fn", line=1, message="boom")
+
+    handled = await pn._process_log_entry(entry, "pushnotifier")
+
+    assert handled is False
+    assert pn._alert_queue.qsize() == 0
+
+
+# ── notification body reduction (FCM 4 KB message limit) ─────────────────────
+
+_TRACEBACK_MESSAGE = (
+    "Failed to send push notification to a device.\n"
+    "Traceback (most recent call last):\n"
+    '  File "/opt/pyobs/venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send\n'
+    "    raise ConnectionError(e, request=request)\n"
+    "requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443)"
+)
+
+
+@pytest.mark.asyncio
+async def test_process_log_entry_body_reduces_traceback_to_first_and_last_line() -> None:
+    pn = make_pushnotifier()
+    entry = LogEvent(time="t", level="ERROR", filename="f", function="fn", line=1, message=_TRACEBACK_MESSAGE)
+
+    await pn._process_log_entry(entry, "camera1")
+
+    assert pn._alert_queue.get_nowait().body == (
+        "Failed to send push notification to a device. — "
+        "requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_process_log_entry_body_keeps_plain_single_line_message() -> None:
+    pn = make_pushnotifier()
+    entry = LogEvent(time="t", level="ERROR", filename="f", function="fn", line=1, message="boom")
+
+    await pn._process_log_entry(entry, "camera1")
+
+    assert pn._alert_queue.get_nowait().body == "boom"
+
+
+def test_notification_body_uses_non_empty_lines() -> None:
+    assert _notification_body("\n\nfirst\n\nlast\n\n") == "first — last"
+
+
+def test_notification_body_single_line_is_unchanged() -> None:
+    assert _notification_body("boom") == "boom"
+
+
+def test_notification_body_empty_message() -> None:
+    assert _notification_body("") == ""
+    assert _notification_body("\n \n") == ""
+
+
+def test_notification_body_reduces_long_traceback_below_limit() -> None:
+    """The MONET/S incident: a raw traceback over FCM's 4 KB limit must reduce to a short body."""
+    frames = "\n".join(f'  File "/app/mod{i}.py", line {i}, in fn{i}' for i in range(500))
+    message = (
+        f"Failed to send push notification to a device.\nTraceback (most recent call last):\n{frames}\nValueError: boom"
+    )
+
+    body = _notification_body(message)
+
+    assert len(message.encode("utf-8")) > 4096
+    assert body == "Failed to send push notification to a device. — ValueError: boom"
+    assert len(body.encode("utf-8")) <= _MAX_BODY_BYTES
+
+
+def test_notification_body_caps_when_exception_line_itself_is_huge() -> None:
+    message = 'boom\nTraceback (most recent call last):\n  File "f", line 1, in fn\nValueError: ' + "x" * 10000
+
+    body = _notification_body(message)
+
+    assert len(body.encode("utf-8")) <= _MAX_BODY_BYTES
+    assert body.endswith("…")
+    assert body.startswith("boom — ValueError: ")
+
+
+def test_notification_body_cap_does_not_split_multibyte_character() -> None:
+    # "ä" is 2 bytes, so an odd byte budget lands mid-codepoint unless the decode is lossy
+    body = _notification_body("ä" * (_MAX_BODY_BYTES * 2))
+
+    assert len(body.encode("utf-8")) <= _MAX_BODY_BYTES
+    assert body.endswith("…")
+    assert "\ufffd" not in body  # no replacement chars => no split codepoint
+
+
 # ── module-ERROR state detection (§2a) ───────────────────────────────────────
 
 
@@ -413,6 +510,81 @@ async def test_send_to_all_devices_noop_without_fcm_app() -> None:
 
     # must not raise even though there's no app to send through
     await pn._send_to_all_devices(_Alert(PushNotificationType.LOG_ERROR, "t", "b"))
+
+
+@pytest.mark.asyncio
+async def test_send_to_all_devices_logs_one_error_per_alert(mocker, caplog) -> None:
+    pn = make_pushnotifier()
+    pn._fcm_app = MagicMock()
+    pn._devices = {
+        "tim": {
+            "devices": [
+                {"token": "t1", "platform": "android"},
+                {"token": "t2", "platform": "android"},
+            ]
+        }
+    }
+
+    messaging_mock = MagicMock()
+    messaging_mock.send = MagicMock(side_effect=RuntimeError("network down"))
+    mocker.patch.dict("sys.modules", {"firebase_admin.messaging": messaging_mock})
+
+    with caplog.at_level("ERROR", logger="pyobs.modules.utils.pushnotifier"):
+        await pn._send_to_all_devices(_Alert(PushNotificationType.LOG_ERROR, "t", "b"))
+
+    errors = [r for r in caplog.records if r.levelname == "ERROR"]
+    assert len(errors) == 1
+    assert "2 of 2" in errors[0].getMessage()
+
+
+@pytest.mark.asyncio
+async def test_send_to_all_devices_prunes_unregistered_tokens(mocker) -> None:
+    # UnregisteredError is a NotFoundError subclass, so exercising NotFoundError covers the real
+    # FCM "unregistered token" signal that _send_to_all_devices actually catches.
+    from firebase_admin.exceptions import NotFoundError
+
+    pn = make_pushnotifier()
+    pn._fcm_app = MagicMock()
+    pn._vfs = MagicMock()
+    pn._vfs.write_yaml = AsyncMock()
+    pn._devices = {
+        "tim": {
+            "devices": [
+                {"token": "dead-token", "platform": "android"},
+                {"token": "live-token", "platform": "android"},
+            ]
+        }
+    }
+
+    def fake_send(message: object, app: object) -> None:
+        if getattr(message, "token", None) == "dead-token":
+            raise NotFoundError("The registration token is not valid")
+        # live token: success
+
+    messaging_mock = MagicMock()
+    messaging_mock.send = MagicMock(side_effect=fake_send)
+    messaging_mock.Message = MagicMock(side_effect=lambda notification, token: MagicMock(token=token))
+    mocker.patch.dict("sys.modules", {"firebase_admin.messaging": messaging_mock})
+
+    await pn._send_to_all_devices(_Alert(PushNotificationType.LOG_ERROR, "t", "b"))
+
+    assert pn._devices["tim"]["devices"] == [{"token": "live-token", "platform": "android"}]
+    pn._vfs.write_yaml.assert_awaited_once_with("/pyobs/pushnotifier.yaml", pn._devices)
+
+
+@pytest.mark.asyncio
+async def test_init_firebase_passes_http_timeout(mocker) -> None:
+    pn = make_pushnotifier()
+    pn._vfs = MagicMock()
+    pn._vfs.read_yaml = AsyncMock(return_value={"type": "service_account"})
+
+    init = mocker.patch("firebase_admin.initialize_app", return_value=MagicMock())
+    mocker.patch("firebase_admin.credentials.Certificate", return_value=MagicMock())
+
+    await pn._init_firebase()
+
+    init.assert_called_once()
+    assert init.call_args.kwargs["options"] == {"httpTimeout": _FIREBASE_HTTP_TIMEOUT}
 
 
 # ── storage migration ────────────────────────────────────────────────────────

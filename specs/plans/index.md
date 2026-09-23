@@ -287,3 +287,10 @@ Implementation plans, checklist-style. Newest at the bottom.
   `register_push_device`), enforced at send time (all-on default, backward compatible;
   storage restructured with a read-time migration). **implemented, uncommitted** (2026-09-18;
   pyobs-web-client#57; pyobs-core#902; Repos: pyobs-core)
+- [2026-09-23-pushnotifier-payload-size-cap.md](2026-09-23-pushnotifier-payload-size-cap.md) —
+  harden `PushNotifier` against the MONET/S outage: cap log-event bodies to FCM's 4 KB message
+  limit (reduce to "first non-empty line — last non-empty line" + byte-cap on a UTF-8 boundary),
+  skip the notifier's own log events, log one aggregated failure per alert instead of one per
+  device token, set `httpTimeout` so a hung send finishes inside the wait window, and prune
+  unregistered tokens. **implemented, uncommitted** (2026-09-23; 12 new tests, 48 passing; Repos:
+  pyobs-core)

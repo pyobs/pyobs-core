@@ -29,8 +29,20 @@ _ALL_TYPES = [t.value for t in PushNotificationType]
 # call can't stall the sender thread (and thus the alert queue) forever.
 _FIREBASE_CALL_TIMEOUT = 15.0
 
+# Per-request HTTP timeout passed to the Firebase SDK. It bounds both the OAuth token refresh and
+# the FCM send (the SDK default is 120 s); kept below _FIREBASE_CALL_TIMEOUT so a single hung
+# request finishes inside the wait_for window instead of being abandoned to its default.
+_FIREBASE_HTTP_TIMEOUT = 10
+
 # Storage file for registered devices.
 _STORAGE_FILE = "/pyobs/pushnotifier.yaml"
+
+# FCM caps the whole message at 4096 bytes; reserve room for the token (~160 bytes), the title
+# ("{sender}: {level}") and the JSON envelope before budgeting the body.
+_MAX_BODY_BYTES = 3600
+
+# Appended when a body had to be truncated to fit _MAX_BODY_BYTES (inclusive of its own bytes).
+_TRUNCATION_MARKER = "…"
 
 
 @dataclass
@@ -38,6 +50,37 @@ class _Alert:
     kind: PushNotificationType
     title: str
     body: str
+
+
+def _notification_body(message: str) -> str:
+    """Reduce a log message to a push-notification body that fits FCM's 4 KB message limit.
+
+    A formatted traceback carries the exception on its final line, so for a multi-line message the
+    body becomes "first non-empty line -- last non-empty line", keeping both the human-facing
+    message and the exception summary. Single-line messages pass through unchanged. The result is
+    truncated to `_MAX_BODY_BYTES` on a UTF-8 codepoint boundary.
+
+    Args:
+        message: The `LogEvent.message` to reduce.
+
+    Returns:
+        A body that encodes to at most `_MAX_BODY_BYTES` bytes.
+    """
+    lines = [line for line in message.split("\n") if line.strip()]
+    if not lines:
+        return ""
+
+    first, last = lines[0], lines[-1]
+    body = f"{first} — {last}" if first != last else first
+
+    encoded = body.encode("utf-8")
+    if len(encoded) <= _MAX_BODY_BYTES:
+        return body
+
+    # byte-slice then lossy-decode: never splits a multibyte codepoint in half. The marker is
+    # budgeted inside the limit rather than appended on top of it.
+    budget = _MAX_BODY_BYTES - len(_TRUNCATION_MARKER.encode("utf-8"))
+    return encoded[:budget].decode("utf-8", errors="ignore") + _TRUNCATION_MARKER
 
 
 class PushNotifier(Module, IPushNotifications):
@@ -126,7 +169,9 @@ class PushNotifier(Module, IPushNotifications):
                 cred = credentials.Certificate(cred_dict)
                 # unique app name -- the default name collides if more than one PushNotifier
                 # instance (e.g. in tests) initializes firebase_admin in the same process
-                return firebase_admin.initialize_app(cred, name=f"pushnotifier-{id(self)}")
+                return firebase_admin.initialize_app(
+                    cred, name=f"pushnotifier-{id(self)}", options={"httpTimeout": _FIREBASE_HTTP_TIMEOUT}
+                )
 
             self._fcm_app = await asyncio.wait_for(asyncio.to_thread(_init), timeout=_FIREBASE_CALL_TIMEOUT)
 
@@ -196,11 +241,17 @@ class PushNotifier(Module, IPushNotifications):
         if not isinstance(entry, LogEvent):
             return False
 
+        # never alert on our own log output: on LocalComm our own ERROR logs (e.g. a failed send)
+        # would otherwise re-enter this queue as new alerts. XMPP already drops own-module events.
+        if sender == self.comm.name:
+            return False
+
         if entry.level not in _ALERT_LOG_LEVELS:
             return False
 
         kind = PushNotificationType.LOG_CRITICAL if entry.level == "CRITICAL" else PushNotificationType.LOG_ERROR
-        self._enqueue_alert(kind, f"{sender}: {entry.level}", entry.message)
+        # reduce at enqueue time so both the queued alert and the dedup key hold the concise form
+        self._enqueue_alert(kind, f"{sender}: {entry.level}", _notification_body(entry.message))
         return True
 
     def _enqueue_alert(self, kind: PushNotificationType, title: str, body: str) -> None:
@@ -277,9 +328,16 @@ class PushNotifier(Module, IPushNotifications):
         if not tokens:
             return
 
-        from firebase_admin import messaging
+        def _send() -> tuple[list[tuple[str, Exception]], list[str]]:
+            """Send to every token in a worker thread, returning failures and unregistered tokens.
 
-        def _send() -> None:
+            Runs in a thread (never on the event loop); the caller logs and prunes on the loop.
+            """
+            from firebase_admin import messaging
+            from firebase_admin.exceptions import NotFoundError
+
+            failed: list[tuple[str, Exception]] = []
+            dead: list[str] = []
             for token in tokens:
                 try:
                     messaging.send(
@@ -289,13 +347,49 @@ class PushNotifier(Module, IPushNotifications):
                         ),
                         app=self._fcm_app,
                     )
-                except Exception:
-                    log.exception("Failed to send push notification to a device.")
+                except NotFoundError:
+                    # covers messaging.UnregisteredError (a NotFoundError subclass): FCM reports
+                    # the token as unregistered, so drop it instead of retrying it forever
+                    dead.append(token)
+                except Exception as e:
+                    failed.append((token, e))
+            return failed, dead
 
         try:
-            await asyncio.wait_for(asyncio.to_thread(_send), timeout=_FIREBASE_CALL_TIMEOUT)
+            failed, dead = await asyncio.wait_for(asyncio.to_thread(_send), timeout=_FIREBASE_CALL_TIMEOUT)
         except TimeoutError:
             log.error("Sending push notifications timed out.")
+            return
+
+        if failed:
+            # one log line per alert (not per device), but keep the first failure's traceback
+            log.error(
+                "Failed to send push notification to %d of %d device(s): %s",
+                len(failed),
+                len(tokens),
+                ", ".join(token for token, _ in failed),
+                exc_info=failed[0][1],
+            )
+        if dead:
+            await self._prune_tokens(dead)
+
+    async def _prune_tokens(self, tokens: list[str]) -> None:
+        """Drop tokens FCM reported as unregistered and persist the change.
+
+        Args:
+            tokens: Tokens to remove from storage.
+        """
+        dead = set(tokens)
+        removed = 0
+        for entry in self._devices.values():
+            devices = entry.get("devices", [])
+            before = len(devices)
+            devices[:] = [d for d in devices if d.get("token") not in dead]
+            removed += before - len(devices)
+
+        if removed:
+            log.warning("Pruned %d unregistered push notification device token(s).", removed)
+            await self.vfs.write_yaml(_STORAGE_FILE, self._devices)
 
     async def register_push_device(self, token: str, platform: str = "android", **kwargs: Any) -> None:
         """Register a device to receive push notifications.

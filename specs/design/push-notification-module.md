@@ -14,6 +14,10 @@ Revised (v2) 2026-09-18: per-user notification-type preferences added — the "o
 v1 decision below is now superseded, §6. Plan:
 `specs/plans/2026-09-18-pushnotifier-per-user-preferences.md`; originating issue
 pyobs-web-client#57.
+Revised (v3): production incident on MONET/S documented below — the FCM 4 KB payload limit, the
+notifier's own-log feedback/amplification and the abandoned-send timeout were all fixed 2026-09-23
+(payload cap, own-log self-skip, per-alert failure logging, `httpTimeout`, and dead-token pruning);
+see "Confirmed defects (MONET/S incident)".
 
 Repos: pyobs-core (module implementation, all new code); pyobs-web-client (device-token
 registration from `usePushNotifications.ts`, plus the v2 preference call — still to do)
@@ -196,10 +200,11 @@ title/body but different kinds are distinct.
 
 ## Open questions — not resolved here, flagged for actual design/implementation
 
-- **Stale/uninstalled-app tokens.** FCM returns an "unregistered" error on send to a dead token;
-  the module should prune those, not accumulate them forever. **Still open as shipped** —
-  `_send_to_all_devices` just logs and moves on (`log.exception("Failed to send push notification
-  to a device.")`), no pruning. Needs Tim's call on whether this is worth a follow-up issue.
+- **Stale/uninstalled-app tokens. Resolved 2026-09-23.** FCM reports a dead token as unregistered
+  (`UNREGISTERED` → `messaging.UnregisteredError`, a `NotFoundError` subclass). `_send_to_all_devices`
+  now catches `NotFoundError` per token, drops those tokens from `self._devices`, and persists via
+  `vfs.write_yaml` (`_prune_tokens`). Deliberately does **not** prune on `InvalidArgumentError`,
+  which also covers "message too large" and other non-token problems.
 - **Which modules/interfaces count.** Mirroring `DashboardView.vue`'s triage exactly means
   alerting on *any* interface's `ERROR`, fleet-wide, with no allow/deny-list — same blast radius
   as what the dashboard already surfaces. **Resolved as shipped**: implemented exactly this way
@@ -207,6 +212,56 @@ title/body but different kinds are distinct.
 - **Log-message dedup key.** Telegram's `last_messages` dedup keys on exact message-string equality
   per user. For a retry loop logging `ERROR` with a changing detail (a timestamp, an exception
   `repr`, a retry count in the text), exact-match dedup won't catch it and every retry pushes
-  separately. **Still open as shipped** — `_sender_thread`'s dedup key is `(kind, title, body)`, i.e.
-  the literal message text (plus the alert kind since v2, §6); a changing detail per retry defeats
-  it exactly as flagged here.
+  separately. **Still open** — `_sender_thread`'s dedup key is `(kind, title, body)`. The 2026-09-23
+  body reduction to "first non-empty line — last non-empty line" makes repeated *identical*
+  exceptions dedup correctly (the traceback tail no longer differs), but a changing detail inside
+  the exception message still defeats it.
+
+## Confirmed defects (MONET/S incident)
+
+During a partial network outage (`OSError: [Errno 113] No route to host` against
+`oauth2.googleapis.com:443` while `fcm.googleapis.com` remained reachable) the notifier stopped
+delivering and produced a burst of interleaved `Sending push notifications timed out.` /
+`Failed to send push notification to a device.` errors, ending in FCM
+`InvalidArgumentError: Message is too large. The maximum is 4K (4096 bytes).` Three confirmed
+defects, all three now fixed (2026-09-23):
+
+- **Unbounded payload — the 400. FIXED 2026-09-23** (plan
+  `specs/plans/2026-09-23-pushnotifier-payload-size-cap.md`). `_send` used to pass the raw log
+  message straight through as the notification body (`messaging.Notification(title=...,
+  body=alert.body)`), where `alert.body` was `LogEvent.message` — i.e. a full formatted traceback,
+  easily ≈4 KB. FCM's 4096-byte cap applies to the *whole serialized message* (token + title +
+  body + JSON envelope), not the body alone, so exactly the highest-value alerts (crashes,
+  tracebacks) could never be delivered. `_process_log_entry` now reduces the message to "first
+  non-empty line — last non-empty line" (the human-facing message plus the `ExceptionType:
+  message` tail a traceback ends with) and byte-caps it to `_MAX_BODY_BYTES` (3600, reserving room
+  for token/title/envelope) on a UTF-8 codepoint boundary. This also makes the `(kind, title,
+  body)` dedup below work for repeated identical exceptions.
+- **Own-log feedback / amplification. FIXED 2026-09-23.** One failed alert used to log one `ERROR`
+  *per device token* (`_send_to_all_devices`'s per-token `except Exception: log.exception(...)`),
+  and those ERROR records are re-published fleet-wide as `LogEvent`s (`commlogging.py`).
+  `_process_log_entry` did not skip the notifier's own module — unlike
+  `_subscribe_client`/`_on_module_opened`, which check `self.comm.name`. On `LocalComm`
+  (`send_event` fans out to *every* client including the publisher), a notifier in a single-process
+  `MultiModule` therefore re-received its own send-failure tracebacks and re-enqueued them as new
+  alerts; XMPP already drops own-module events (`xmppcomm.py:1088`). Two fixes: `_process_log_entry`
+  now returns early when `sender == self.comm.name` (mirroring the existing checks), and
+  `_send_to_all_devices` logs **once per alert** (count + token list + the first failure's
+  traceback) instead of once per token — the worker thread returns the failures, the event loop
+  logs them.
+- **Timeout doesn't cancel the work. FIXED 2026-09-23.** `asyncio.wait_for(asyncio.to_thread(_send),
+  timeout=_FIREBASE_CALL_TIMEOUT)` (15 s) abandons the thread on timeout — `to_thread` can't be
+  cancelled — while `firebase_admin`'s default HTTP timeout is 120 s (`_http_client.py:
+  DEFAULT_TIMEOUT_SECONDS`). A dead network therefore left each abandoned send running for up to
+  120 s × N tokens. Fix: `initialize_app(..., options={"httpTimeout": _FIREBASE_HTTP_TIMEOUT}`
+  (= 10 s), which bounds every request — both the OAuth token refresh (via
+  `google/auth/transport/requests.py:615-619`, which threads the timeout into the credential
+  refresh) and the FCM send (`_http_client.py:132-133`) — so a single hung request finishes inside
+  the 15 s `wait_for` window. Per-token `wait_for` bounding (so one slow token can't abandon the
+  whole batch for N > 1) remains a possible follow-up.
+
+Note: the self-skip in `_process_log_entry` was chosen over `pyobs_no_forward`, which would also
+hide "push sending is failing" from every other log consumer (Telegram, fluentlogger, the GUI). The
+"Log-message dedup key" open question above is what lets a retry/feedback loop defeat
+`(kind, title, body)` exact-match dedup; the body reduction in the first bullet narrows that hole
+for repeated identical exceptions but does not close it.

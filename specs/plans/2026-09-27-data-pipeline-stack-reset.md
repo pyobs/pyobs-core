@@ -904,12 +904,23 @@ See `specs/design/iresettable.md` (pyobs-core).
 Only once the pyobs-core change is merged and released, so the issues can name the version that
 ships `IResettable`.
 
-- [ ] Ask Tim to confirm before opening anything. The issues are public.
-- [ ] Open one issue per sibling repo from the drafts in phase 7, adding the pyobs-core version.
-      Use `gh api` for the pyobs org repos (`gh issue create` works, but `gh issue view
-      --comments` and `gh pr edit` fail there because of the Projects-classic bug).
-      pyobs-iagvt and pyobs-monet live on GWDG GitLab, not GitHub: ask Tim where those go.
-- [ ] Link the opened issues in this plan and in `specs/design/iresettable.md` ("Drivers").
+- [x] Ask Tim to confirm before opening anything. The issues are public.
+- [x] Open one issue per sibling repo from the drafts in phase 7, adding the pyobs-core version
+      (2.11.0). pyobs-iagvt and pyobs-monet opened on GWDG GitLab via `glab api`.
+- [x] Link the opened issues in this plan and in `specs/design/iresettable.md` ("Drivers").
+
+Opened 2026-09-27, against [pyobs-core 2.11.0](https://github.com/pyobs/pyobs-core/releases/tag/v2.11.0):
+
+- pyobs-asi: https://github.com/pyobs/pyobs-asi/issues/43
+- pyobs-fli: https://github.com/pyobs/pyobs-fli/issues/99
+- pyobs-flipro: https://github.com/pyobs/pyobs-flipro/issues/49
+- pyobs-qhyccd: https://github.com/pyobs/pyobs-qhyccd/issues/78
+- pyobs-sbig: https://github.com/pyobs/pyobs-sbig/issues/87
+- pyobs-aravis: https://github.com/pyobs/pyobs-aravis/issues/52
+- pyobs-iagvt (GWDG GitLab): https://gitlab.gwdg.de/iagvt/pyobs-iagvt/-/work_items/33
+- pyobs-monet (GWDG GitLab): https://gitlab.gwdg.de/monet/pyobs-monet/-/work_items/17
+
+No issue needed for pyobs-tis / pyobs-v4l (see phase 7 findings).
 
 ## Follow-ups (not part of this plan)
 

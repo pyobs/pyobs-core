@@ -294,3 +294,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   device token, set `httpTimeout` so a hung send finishes inside the wait window, and prune
   unregistered tokens. **implemented, uncommitted** (2026-09-23; 12 new tests, 48 passing; Repos:
   pyobs-core)
+- [2026-09-27-data-pipeline-stack-reset.md](2026-09-27-data-pipeline-stack-reset.md):
+  `IResettable`, `IDataPipeline`, `IDataStack` in `BaseCamera`/`BaseVideo`. **proposed**
+  (2026-09-27; Repos: pyobs-core, driver plugins)

@@ -17,4 +17,5 @@ Image processors
    pyobs.images.processors.modules
    pyobs.images.processors.offsets
    pyobs.images.processors.photometry
+   pyobs.images.processors.stack
    pyobs.images.processors.wcs

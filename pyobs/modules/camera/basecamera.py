@@ -12,13 +12,18 @@ from astropy.io import fits
 from pyobs.events import BadWeatherEvent, Event, ExposureStatusChangedEvent, NewImageEvent
 from pyobs.images import Image
 from pyobs.interfaces import (
+    Binning,
     ExposureState,
     ExposureTimeState,
+    IBinning,
     ICamera,
     IExposure,
     IExposureTime,
     IImageType,
     ImageTypeState,
+    IResettable,
+    IWindow,
+    default_reset,
 )
 from pyobs.mixins.datasequence import DataSequenceMixin
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
@@ -42,7 +47,15 @@ async def calc_expose_timeout(camera: BaseCamera, *args: Any, **kwargs: Any) -> 
 
 
 class BaseCamera(
-    Module, ImageFitsHeaderMixin, ICamera, IExposure, IExposureTime, IImageType, DataSequenceMixin, metaclass=ABCMeta
+    Module,
+    ImageFitsHeaderMixin,
+    ICamera,
+    IExposure,
+    IExposureTime,
+    IImageType,
+    IResettable,
+    DataSequenceMixin,
+    metaclass=ABCMeta,
 ):
     """Base class for all camera modules."""
 
@@ -155,6 +168,47 @@ class BaseCamera(
         log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
         await self.comm.set_state(IImageType, ImageTypeState(image_type=image_type))
+
+    @default_reset
+    async def reset(self, **kwargs: Any) -> None:
+        """Reset exposure time, image type, binning and window to their defaults.
+
+        Raises:
+            DeviceBusyError: If the camera is currently exposing, or running a sequence or stack.
+        """
+        if self._camera_status != ExposureStatus.IDLE or self._sequence_count_left > 0:
+            raise exc.DeviceBusyError("Cannot reset camera while it is busy.")
+
+        await self.set_exposure_time(0.0)
+        await self.set_image_type(ImageType.OBJECT)
+
+        if isinstance(self, IBinning):
+            binning_caps = self.comm.get_own_capabilities(IBinning)
+            if binning_caps is None or not binning_caps.binnings or Binning(1, 1) in binning_caps.binnings:
+                await self.set_binning(1, 1)
+            else:
+                log.warning("Cannot reset binning to 1x1, not in the camera's advertised binnings.")
+
+        if isinstance(self, IWindow):
+            window_caps = self.comm.get_own_capabilities(IWindow)
+            if window_caps is not None and window_caps.full_frame_width > 0 and window_caps.full_frame_height > 0:
+                await self.set_window(
+                    window_caps.full_frame_x,
+                    window_caps.full_frame_y,
+                    window_caps.full_frame_width,
+                    window_caps.full_frame_height,
+                )
+            else:
+                log.warning("Cannot reset window to full frame, no full-frame capabilities advertised.")
+
+    @default_reset
+    async def full_reset(self, **kwargs: Any) -> None:
+        """Reset the camera completely to its configured defaults, hardware included.
+
+        Raises:
+            DeviceBusyError: If the camera is currently exposing, or running a sequence or stack.
+        """
+        await self.reset(**kwargs)
 
     async def _change_exposure_status(self, status: ExposureStatus) -> None:
         """Change exposure status and send event,
@@ -542,7 +596,7 @@ class BaseCamera(
         if "MERIDIAN" in image.header:
             if image.header["MERIDIAN"].upper() == self._meridian_flip_on:
                 # flip both axes
-                image.data = image.data[::-1, ::-1]
+                image.data = image.data[..., ::-1, ::-1]
                 flipped = True
         image.header["FLIPDONE"] = (flipped, "Image flipped for meridian side at capture time")
 

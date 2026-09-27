@@ -148,6 +148,7 @@ class Image:
         catalog: Table | None = None,
         raw: npt.NDArray[np.floating[Any]] | None = None,
         meta: dict[Any, Any] | None = None,
+        frames: Table | None = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -161,6 +162,7 @@ class Image:
             catalog: Catalog table.
             raw: If image is calibrated, this should be the raw image.
             meta: Dictionary with meta information (note: not preserved in I/O operations!).
+            frames: Per-frame table for a stacked (3D) image, one row per frame.
         """
 
         # store
@@ -171,11 +173,16 @@ class Image:
         self._catalog = None if catalog is None else catalog.copy()
         self._raw: npt.NDArray[np.floating[Any]] | None = None if raw is None else raw.copy()
         self._meta = {} if meta is None else copy.deepcopy(meta)
+        self._frames = None if frames is None else frames.copy()
 
         # add basic header stuff
         if data is not None and self._header is not None:
-            self.header["NAXIS1"] = data.shape[1]
-            self.header["NAXIS2"] = data.shape[0]
+            ndim = getattr(data, "ndim", None)
+            if isinstance(ndim, int) and ndim >= 2:
+                self.header["NAXIS1"] = data.shape[-1]
+                self.header["NAXIS2"] = data.shape[-2]
+                if ndim == 3:
+                    self.header["NAXIS3"] = data.shape[0]
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Image:
@@ -301,6 +308,10 @@ class Image:
         if "CAT" in data:
             image._catalog = Table(data["CAT"].data)
 
+        # frames
+        if "FRAMES" in data:
+            image._frames = Table(data["FRAMES"].data)
+
         # raw
         if "RAW" in data:
             image._raw = data["RAW"].data
@@ -330,6 +341,7 @@ class Image:
             catalog=self._catalog,
             raw=self._raw,
             meta=self._meta,
+            frames=self._frames,
         )
 
     def __truediv__(self, other: Image) -> Image:
@@ -359,6 +371,12 @@ class Image:
         if self._catalog is not None:
             hdu = table_to_hdu(self._catalog)
             hdu.name = "CAT"
+            hdu_list.append(hdu)
+
+        # frames?
+        if self._frames is not None:
+            hdu = table_to_hdu(self._frames)
+            hdu.name = "FRAMES"
             hdu_list.append(hdu)
 
         # mask?
@@ -629,6 +647,20 @@ class Image:
         self._catalog = val
 
     @property
+    def safe_frames(self) -> Table | None:
+        return self._frames
+
+    @property
+    def frames(self) -> Table:
+        if self._frames is None:
+            raise exc.ImageError("No frames table found in image.")
+        return self._frames
+
+    @frames.setter
+    def frames(self, val: Table | None) -> None:
+        self._frames = val
+
+    @property
     def safe_raw(self) -> npt.NDArray[np.floating[Any]] | None:
         return self._raw
 
@@ -654,7 +686,7 @@ class Image:
 
     @property
     def is_color(self) -> bool:
-        return len(self.data.shape) == 3 and self.data.shape[0] == 3
+        return len(self.data.shape) == 3 and self.data.shape[0] == 3 and self.header.get("CTYPE3") != "FRAME"
 
     def to_grayscale(self, r: float = 0.2126, g: float = 0.7152, b: float = 0.0722, **kwargs: Any) -> Image:
         """Convert RGB image to grayscale.

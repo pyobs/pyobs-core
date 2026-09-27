@@ -1,9 +1,11 @@
 import asyncio
 
+import numpy as np
 import pytest
 from astropy.io import fits
 
 from pyobs.events import BadWeatherEvent
+from pyobs.images import Image
 from pyobs.modules.camera import DummyCamera
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ImageType
@@ -171,6 +173,57 @@ async def test_add_fits_headers():
     # close camera
     camera.close()
 '''
+
+
+@pytest.mark.asyncio
+async def test_apply_meridian_flip_2d():
+    camera = DummyCamera(meridian_flip_on="EAST")
+    await camera.open()
+
+    data = np.arange(12).reshape(3, 4).astype(float)
+    image = Image(data)
+    image.header["MERIDIAN"] = "east"
+
+    await camera.apply_meridian_flip(image)
+
+    np.testing.assert_array_equal(image.data, data[::-1, ::-1])
+    assert image.header["FLIPDONE"] is True
+
+    await camera.close()
+
+
+@pytest.mark.asyncio
+async def test_apply_meridian_flip_3d_leaves_frame_axis_untouched():
+    camera = DummyCamera(meridian_flip_on="EAST")
+    await camera.open()
+
+    data = np.arange(2 * 3 * 4).reshape(2, 3, 4).astype(float)
+    image = Image(data)
+    image.header["MERIDIAN"] = "east"
+
+    await camera.apply_meridian_flip(image)
+
+    np.testing.assert_array_equal(image.data, data[..., ::-1, ::-1])
+    assert image.header["FLIPDONE"] is True
+
+    await camera.close()
+
+
+@pytest.mark.asyncio
+async def test_apply_meridian_flip_not_triggered():
+    camera = DummyCamera(meridian_flip_on="EAST")
+    await camera.open()
+
+    data = np.arange(12).reshape(3, 4).astype(float)
+    image = Image(data)
+    image.header["MERIDIAN"] = "west"
+
+    await camera.apply_meridian_flip(image)
+
+    np.testing.assert_array_equal(image.data, data)
+    assert image.header["FLIPDONE"] is False
+
+    await camera.close()
 
 
 @pytest.mark.asyncio

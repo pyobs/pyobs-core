@@ -11,6 +11,7 @@ from pyobs.interfaces import (
     IData,
     IExposureTime,
     IImageType,
+    IResettable,
     IWindow,
 )
 from pyobs.robotic.scripts import Script
@@ -263,6 +264,11 @@ class DarkBiasScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
+
+        async with self.comm.safe_proxy(self.camera, IResettable) as camera:
+            if camera is not None:
+                log.info("Resetting camera to defaults...")
+                await camera.reset()
 
         async with self.comm.safe_proxy(self.camera, IBinning) as camera:
             if camera is not None:

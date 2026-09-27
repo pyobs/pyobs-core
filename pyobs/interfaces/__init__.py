@@ -53,6 +53,7 @@ from .IPointingRaDec import IPointingRaDec, RaDecState
 from .IPointingSeries import IPointingSeries
 from .IPushNotifications import IPushNotifications, PushNotificationType
 from .IReady import IReady, ReadyState
+from .IResettable import IResettable, default_reset
 from .IRobotic import IRobotic, RoboticState, RoboticTask
 from .IRoboticScheduler import IRoboticScheduler, SchedulerState
 from .IRoof import IRoof
@@ -154,6 +155,8 @@ __all__ = [
     "PushNotificationType",
     "IReady",
     "ReadyState",
+    "IResettable",
+    "default_reset",
     "IRobotic",
     "RoboticTask",
     "RoboticState",

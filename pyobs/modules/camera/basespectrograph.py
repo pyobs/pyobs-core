@@ -9,7 +9,7 @@ from typing import Any, NamedTuple
 from astropy.io import fits
 
 from pyobs.events import ExposureStatusChangedEvent, NewSpectrumEvent
-from pyobs.interfaces import ExposureState, IExposure, ISpectrograph
+from pyobs.interfaces import ExposureState, IExposure, IResettable, ISpectrograph, default_reset
 from pyobs.mixins.datasequence import DataSequenceMixin
 from pyobs.mixins.fitsheader import SpectrumFitsHeaderMixin
 from pyobs.modules import Module, timeout
@@ -25,7 +25,9 @@ class ExposureInfo(NamedTuple):
     start: datetime
 
 
-class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure, DataSequenceMixin, metaclass=ABCMeta):
+class BaseSpectrograph(
+    Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure, IResettable, DataSequenceMixin, metaclass=ABCMeta
+):
     """Base class for all spectrograph modules."""
 
     __module__ = "pyobs.modules.camera"
@@ -211,6 +213,26 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, IExposure
     def _sequence_busy(self) -> bool:
         """Whether the spectrograph is busy exposing outside of a running sequence."""
         return self._spectrograph_status != ExposureStatus.IDLE
+
+    @default_reset
+    async def reset(self, **kwargs: Any) -> None:
+        """Reset the spectrograph. The base class has no settings of its own, this is a hook
+        for drivers.
+
+        Raises:
+            DeviceBusyError: If the spectrograph is currently exposing or running a sequence.
+        """
+        if self._spectrograph_status != ExposureStatus.IDLE or self._sequence_count_left > 0:
+            raise exc.DeviceBusyError("Cannot reset spectrograph while it is busy.")
+
+    @default_reset
+    async def full_reset(self, **kwargs: Any) -> None:
+        """Reset the spectrograph completely to its configured defaults, hardware included.
+
+        Raises:
+            DeviceBusyError: If the spectrograph is currently exposing or running a sequence.
+        """
+        await self.reset(**kwargs)
 
     async def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure and sequence. Derived class must implement the actual

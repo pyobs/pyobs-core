@@ -18,7 +18,15 @@ from numpy.typing import NDArray
 
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
-from pyobs.interfaces import IExposureTime, IImageType, ImageTypeState, IVideo, VideoCapabilities
+from pyobs.interfaces import (
+    IExposureTime,
+    IImageType,
+    ImageTypeState,
+    IResettable,
+    IVideo,
+    VideoCapabilities,
+    default_reset,
+)
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
@@ -78,7 +86,7 @@ class LastImage(NamedTuple):
     date_obs: str
 
 
-class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
+class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, metaclass=ABCMeta):
     """Base class for all webcam modules.
 
     The built-in HTTP server serves the MJPEG live view, the raw frame stream and cached FITS
@@ -816,3 +824,21 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
         await self.comm.set_state(IImageType, ImageTypeState(image_type=image_type))
+
+    @default_reset
+    async def reset(self, **kwargs: Any) -> None:
+        """Reset the image type to its default.
+
+        Raises:
+            DeviceBusyError: If a stack is currently running.
+        """
+        await self.set_image_type(ImageType.OBJECT)
+
+    @default_reset
+    async def full_reset(self, **kwargs: Any) -> None:
+        """Reset the camera completely to its configured defaults, hardware included.
+
+        Raises:
+            DeviceBusyError: If a stack is currently running.
+        """
+        await self.reset(**kwargs)

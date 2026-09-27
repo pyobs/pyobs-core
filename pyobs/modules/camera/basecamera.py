@@ -8,15 +8,20 @@ from typing import Any, NamedTuple
 
 import numpy as np
 from astropy.io import fits
+from astropy.table import Table
+from astropy.time import TimeDelta
+from numpy.typing import NDArray
 
 from pyobs.events import BadWeatherEvent, Event, ExposureStatusChangedEvent, NewImageEvent
 from pyobs.images import Image
 from pyobs.interfaces import (
     Binning,
+    DataStackState,
     ExposureState,
     ExposureTimeState,
     IBinning,
     ICamera,
+    IDataStack,
     IExposure,
     IExposureTime,
     IImageType,
@@ -31,6 +36,7 @@ from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus, ImageType
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +53,11 @@ async def calc_expose_timeout(camera: BaseCamera, *args: Any, **kwargs: Any) -> 
     return camera._exposure_time + 30
 
 
+async def calc_stack_timeout(camera: BaseCamera, count: int = 1, *args: Any, **kwargs: Any) -> float:
+    """Calculates timeout for grab_stack()."""
+    return count * (camera._exposure_time + camera._stack_frame_overhead) + camera._stack_timeout_margin
+
+
 class BaseCamera(
     Module,
     ImageFitsHeaderMixin,
@@ -57,6 +68,7 @@ class BaseCamera(
     IResettable,
     DataSequenceMixin,
     DataPipelineMixin,
+    IDataStack,
     metaclass=ABCMeta,
 ):
     """Base class for all camera modules."""
@@ -75,6 +87,9 @@ class BaseCamera(
         fits_namespaces: list[str] | None = None,
         meridian_flip_on: str | None = None,
         fits_header_timeout: float = 15.0,
+        max_stack_bytes: int = 2 * 1024**3,
+        stack_frame_overhead: float = 10.0,
+        stack_timeout_margin: float = 60.0,
         **kwargs: Any,
     ):
         """Creates a new BaseCamera.
@@ -89,6 +104,11 @@ class BaseCamera(
             filenames: Template for file naming.
             fits_namespaces: List of namespaces for FITS headers that this camera should request
             fits_header_timeout: Maximum seconds to wait for a peer's FITS headers before skipping them.
+            max_stack_bytes: Memory cap for a grab_stack() cube (count * frame size), in bytes.
+            stack_frame_overhead: Estimated per-frame readout/transfer time in seconds, added to
+                the exposure time when computing grab_stack()'s timeout.
+            stack_timeout_margin: Extra seconds added to grab_stack()'s timeout, covering header
+                requests, cube assembly and the data pipeline.
         """
         super().__init__(
             fits_namespaces=fits_namespaces,
@@ -114,6 +134,14 @@ class BaseCamera(
         # init camera
         self._exposure: ExposureInfo | None = None
         self._camera_status = ExposureStatus.IDLE
+
+        # stacks
+        self._max_stack_bytes = max_stack_bytes
+        self._stack_frame_overhead = stack_frame_overhead
+        self._stack_timeout_margin = stack_timeout_margin
+        self._last_frame_nbytes: int | None = None
+        self._stack_running = False
+        self._stack_abort = False
 
         # multi-threading
         self.expose_abort = asyncio.Event()
@@ -148,6 +176,7 @@ class BaseCamera(
         )
         await self._datasequence_open()
         await self._datapipeline_open()
+        await self.comm.set_state(IDataStack, DataStackState(count_total=0, count_left=0))
 
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time in seconds.
@@ -179,7 +208,7 @@ class BaseCamera(
         Raises:
             DeviceBusyError: If the camera is currently exposing, or running a sequence or stack.
         """
-        if self._camera_status != ExposureStatus.IDLE or self._sequence_count_left > 0:
+        if self._camera_status != ExposureStatus.IDLE or self._sequence_count_left > 0 or self._stack_running:
             raise exc.DeviceBusyError("Cannot reset camera while it is busy.")
 
         await self.set_exposure_time(0.0)
@@ -312,32 +341,22 @@ class BaseCamera(
         """Method that is always called at the very beginning of __expose and can be used to set stuff up."""
         ...
 
-    async def __expose(
-        self, exposure_time: float, image_type: ImageType, broadcast: bool, pipeline: str | None
-    ) -> tuple[Image, str]:
-        """Wrapper for a single exposure.
+    async def __acquire_frame(self, exposure_time: float, open_shutter: bool) -> Image:
+        """Acquire a single frame: the exposure itself, error wrapping, and the axis flip.
+
+        Shared by __expose() (single grabs) and grab_stack() (one call per frame). Sets
+        self._last_frame_nbytes, used for grab_stack()'s advisory memory-cap check.
 
         Args:
             exposure_time: The requested exposure time in seconds.
-            image_type: Type of image.
-            broadcast: Whether the new image should be broadcasted.
-            pipeline: Name of the data pipeline to run before storing, or None for raw data.
+            open_shutter: Whether to open the shutter.
 
         Returns:
-            Tuple of the image itself and its filename.
+            The acquired frame.
 
         Raises:
             GrabImageError: If there was a problem grabbing the image.
         """
-
-        # init stuff
-        await self._init_exposure()
-
-        # request fits headers
-        header_futures_before = await self.request_fits_headers(before=True)
-
-        # open the shutter?
-        open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
 
         # reset abort event
         self.expose_abort.clear()
@@ -359,9 +378,6 @@ class BaseCamera(
             self._exposure = None
             raise exc.GrabImageError(str(e))
 
-        # request fits headers again
-        header_futures_after = await self.request_fits_headers(before=False)
-
         # flip it?
         if self._flip_x or self._flip_y:
             # do we have three dimensions in array? need this for deciding which axis to flip
@@ -376,6 +392,36 @@ class BaseCamera(
             image.data = np.ascontiguousarray(tmp)
         image.header["FLIPX"] = (self._flip_x, "Image flipped along first axis at capture time")
         image.header["FLIPY"] = (self._flip_y, "Image flipped along second axis at capture time")
+
+        self._last_frame_nbytes = image.data.nbytes
+        return image
+
+    async def __finish_product(
+        self,
+        image: Image,
+        image_type: ImageType,
+        header_futures_before: dict[str, asyncio.Task[Any]],
+        header_futures_after: dict[str, asyncio.Task[Any]],
+        broadcast: bool,
+        pipeline: str | None,
+    ) -> tuple[Image, str]:
+        """Add headers, run the data pipeline, and store the finished product (single frame or
+        stack cube).
+
+        Args:
+            image: The acquired frame, or the assembled stack cube.
+            image_type: Type of image.
+            header_futures_before: FITS headers requested before the exposure(s).
+            header_futures_after: FITS headers requested after the exposure(s).
+            broadcast: Whether the new image should be broadcasted.
+            pipeline: Name of the data pipeline to run before storing, or None for raw data.
+
+        Returns:
+            Tuple of the image itself and its filename.
+
+        Raises:
+            GrabImageError: If there was a problem finishing the product.
+        """
 
         # add HDU name
         image.header["EXTNAME"] = "SCI"
@@ -420,6 +466,44 @@ class BaseCamera(
         self._exposure = None
         log.info("Finished image %s.", filename)
         return image, filename
+
+    async def __expose(
+        self, exposure_time: float, image_type: ImageType, broadcast: bool, pipeline: str | None
+    ) -> tuple[Image, str]:
+        """Wrapper for a single exposure.
+
+        Args:
+            exposure_time: The requested exposure time in seconds.
+            image_type: Type of image.
+            broadcast: Whether the new image should be broadcasted.
+            pipeline: Name of the data pipeline to run before storing, or None for raw data.
+
+        Returns:
+            Tuple of the image itself and its filename.
+
+        Raises:
+            GrabImageError: If there was a problem grabbing the image.
+        """
+
+        # init stuff
+        await self._init_exposure()
+
+        # request fits headers
+        header_futures_before = await self.request_fits_headers(before=True)
+
+        # open the shutter?
+        open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
+
+        # acquire the frame
+        image = await self.__acquire_frame(exposure_time, open_shutter)
+
+        # request fits headers again
+        header_futures_after = await self.request_fits_headers(before=False)
+
+        # add headers, run pipeline, store
+        return await self.__finish_product(
+            image, image_type, header_futures_before, header_futures_after, broadcast, pipeline
+        )
 
     async def add_custom_fits_headers(self, image: Image) -> None:
         """Add FITS headers in derived classes.
@@ -468,9 +552,114 @@ class BaseCamera(
         # return filename
         return filename
 
+    @timeout(calc_stack_timeout)
+    async def grab_stack(self, count: int, broadcast: bool = True, **kwargs: Any) -> str:
+        """Grab count consecutive frames into one product and return its name.
+
+        Without a pipeline selected (IDataPipeline), the product is a 3D cube of all frames.
+        With one, the pipeline runs on the cube (e.g. to combine it) and only its result is
+        stored.
+
+        Args:
+            count: Number of frames.
+            broadcast: Broadcast existence of the product.
+
+        Returns:
+            Name of the stored product.
+
+        Raises:
+            InvalidArgumentError: If count < 1, or the stack would exceed the module's memory cap.
+            DeviceBusyError: If the camera is exposing, or running a sequence or another stack.
+            AbortedError: If the stack was aborted.
+            GrabImageError: If a frame could not be grabbed, frames don't match, or the
+                pipeline failed.
+        """
+        if count < 1:
+            raise exc.InvalidArgumentError("count must be >= 1.")
+        if self._camera_status != ExposureStatus.IDLE or self._sequence_count_left > 0 or self._stack_running:
+            raise exc.DeviceBusyError("Cannot start new stack because camera is not idle.")
+
+        # advisory check, using the size of the last grabbed frame -- settings may have
+        # changed since then, so this can only reject, never guarantee it's safe
+        if self._last_frame_nbytes is not None and count * self._last_frame_nbytes > self._max_stack_bytes:
+            raise exc.InvalidArgumentError(
+                f"Stack of {count} frames would exceed the memory cap of {self._max_stack_bytes} bytes."
+            )
+
+        # capture settings once, at the start of the stack
+        exposure_time = self._exposure_time
+        image_type = self._image_type
+        pipeline = self._data_pipeline
+        open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
+
+        self._stack_running = True
+        self._stack_abort = False
+        await self._change_exposure_status(ExposureStatus.EXPOSING)
+        await self.comm.set_state(IDataStack, DataStackState(count_total=count, count_left=count))
+
+        try:
+            await self._init_exposure()
+            header_futures_before = await self.request_fits_headers(before=True)
+
+            cube: NDArray[Any] | None = None
+            first_image: Image | None = None
+            frame_rows: list[tuple[int, str, float]] = []
+
+            for i in range(count):
+                if self._stack_abort:
+                    raise exc.AbortedError("Stack was aborted.")
+
+                image = await self.__acquire_frame(exposure_time, open_shutter)
+
+                if len(image.data.shape) != 2:
+                    raise exc.GrabImageError("Stacking color frames is not supported.")
+
+                if cube is None:
+                    # authoritative check, now with the real frame size
+                    if count * image.data.nbytes > self._max_stack_bytes:
+                        raise exc.InvalidArgumentError(
+                            f"Stack of {count} frames would exceed the memory cap of " f"{self._max_stack_bytes} bytes."
+                        )
+                    cube = np.empty((count, *image.data.shape), dtype=image.data.dtype)
+                    first_image = image
+                elif image.data.shape != cube.shape[1:] or image.data.dtype != cube.dtype:
+                    raise exc.GrabImageError("Frames in stack do not match in shape or dtype.")
+
+                cube[i] = image.data
+                frame_rows.append(
+                    (i, str(image.header.get("DATE-OBS", "")), float(image.header.get("EXPTIME", exposure_time)))
+                )
+
+                await self.comm.set_state(IDataStack, DataStackState(count_total=count, count_left=count - i - 1))
+
+            header_futures_after = await self.request_fits_headers(before=False)
+            assert cube is not None and first_image is not None
+
+            frames_table = Table(rows=frame_rows, names=("FRAME", "DATE-OBS", "EXPTIME"))
+            stack_image = Image(cube, header=first_image.header, frames=frames_table)
+            stack_image.header["CTYPE3"] = "FRAME"
+            stack_image.header["NFRAMES"] = count
+
+            last_date_obs, last_exptime = frame_rows[-1][1], frame_rows[-1][2]
+            try:
+                date_end = (Time(last_date_obs) + TimeDelta(last_exptime, format="sec")).isot
+            except ValueError:
+                date_end = last_date_obs
+            stack_image.header["DATE-END"] = date_end
+
+            _, filename = await self.__finish_product(
+                stack_image, image_type, header_futures_before, header_futures_after, broadcast, pipeline
+            )
+            return filename
+        finally:
+            self._exposure = None
+            self._stack_running = False
+            await self._change_exposure_status(ExposureStatus.IDLE)
+            await self.comm.set_state(IDataStack, DataStackState(count_total=0, count_left=0))
+
     def _sequence_busy(self) -> bool:
         """Whether the camera is busy exposing outside of a running sequence."""
-        return self._camera_status != ExposureStatus.IDLE
+        return self._camera_status != ExposureStatus.IDLE or self._stack_running
 
     async def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
@@ -491,6 +680,7 @@ class BaseCamera(
         log.info("Aborting current image and sequence...")
         self.expose_abort.set()
         self._abort_data_sequence()
+        self._stack_abort = True
 
         # do camera-specific abort
         await self._abort_exposure()

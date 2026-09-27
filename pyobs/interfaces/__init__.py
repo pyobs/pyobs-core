@@ -25,6 +25,7 @@ from .ICooling import CoolingState, ICooling
 from .IData import IData
 from .IDataPipeline import DataPipelineCapabilities, DataPipelineState, IDataPipeline
 from .IDataSequence import DataSequenceState, IDataSequence
+from .IDataStack import DataStackState, IDataStack
 from .IDome import IDome
 from .IExposure import ExposureState, IExposure
 from .IExposureTime import ExposureTimeState, IExposureTime
@@ -105,6 +106,8 @@ __all__ = [
     "DataPipelineCapabilities",
     "IDataSequence",
     "DataSequenceState",
+    "IDataStack",
+    "DataStackState",
     "IDome",
     "IExposure",
     "ExposureState",

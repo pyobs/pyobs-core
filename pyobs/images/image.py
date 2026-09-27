@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import io
+import re
 import warnings
 from typing import Any, TypeVar, cast
 
@@ -363,8 +364,14 @@ class Image:
         # create HDU list
         hdu_list = fits.HDUList([])
 
-        # create image HDU
-        hdu = fits.PrimaryHDU(self.data, header=self.header)
+        # create image HDU -- without NAXIS/NAXISn, astropy regenerates them from the data. The
+        # in-memory header can have them out of place (Image() appends them to a given header) or
+        # stale (the data setter doesn't touch the header, e.g. NAXIS3 after collapsing a cube),
+        # and astropy refuses to write either
+        header = self.header.copy()
+        for key in [k for k in header.keys() if re.fullmatch(r"NAXIS\d*", k)]:
+            del header[key]
+        hdu = fits.PrimaryHDU(self.data, header=header)
         hdu_list.append(hdu)
 
         # catalog?

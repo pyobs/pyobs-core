@@ -175,8 +175,17 @@ override `_finish_image(image, broadcast, image_type)`, add headers, then call `
   travels on the image instead, as image meta: a new `pyobs.images.meta.DataPipelineName`
   dataclass (`name: str | None`), set via `image.set_meta(...)` in `_create_image()` from
   `NextImage.pipeline`, and read in `_finish_image()` with `image.get_meta_safe(DataPipelineName)`.
-  Missing meta means `None` (no pipeline), which keeps any other caller of `_finish_image()`
-  unchanged.
+- **Missing meta falls back to the currently selected pipeline** (`self._data_pipeline`). Some
+  subclasses replace `_create_image()` without calling the base version, e.g. pyobs-iagvt's
+  `GregoryCamera._create_image()`
+  (`/home/husser/code/pyobs/pyobs-iagvt/pyobs_iagvt/modules/gregorycamera.py:146`), which
+  builds its own `Image` and calls `_finish_image()` directly. Without the fallback, no pipeline
+  would run for those, although they advertise `IDataPipeline`. The fallback can differ from
+  the value captured at grab start only if `set_pipeline()` is called in the few milliseconds
+  between frame capture and `_finish_image()`, which is acceptable under the single-operator
+  assumption ([`iresettable.md`](iresettable.md)). Distinguish "meta missing" (`get_meta_safe()`
+  returns `None`) from "meta present with `name=None`" (explicitly no pipeline): only the first
+  falls back.
 - `NextImage` gains `pipeline: str | None`, captured in `_set_image()` when the next image is
   prepared, next to `image_type=self._image_type`.
 

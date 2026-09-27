@@ -251,9 +251,12 @@ Small, independent, and required by the stacks. Do it first.
     built (`pipeline=self._data_pipeline`).
   - `_create_image()`: `image.set_meta(DataPipelineName(next_image.pipeline))` before calling
     `_finish_image()`.
-  - `_finish_image()`: at the very start, read the name with
-    `image.get_meta_safe(DataPipelineName)` (`None` if missing) and run
-    `image = await self._run_data_pipeline(image, name)`. **Do not change the signature**:
+  - `_finish_image()`: at the very start, read the meta with
+    `meta = image.get_meta_safe(DataPipelineName)`. If `meta is None` (missing), fall back to
+    `self._data_pipeline`; otherwise use `meta.name` (which may be `None`, meaning explicitly no
+    pipeline). Then run `image = await self._run_data_pipeline(image, name)`. The fallback is
+    for subclasses that replace `_create_image()` without calling the base version, e.g.
+    pyobs-iagvt's `GregoryCamera` (see design doc). **Do not change the signature**:
     pyobs-aravis (`/home/husser/code/pyobs/pyobs-aravis/pyobs_aravis/araviscamera.py:88`) and
     pyobs-tis (`/home/husser/code/pyobs/pyobs-tis/pyobs_tis/tiscamera.py:72`) override it.
   - A pipeline failure inside `_finish_image()` must reach the waiting `grab_data()` caller as
@@ -280,6 +283,9 @@ Small, independent, and required by the stacks. Do it first.
   - `DummyVideo` with a pipeline: `grab_data()` returns a processed image, and the pipeline runs
     after headers added in a `_finish_image()` override (subclass `DummyVideo` in the test,
     add a header in `_finish_image()`, assert a test processor sees it).
+  - Meta fallback: a `DummyVideo` subclass whose `_create_image()` builds its own `Image` and
+    calls `_finish_image()` directly (like `GregoryCamera`) still gets the selected pipeline.
+    An image with `DataPipelineName(None)` meta gets no pipeline even when one is selected.
   - `reset()` restores `default_pipeline`.
 
 ## Phase 4: `IDataStack` on `BaseCamera`

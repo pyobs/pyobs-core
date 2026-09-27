@@ -16,8 +16,12 @@ from pyobs.interfaces import (
     ConfigCapabilities,
     ConfigValue,
     IConfig,
+    ICooling,
+    IGain,
+    IImageFormat,
     IModule,
     Interface,
+    IResettable,
     ModuleCapabilities,
     ModuleLocation,
 )
@@ -382,6 +386,41 @@ class Module(Object, IModule, IConfig):
         which would then never leave STARTING under Application/MultiModule.
         """
         await self.open()
+
+        # put the module into its fully configured state -- hardware included -- before it can
+        # receive any RPCs; see specs/design/iresettable.md
+        if isinstance(self, IResettable):
+            try:
+                await self.full_reset()
+            except Exception:
+                log.exception("Could not reset module %s to its defaults during startup.", self.name)
+
+            # every driver that hasn't migrated its hardware setup into full_reset()/reset() yet
+            # should show up in the log on every start, so the gap can't go stale
+            if isinstance(self, ICooling) and getattr(
+                type(self).full_reset,  # type: ignore[missing-attribute]
+                "__pyobs_default_reset__",
+                False,
+            ):
+                log.warning(
+                    "%s implements ICooling but doesn't override full_reset(), so cooling is "
+                    "not reset to its configured defaults (see specs/design/iresettable.md).",
+                    self.name,
+                )
+            gap_interfaces = [
+                name for name, iface in (("IGain", IGain), ("IImageFormat", IImageFormat)) if isinstance(self, iface)
+            ]
+            if gap_interfaces and getattr(
+                type(self).reset,  # type: ignore[missing-attribute]
+                "__pyobs_default_reset__",
+                False,
+            ):
+                log.warning(
+                    "%s implements %s but doesn't override reset(), so those settings are not "
+                    "reset to their configured defaults (see specs/design/iresettable.md).",
+                    self.name,
+                    "/".join(gap_interfaces),
+                )
 
         # a stateful interface with no published state by now isn't a transient, self-healing
         # condition -- it's a standing defect (missing placeholder publish in open()) that sits

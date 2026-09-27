@@ -17,6 +17,12 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   state. *implemented, closed* (#437)
 - [idatasequence.md](idatasequence.md) — server-side counted data sequences. *implemented,
   closed* (#548)
+- [idatapipeline.md](idatapipeline.md): `IDataPipeline`: named, YAML-configured pipelines
+  selected via `set_pipeline()`, result replaces raw data. *implemented* (2026-09-27; Repos:
+  pyobs-core, driver plugins)
+- [idatastack.md](idatastack.md): `IDataStack`: grab N consecutive frames into one 3D cube,
+  combined via the selected pipeline. *implemented* (2026-09-27; Repos: pyobs-core, driver
+  plugins)
 - [image_trim.md](image_trim.md) — unify the three TRIMSEC implementations into `Image.trim()`.
   *implemented, closed* (#342)
 - [irobotic.md](irobotic.md) — `IRobotic` (executor) / `IRoboticScheduler` (planner) interfaces
@@ -25,6 +31,8 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [istructuredconfig.md](istructuredconfig.md) — `IStructuredConfig` bulk structured config.
   *implemented* (pyobs-core `IStructuredConfig.py` + `config_schema.py`, 2026-07-10; consumer:
   pyobs-iagvt's FTS module — see doc status for the pydantic/consumer evolutions)
+- [iresettable.md](iresettable.md): `IResettable`: reset a device to its defaults, called at
+  startup and by robotic scripts. *implemented* (2026-09-27; Repos: pyobs-core, driver plugins)
 - [interface_versioning.md](interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...). *proposed* (#819; sanity-checked against `develop`, not yet
   implemented; Repos: pyobs-core, pyobs-gui, driver plugins)

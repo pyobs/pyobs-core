@@ -540,3 +540,66 @@ def test_get_meta_safe():
 
     image.meta[int] = 1
     assert image.get_meta_safe(int, 0) == 1
+
+
+def test_naxis_2d():
+    data = np.ones((20, 30))
+    image = Image(data)
+
+    assert image.header["NAXIS1"] == 30
+    assert image.header["NAXIS2"] == 20
+    assert "NAXIS3" not in image.header
+
+
+def test_naxis_3d():
+    data = np.ones((5, 20, 30))
+    image = Image(data)
+
+    assert image.header["NAXIS1"] == 30
+    assert image.header["NAXIS2"] == 20
+    assert image.header["NAXIS3"] == 5
+
+
+def test_is_color_cube_without_ctype3():
+    data = np.ones((3, 20, 30))
+    image = Image(data)
+
+    assert image.is_color is True
+
+
+def test_is_color_cube_with_ctype3_frame():
+    data = np.ones((3, 20, 30))
+    header = fits.Header({"CTYPE3": "FRAME"})
+    image = Image(data, header)
+
+    assert image.is_color is False
+
+
+def test_frames_default_none():
+    image = Image()
+    assert image.safe_frames is None
+
+    with pytest.raises(Exception):
+        _ = image.frames
+
+
+def test_frames_roundtrip_writeto_from_bytes():
+    data = np.ones((3, 4, 4))
+    frames = astropy.table.Table({"FRAME": [0, 1, 2], "DATE-OBS": ["a", "b", "c"], "EXPTIME": [1.0, 1.0, 1.0]})
+
+    original_image = Image(data, frames=frames)
+    byte_fits = io.BytesIO()
+    original_image.writeto(byte_fits)
+
+    image = Image.from_bytes(byte_fits.getvalue())
+
+    np.testing.assert_array_equal(frames.as_array(), image.frames.as_array())
+
+
+def test_frames_kept_in_copy():
+    frames = astropy.table.Table({"FRAME": [0]})
+    original_image = Image(np.ones((1, 4, 4)), frames=frames)
+
+    image = original_image.copy()
+
+    np.testing.assert_array_equal(frames.as_array(), image.frames.as_array())

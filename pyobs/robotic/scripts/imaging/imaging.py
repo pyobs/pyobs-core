@@ -19,6 +19,7 @@ from pyobs.interfaces import (
     IImageType,
     IPointingRaDec,
     IReady,
+    IResettable,
     IRoof,
     ITelescope,
     IWindow,
@@ -294,6 +295,11 @@ class ImagingScript(Script):
     async def _setup_instrument_config(
         self, instrument_config: InstrumentConfig, target: Target | None, track: Future | asyncio.Task[Any]
     ) -> None:
+        async with self.comm.safe_proxy(self.camera, IResettable) as camera:
+            if camera:
+                log.info("Resetting camera to defaults...")
+                await camera.reset()
+
         async with self.comm.safe_proxy(self.camera, IBinning) as camera:
             if camera:
                 log.info("Setting binning to %sx%s...", instrument_config.binning[0], instrument_config.binning[1])

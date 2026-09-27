@@ -1,5 +1,27 @@
 v2.5.0
 *********************
+* New ``IResettable`` interface (``reset()``/``full_reset()``): a module can reset its
+  per-acquisition settings (exposure time, image type, binning, window, data pipeline) or,
+  with ``full_reset()``, everything including hardware state (cooling). Implemented by
+  ``BaseCamera``, ``BaseVideo`` and ``BaseSpectrograph``. ``Module.startup()`` now calls
+  ``full_reset()`` automatically for any module implementing it, and the robotic scripts
+  (``Imaging``, ``DarkBiasScript``, the LCO default script, ``FlatField``) call ``reset()``
+  before configuring a camera for a new task. See ``specs/design/iresettable.md``.
+* New ``IDataPipeline`` interface (``set_pipeline()``): a camera can run a named, YAML-configured
+  pipeline on every grab before storing it -- the pipeline result **replaces the raw data**, and
+  every stored file carries a ``PIPELINE`` FITS header. Implemented by ``BaseCamera`` and
+  ``BaseVideo`` via the new ``DataPipelineMixin``, configured with new ``pipelines``/
+  ``default_pipeline`` init parameters. See ``specs/design/idatapipeline.md``.
+* New ``IDataStack`` interface (``grab_stack(count)``): grabs ``count`` consecutive frames into
+  one 3D cube product (or, with a pipeline selected, its combined result), blocking until the
+  product is stored. Implemented by ``BaseCamera`` and ``BaseVideo``, memory-capped via new
+  ``max_stack_bytes``/``stack_frame_overhead``/``stack_timeout_margin`` init parameters. See
+  ``specs/design/idatastack.md``.
+* ``Image``: fixed ``NAXIS1``/``NAXIS2`` for 3D data (previously swapped), ``is_color`` now
+  excludes stack cubes (``CTYPE3 == 'FRAME'``), and a new optional ``frames`` table (per-frame
+  ``FRAME``/``DATE-OBS``/``EXPTIME``, written/read as a ``FRAMES`` FITS extension). Also fixes
+  ``BaseCamera.apply_meridian_flip()`` flipping the wrong axes on 3D data. See
+  ``specs/design/idatastack.md``.
 * Every module implementing ``IFitsHeaderBefore``/``IFitsHeaderAfter`` now writes one
   ``HIERARCH <MODULE> VERSION <PACKAGE>`` card per loaded ``pyobs-*`` package into FITS headers,
   reusing ``loaded_pyobs_packages()`` (added for #759). Closes #739. See

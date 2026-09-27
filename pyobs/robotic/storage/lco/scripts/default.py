@@ -16,6 +16,7 @@ from pyobs.interfaces import (
     IImageType,
     IPointingRaDec,
     IReady,
+    IResettable,
     IRoof,
     ITelescope,
     IWindow,
@@ -182,6 +183,12 @@ class LcoDefaultScript(LcoScript):
 
                 # wait for tracking and filter
                 await Future.wait_all([track, set_filter])
+
+                # reset camera to defaults
+                async with self.comm.safe_proxy(self.camera, IResettable) as camera:
+                    if camera:
+                        log.info("Resetting camera to defaults...")
+                        await camera.reset()
 
                 # set binning and window
                 async with self.comm.safe_proxy(self.camera, IBinning) as camera:

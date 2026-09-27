@@ -5,6 +5,7 @@ Mixins are classes that can be inherited from to automatically add some function
 __title__ = "Mixins"
 
 from .camerasettings import CameraSettingsMixin
+from .datapipeline import DataPipelineMixin
 from .datasequence import DataSequenceMixin
 from .fitsheader import (
     FilterHeaderMixin,
@@ -27,6 +28,7 @@ __all__ = [
     "WaitForMotionMixin",
     "WeatherAwareMixin",
     "CameraSettingsMixin",
+    "DataPipelineMixin",
     "DataSequenceMixin",
     "ImageFitsHeaderMixin",
     "SpectrumFitsHeaderMixin",

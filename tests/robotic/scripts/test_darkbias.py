@@ -97,10 +97,14 @@ def make_script(**kwargs) -> DarkBiasScript:
 
 
 def make_camera(
-    supports_binning=True, supports_window=True, supports_exptime=True, supports_imagetype=True
+    supports_binning=True,
+    supports_window=True,
+    supports_exptime=True,
+    supports_imagetype=True,
+    supports_reset=True,
 ) -> MagicMock:
     """Create a mock camera supporting all or some interfaces."""
-    from pyobs.interfaces import IBinning, ICamera, IData, IExposureTime, IImageType, IWindow
+    from pyobs.interfaces import IBinning, ICamera, IData, IExposureTime, IImageType, IResettable, IWindow
 
     interfaces = [ICamera, IData]
     if supports_binning:
@@ -111,6 +115,8 @@ def make_camera(
         interfaces.append(IExposureTime)
     if supports_imagetype:
         interfaces.append(IImageType)
+    if supports_reset:
+        interfaces.append(IResettable)
 
     from pyobs.interfaces.IWindow import WindowCapabilities
 
@@ -123,31 +129,35 @@ def make_camera(
     camera.set_exposure_time = AsyncMock()
     camera.set_image_type = AsyncMock()
     camera.grab_data = AsyncMock()
+    camera.reset = AsyncMock()
 
     # make isinstance checks work
     camera.__class__ = isinstance_class("Camera", interfaces)
     return camera
 
 
-def setup_run_comm(script: DarkBiasScript, camera: MagicMock, binning_cam=..., window_cam=...) -> None:
+def setup_run_comm(script: DarkBiasScript, camera: MagicMock, binning_cam=..., window_cam=..., reset_cam=...) -> None:
     """Wire up comm mocks for a DarkBiasScript.run call.
 
-    safe_proxy is used for IBinning and IWindow (optional interfaces).
+    safe_proxy is used for IBinning, IWindow and IResettable (optional interfaces).
     proxy is used for IExposureTime, IImageType, and IData (required).
 
-    Pass binning_cam=None or window_cam=None to simulate a camera that doesn't
-    implement the corresponding interface.
+    Pass binning_cam=None, window_cam=None or reset_cam=None to simulate a camera that
+    doesn't implement the corresponding interface.
     """
-    from pyobs.interfaces import IBinning, IWindow
+    from pyobs.interfaces import IBinning, IResettable, IWindow
 
     binning_value = camera if binning_cam is ... else binning_cam
     window_value = camera if window_cam is ... else window_cam
+    reset_value = camera if reset_cam is ... else reset_cam
 
     def safe_proxy_se(name, iface=None):
         if iface is IBinning:
             return make_proxy_cm(binning_value)
         if iface is IWindow:
             return make_proxy_cm(window_value)
+        if iface is IResettable:
+            return make_proxy_cm(reset_value)
         return make_proxy_cm(camera)
 
     script._comm.safe_proxy = MagicMock(side_effect=safe_proxy_se)
@@ -240,6 +250,29 @@ async def test_skips_window_when_not_supported() -> None:
 
     await script.run(None)
     camera.set_window.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_resets_camera_before_binning() -> None:
+    script = make_script(binning=(2, 2))
+    camera = make_camera()
+    setup_run_comm(script, camera)
+
+    await script.run(None)
+
+    camera.reset.assert_called_once()
+    calls = [c[0] for c in camera.mock_calls]
+    assert calls.index("reset") < calls.index("set_binning")
+
+
+@pytest.mark.asyncio
+async def test_skips_reset_when_not_supported() -> None:
+    script = make_script()
+    camera = make_camera(supports_reset=False)
+    setup_run_comm(script, camera, reset_cam=None)
+
+    await script.run(None)
+    camera.reset.assert_not_called()
 
 
 @pytest.mark.asyncio

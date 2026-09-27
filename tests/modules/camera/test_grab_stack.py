@@ -19,6 +19,11 @@ from pyobs.modules.camera import DummyCamera
 from pyobs.modules.camera.basecamera import calc_stack_timeout
 from pyobs.utils.enums import ExposureStatus
 
+# frame_number=False (with a filename pattern that doesn't need FRAMENUM): the per-frame
+# FRAMENUM default does a real VFS read+write, which is both irrelevant here and, under this
+# environment's default VFS root, occasionally slow enough to make these tests flaky
+_TEST_FILENAMES = "/cache/pyobs-{DAY-OBS|date:}-{DATE-OBS|time:}-{IMAGETYP|type}00.fits.gz"
+
 
 class MeanCombine(ImageProcessor):
     """Test processor: collapses a cube to 2D via a mean, like a real CombineStack would."""
@@ -33,7 +38,7 @@ class MeanCombine(ImageProcessor):
 
 
 def make_camera(**kwargs: Any) -> DummyCamera:
-    camera = DummyCamera(readout_time=0, image_size=(20, 20), **kwargs)
+    camera = DummyCamera(readout_time=0, image_size=(20, 20), frame_number=False, filenames=_TEST_FILENAMES, **kwargs)
     camera.comm.set_state = AsyncMock()
     camera.comm.set_capabilities = AsyncMock()
     camera.vfs.write_image = AsyncMock()

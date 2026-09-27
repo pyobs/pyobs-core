@@ -1022,6 +1022,9 @@ class BaseVideo(
             if request.cube is None or request.date_obs_first is None:
                 raise exc.GrabImageError("Could not take image.")
 
+            # one uniform EXPTIME for all frames: reasonable for a continuous video stream, where
+            # every frame shares the stream's exposure time (unlike BaseCamera's grab_stack, whose
+            # frames can each have been taken with a different exposure time)
             frame_time = self._exposure_time if hasattr(self, "_exposure_time") else 1.0
             frames_table = Table(
                 rows=[(i, d, frame_time) for i, d in enumerate(request.dates)],

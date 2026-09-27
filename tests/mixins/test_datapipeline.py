@@ -22,6 +22,12 @@ from pyobs.modules import Module
 from pyobs.modules.camera import DummyCamera
 from pyobs.modules.camera.dummyvideo import DummyVideo
 
+# frame_number=False (with a filename pattern that doesn't need FRAMENUM): the per-frame
+# FRAMENUM default does a real VFS read+write, which is both irrelevant here and, under this
+# environment's default VFS root, occasionally slow enough to make these tests flaky
+_TEST_CAMERA_FILENAMES = "/cache/pyobs-{DAY-OBS|date:}-{DATE-OBS|time:}-{IMAGETYP|type}00.fits.gz"
+_TEST_VIDEO_FILENAMES = "/webcam/pyobs-{DAY-OBS|date:}-{DATE-OBS|time:}.fits"
+
 
 class DoubleStep(ImageProcessor):
     """Test processor: doubles the data, so tests can tell whether it ran."""
@@ -70,7 +76,7 @@ def make_host(**kwargs: Any) -> _PipelineHost:
 
 
 def make_camera(**kwargs: Any) -> DummyCamera:
-    camera = DummyCamera(readout_time=0, **kwargs)
+    camera = DummyCamera(readout_time=0, frame_number=False, filenames=_TEST_CAMERA_FILENAMES, **kwargs)
     camera.comm.set_state = AsyncMock()
     camera.comm.set_capabilities = AsyncMock()
     camera.vfs.write_image = AsyncMock()
@@ -78,7 +84,7 @@ def make_camera(**kwargs: Any) -> DummyCamera:
 
 
 def make_video(**kwargs: Any) -> DummyVideo:
-    video = DummyVideo(fps=1000, image_size=(4, 4), **kwargs)
+    video = DummyVideo(fps=1000, image_size=(4, 4), frame_number=False, filenames=_TEST_VIDEO_FILENAMES, **kwargs)
     video.comm.set_state = AsyncMock()
     video.comm.set_capabilities = AsyncMock()
     video.request_fits_headers = AsyncMock(return_value={})

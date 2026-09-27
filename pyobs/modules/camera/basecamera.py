@@ -641,11 +641,8 @@ class BaseCamera(
             stack_image.header["NFRAMES"] = count
 
             last_date_obs, last_exptime = frame_rows[-1][1], frame_rows[-1][2]
-            try:
-                date_end = (Time(last_date_obs) + TimeDelta(last_exptime, format="sec")).isot
-            except ValueError:
-                date_end = last_date_obs
-            stack_image.header["DATE-END"] = date_end
+            if last_date_obs:
+                stack_image.header["DATE-END"] = (Time(last_date_obs) + TimeDelta(last_exptime, format="sec")).isot
 
             _, filename = await self.__finish_product(
                 stack_image, image_type, header_futures_before, header_futures_after, broadcast, pipeline

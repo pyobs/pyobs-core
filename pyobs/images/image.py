@@ -24,15 +24,15 @@ class Image:
     """
     A container class for astronomical image data and associated metadata.
 
-    This class represents a two-dimensional astronomical image, typically loaded
-    from or saved to a FITS file. It provides unified access to image data, mask,
-    uncertainty, catalogs, raw calibration frames, and meta information. The
+    This class represents a two-dimensional astronomical image, or a 3D stack cube of several
+    such frames, typically loaded from or saved to a FITS file. It provides unified access to
+    image data, mask, uncertainty, catalogs, raw calibration frames, and meta information. The
     `Image` class serves as the fundamental data structure within the `pyobs`
     imaging pipeline, enabling reading, writing, and conversion between FITS,
     `astropy.CCDData`, and in-memory representations.
 
     The image may optionally contain:
-      - **data**: 2D array of pixel values.
+      - **data**: 2D array of pixel values, or a 3D stack cube (see `IDataStack`).
       - **mask**: Boolean or integer mask indicating invalid or excluded pixels.
       - **uncertainty**: Per-pixel uncertainty values.
       - **catalog**: Source catalog (as an `astropy.table.Table`).
@@ -49,7 +49,7 @@ class Image:
     Parameters
     ----------
     data : numpy.ndarray[float], optional
-        2D array containing the image pixel data.
+        2D array containing the image pixel data, or a 3D stack cube (see `IDataStack`).
     header : astropy.io.fits.Header, optional
         FITS header containing image metadata. If omitted, a new empty header is created.
     mask : numpy.ndarray[float] or numpy.ndarray[bool], optional

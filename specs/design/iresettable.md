@@ -240,6 +240,18 @@ follow-ups rather than blocking on them.
 (`CoolingStatus()` defaults: enabled, -10 °C), so both the base path and an override are covered
 by tests.
 
+Follow-up issues opened 2026-09-27 against [pyobs-core 2.11.0](https://github.com/pyobs/pyobs-core/releases/tag/v2.11.0)
+(see `specs/plans/2026-09-27-data-pipeline-stack-reset.md`, phase 7/8, for the survey and drafts):
+
+- pyobs-asi: https://github.com/pyobs/pyobs-asi/issues/43
+- pyobs-fli: https://github.com/pyobs/pyobs-fli/issues/99
+- pyobs-flipro: https://github.com/pyobs/pyobs-flipro/issues/49
+- pyobs-qhyccd: https://github.com/pyobs/pyobs-qhyccd/issues/78
+- pyobs-sbig: https://github.com/pyobs/pyobs-sbig/issues/87
+- pyobs-aravis: https://github.com/pyobs/pyobs-aravis/issues/52
+- pyobs-iagvt (GWDG GitLab): https://gitlab.gwdg.de/iagvt/pyobs-iagvt/-/work_items/33
+- pyobs-monet (GWDG GitLab): https://gitlab.gwdg.de/monet/pyobs-monet/-/work_items/17
+
 ## Callers
 
 The robotic scripts that configure a camera call `reset()` first, before any `set_*()`:

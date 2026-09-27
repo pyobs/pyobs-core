@@ -560,6 +560,30 @@ def test_naxis_3d():
     assert image.header["NAXIS3"] == 5
 
 
+def test_writeto_header_without_naxis_cards():
+    # Image() appends NAXISn to the end of a given header without NAXIS cards (#922)
+    header = fits.Header({"FOO": 1})
+    original_image = Image(np.ones((3, 4), dtype=np.float32), header=header)
+
+    image = Image.from_bytes(original_image.to_bytes())
+
+    assert image.header["NAXIS1"] == 4
+    assert image.header["NAXIS2"] == 3
+    assert image.header["FOO"] == 1
+
+
+def test_writeto_stale_naxis3_after_collapsing_cube():
+    # the data setter doesn't touch the header, so NAXIS3 of a cube survives collapsing it (#922)
+    original_image = Image(np.ones((3, 4, 5), dtype=np.float32))
+    original_image.data = original_image.data.mean(axis=0)
+
+    image = Image.from_bytes(original_image.to_bytes())
+
+    assert image.data.shape == (4, 5)
+    assert "NAXIS3" not in image.header
+    assert original_image.header["NAXIS3"] == 3  # in-memory header left alone
+
+
 def test_is_color_cube_without_ctype3():
     data = np.ones((3, 20, 30))
     image = Image(data)

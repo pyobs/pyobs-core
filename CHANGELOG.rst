@@ -27,6 +27,9 @@ v2.5.0
   ``FRAME``/``DATE-OBS``/``EXPTIME``, written/read as a ``FRAMES`` FITS extension). Also fixes
   ``BaseCamera.apply_meridian_flip()`` flipping the wrong axes on 3D data. See
   ``specs/design/idatastack.md``.
+* ``Image.writeto()``: no longer fails on misplaced or stale ``NAXISn`` cards (e.g. a header
+  passed to ``Image()`` without NAXIS cards, or ``NAXIS3`` left over after collapsing a cube via
+  the ``data`` setter). They are now regenerated from the data on write (#922).
 * Every module implementing ``IFitsHeaderBefore``/``IFitsHeaderAfter`` now writes one
   ``HIERARCH <MODULE> VERSION <PACKAGE>`` card per loaded ``pyobs-*`` package into FITS headers,
   reusing ``loaded_pyobs_packages()`` (added for #759). Closes #739. See

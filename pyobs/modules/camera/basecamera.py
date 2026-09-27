@@ -25,6 +25,7 @@ from pyobs.interfaces import (
     IWindow,
     default_reset,
 )
+from pyobs.mixins.datapipeline import DataPipelineMixin
 from pyobs.mixins.datasequence import DataSequenceMixin
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
@@ -55,6 +56,7 @@ class BaseCamera(
     IImageType,
     IResettable,
     DataSequenceMixin,
+    DataPipelineMixin,
     metaclass=ABCMeta,
 ):
     """Base class for all camera modules."""
@@ -145,6 +147,7 @@ class BaseCamera(
             ),
         )
         await self._datasequence_open()
+        await self._datapipeline_open()
 
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time in seconds.
@@ -200,6 +203,8 @@ class BaseCamera(
                 )
             else:
                 log.warning("Cannot reset window to full frame, no full-frame capabilities advertised.")
+
+        await self.set_pipeline(self._default_pipeline)
 
     @default_reset
     async def full_reset(self, **kwargs: Any) -> None:
@@ -307,13 +312,16 @@ class BaseCamera(
         """Method that is always called at the very beginning of __expose and can be used to set stuff up."""
         ...
 
-    async def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) -> tuple[Image, str]:
+    async def __expose(
+        self, exposure_time: float, image_type: ImageType, broadcast: bool, pipeline: str | None
+    ) -> tuple[Image, str]:
         """Wrapper for a single exposure.
 
         Args:
             exposure_time: The requested exposure time in seconds.
             image_type: Type of image.
             broadcast: Whether the new image should be broadcasted.
+            pipeline: Name of the data pipeline to run before storing, or None for raw data.
 
         Returns:
             Tuple of the image itself and its filename.
@@ -381,6 +389,14 @@ class BaseCamera(
         await self.add_requested_fits_headers(image, header_futures_after)
         await self.add_fits_headers(image)
         await self.apply_meridian_flip(image)
+
+        # run data pipeline -- replaces raw data with the pipeline's result
+        try:
+            image = await self._run_data_pipeline(image, pipeline)
+        except exc.GrabImageError:
+            self._exposure = None
+            raise
+
         filename = self.format_filename(image)
 
         # don't want to save?
@@ -433,9 +449,12 @@ class BaseCamera(
             raise exc.DeviceBusyError("Cannot start new exposure because camera is not idle.")
         await self._change_exposure_status(ExposureStatus.EXPOSING)
 
+        # capture the pipeline at grab start -- a change during the grab applies to the next one
+        pipeline = self._data_pipeline
+
         # expose
         try:
-            image, filename = await self.__expose(self._exposure_time, self._image_type, broadcast)
+            image, filename = await self.__expose(self._exposure_time, self._image_type, broadcast, pipeline)
         finally:
             await self._change_exposure_status(ExposureStatus.IDLE)
 

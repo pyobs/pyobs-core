@@ -18,6 +18,7 @@ from numpy.typing import NDArray
 
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
+from pyobs.images.meta import DataPipelineName
 from pyobs.interfaces import (
     IExposureTime,
     IImageType,
@@ -27,6 +28,7 @@ from pyobs.interfaces import (
     VideoCapabilities,
     default_reset,
 )
+from pyobs.mixins.datapipeline import DataPipelineMixin
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
@@ -69,6 +71,7 @@ class NextImage(NamedTuple):
     image_type: ImageType
     header_futures: dict[str, asyncio.Task[Any]]
     broadcast: bool
+    pipeline: str | None
 
 
 class ImageRequest:
@@ -76,6 +79,7 @@ class ImageRequest:
         self.broadcast: bool = broadcast
         self.image: Image | None = None
         self.filename: str | None = None
+        self.error: Exception | None = None
 
 
 class LastImage(NamedTuple):
@@ -86,7 +90,7 @@ class LastImage(NamedTuple):
     date_obs: str
 
 
-class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, metaclass=ABCMeta):
+class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, DataPipelineMixin, metaclass=ABCMeta):
     """Base class for all webcam modules.
 
     The built-in HTTP server serves the MJPEG live view, the raw frame stream and cached FITS
@@ -224,6 +228,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, m
 
         # publish initial state
         await self.comm.set_state(IImageType, ImageTypeState(image_type=self._image_type))
+        await self._datapipeline_open()
 
     async def close(self) -> None:
         """Close server"""
@@ -682,13 +687,25 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, m
         image, filename = None, None
         if self._next_image is not None:
             # create image and reset
-            image, filename = await self._create_image(data, self._next_image)
+            next_image = self._next_image
             self._next_image = None
-            async with self._image_request_lock:
-                for req in self._image_requests:
-                    req.image = image
-                    req.filename = filename
-                    await asyncio.sleep(0.02)
+            try:
+                image, filename = await self._create_image(data, next_image)
+            except Exception as e:
+                # a failed data pipeline (or anything else in _create_image()) must reach the
+                # waiting grab_data() callers as an error, not leave them spinning forever on
+                # image staying None -- but the frame loop itself keeps running
+                log.exception("Could not create image.")
+                async with self._image_request_lock:
+                    for req in self._image_requests:
+                        req.error = e
+                        await asyncio.sleep(0.02)
+            else:
+                async with self._image_request_lock:
+                    for req in self._image_requests:
+                        req.image = image
+                        req.filename = filename
+                        await asyncio.sleep(0.02)
 
         # convert to jpeg only if we need live view
         now = time.time()
@@ -720,6 +737,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, m
                 image_type=self._image_type,
                 header_futures=await self.request_fits_headers(),
                 broadcast=broadcast,
+                pipeline=self._data_pipeline,
             )
 
     async def _create_image(self, data: NDArray[Any], next_image: NextImage) -> tuple[Image, str]:
@@ -736,6 +754,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, m
         image = Image(data)
         image.header["DATE-OBS"] = next_image.date_obs
         image.header["IMAGETYP"] = next_image.image_type
+        image.set_meta(DataPipelineName(next_image.pipeline))
 
         # add fits headers and format filename
         await self.add_requested_fits_headers(image, next_image.header_futures)
@@ -754,7 +773,19 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, m
 
         Returns:
             Tuple with image itself and the filename.
+
+        Raises:
+            GrabImageError: If the data pipeline failed. Nothing is stored in that case.
         """
+
+        # run data pipeline -- replaces raw data with the pipeline's result. The pipeline name
+        # travels as image meta rather than a parameter, so subclasses overriding this method's
+        # signature (pyobs-aravis, pyobs-tis) keep working unchanged. Missing meta means a caller
+        # bypassed _create_image() (e.g. pyobs-iagvt's GregoryCamera) -- fall back to whatever
+        # pipeline is currently selected rather than silently running none.
+        meta = image.get_meta_safe(DataPipelineName)
+        pipeline = self._data_pipeline if meta is None else meta.name
+        image = await self._run_data_pipeline(image, pipeline)
 
         # format filename
         filename = self.format_filename(image)
@@ -801,12 +832,18 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, m
 
         # we want an image that starts exposing AFTER now, so we wait for the current image to finish.
         log.info("Waiting for image to finish...")
-        while image_request.image is None:
+        while image_request.image is None and image_request.error is None:
             await asyncio.sleep(0.01)
 
         # remove from list
         async with self._image_request_lock:
             self._image_requests.remove(image_request)
+
+        # image creation failed?
+        if image_request.error is not None:
+            if isinstance(image_request.error, exc.PyobsError):
+                raise image_request.error
+            raise exc.GrabImageError(str(image_request.error))
 
         # no image?
         if image_request.image is None or image_request.filename is None:
@@ -833,6 +870,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, m
             DeviceBusyError: If a stack is currently running.
         """
         await self.set_image_type(ImageType.OBJECT)
+        await self.set_pipeline(self._default_pipeline)
 
     @default_reset
     async def full_reset(self, **kwargs: Any) -> None:

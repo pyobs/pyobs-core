@@ -1,6 +1,6 @@
 # `IResettable`: reset a device to its defaults
 
-Status: proposed (2026-09-27). Not implemented. Plan:
+Status: implemented (2026-09-27). Plan:
 [`2026-09-27-data-pipeline-stack-reset.md`](../plans/2026-09-27-data-pipeline-stack-reset.md).
 
 Repos: pyobs-core (interface, base classes, `Module.startup()`, robotic scripts), driver plugins

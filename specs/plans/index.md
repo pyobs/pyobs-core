@@ -295,5 +295,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   unregistered tokens. **implemented, uncommitted** (2026-09-23; 12 new tests, 48 passing; Repos:
   pyobs-core)
 - [2026-09-27-data-pipeline-stack-reset.md](2026-09-27-data-pipeline-stack-reset.md):
-  `IResettable`, `IDataPipeline`, `IDataStack` in `BaseCamera`/`BaseVideo`. **proposed**
-  (2026-09-27; Repos: pyobs-core, driver plugins)
+  `IResettable`, `IDataPipeline`, `IDataStack` in `BaseCamera`/`BaseVideo`. **implemented
+  (pyobs-core, phases 1-7); phase 8 (opening driver issues) waits on Tim's go-ahead after
+  merge/release** (2026-09-27; Repos: pyobs-core, driver plugins)

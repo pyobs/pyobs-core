@@ -1,6 +1,6 @@
 # `IDataPipeline`: named, selectable pipelines applied before data is stored
 
-Status: proposed (2026-09-27). Not implemented. Plan:
+Status: implemented (2026-09-27). Plan:
 [`2026-09-27-data-pipeline-stack-reset.md`](../plans/2026-09-27-data-pipeline-stack-reset.md).
 
 Repos: pyobs-core (interface, mixin, `BaseCamera`, `BaseVideo`), driver plugins (inherit it via

@@ -406,6 +406,16 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         self._image_format = fmt
         await self.comm.set_state(IImageFormat, ImageFormatState(image_format=self._image_format))
 
+    async def reset(self, **kwargs: Any) -> None:
+        await BaseCamera.reset(self, **kwargs)
+        await self.set_gain(10.0)
+        await self.set_offset(0.0)
+        await self.set_image_format(ImageFormat.INT16)
+
+    async def full_reset(self, **kwargs: Any) -> None:
+        await self.reset(**kwargs)
+        await self.set_cooling(True, CoolingStatus().set_point)
+
     async def _set_config_readout_time(self, readout_time: float) -> None:
         self._readout_time = readout_time
 

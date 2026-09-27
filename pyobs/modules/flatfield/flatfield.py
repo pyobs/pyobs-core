@@ -13,6 +13,7 @@ from pyobs.interfaces import (
     IFlatField,
     IMotion,
     IReady,
+    IResettable,
     ITelescope,
     MotionState,
     ReadyState,
@@ -205,6 +206,12 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
             # reset
             await self._flat_fielder.reset()
+
+            # reset camera to defaults
+            async with self.safe_proxy(self._camera, IResettable) as camera:
+                if camera:
+                    log.info("Resetting camera to defaults...")
+                    await camera.reset()
 
             # run until state is finished or we aborted
             state = None

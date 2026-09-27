@@ -14,16 +14,31 @@ import aiohttp
 import numpy as np
 import PIL.Image
 from aiohttp import web
+from astropy.table import Table
+from astropy.time import TimeDelta
 from numpy.typing import NDArray
 
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
-from pyobs.interfaces import IExposureTime, IImageType, ImageTypeState, IVideo, VideoCapabilities
+from pyobs.images.meta import DataPipelineName
+from pyobs.interfaces import (
+    DataStackState,
+    IDataStack,
+    IExposureTime,
+    IImageType,
+    ImageTypeState,
+    IResettable,
+    IVideo,
+    VideoCapabilities,
+    default_reset,
+)
+from pyobs.mixins.datapipeline import DataPipelineMixin
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
 from pyobs.utils.cache import DataCache
 from pyobs.utils.enums import ImageType
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -56,11 +71,19 @@ async def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) 
         return 30.0
 
 
+async def calc_video_stack_timeout(webcam: "BaseVideo", count: int = 1, *args: Any, **kwargs: Any) -> float:
+    """Calculates timeout for grab_stack(). One extra frame, because the stack starts one
+    frame late: the request is armed on the next frame and only collects from the one after."""
+    frame_time = webcam._exposure_time if hasattr(webcam, "_exposure_time") else 1.0
+    return (count + 1) * (frame_time + webcam._stack_frame_overhead) + webcam._stack_timeout_margin
+
+
 class NextImage(NamedTuple):
     date_obs: str
     image_type: ImageType
     header_futures: dict[str, asyncio.Task[Any]]
     broadcast: bool
+    pipeline: str | None
 
 
 class ImageRequest:
@@ -68,6 +91,29 @@ class ImageRequest:
         self.broadcast: bool = broadcast
         self.image: Image | None = None
         self.filename: str | None = None
+        self.error: Exception | None = None
+
+
+class StackRequest:
+    """A pending grab_stack() request, filled in by _set_image() as frames arrive.
+
+    Consecutive-frame semantics match grab_data(): the request is armed on the next frame
+    (FITS headers requested there, like NextImage), and frames are collected from the frame
+    after that, so every collected frame started after grab_stack() was called.
+    """
+
+    def __init__(self, count: int, broadcast: bool, image_type: ImageType, pipeline: str | None):
+        self.count = count
+        self.broadcast = broadcast
+        self.image_type = image_type
+        self.pipeline = pipeline
+        self.header_futures: dict[str, asyncio.Task[Any]] | None = None
+        self.armed = False
+        self.date_obs_first: str | None = None
+        self.cube: NDArray[Any] | None = None
+        self.dates: list[str] = []
+        self.done = asyncio.Event()
+        self.error: Exception | None = None
 
 
 class LastImage(NamedTuple):
@@ -78,7 +124,9 @@ class LastImage(NamedTuple):
     date_obs: str
 
 
-class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
+class BaseVideo(
+    Module, ImageFitsHeaderMixin, IVideo, IImageType, IResettable, DataPipelineMixin, IDataStack, metaclass=ABCMeta
+):
     """Base class for all webcam modules.
 
     The built-in HTTP server serves the MJPEG live view, the raw frame stream and cached FITS
@@ -106,6 +154,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         sleep_time: int = 60,
         fits_header_timeout: float = 15.0,
         token: str | None = None,
+        max_stack_bytes: int = 2 * 1024**3,
+        stack_frame_overhead: float = 2.0,
+        stack_timeout_margin: float = 60.0,
         **kwargs: Any,
     ):
         """Creates a new BaseWebcam.
@@ -130,6 +181,13 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             fits_header_timeout: Maximum seconds to wait for a peer's FITS headers before skipping them.
             token: Shared secret required in the "Authorization: Bearer <token>" header (or a
                 login-page cookie) for stream and data access. If None (default), no auth is enforced.
+            max_stack_bytes: Memory cap for a grab_stack() cube (count * frame size), in bytes.
+                A stacked product also sits in the in-memory DataCache (cache_size) once stored,
+                so peak memory use with several cached stacks can be well above this cap.
+            stack_frame_overhead: Estimated per-frame overhead in seconds, added to the frame
+                interval when computing grab_stack()'s timeout.
+            stack_timeout_margin: Extra seconds added to grab_stack()'s timeout, covering header
+                requests, cube assembly and the data pipeline.
         """
         super().__init__(
             fits_namespaces=fits_namespaces,
@@ -154,6 +212,10 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._image_requests: list[ImageRequest] = []
         self._next_image: NextImage | None = None
         self._last_image: LastImage | None = None
+        self._stack_request: StackRequest | None = None
+        self._max_stack_bytes = max_stack_bytes
+        self._stack_frame_overhead = stack_frame_overhead
+        self._stack_timeout_margin = stack_timeout_margin
         # lazy per-frame cache for raw_handler: the first of N simultaneous raw
         # consumers to wake for a given frame computes (meta, frame) bytes and the
         # rest reuse it, instead of each redoing the header build/JSON/copy (#769)
@@ -216,6 +278,8 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # publish initial state
         await self.comm.set_state(IImageType, ImageTypeState(image_type=self._image_type))
+        await self._datapipeline_open()
+        await self.comm.set_state(IDataStack, DataStackState(count_total=0, count_left=0))
 
     async def close(self) -> None:
         """Close server"""
@@ -670,17 +734,33 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         if self._flip:
             data: NDArray[Any] = np.flip(data, axis=0)
 
+        # arm or collect a frame for a pending stack request
+        if self._stack_request is not None:
+            await self._handle_stack_frame(self._stack_request, data, date_obs)
+
         # got a requested image in the queue?
         image, filename = None, None
         if self._next_image is not None:
             # create image and reset
-            image, filename = await self._create_image(data, self._next_image)
+            next_image = self._next_image
             self._next_image = None
-            async with self._image_request_lock:
-                for req in self._image_requests:
-                    req.image = image
-                    req.filename = filename
-                    await asyncio.sleep(0.02)
+            try:
+                image, filename = await self._create_image(data, next_image)
+            except Exception as e:
+                # a failed data pipeline (or anything else in _create_image()) must reach the
+                # waiting grab_data() callers as an error, not leave them spinning forever on
+                # image staying None -- but the frame loop itself keeps running
+                log.exception("Could not create image.")
+                async with self._image_request_lock:
+                    for req in self._image_requests:
+                        req.error = e
+                        await asyncio.sleep(0.02)
+            else:
+                async with self._image_request_lock:
+                    for req in self._image_requests:
+                        req.image = image
+                        req.filename = filename
+                        await asyncio.sleep(0.02)
 
         # convert to jpeg only if we need live view
         now = time.time()
@@ -712,7 +792,64 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
                 image_type=self._image_type,
                 header_futures=await self.request_fits_headers(),
                 broadcast=broadcast,
+                pipeline=self._data_pipeline,
             )
+
+    async def _handle_stack_frame(self, request: StackRequest, data: NDArray[Any], date_obs: str) -> None:
+        """Arm or collect a frame for a pending grab_stack() request.
+
+        Called from _set_image() on every frame while a stack request is active. Must stay
+        cheap: no header requests after arming, no FITS building, no pipeline -- _set_image()
+        runs on the event loop at up to 10 Hz.
+
+        Args:
+            request: The pending stack request.
+            data: The (already flipped) frame data.
+            date_obs: Acquisition time of this frame.
+        """
+        if request.done.is_set():
+            # already filled (or failed/aborted) -- grab_stack() hasn't cleared
+            # self._stack_request yet, but there is nothing left for this frame to do
+            return
+
+        if not request.armed:
+            # arm on this frame -- the first *collected* frame is the one after this
+            request.header_futures = await self.request_fits_headers()
+            request.armed = True
+            return
+
+        if request.cube is None:
+            # first collected frame
+            if data.ndim != 2:
+                request.error = exc.GrabImageError("Stacking color frames is not supported.")
+                request.done.set()
+                return
+
+            # authoritative memory check, now with the real frame size
+            if request.count * data.nbytes > self._max_stack_bytes:
+                request.error = exc.InvalidArgumentError(
+                    f"Stack of {request.count} frames would exceed the memory cap of " f"{self._max_stack_bytes} bytes."
+                )
+                request.done.set()
+                return
+
+            request.cube = np.empty((request.count, *data.shape), dtype=data.dtype)
+            request.date_obs_first = date_obs
+        elif data.shape != request.cube.shape[1:] or data.dtype != request.cube.dtype:
+            request.error = exc.GrabImageError("Frames in stack do not match in shape or dtype.")
+            request.done.set()
+            return
+
+        i = len(request.dates)
+        request.cube[i] = data  # copies -- drivers reusing buffers are safe
+        request.dates.append(date_obs)
+
+        await self.comm.set_state(
+            IDataStack, DataStackState(count_total=request.count, count_left=request.count - len(request.dates))
+        )
+
+        if len(request.dates) >= request.count:
+            request.done.set()
 
     async def _create_image(self, data: NDArray[Any], next_image: NextImage) -> tuple[Image, str]:
         """Create an Image object from numpy array.
@@ -728,6 +865,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         image = Image(data)
         image.header["DATE-OBS"] = next_image.date_obs
         image.header["IMAGETYP"] = next_image.image_type
+        image.set_meta(DataPipelineName(next_image.pipeline))
 
         # add fits headers and format filename
         await self.add_requested_fits_headers(image, next_image.header_futures)
@@ -746,7 +884,19 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         Returns:
             Tuple with image itself and the filename.
+
+        Raises:
+            GrabImageError: If the data pipeline failed. Nothing is stored in that case.
         """
+
+        # run data pipeline -- replaces raw data with the pipeline's result. The pipeline name
+        # travels as image meta rather than a parameter, so subclasses overriding this method's
+        # signature (pyobs-aravis, pyobs-tis) keep working unchanged. Missing meta means a caller
+        # bypassed _create_image() (e.g. pyobs-iagvt's GregoryCamera) -- fall back to whatever
+        # pipeline is currently selected rather than silently running none.
+        meta = image.get_meta_safe(DataPipelineName)
+        pipeline = self._data_pipeline if meta is None else meta.name
+        image = await self._run_data_pipeline(image, pipeline)
 
         # format filename
         filename = self.format_filename(image)
@@ -793,12 +943,18 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # we want an image that starts exposing AFTER now, so we wait for the current image to finish.
         log.info("Waiting for image to finish...")
-        while image_request.image is None:
+        while image_request.image is None and image_request.error is None:
             await asyncio.sleep(0.01)
 
         # remove from list
         async with self._image_request_lock:
             self._image_requests.remove(image_request)
+
+        # image creation failed?
+        if image_request.error is not None:
+            if isinstance(image_request.error, exc.PyobsError):
+                raise image_request.error
+            raise exc.GrabImageError(str(image_request.error))
 
         # no image?
         if image_request.image is None or image_request.filename is None:
@@ -806,6 +962,95 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # finished
         return image_request.filename
+
+    @timeout(calc_video_stack_timeout)
+    async def grab_stack(self, count: int, broadcast: bool = True, **kwargs: Any) -> str:
+        """Grab count consecutive frames into one product and return its name.
+
+        Without a pipeline selected (IDataPipeline), the product is a 3D cube of all frames.
+        With one, the pipeline runs on the cube (e.g. to combine it) and only its result is
+        stored. Single grab_data() calls during a stack are still served concurrently.
+
+        Args:
+            count: Number of frames.
+            broadcast: Broadcast existence of the product.
+
+        Returns:
+            Name of the stored product.
+
+        Raises:
+            InvalidArgumentError: If count < 1, or the stack would exceed the module's memory cap.
+            DeviceBusyError: If another stack is already running.
+            AbortedError: If the stack was aborted.
+            GrabImageError: If a frame could not be grabbed, frames don't match, or the
+                pipeline failed.
+        """
+        if count < 1:
+            raise exc.InvalidArgumentError("count must be >= 1.")
+        if self._stack_request is not None:
+            raise exc.DeviceBusyError("Cannot start new stack because one is already running.")
+
+        # advisory check, using the size of the last grabbed frame -- settings may have
+        # changed since then, so this can only reject, never guarantee it's safe
+        if self._last_image is not None and count * self._last_image.data.nbytes > self._max_stack_bytes:
+            raise exc.InvalidArgumentError(
+                f"Stack of {count} frames would exceed the memory cap of {self._max_stack_bytes} bytes."
+            )
+
+        await self.activate_camera()
+
+        request = StackRequest(
+            count=count, broadcast=broadcast, image_type=self._image_type, pipeline=self._data_pipeline
+        )
+        self._stack_request = request
+        await self.comm.set_state(IDataStack, DataStackState(count_total=count, count_left=count))
+
+        try:
+            # wait for the request to be filled, keeping the camera awake in the meantime --
+            # a long stack (100 frames at 1 FPS) can easily outlast the default sleep_time
+            while not request.done.is_set():
+                try:
+                    await asyncio.wait_for(request.done.wait(), timeout=1.0)
+                except TimeoutError:
+                    await self.activate_camera()
+
+            if request.error is not None:
+                if isinstance(request.error, exc.PyobsError):
+                    raise request.error
+                raise exc.GrabImageError(str(request.error))
+
+            if request.cube is None or request.date_obs_first is None:
+                raise exc.GrabImageError("Could not take image.")
+
+            # one uniform EXPTIME for all frames: reasonable for a continuous video stream, where
+            # every frame shares the stream's exposure time (unlike BaseCamera's grab_stack, whose
+            # frames can each have been taken with a different exposure time)
+            frame_time = self._exposure_time if hasattr(self, "_exposure_time") else 1.0
+            frames_table = Table(
+                rows=[(i, d, frame_time) for i, d in enumerate(request.dates)],
+                names=("FRAME", "DATE-OBS", "EXPTIME"),
+            )
+
+            image = Image(request.cube, frames=frames_table)
+            image.header["DATE-OBS"] = request.date_obs_first
+            image.header["IMAGETYP"] = request.image_type
+            image.header["CTYPE3"] = "FRAME"
+            image.header["NFRAMES"] = count
+
+            try:
+                image.header["DATE-END"] = (Time(request.dates[-1]) + TimeDelta(frame_time, format="sec")).isot
+            except ValueError:
+                image.header["DATE-END"] = request.dates[-1]
+
+            await self.add_requested_fits_headers(image, request.header_futures or {})
+            await self.add_fits_headers(image)
+            image.set_meta(DataPipelineName(request.pipeline))
+
+            _, filename = await self._finish_image(image, request.broadcast, request.image_type)
+            return filename
+        finally:
+            self._stack_request = None
+            await self.comm.set_state(IDataStack, DataStackState(count_total=0, count_left=0))
 
     async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
@@ -816,3 +1061,36 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
         await self.comm.set_state(IImageType, ImageTypeState(image_type=image_type))
+
+    async def abort(self, **kwargs: Any) -> None:
+        """Abort a running stack.
+
+        Pending single grab_data() requests are not affected -- BaseVideo already serves those
+        concurrently with a running stack.
+        """
+        if self._stack_request is not None:
+            log.info("Aborting stack...")
+            self._stack_request.error = exc.AbortedError("Stack was aborted.")
+            self._stack_request.done.set()
+
+    @default_reset
+    async def reset(self, **kwargs: Any) -> None:
+        """Reset the image type to its default.
+
+        Raises:
+            DeviceBusyError: If a stack is currently running.
+        """
+        if self._stack_request is not None:
+            raise exc.DeviceBusyError("Cannot reset camera while a stack is running.")
+
+        await self.set_image_type(ImageType.OBJECT)
+        await self.set_pipeline(self._default_pipeline)
+
+    @default_reset
+    async def full_reset(self, **kwargs: Any) -> None:
+        """Reset the camera completely to its configured defaults, hardware included.
+
+        Raises:
+            DeviceBusyError: If a stack is currently running.
+        """
+        await self.reset(**kwargs)

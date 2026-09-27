@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from pydantic import ValidationError
@@ -17,6 +17,8 @@ from pyobs.robotic.instruments import (
 )
 from pyobs.robotic.scripts.imaging.imaging import Configuration, ImagingScript, InstrumentConfig
 from pyobs.robotic.task import TaskData
+from pyobs.utils.parallel import Future
+from tests.helpers import isinstance_class, make_proxy_cm
 
 
 def test_misplaced_guiding_config_inside_instrument_configs_raises() -> None:
@@ -36,6 +38,46 @@ def test_misplaced_guiding_config_inside_instrument_configs_raises() -> None:
                 ],
             }
         )
+
+
+# ── _setup_instrument_config ────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_setup_instrument_config_resets_camera_before_binning() -> None:
+    """IResettable.reset() must run before the camera is configured, per iresettable.md, so a
+    pipeline or setting left behind by an earlier config doesn't leak into this one."""
+    from pyobs.interfaces import IBinning, ICamera, IExposureTime, IImageType, IResettable, IWindow
+
+    interfaces = [ICamera, IBinning, IWindow, IExposureTime, IImageType, IResettable]
+    camera = MagicMock(spec=interfaces)
+    camera.__class__ = isinstance_class("Camera", interfaces)
+    camera.reset = AsyncMock()
+    camera.set_binning = AsyncMock()
+    camera.set_window = AsyncMock()
+    camera.set_exposure_time = AsyncMock()
+    camera.set_image_type = AsyncMock()
+    camera.get_capabilities = MagicMock(return_value=None)
+
+    script = make_script(camera="cam1")
+    script._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(camera))
+
+    instrument_config = InstrumentConfig(binning=(2, 2))
+    await script._setup_instrument_config(instrument_config, None, Future(empty=True))
+
+    camera.reset.assert_called_once()
+    calls = [c[0] for c in camera.mock_calls]
+    assert calls.index("reset") < calls.index("set_binning")
+
+
+@pytest.mark.asyncio
+async def test_setup_instrument_config_skips_reset_when_not_supported() -> None:
+    script = make_script(camera="cam1")
+    script._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(None))
+
+    instrument_config = InstrumentConfig()
+    # no camera implements anything -- everything is skipped, must not raise
+    await script._setup_instrument_config(instrument_config, None, Future(empty=True))
 
 
 # ── estimate_duration ────────────────────────────────────────────────────────

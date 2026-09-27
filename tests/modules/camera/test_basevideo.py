@@ -92,14 +92,16 @@ async def test_open_starts_server_and_publishes_capabilities_and_state(mocker) -
     assert bv.opened is True
     site.start.assert_awaited_once()
 
-    bv._comm.set_capabilities.assert_awaited_once()
-    interface, caps = bv._comm.set_capabilities.await_args[0]
+    video_calls = [c for c in bv._comm.set_capabilities.await_args_list if c.args[0] is IVideo]
+    assert len(video_calls) == 1
+    interface, caps = video_calls[0].args
     assert interface is IVideo
     assert caps.mjpeg == bv._video_path
     assert caps.raw == bv._raw_path
 
-    bv._comm.set_state.assert_awaited_once()
-    state_interface, state = bv._comm.set_state.await_args[0]
+    image_type_calls = [c for c in bv._comm.set_state.await_args_list if c.args[0] is IImageType]
+    assert len(image_type_calls) == 1
+    state_interface, state = image_type_calls[0].args
     assert state_interface is IImageType
     assert state.image_type == ImageType.OBJECT
 
@@ -344,7 +346,9 @@ async def test_set_image_creates_image_and_fulfills_pending_requests() -> None:
 
     request = ImageRequest(broadcast=True)
     bv._image_requests.append(request)
-    bv._next_image = NextImage(date_obs="now", image_type=ImageType.OBJECT, header_futures={}, broadcast=True)
+    bv._next_image = NextImage(
+        date_obs="now", image_type=ImageType.OBJECT, header_futures={}, broadcast=True, pipeline=None
+    )
 
     await bv._set_image(np.zeros((4, 4)))
 
@@ -389,7 +393,7 @@ async def test_create_image_sets_headers_and_delegates_to_finish() -> None:
     bv.add_fits_headers = AsyncMock()
     bv._finish_image = AsyncMock(return_value=("image", "filename.fits"))
     next_image = NextImage(
-        date_obs="2024-01-01T00:00:00", image_type=ImageType.DARK, header_futures={}, broadcast=False
+        date_obs="2024-01-01T00:00:00", image_type=ImageType.DARK, header_futures={}, broadcast=False, pipeline=None
     )
 
     result = await bv._create_image(np.zeros((4, 4)), next_image)

@@ -1,6 +1,6 @@
 # `IDataStack`: grab a stack of consecutive frames into one product
 
-Status: proposed (2026-09-27). Not implemented. Plan:
+Status: implemented (2026-09-27). Plan:
 [`2026-09-27-data-pipeline-stack-reset.md`](../plans/2026-09-27-data-pipeline-stack-reset.md).
 
 Repos: pyobs-core (interface, `Image`, `BaseCamera`, `BaseVideo`), driver plugins (inherit it via

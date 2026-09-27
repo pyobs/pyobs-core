@@ -23,7 +23,9 @@ from .ICamera import ICamera
 from .IConfig import ConfigCapabilities, ConfigScalar, ConfigValue, IConfig
 from .ICooling import CoolingState, ICooling
 from .IData import IData
+from .IDataPipeline import DataPipelineCapabilities, DataPipelineState, IDataPipeline
 from .IDataSequence import DataSequenceState, IDataSequence
+from .IDataStack import DataStackState, IDataStack
 from .IDome import IDome
 from .IExposure import ExposureState, IExposure
 from .IExposureTime import ExposureTimeState, IExposureTime
@@ -53,6 +55,7 @@ from .IPointingRaDec import IPointingRaDec, RaDecState
 from .IPointingSeries import IPointingSeries
 from .IPushNotifications import IPushNotifications, PushNotificationType
 from .IReady import IReady, ReadyState
+from .IResettable import IResettable, default_reset
 from .IRobotic import IRobotic, RoboticState, RoboticTask
 from .IRoboticScheduler import IRoboticScheduler, SchedulerState
 from .IRoof import IRoof
@@ -98,8 +101,13 @@ __all__ = [
     "ConfigValue",
     "ICooling",
     "CoolingState",
+    "IDataPipeline",
+    "DataPipelineState",
+    "DataPipelineCapabilities",
     "IDataSequence",
     "DataSequenceState",
+    "IDataStack",
+    "DataStackState",
     "IDome",
     "IExposure",
     "ExposureState",
@@ -154,6 +162,8 @@ __all__ = [
     "PushNotificationType",
     "IReady",
     "ReadyState",
+    "IResettable",
+    "default_reset",
     "IRobotic",
     "RoboticTask",
     "RoboticState",

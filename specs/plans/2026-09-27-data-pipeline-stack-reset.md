@@ -1,6 +1,7 @@
 # Plan: `IResettable`, `IDataPipeline`, `IDataStack`
 
-Status: proposed (2026-09-27). Not started.
+Status: implemented, closed (merged 2026-09-27, PR #919; released as pyobs-core v2.11.0). Phases
+1-8 all done; see "Follow-ups (not part of this plan)" for what's deliberately left open.
 
 Repos: pyobs-core (all code changes in this plan), driver plugins (verification and follow-ups
 only: pyobs-asi, pyobs-fli, pyobs-flipro, pyobs-qhyccd, pyobs-sbig, pyobs-aravis, pyobs-tis,

@@ -100,8 +100,7 @@ class: pyobs_aravis.AravisCamera
 # ...
 pipelines:
   median:
-    - class: pyobs.images.processors.image.CombineStack   # does not exist yet, see idatastack.md
-      method: median
+    - class: pyobs.images.processors.stack.MedianStack   # see combinestack.md
   astrometry:
     - class: pyobs.images.processors.detection.DaophotSourceDetection
     - class: pyobs.images.processors.astrometry.AstrometryDotNet
@@ -149,7 +148,7 @@ publishes the state.
   - Any other exception also becomes `GrabImageError`.
 
 The pipeline runs on the event loop, like every existing `PipelineMixin` user. Processors doing
-heavy numpy work (the future `CombineStack`) must offload to an executor themselves.
+heavy numpy work (the future stack combine processors) must offload to an executor themselves.
 
 ### Where the pipeline runs
 
@@ -203,7 +202,7 @@ see [`idatastack.md`](idatastack.md).
 ## Not in scope
 
 - Spectrograph pipelines (see above).
-- The `CombineStack` image processor (next plan).
+- The stack combine processors, see [`combinestack.md`](combinestack.md).
 - pyobs-gui: a pipeline selector in `CameraWidget`, driven by `DataPipelineCapabilities`.
 - Rejecting surplus RPC params in `xml_to_params()` instead of silently dropping them. A general
   RPC boundary issue found while designing this. Open separately.

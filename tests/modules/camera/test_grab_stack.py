@@ -14,6 +14,7 @@ import pytest
 
 import pyobs.utils.exceptions as exc
 from pyobs.images import Image, ImageProcessor
+from pyobs.images.processors.stack import MedianStack
 from pyobs.interfaces import IDataStack
 from pyobs.modules.camera import DummyCamera
 from pyobs.modules.camera.basecamera import calc_stack_timeout
@@ -340,6 +341,22 @@ async def test_grab_stack_with_combine_pipeline_stores_2d_product() -> None:
     image = camera.vfs.write_image.await_args[0][1]
     assert image.data.ndim == 2
     assert image.header["PIPELINE"] == "mean"
+
+
+@pytest.mark.asyncio
+async def test_grab_stack_with_median_stack_pipeline() -> None:
+    camera = make_camera(pipelines={"median": [MedianStack()]}, default_pipeline="median")
+    await camera.open()
+
+    await camera.grab_stack(3)
+
+    image = camera.vfs.write_image.await_args[0][1]
+    assert image.data.shape == (20, 20)
+    assert image.data.dtype == np.float32
+    assert image.header["COMBMETH"] == "median"
+    assert image.header["NFRAMES"] == 3
+    assert "CTYPE3" not in image.header
+    assert len(image.frames) == 3
 
 
 # ── calc_stack_timeout ───────────────────────────────────────────────────────

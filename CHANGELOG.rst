@@ -17,6 +17,11 @@ v2.5.0
   product is stored. Implemented by ``BaseCamera`` and ``BaseVideo``, memory-capped via new
   ``max_stack_bytes``/``stack_frame_overhead``/``stack_timeout_margin`` init parameters. See
   ``specs/design/idatastack.md``.
+* New ``pyobs.images.processors.stack`` package: pipeline steps that collapse a ``grab_stack()``
+  cube into one float32 frame, one class per method (``MeanStack``, ``MedianStack``,
+  ``SumStack``, ``SigmaClipStack``) on a common ``CombineStack`` base. Non-stack images pass
+  through unchanged, NaNs are ignored, the cube is processed in row blocks in a worker thread,
+  and an uncertainty and mask extension can be enabled. See ``specs/design/combinestack.md``.
 * ``Image``: fixed ``NAXIS1``/``NAXIS2`` for 3D data (previously swapped), ``is_color`` now
   excludes stack cubes (``CTYPE3 == 'FRAME'``), and a new optional ``frames`` table (per-frame
   ``FRAME``/``DATE-OBS``/``EXPTIME``, written/read as a ``FRAMES`` FITS extension). Also fixes

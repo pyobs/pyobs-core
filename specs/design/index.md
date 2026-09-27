@@ -7,6 +7,9 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   page for `BaseVideo`'s HTTP endpoints. *implemented* (Repos: pyobs-core, pyobs-gui)
 - [basevideo-raw-frame-streaming.md](basevideo-raw-frame-streaming.md) — `BaseVideo` raw-frame
   streaming endpoint alongside the existing MJPEG live view. *implemented*
+- [combinestack.md](combinestack.md) — `pyobs.images.processors.stack`: processors that collapse
+  an `IDataStack` cube into one frame, one class per method (mean, median, sum, sigma-clip). *implemented*
+  (2026-09-27)
 - [exception_handling.md](exception_handling.md) — exception handling across the RPC boundary.
   *implemented*
 - [external_interfaces_registry.md](external_interfaces_registry.md) — external interfaces

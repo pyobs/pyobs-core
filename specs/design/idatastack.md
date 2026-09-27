@@ -87,9 +87,10 @@ it stays meaningful (see Timeouts).
 
 No `pipeline` parameter. The module's currently selected pipeline (`IDataPipeline`) runs on
 the cube, exactly as it runs on single frames. Combining is just a pipeline step
-(`CombineStack`, next plan), so the stack code never needs to know about combine methods.
+(the `pyobs.images.processors.stack` processors, see
+[`combinestack.md`](combinestack.md)), so the stack code never needs to know about combine methods.
 
-Consequence: until `CombineStack` exists, a stack is stored as a raw cube (subject to the
+Consequence: until those processors exist, a stack is stored as a raw cube (subject to the
 memory cap). Pipelines selected for stacks should start with a combine step. Most existing
 processors assume 2D data and will fail or misbehave on a cube. That is accepted, not guarded
 against.
@@ -121,7 +122,7 @@ array, and nothing downstream handles that.
 `count == 1` still produces a 3D cube with `NAXIS3 = 1`, so consumers never have to guess the
 layout from `count`.
 
-A future `CombineStack` processor reduces this to 2D, removes `CTYPE3`/`NAXIS3`, keeps
+A future combine processor ([`combinestack.md`](combinestack.md)) reduces this to 2D, removes `CTYPE3`/`NAXIS3`, keeps
 `NFRAMES`, and keeps the `FRAMES` table.
 
 ## Required `Image` changes
@@ -283,8 +284,7 @@ fixed here.
 
 ## Not in scope
 
-- `CombineStack` processor (mean, median, sum, kappa-sigma via `astropy.stats.sigma_clip`).
-  Next plan.
+- Combine processors (mean, median, sum, kappa-sigma), see [`combinestack.md`](combinestack.md).
 - Stacks within sequences (N stacks of M frames).
 - `BaseSpectrograph` stacks.
 - Writing large cubes to disk instead of the `BaseVideo` memory cache.

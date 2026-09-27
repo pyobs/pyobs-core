@@ -925,7 +925,9 @@ No issue needed for pyobs-tis / pyobs-v4l (see phase 7 findings).
 
 ## Follow-ups (not part of this plan)
 
-- `CombineStack` image processor (`pyobs/images/processors/image/combinestack.py`): mean,
+- Stack combine processors, designed in
+  [`combinestack.md`](../design/combinestack.md) (package `pyobs/images/processors/stack/`, one
+  class per method). Original note: mean,
   median, sum, kappa-sigma (`astropy.stats.sigma_clip`), float32, run in an executor, 2D input
   passed through unchanged, removes `CTYPE3`/`NAXIS3`, keeps `NFRAMES` and `FRAMES`.
 - Driver `reset()` overrides for extra settings, and `full_reset()` overrides with hardware

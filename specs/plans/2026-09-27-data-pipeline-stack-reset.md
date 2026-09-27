@@ -428,35 +428,476 @@ Small, independent, and required by the stacks. Do it first.
 No code changes in sibling repos as part of this plan. Produce a short report (append to this
 plan under "Sibling-repo findings") covering:
 
-- [ ] Every class that subclasses `BaseCamera`, `BaseVideo` or `BaseSpectrograph`, directly or
+- [x] Every class that subclasses `BaseCamera`, `BaseVideo` or `BaseSpectrograph`, directly or
       indirectly, in `/home/husser/code/pyobs/pyobs-*` (skip `.venv`, `.claude/worktrees`).
       Known direct subclasses (2026-09-27): `AsiCamera`, `AsiCoolCamera` (pyobs-asi),
       `FliCamera` (pyobs-fli), `FliProCamera` (pyobs-flipro), `QHYCCDCamera` (pyobs-qhyccd),
       `SbigCamera` (pyobs-sbig), `AravisCamera` (pyobs-aravis), `TisCamera` (pyobs-tis),
       `v4lCamera` (pyobs-v4l), `FTS` (pyobs-iagvt). Indirect: e.g. pyobs-monet
       `FrontendCameraSouth` via `QHYCCDBonnShutter`.
-- [ ] For each: does it override `grab_data()`, `_finish_image()`, `open()` in a way that skips
+- [x] For each: does it override `grab_data()`, `_finish_image()`, `open()` in a way that skips
       the base class, or define `reset`, `grab_stack`, `set_pipeline`, `abort` with a different
       meaning? (Known: `FTS.grab_data()` delegates to `BaseSpectrograph.grab_data()`, fine;
       `AravisCamera`/`TisCamera._finish_image()` call `super()`, fine.)
-- [ ] Which ones have per-acquisition settings the base `reset()` doesn't cover (gain, offset,
+- [x] Which ones have per-acquisition settings the base `reset()` doesn't cover (gain, offset,
       image format, trigger mode, ...). These need a driver-side `reset()` override as a
       follow-up. Known candidates: `AsiCamera` (`IGain`, `IImageFormat`), `QHYCCDCamera` (`IGain`).
-- [ ] Which ones apply hardware settings in `open()` (cooling setpoint, fan, trigger mode, ...)
+- [x] Which ones apply hardware settings in `open()` (cooling setpoint, fan, trigger mode, ...)
       that should move into a `full_reset()` override. For each, note what happens today if
       that setup fails in `open()` (does startup abort?), since after migration the failure is
       only logged. Known candidates: `FliCamera` (`self._temp_setpoint`), `AsiCoolCamera`
       (`setpoint`), and every other `ICooling` implementor.
-- [ ] Which ones produce color frames (these can't stack, see design doc).
-- [ ] Run each sibling repo's own test suite against the modified pyobs-core, if it has one
+- [x] Which ones produce color frames (these can't stack, see design doc).
+- [x] Run each sibling repo's own test suite against the modified pyobs-core, if it has one
       and it runs standalone (`pip install -e ../pyobs-core` into that repo's environment, or
-      whatever that repo's README says). Report failures, don't fix them.
-- [ ] For each driver in the report, draft an issue text (title + body) in this plan under
+      whatever that repo's README says). Report failures, don't fix them. (pyobs-monet has no
+      standalone-runnable suite -- see findings below; every other repo ran.)
+- [x] For each driver in the report, draft an issue text (title + body) in this plan under
       "Draft driver issues": which `reset()`/`full_reset()` overrides it needs, which settings
       each must restore and from which attribute/config value, which hardware setup in `open()`
       should move, what happens today when that setup fails, and a link to
       `specs/design/iresettable.md`. One issue per sibling repo, drivers of the same repo
       combined. **Do not open the issues.**
+
+## Sibling-repo findings
+
+Surveyed (2026-09-27, against this branch): pyobs-asi, pyobs-fli, pyobs-flipro, pyobs-qhyccd,
+pyobs-sbig, pyobs-aravis, pyobs-tis, pyobs-v4l, pyobs-iagvt, pyobs-monet. Also grepped
+pyobs-alpaca, pyobs-brot, pyobs-gemini, pyobs-monti, pyobs-zaber, pyobs-zwoeaf, pyobs-polaris,
+pyobs-iag50 for `BaseCamera`/`BaseVideo`/`BaseSpectrograph`/`ICamera`/`IVideo`/`ISpectrograph`
+subclasses: none found (pyobs-alpaca's `dome.py` and pyobs-iag50's `aligntest.py` mention
+`ICamera` only in a comment / as a proxy consumer, not an implementor). 13 direct/indirect
+subclasses across 10 repos confirmed.
+
+### pyobs-asi
+
+- `AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperatures)`,
+  `AsiCoolCamera(AsiCamera, ICooling)`. No overrides of `grab_data`/`_finish_image`/`abort`; both
+  use base `open()` cooperatively (`await AsiCamera.open(self)` in the subclass).
+- **No `reset()`/`full_reset()` override in either class.** `AsiCamera` implements `IGain`
+  (`self._gain = 1.0`, `self._gain_offset = 50.0` set in `__init__`, never restored) and
+  `IImageFormat` (`self._image_format = ImageFormat.INT16`) -- both per-acquisition settings the
+  base `reset()` doesn't touch. `Module.startup()`'s gap warning will fire "IGain/IImageFormat"
+  for both classes.
+  Fixed SDK constants applied once in `open()`'s `_open()` closure (white balance, gamma, flip,
+  raw16 image type) are not user-configurable settings and don't need a `full_reset()` migration.
+- `AsiCoolCamera.open()`: `await self.set_cooling(True, self._temp_setpoint)` right after
+  `AsiCamera.open()`. **Today, a `set_cooling()` failure here raises out of `open()` and aborts
+  `Module.startup()`** -- the module never reaches `READY`. After migrating to `full_reset()`,
+  the same failure would only be logged (per `iresettable.md`'s documented behavior change).
+- **Color frames:** yes. `set_image_format(ImageFormat.RGB24)` produces genuine `(3, ny, nx)`
+  data (`np.moveaxis(data, 2, 0)` after BGR->RGB conversion) -- `grab_stack()`'s
+  `ndim != 2` check correctly rejects it. Raw8/Raw16 (the defaults) are 2D with a `BAYERPAT`
+  header, not `is_color`.
+
+### pyobs-fli
+
+- `FliCamera(BaseCamera, FliBaseMixin, ICamera, IWindow, IBinning, ICooling, ITemperatures,
+  IAbortable)`. No overrides of `grab_data`/`_finish_image`/`abort`; `open()` calls
+  `BaseCamera.open(self)` then `FliBaseMixin.open(self)` cooperatively.
+- **No `reset()`/`full_reset()` override.** No `IGain`/`IImageFormat`, so no per-acquisition-
+  setting gap beyond what `BaseCamera.reset()` already covers (binning/window).
+- `open()`: `if self._temp_setpoint is not None: await self.set_cooling(True, self._temp_setpoint)`.
+  **Today this failure aborts `Module.startup()`** (same shape as `AsiCoolCamera`). Migration
+  candidate for `full_reset()`.
+- **Color frames:** no (monochrome CCD, no RGB/Bayer handling found).
+
+### pyobs-flipro
+
+- `FliProCamera(BaseCamera, ICamera, IAbortable, IWindow, IBinning, ICooling, ITemperatures)`.
+  No overrides of `grab_data`/`_finish_image`/`abort`.
+- **No `reset()`/`full_reset()` override.** No `IGain`/`IImageFormat`.
+- `open()`: `if self._temp_setpoint is not None: await self.set_cooling(True, self._temp_setpoint)`,
+  after device connect/capability query. **Failure here aborts `Module.startup()` today**
+  (identical shape to `FliCamera`/`AsiCoolCamera`).
+- **Color frames:** no.
+
+### pyobs-qhyccd
+
+- `QHYCCDCamera(BaseCamera, ICamera, IWindow, IBinning, IAbortable, ICooling, IGain)`. No
+  overrides of `grab_data`/`_finish_image`/`abort`.
+- **No `reset()`/`full_reset()` override.** Implements `IGain` (`set_gain`/`set_offset`), so the
+  `IGain` gap warning fires. Note: unlike `DummyCamera`, `QHYCCDCamera` has no *configured*
+  default gain/offset to restore -- `open()` reads whatever the sensor currently reports
+  (`driver.get_param(CONTROL_GAIN/OFFSET)`) as the initial value, so a `reset()` override here
+  needs a design decision (e.g. restore to the value from `self._params` if the config sets one,
+  else leave it -- there's no natural "zero state" the way `DummyCamera`'s hardcoded `10.0`/`0.0`
+  is).
+- `open()` applies **two** things that could fail and currently abort startup: `set_cooling()`
+  (`if self._setpoint is not None`) and, separately, `self._params` (arbitrary custom
+  `CONTROL_*` values applied via `_set_custom_params()`, e.g. could include gain/offset/whatever
+  else is configured) -- both candidates for `full_reset()`.
+- **Color frames:** no -- the driver explicitly raises `ValueError` for unsupported color
+  cameras at connect time (comment: "e.g. unsupported color cams").
+
+### pyobs-sbig
+
+- `SbigCamera(BaseCamera, ICamera, IWindow, IBinning, ICooling, ITemperatures, IAbortable)`. No
+  overrides of `grab_data`/`_finish_image`/`abort`.
+- **No `reset()`/`full_reset()` override.** No `IGain`/`IImageFormat`.
+- `open()`: `await self.set_cooling(self._setpoint is not None, self._setpoint)`, unconditional
+  (always called, even to explicitly disable cooling when unset). **Failure aborts
+  `Module.startup()` today.**
+- **Color frames:** no.
+
+### pyobs-aravis
+
+- `AravisCamera(BaseVideo, IExposureTime)`. `_finish_image()` overrides the signature, adds
+  `INSTRUME`/`GAIN`/`TRIGMODE` headers from `self._settings`, then calls
+  `super()._finish_image(...)` -- confirmed still accurate, matches `idatapipeline.md`'s
+  assumption exactly.
+- **No `reset()`/`full_reset()` override, and this one matters**: `AravisCamera` implements
+  `IExposureTime` with its own `self._exposure_time`, but `BaseVideo.reset()` only resets image
+  type and pipeline (per `iresettable.md`: "`BaseVideo` doesn't own an exposure time... Drivers
+  that want it override"). So calling `reset()` on an `AravisCamera` today leaves a
+  previously-set exposure time in place. This is a real per-acquisition-setting gap, not just a
+  hypothetical -- worth a `reset()` override restoring `self._exposure_time` to a configured
+  default.
+- **`open()`/hardware setup differs from the camera drivers above**: `_open_camera()` (device
+  connect + `self._settings` feature application, e.g. gain/trigger mode) runs inside
+  `_activate_camera()`, which `BaseVideo.activate_camera()` calls both from `open()` *and* every
+  time the camera wakes from its inactivity sleep. A connect/settings-apply failure there is
+  already only **logged** (`log.error(...)`), never raised -- `open()` itself does not abort on
+  this failure today. So there's no "migrate to `full_reset()` to avoid aborting startup" story
+  here; if anything, `_settings` already gets silently reapplied on every activation cycle, which
+  is closer to what `full_reset()` is for, just triggered by activity instead of by an explicit
+  call. Still worth a `full_reset()` override that re-triggers this (e.g. force a
+  deactivate+activate cycle), for symmetry with the other drivers and for a caller that expects
+  `full_reset()` to be the one blocking call that guarantees it.
+- **Color frames:** no evidence found in this driver of RGB conversion; format is set via
+  `self._settings` (GenICam features), untested here.
+
+### pyobs-tis
+
+- `TisCamera(BaseVideo)`. `_finish_image()` overrides the signature, adds
+  `INSTRUME`/`VIDFMT`/`VIDFPS` headers, calls `super()._finish_image(...)` -- confirmed accurate.
+- No `IExposureTime`, no `IGain`, no `ICooling`. **No per-acquisition-setting or hardware-setup
+  gap** -- `open()` connects with a fixed `self._format` (`TIS.SinkFormats.GRAY8`, hardcoded) set
+  once at construction, nothing to restore.
+- **Color frames:** no (`GRAY8` hardcoded).
+- No follow-up issue needed for this repo.
+
+### pyobs-v4l
+
+- `v4lCamera(BaseVideo)`. No `_finish_image`/`grab_data`/`abort`/`open()` override at all (relies
+  entirely on `BaseVideo`'s), frames come from a background `_capture()` task calling
+  `cv2.VideoCapture.read()` directly into `_set_image()`.
+- No `IExposureTime`, `IGain`, `ICooling`. **No per-acquisition-setting or hardware-setup gap.**
+- **Color frames: yes, and worth flagging separately from the stacking concern.**
+  `cv2.VideoCapture.read()` returns BGR `(height, width, 3)` frames with no grayscale conversion
+  in this driver. `grab_stack()`'s `ndim != 2` check correctly rejects these regardless of axis
+  order. But note (out of scope for this plan, not fixing here): `Image.is_color` checks
+  `shape[0] == 3` (channel-*first* convention, matching `AsiCamera`'s RGB24 and the general FITS
+  cube convention this plan uses), so a `v4lCamera` frame's `is_color` would incorrectly read
+  `False` unless `height == 3` -- a pre-existing mismatch between this driver's channel-last
+  layout and `Image.is_color`'s channel-first assumption, unrelated to this plan.
+- No follow-up issue needed for `IResettable`/`IDataStack`; the `is_color` mismatch above is a
+  separate, pre-existing observation worth its own issue if anyone cares (not drafted here, out
+  of this plan's scope).
+
+### pyobs-iagvt
+
+- `FTS(BaseSpectrograph, IAbortable, IStructuredConfig, IMode)`. `grab_data()` delegates to
+  `BaseSpectrograph.grab_data()` (confirmed, still accurate) and additionally guarantees the
+  exposure status returns to `IDLE` on failure/abort (base only does it on success) -- compatible
+  extension, not a different meaning. `abort()` extends the base (`expose_abort.set()` +
+  `_abort_data_sequence()` + FTS-specific hardware abort) -- also a compatible extension.
+  **No `reset()`/`full_reset()` override.** `FTS` has its own `_reset_scan_mode()` method, called
+  today after every `grab_data()` completes but *not* wired into `IResettable` -- exactly the
+  hook `iresettable.md` anticipated ("FTS could reset its scan mode"). Real, actionable
+  follow-up.
+- `GregoryCamera(AravisCamera, IConfig)` and `FiberCamera(AravisCamera, IGain, IMode)`: both
+  **override `_create_image()` and build their own `Image()` directly, never calling
+  `super()._create_image()`** -- confirmed, still accurate, and this is exactly the case
+  `idatapipeline.md`'s meta-fallback (`DataPipelineName` missing -> use `self._data_pipeline`)
+  was built for. Verified by reading both: neither sets `DataPipelineName` meta, both end by
+  calling `self._finish_image(image, next_image.broadcast, next_image.image_type)`, so the
+  fallback in `BaseVideo._finish_image()` is what makes pipelines work for them at all.
+  - `GregoryCamera` also does its own internal multi-frame averaging (`self._num_average`,
+    `NAVGSTK` header) inside `_create_image()`. This is unrelated to and doesn't conflict with
+    `grab_stack()`/`IDataStack` (which `GregoryCamera` now advertises automatically via
+    `BaseVideo`) -- two independent mechanisms, one baked into single-frame acquisition, one
+    layered on top via the frame-collection hook in `_set_image()`. Not a bug, just worth noting
+    for whoever eventually points a GUI at this camera's stack button.
+  - `FiberCamera` implements `IGain` (`set_gain`/`_get_gain`) with no `reset()` override --
+    inherits the `AravisCamera` exposure-time gap too (see pyobs-aravis above), plus its own gain
+    gap.
+- **Color frames:** none of the three (spectrograph HDUList output for `FTS`; `AravisCamera`-
+  based mono cameras for the other two).
+
+### pyobs-monet
+
+- Indirect subclasses only, all via BonnShutter wrappers, none define `reset`/`full_reset`/
+  `abort`/`grab_data`/`_finish_image` (they inherit the driver-repo gaps described above
+  unchanged) and all call the parent's `open()` cooperatively (no base-skipping):
+  - `FliBonnShutter(FliCamera)`, `FliKeplerBonnShutter(FliProCamera)` -- inherit the FLI/FLIPRO
+    cooling-in-`open()` gap.
+  - `QHYCCDBonnShutter(QHYCCDCamera)` -- inherits the QHYCCD cooling + `_params` gap.
+  - `SbigBonnShutter(SbigCamera)` -- inherits the SBIG cooling gap; also overrides `_expose()` to
+    open/close the mechanical shutter around `SbigCamera._expose()`, calls the base via
+    `SbigCamera._expose(self, ...)`, fine (compatible extension, not skipped).
+  - `FrontendCameraSouth(QHYCCDBonnShutter)` (`frontendcamerasouth.py`) and a **same-named but
+    different** `FrontendCameraSouth(FliBonnShutter, MotionStatusMixin, IMode, IMotion)`
+    (`frontendcamerasouthfli.py`, presumably an alternate/legacy South frontend on FLI hardware
+    instead of QHY -- both exist in the repo today, worth flagging to Tim as a naming collision
+    independent of this plan). Neither overrides `open()` in a way that skips the parent.
+- **New hardware-setup-in-`open()` finding, on top of the inherited cooling gaps**:
+  `FliBonnShutter.open()` and `QHYCCDBonnShutter.open()` both add, after the parent's `open()`:
+  "make sure blade A/B is open, if requested" (`self._ensure_blade_open`) -- a mechanical shutter
+  positioning step, same shape as the cooling-setup candidates (hardware state applied once in
+  `open()`, would abort startup today if it fails, candidate for `full_reset()`).
+- **Color frames:** no (inherits mono behavior from the underlying FLI/QHYCCD/SBIG drivers).
+- **Test suite:** does **not** run standalone. `tests/scripts/test_lco_morisot.py` fails to even
+  collect: `ModuleNotFoundError: No module named 'pyobs.comm.dbus'`. This is a pre-existing,
+  unrelated breakage (no `pyobs.comm.dbus` module exists in this or any recent pyobs-core; not
+  something this plan's changes touch) -- not something to fix here, just reporting per the
+  checklist. `pyobs-monet` also has no `pytest`/`pytest-asyncio` in its own dependency groups;
+  had to install them ad hoc into its `.venv` to even attempt this.
+
+### Sibling test suites run (`uv pip install --python .venv/bin/python -e ../pyobs-core --no-deps`
+into each repo's own `.venv`, then `pytest`)
+
+| Repo | Result |
+|---|---|
+| pyobs-asi | 14 passed |
+| pyobs-fli | 22 passed |
+| pyobs-flipro | 10 passed |
+| pyobs-qhyccd | 12 passed |
+| pyobs-sbig | 14 passed |
+| pyobs-aravis | 4 passed, 1 skipped |
+| pyobs-tis | 4 passed |
+| pyobs-v4l | 5 passed |
+| pyobs-iagvt | 113 passed (`-m "not integration and not xmpp"`) |
+| pyobs-monet | **could not run** -- see finding above |
+
+No failures anywhere. This branch's changes to `Image`, `BaseCamera`, `BaseVideo` are backward
+compatible with every sibling driver's own test suite as currently written.
+
+## Draft driver issues
+
+Per the plan: drafts only, **not opened**. Each links `specs/design/iresettable.md` and should be
+opened with this repo's released version number once merged (phase 8).
+
+### pyobs-asi
+
+**Title:** Add `IResettable` overrides: restore gain/offset/image format in `reset()`, move
+cooling setup into `full_reset()`
+
+**Body:**
+
+pyobs-core now has `IResettable` (`reset()`/`full_reset()`), implemented generically in
+`BaseCamera`. `AsiCamera` and `AsiCoolCamera` inherit it but don't override either method, so:
+
+- `reset()` doesn't restore gain (`self._gain`, default `1.0`), gain offset (`self._gain_offset`,
+  default `50.0`), or image format (`self._image_format`, default `ImageFormat.INT16`) --
+  `Module.startup()` now logs a warning about this on every startup.
+- `AsiCoolCamera.open()` applies the configured cooling setpoint
+  (`await self.set_cooling(True, self._temp_setpoint)`); today a failure there raises out of
+  `open()` and aborts `Module.startup()` entirely. Moving it into a `full_reset()` override means
+  that failure is only logged and the module still reaches `READY` (cooling off) -- see
+  "Behavior change for drivers that migrate" in `specs/design/iresettable.md`.
+
+Needed:
+```python
+async def reset(self, **kwargs: Any) -> None:
+    await BaseCamera.reset(self, **kwargs)
+    await self.set_gain(1.0)
+    await self.set_offset(50.0)
+    await self.set_image_format(ImageFormat.INT16)
+```
+on `AsiCamera`, and on `AsiCoolCamera`:
+```python
+async def full_reset(self, **kwargs: Any) -> None:
+    await self.reset(**kwargs)
+    await self.set_cooling(True, self._temp_setpoint)
+```
+with the `set_cooling()` call removed from `AsiCoolCamera.open()`.
+
+See `specs/design/iresettable.md` (pyobs-core) for the full design and behavior-change rationale.
+
+### pyobs-fli
+
+**Title:** Add `IResettable.full_reset()` override: move cooling setup out of `open()`
+
+**Body:**
+
+`FliCamera.open()` applies the configured cooling setpoint
+(`if self._temp_setpoint is not None: await self.set_cooling(True, self._temp_setpoint)`); a
+failure there today raises out of `open()` and aborts `Module.startup()`.
+
+Needed:
+```python
+async def full_reset(self, **kwargs: Any) -> None:
+    await self.reset(**kwargs)
+    if self._temp_setpoint is not None:
+        await self.set_cooling(True, self._temp_setpoint)
+```
+with the equivalent block removed from `open()`. No `reset()` override needed -- `FliCamera` has
+no per-acquisition settings beyond what `BaseCamera.reset()` already covers.
+
+See `specs/design/iresettable.md` (pyobs-core).
+
+### pyobs-flipro
+
+**Title:** Add `IResettable.full_reset()` override: move cooling setup out of `open()`
+
+**Body:**
+
+Same shape as the pyobs-fli issue: `FliProCamera.open()` calls
+`await self.set_cooling(True, self._temp_setpoint)` after device connect; a failure there aborts
+`Module.startup()` today.
+
+Needed:
+```python
+async def full_reset(self, **kwargs: Any) -> None:
+    await self.reset(**kwargs)
+    if self._temp_setpoint is not None:
+        await self.set_cooling(True, self._temp_setpoint)
+```
+with the block removed from `open()`. No `reset()` override needed (no `IGain`/`IImageFormat`).
+
+See `specs/design/iresettable.md` (pyobs-core).
+
+### pyobs-qhyccd
+
+**Title:** Add `IResettable` overrides: gain/offset in `reset()` (needs a default policy), cooling
++ custom params in `full_reset()`
+
+**Body:**
+
+`QHYCCDCamera` implements `IGain` but has no configured default gain/offset the way
+`DummyCamera` does -- `open()` currently reads whatever the sensor reports and treats that as the
+starting value. Before adding a `reset()` override, decide what "default" means here: e.g. add an
+explicit `default_gain`/`default_offset` config option, or fall back to a value from `self._params`
+if one is configured there, or leave gain out of `reset()` and document that this camera's
+"default" gain is whatever was on the sensor at connect time.
+
+Separately, `open()` applies two things that today abort `Module.startup()` on failure and should
+move into `full_reset()`:
+- `set_cooling(True, self._setpoint)` (if `self._setpoint is not None`)
+- custom `self._params` (`CONTROL_*` values applied via a private `_set_custom_params()` closure)
+
+Needed (once the gain default question above is resolved):
+```python
+async def full_reset(self, **kwargs: Any) -> None:
+    await self.reset(**kwargs)
+    if self._setpoint is not None:
+        await self.set_cooling(True, self._setpoint)
+    if self._params is not None:
+        ...  # re-apply custom params, currently a private closure inside open()
+```
+
+See `specs/design/iresettable.md` (pyobs-core).
+
+### pyobs-sbig
+
+**Title:** Add `IResettable.full_reset()` override: move cooling setup out of `open()`
+
+**Body:**
+
+`SbigCamera.open()` unconditionally calls
+`await self.set_cooling(self._setpoint is not None, self._setpoint)`; a failure there aborts
+`Module.startup()` today.
+
+Needed:
+```python
+async def full_reset(self, **kwargs: Any) -> None:
+    await self.reset(**kwargs)
+    await self.set_cooling(self._setpoint is not None, self._setpoint)
+```
+with the equivalent call removed from `open()`. No `reset()` override needed (no
+`IGain`/`IImageFormat`).
+
+See `specs/design/iresettable.md` (pyobs-core).
+
+### pyobs-aravis
+
+**Title:** Add `IResettable.reset()` override to restore exposure time
+
+**Body:**
+
+`AravisCamera` implements `IExposureTime` with its own `self._exposure_time`, but
+`BaseVideo.reset()` only resets image type and the data pipeline (it doesn't own an exposure time
+generically -- see `specs/design/iresettable.md`). Calling `reset()` on an `AravisCamera` today
+leaves a previously-set exposure time in place.
+
+Needed:
+```python
+async def reset(self, **kwargs: Any) -> None:
+    await BaseVideo.reset(self, **kwargs)
+    await self.set_exposure_time(<default>)
+```
+(pick `<default>` -- `0.0` to match `BaseCamera`'s convention, or a configured default.)
+
+Not needed: a `full_reset()` override for hardware setup. `_open_camera()` (device connect +
+feature/gain/trigger-mode application from `self._settings`) already re-runs on every
+`activate_camera()` call (including every wake from the inactivity sleep), and a failure there is
+already only logged, never raised -- there's no "aborts startup" behavior change to make here.
+Consider, as a lower-priority nice-to-have, a `full_reset()` override that forces a
+deactivate+activate cycle for symmetry with the other drivers.
+
+`GregoryCamera` and `FiberCamera` (pyobs-iagvt) inherit this gap; see that repo's issue for their
+additional gaps (scan mode / gain).
+
+See `specs/design/iresettable.md` (pyobs-core).
+
+### pyobs-tis / pyobs-v4l
+
+No issue needed. Neither driver has per-acquisition settings beyond what the base classes cover,
+nor hardware setup in `open()` that would benefit from a `full_reset()` migration.
+(`v4lCamera`'s `Image.is_color` / channel-order mismatch, noted above, is unrelated to
+`IResettable`/`IDataPipeline`/`IDataStack` and not drafted as an issue here.)
+
+### pyobs-iagvt
+
+**Title:** Wire `FTS`'s scan-mode reset into `IResettable`; restore gain/exposure time on
+`GregoryCamera`/`FiberCamera`
+
+**Body:**
+
+Three independent follow-ups surfaced by pyobs-core's new `IResettable`:
+
+1. `FTS` already has a `_reset_scan_mode()` method (called today only after a successful/failed
+   `grab_data()`), but doesn't override `reset()`/`full_reset()` to expose it through
+   `IResettable`:
+   ```python
+   async def reset(self, **kwargs: Any) -> None:
+       await BaseSpectrograph.reset(self, **kwargs)
+       await self._reset_scan_mode()
+   ```
+2. `FiberCamera` implements `IGain` (`set_gain`/`_get_gain`) with no `reset()` override --
+   gain isn't restored to a default.
+3. `GregoryCamera` and `FiberCamera` both inherit `AravisCamera`'s exposure-time-not-reset gap
+   (see pyobs-aravis's issue) -- once that lands there, confirm it's inherited correctly, or add
+   a local override if either camera manages its own exposure time separately.
+
+See `specs/design/iresettable.md` (pyobs-core).
+
+### pyobs-monet
+
+**Title:** Add `IResettable.full_reset()` overrides for the BonnShutter wrapper classes
+(mechanical blade + inherited cooling)
+
+**Body:**
+
+Once the underlying driver repos (pyobs-fli, pyobs-flipro, pyobs-qhyccd, pyobs-sbig) add their
+`full_reset()` overrides, the BonnShutter wrapper classes here should call them and add their own
+mechanical-shutter-blade setup, which currently lives in `open()`:
+
+- `FliBonnShutter.open()` / `QHYCCDBonnShutter.open()`: "make sure blade A/B is open, if
+  requested" (`self._ensure_blade_open`), applied unconditionally in `open()` today. A failure
+  there aborts `Module.startup()`; should move into a `full_reset()` override that calls the
+  parent's `full_reset()` first.
+- `FliKeplerBonnShutter`, `SbigBonnShutter`, and both `FrontendCameraSouth` classes inherit
+  whatever their respective base driver ends up doing; no additional wrapper-level hardware setup
+  found beyond the blade positioning above.
+
+Also flagging, independent of `IResettable`: `frontendcamerasouth.py` and
+`frontendcamerasouthfli.py` both define a class named `FrontendCameraSouth` (one on QHY hardware
+via `QHYCCDBonnShutter`, one on FLI hardware via `FliBonnShutter`) -- worth confirming with Tim
+whether both are still live/deployed or one is dead code, independent of this plan.
+
+See `specs/design/iresettable.md` (pyobs-core).
 
 ## Phase 8: Open driver issues (after merge, with Tim's go-ahead)
 

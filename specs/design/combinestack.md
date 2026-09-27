@@ -121,11 +121,12 @@ Any mask or uncertainty on the input cube is ignored. Nothing produces those for
 - Data: 2D `(ny, nx)`, `float32`, for every method, including `SumStack` on integer frames.
 - Header: the cube's header, plus:
   - Removed: `CTYPE3`, `NAXIS3`, and any other axis-3 WCS keys (`CRPIX3`, `CRVAL3`, `CDELT3`,
-    `CUNIT3`) if present. `NAXIS` is recomputed by astropy on write.
+    `CUNIT3`, `CROTA3`, and `CDi_j`/`PCi_j` with 3 as either index) if present. `NAXIS` is recomputed by astropy on write.
   - Kept: `NFRAMES`, `DATE-OBS` (start of first frame), `DATE-END` (end of last frame).
   - `COMBMETH = <method>`.
   - `TEXPTIME`: total exposure time, sum of the `FRAMES` table's `EXPTIME` column (fallback
-    `NFRAMES * EXPTIME` if there's no table).
+    `count * EXPTIME` if there's no table, its length doesn't match the cube, or the sum isn't
+    finite, e.g. a NaN or masked entry).
   - `EXPTIME`: from `_exptime()`. `SumStack` sets it to `TEXPTIME`, all others keep the
     per-frame value. That keeps counts / `EXPTIME` correct for photometry on the result.
   - Method-specific headers from `_add_headers()`.
@@ -173,13 +174,16 @@ whole cube:
 - Allocate the output `(ny, nx)` float32 up front (plus uncertainty / mask if enabled).
 - Process blocks of rows: `block = cube[:, y0:y1, :].astype(np.float32)`, call
   `_combine_block(block)`, write into `out[y0:y1]`.
-- Rows per block: `max(1, chunk_bytes // (count * nx * 4))`, so `chunk_bytes` bounds the float32
-  copy of one block. Actual working memory per block is a small multiple of that
-  (`SigmaClipStack` roughly 2 to 3x, estimated, not measured).
+- Rows per block: `max(1, chunk_bytes // (nx * (4 * count + 40)))`. Per pixel of a block that's
+  the float32 copy (`4 * count` bytes) plus about five 8-byte temporaries (value, std, n,
+  `np.where` result, uncertainty), so `chunk_bytes` bounds the working memory of one block, not
+  just the copy. For small `count` the temporaries dominate (a review of #921 caught that the
+  first version only counted the copy). `SigmaClipStack` adds a boolean mask (`count` bytes per
+  pixel) and astropy's internal temporaries on top, not accounted for (estimated, not measured).
 - Subclasses accumulate in float64 (`dtype=np.float64` on the reduction) and return float64,
   the base class casts to float32. Exception: `np.nanmedian` has no `dtype` argument, so
-  `MedianStack` takes the median in float32 (a selection, no accumulation) and casts after. The reduction output is only one block row, so this costs
-  nothing noticeable, and it avoids float32 rounding on long sums (float32 represents integers
+  `MedianStack` takes the median in float32 (a selection, no accumulation) and casts after.
+  The reduction output is only one block row, so this costs nothing noticeable, and it avoids float32 rounding on long sums (float32 represents integers
   exactly only up to 2^24, and 256 saturated uint16 frames already reach that).
 
 **Don't `image.copy()` the input.** That duplicates the cube. Build the result with the

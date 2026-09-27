@@ -95,6 +95,44 @@ async def test_texptime_fallback_without_frames_table() -> None:
 
 
 @pytest.mark.asyncio
+async def test_axis3_wcs_keys_removed() -> None:
+    cube = make_cube(random_cube())
+    for key in ("CROTA3", "CD3_3", "CD1_3", "PC3_1", "PC2_3"):
+        cube.header[key] = 0.0
+    cube.header["CD1_1"] = 1.0
+    cube.header["PC2_2"] = 1.0
+    result = await MeanStack()(cube)
+    for key in ("CROTA3", "CD3_3", "CD1_3", "PC3_1", "PC2_3"):
+        assert key not in result.header
+    assert result.header["CD1_1"] == 1.0
+    assert result.header["PC2_2"] == 1.0
+
+
+@pytest.mark.asyncio
+async def test_texptime_fallback_on_nan_in_frames_table() -> None:
+    cube = make_cube(random_cube(count=3), exptime=2.0)
+    cube.frames["EXPTIME"] = [1.0, np.nan, 4.0]
+    result = await MeanStack()(cube)
+    assert result.header["TEXPTIME"] == 6.0
+
+
+@pytest.mark.asyncio
+async def test_texptime_fallback_on_frames_table_length_mismatch() -> None:
+    cube = make_cube(random_cube(count=3), exptime=2.0)
+    cube.frames.remove_row(0)
+    result = await MeanStack()(cube)
+    assert result.header["TEXPTIME"] == 6.0
+
+
+@pytest.mark.parametrize(
+    "chunk_bytes, expected",
+    [(1, 1), (6 * (4 * 5 + 40) * 3, 3), (6 * (4 * 5 + 40) * 3 + 1, 3), (10**9, 10**9 // (6 * 60))],
+)
+def test_rows_per_block_includes_temporaries(chunk_bytes: int, expected: int) -> None:
+    assert MeanStack(chunk_bytes=chunk_bytes)._rows_per_block(count=5, nx=6) == expected
+
+
+@pytest.mark.asyncio
 async def test_no_exptime() -> None:
     result = await MeanStack()(make_cube(random_cube(count=3), exptime=None, frames=False))
     assert "EXPTIME" not in result.header

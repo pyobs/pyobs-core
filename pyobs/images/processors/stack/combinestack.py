@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import warnings
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
@@ -14,8 +15,13 @@ from pyobs.images.processor import ImageProcessor
 
 log = logging.getLogger(__name__)
 
-# header keywords describing axis 3 of a stack cube, removed after combining
-_AXIS3_KEYWORDS = ("CTYPE3", "NAXIS3", "CRPIX3", "CRVAL3", "CDELT3", "CUNIT3")
+# header keywords describing axis 3 of a stack cube, removed after combining: per-axis keys
+# and CDi_j/PCi_j matrix entries with 3 as either index
+_AXIS3_KEYWORD = re.compile(r"^(?:(?:CTYPE|NAXIS|CRPIX|CRVAL|CDELT|CUNIT|CROTA)3|(?:CD|PC)(?:3_\d+|\d+_3))$")
+
+# bytes per pixel of the per-block temporaries next to the float32 copy: value, std, n,
+# np.where result and uncertainty, 8 bytes each
+_TEMP_BYTES_PER_PIXEL = 40
 
 
 @dataclass
@@ -55,8 +61,8 @@ class CombineStack(ImageProcessor, metaclass=ABCMeta):
             uncertainty: Whether to write the per-pixel uncertainty of the combined value, estimated
                 from the scatter between frames, as UNCERT extension.
             mask: Whether to write a MASK extension, flagging pixels without any valid value.
-            chunk_bytes: Size of the float32 copy of one block of rows, in bytes. Bounds the memory
-                used while combining.
+            chunk_bytes: Memory for one block of rows (its float32 copy plus temporaries), in
+                bytes. Bounds the memory used while combining.
         """
         ImageProcessor.__init__(self, **kwargs)
         if chunk_bytes < 1:
@@ -86,9 +92,8 @@ class CombineStack(ImageProcessor, metaclass=ABCMeta):
         value, uncertainty, mask = await loop.run_in_executor(None, self._combine, image.data)
 
         header = image.header.copy()
-        for key in _AXIS3_KEYWORDS:
-            if key in header:
-                del header[key]
+        for key in [k for k in header.keys() if _AXIS3_KEYWORD.match(k)]:
+            del header[key]
         if "NAXIS" in header:
             header["NAXIS"] = 2
         header["COMBMETH"] = (self.method, "Method used to combine the stack")
@@ -96,9 +101,12 @@ class CombineStack(ImageProcessor, metaclass=ABCMeta):
         exptime = header.get("EXPTIME")
         frames = image.safe_frames
         total: float | None = None
-        if frames is not None and "EXPTIME" in frames.colnames and len(frames) > 0:
-            total = float(np.sum(frames["EXPTIME"]))
-        elif exptime is not None:
+        if frames is not None and "EXPTIME" in frames.colnames and len(frames) == count:
+            # masked/NaN entries make the sum NaN, fall back to count * EXPTIME below
+            frames_total = float(np.sum(np.ma.filled(frames["EXPTIME"], np.nan)))
+            if np.isfinite(frames_total):
+                total = frames_total
+        if total is None and exptime is not None:
             total = count * float(exptime)
         if total is not None:
             header["TEXPTIME"] = (total, "Total exposure time of all frames [s]")
@@ -120,7 +128,7 @@ class CombineStack(ImageProcessor, metaclass=ABCMeta):
             Tuple of combined data, uncertainty (or None), and boolean mask (or None).
         """
         count, ny, nx = cube.shape
-        rows = max(1, self._chunk_bytes // (count * nx * 4))
+        rows = self._rows_per_block(count, nx)
 
         value = np.empty((ny, nx), dtype=np.float32)
         uncertainty = np.empty((ny, nx), dtype=np.float32) if self._write_uncertainty else None
@@ -149,6 +157,11 @@ class CombineStack(ImageProcessor, metaclass=ABCMeta):
                 mask[y0:y1] = empty
 
         return value, uncertainty, mask
+
+    def _rows_per_block(self, count: int, nx: int) -> int:
+        """Number of rows per block, so that one block's float32 copy plus temporaries fits
+        into chunk_bytes (at least one row)."""
+        return max(1, self._chunk_bytes // (nx * (4 * count + _TEMP_BYTES_PER_PIXEL)))
 
     @staticmethod
     def _count_valid(block: NDArray[np.float32]) -> NDArray[np.int_]:

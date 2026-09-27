@@ -100,7 +100,7 @@ class: pyobs_aravis.AravisCamera
 # ...
 pipelines:
   median:
-    - class: pyobs.images.processors.stack.MedianStack   # does not exist yet, see combinestack.md
+    - class: pyobs.images.processors.stack.MedianStack   # see combinestack.md
   astrometry:
     - class: pyobs.images.processors.detection.DaophotSourceDetection
     - class: pyobs.images.processors.astrometry.AstrometryDotNet

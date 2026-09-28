@@ -1,10 +1,21 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-27.
+Status: standing snapshot — last checked 2026-09-28.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-28**: All 8 `IResettable` driver-override issues from `2026-09-27-data-pipeline-stack-reset.md`
+  phase 8 implemented and landed on `develop`: pyobs-aravis (`f855158`), pyobs-asi (`5550ff8`),
+  pyobs-fli (`49d8feb`), pyobs-flipro (`98d38cd`), pyobs-qhyccd (`31c5b75`), pyobs-sbig
+  (`e73dae3`), plus pyobs-monet (`01b03f3`) and pyobs-iagvt (`1f0587a`) on GWDG GitLab (not
+  tracked in the issues table below, which only covers GitHub). Per the maintenance rule, removed
+  all 12 GitHub rows (the 6 repos above each had two open issues — a generic "implement the
+  overrides" one plus a specific one, both closed out by the same commit) and the plan's "Open
+  plans" entry, even though none of the GitHub issues or GitLab work items have actually been
+  closed yet. Correction along the way: the pyobs-qhyccd issue's "needs a default policy" framing
+  was wrong — `open()` already hardcoded gain=10/offset=140 before reading them back, the phase-7
+  survey missed those two lines, so it needed configurable defaults, not a new design decision.
 - **2026-09-27**: pyobs-core `2026-09-27-data-pipeline-stack-reset.md` plan landed (`41c82da3`; phases 1-7 for `BaseCamera`/`BaseVideo` + `IResettable`/`IDataPipeline`/`IDataStack` interfaces; released as v2.11.0) — phase 8 (driver issues) waits on Tim's release/go-ahead before merging downstream. Coordinated batch of 14 new driver issues opened on the same day (all 2026-09-27 16:30–17:45 UTC) targeting each camera module to implement the new interface overrides: pyobs-aravis #51/#52, pyobs-asi #42/#43, pyobs-fli #98/#99, pyobs-flipro #48/#49, pyobs-qhyccd #77/#78, pyobs-sbig #86/#87 (each pairing is "implement base override" + "add specialized behavior"). All added to the issues table below. Separate from this: pyobs-core #915 opened 2026-09-23 (`What does BaseTelescope want to know about meridian flips for the first-task logic?`), questioning whether the meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope`'s capabilities — waiting on Tim's decision on scope/approach. New: `2026-09-23-pushnotifier-payload-size-cap.md` (implemented 2026-09-23; 12 new tests; addresses MONET/S outage failure modes: cap log-event bodies to FCM's 4 KB limit, skip the notifier's own logs, prune dead tokens, set HTTP timeout). `2026-09-18-pushnotifier-per-user-preferences.md` had status "implemented, uncommitted" but commits now live on `develop` (released in v2.11.0 tag); web-client half also completed, so pyobs-web-client#57 (**closed** 2026-09-27 — both sides done, no web-client preference UI remaining).
 - **2026-09-18**: pyobs-core half of pyobs-web-client#57 implemented (plan
   `2026-09-18-pushnotifier-per-user-preferences.md`): `PushNotificationType` enum +
@@ -298,26 +309,14 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (12, checked 2026-09-27)
+## Open issues (12, checked 2026-09-28)
 
-One row per issue — same layout for every repo. Camera-driver issues are all coordinated on the same push to implement `IResettable` overrides per `2026-09-27-data-pipeline-stack-reset.md` phase 8.
+One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
-| pyobs-aravis | [#52](https://github.com/pyobs/pyobs-aravis/issues/52) | Add IResettable.reset() override to restore exposure time | filed 2026-09-27 (phase 8 of `2026-09-27-data-pipeline-stack-reset.md`) |
-| pyobs-aravis | [#51](https://github.com/pyobs/pyobs-aravis/issues/51) | Implement IResettable reset() override | filed 2026-09-27 (phase 8) |
-| pyobs-asi | [#43](https://github.com/pyobs/pyobs-asi/issues/43) | Add IResettable overrides: restore gain/offset/image format in reset(), move cooling setup into full_reset() | filed 2026-09-27 (phase 8) |
-| pyobs-asi | [#42](https://github.com/pyobs/pyobs-asi/issues/42) | Implement IResettable reset()/full_reset() overrides | filed 2026-09-27 (phase 8) |
-| pyobs-fli | [#99](https://github.com/pyobs/pyobs-fli/issues/99) | Add IResettable.full_reset() override: move cooling setup out of open() | filed 2026-09-27 (phase 8) |
-| pyobs-fli | [#98](https://github.com/pyobs/pyobs-fli/issues/98) | Implement IResettable full_reset() override | filed 2026-09-27 (phase 8) |
-| pyobs-flipro | [#49](https://github.com/pyobs/pyobs-flipro/issues/49) | Add IResettable.full_reset() override: move cooling setup out of open() | filed 2026-09-27 (phase 8) |
-| pyobs-flipro | [#48](https://github.com/pyobs/pyobs-flipro/issues/48) | Implement IResettable full_reset() override | filed 2026-09-27 (phase 8) |
-| pyobs-qhyccd | [#78](https://github.com/pyobs/pyobs-qhyccd/issues/78) | Add IResettable overrides: gain/offset in reset() (needs a default policy), cooling + custom params in full_reset() | filed 2026-09-27 (phase 8) |
-| pyobs-qhyccd | [#77](https://github.com/pyobs/pyobs-qhyccd/issues/77) | Implement IResettable reset()/full_reset() overrides | filed 2026-09-27 (phase 8) |
-| pyobs-sbig | [#87](https://github.com/pyobs/pyobs-sbig/issues/87) | Add IResettable.full_reset() override: move cooling setup out of open() | filed 2026-09-27 (phase 8) |
-| pyobs-sbig | [#86](https://github.com/pyobs/pyobs-sbig/issues/86) | Implement IResettable full_reset() override | filed 2026-09-27 (phase 8) |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 | pyobs-gui | [#168](https://github.com/pyobs/pyobs-gui/issues/168) | Desktop notifications for module ERROR / log ERROR-CRITICAL while running | filed 2026-09-14; independent of pyobs-core's push-notification module — same signals, but for an operator already at a running/connected pyobs-gui, via `QSystemTrayIcon::showMessage()` (not decided); no design doc yet |
 | pyobs-web-client | [#40](https://github.com/pyobs/pyobs-web-client/issues/40) | ParamForm: drop the data-type label from rendered fields | filed 2026-09-08 (camera page UX overhaul feedback) |
@@ -336,11 +335,6 @@ One row per issue — same layout for every repo. Camera-driver issues are all c
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
   (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot, see below.
-- [2026-09-27-data-pipeline-stack-reset.md](../plans/2026-09-27-data-pipeline-stack-reset.md) —
-  `IResettable`, `IDataPipeline`, `IDataStack` in `BaseCamera`/`BaseVideo`, phases 1-7 complete.
-  **implemented (pyobs-core phases 1-7, released v2.11.0); phase 8 (driver issues) waits on Tim's
-  go-ahead before merge/release** (coordinated 14 driver issues filed 2026-09-27, targeting each
-  camera module to implement new interface overrides)
 
 ### Design docs still *proposed*
 

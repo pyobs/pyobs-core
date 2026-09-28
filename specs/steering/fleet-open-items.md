@@ -5,6 +5,10 @@ Status: standing snapshot — last checked 2026-09-28.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-28**: pyobs-web-client #40-#47 closed on GitHub (all 8 already fixed on `main`, see
+  the 2026-09-10 entry for commits) and removed from the issues table, where they had been
+  re-added despite that entry. #40 also got a follow-up (`a91be56`, on `develop`): dropped the
+  last wire-type label, in `StructConfigForm.vue`. pyobs-web-client has no open issues now.
 - **2026-09-28**: Closed out the `IResettable` driver-override follow-up from the entry below.
   Found and fixed a real bug along the way: all 6 GitHub sibling repos (pyobs-aravis, pyobs-asi,
   pyobs-fli, pyobs-flipro, pyobs-qhyccd, pyobs-sbig) had `pyobs-core` locked below v2.11.0 (the
@@ -326,7 +330,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (12, checked 2026-09-28)
+## Open issues (4, checked 2026-09-28)
 
 One row per issue — same layout for every repo.
 
@@ -336,14 +340,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 | pyobs-gui | [#168](https://github.com/pyobs/pyobs-gui/issues/168) | Desktop notifications for module ERROR / log ERROR-CRITICAL while running | filed 2026-09-14; independent of pyobs-core's push-notification module — same signals, but for an operator already at a running/connected pyobs-gui, via `QSystemTrayIcon::showMessage()` (not decided); no design doc yet |
-| pyobs-web-client | [#40](https://github.com/pyobs/pyobs-web-client/issues/40) | ParamForm: drop the data-type label from rendered fields | filed 2026-09-08 (camera page UX overhaul feedback) |
-| pyobs-web-client | [#41](https://github.com/pyobs/pyobs-web-client/issues/41) | Camera page: binning should be a dropdown, not two number inputs | filed 2026-09-08 (camera page UX overhaul feedback) |
-| pyobs-web-client | [#42](https://github.com/pyobs/pyobs-web-client/issues/42) | Camera page: image type dropdown shows a spurious empty "—" option | filed 2026-09-08 (camera page UX overhaul feedback) |
-| pyobs-web-client | [#43](https://github.com/pyobs/pyobs-web-client/issues/43) | Camera page: window widget needs a full-frame button and binning-aware min/max | filed 2026-09-08 (camera page UX overhaul feedback) |
-| pyobs-web-client | [#44](https://github.com/pyobs/pyobs-web-client/issues/44) | Form fields show raw wire param names instead of readable labels | filed 2026-09-08 (camera page UX overhaul feedback) |
-| pyobs-web-client | [#45](https://github.com/pyobs/pyobs-web-client/issues/45) | Confirm-exit dialog: right-edge swipe closes app on some screens | filed 2026-09-08 (mobile UX) |
-| pyobs-web-client | [#46](https://github.com/pyobs/pyobs-web-client/issues/46) | Connection label placeholder leaks internal telescope name ("MONET SAAO") | filed 2026-09-08 (settings/connection UX) |
-| pyobs-web-client | [#47](https://github.com/pyobs/pyobs-web-client/issues/47) | No error message shown when auto-reconnect fails | filed 2026-09-08 (connection error handling) |
 
 ## Open plans
 

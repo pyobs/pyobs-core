@@ -5,6 +5,23 @@ Status: standing snapshot — last checked 2026-09-28.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-28**: Closed out the `IResettable` driver-override follow-up from the entry below.
+  Found and fixed a real bug along the way: all 6 GitHub sibling repos (pyobs-aravis, pyobs-asi,
+  pyobs-fli, pyobs-flipro, pyobs-qhyccd, pyobs-sbig) had `pyobs-core` locked below v2.11.0 (the
+  first release with `IResettable`), so the new `reset()`/`full_reset()` overrides raised
+  `AttributeError` at runtime — missed locally (editable install of a newer local `pyobs-core`
+  checkout masked it), caught by each repo's own CI resolving its committed lockfile fresh.
+  Bumped the `pyobs-core` floor to `>=2.11.0` in all 8 repos (including pyobs-monet/pyobs-iagvt on
+  GWDG GitLab) and cut a second patch release everywhere: pyobs-fli v2.0.3, pyobs-flipro v2.0.4,
+  pyobs-sbig v2.0.4, pyobs-asi v2.0.4, pyobs-aravis v2.0.4, pyobs-qhyccd v2.0.3, pyobs-monet
+  v2.0.7, pyobs-iagvt v2.3.10. All 6 GitHub repos' CI now green. Separately, fixed pyobs-iagvt's
+  GitLab CI, which had been failing on every pipeline for 19+ days (unrelated to this plan): its
+  CI job token wasn't allowlisted on two transitive git dependencies in the same GitLab group
+  (`iagvt/fts-pipe`, `iagvt/opus2py`) — added both via the job-token-scope API, verified pipeline
+  861870 now passes ruff/pyrefly/pytest. pyobs-monet still has no `.gitlab-ci.yml` at all (nothing
+  to fix there). Closed all 14 upstream issues (12 GitHub + the 2 GitLab work items, #33/#17) with
+  comments linking the fixing release, since they'd only been removed from this file's table
+  before, not actually closed.
 - **2026-09-28**: All 8 `IResettable` driver-override issues from `2026-09-27-data-pipeline-stack-reset.md`
   phase 8 implemented and landed on `develop`: pyobs-aravis (`f855158`), pyobs-asi (`5550ff8`),
   pyobs-fli (`49d8feb`), pyobs-flipro (`98d38cd`), pyobs-qhyccd (`31c5b75`), pyobs-sbig

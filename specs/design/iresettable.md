@@ -241,16 +241,25 @@ follow-ups rather than blocking on them.
 by tests.
 
 Follow-up issues opened 2026-09-27 against [pyobs-core 2.11.0](https://github.com/pyobs/pyobs-core/releases/tag/v2.11.0)
-(see `specs/plans/2026-09-27-data-pipeline-stack-reset.md`, phase 7/8, for the survey and drafts):
+(see `specs/plans/2026-09-27-data-pipeline-stack-reset.md`, phase 7/8, for the survey and drafts).
+All implemented and pushed to `develop` 2026-09-28; none of the issues have been closed yet.
 
-- pyobs-asi: https://github.com/pyobs/pyobs-asi/issues/43
-- pyobs-fli: https://github.com/pyobs/pyobs-fli/issues/99
-- pyobs-flipro: https://github.com/pyobs/pyobs-flipro/issues/49
-- pyobs-qhyccd: https://github.com/pyobs/pyobs-qhyccd/issues/78
-- pyobs-sbig: https://github.com/pyobs/pyobs-sbig/issues/87
-- pyobs-aravis: https://github.com/pyobs/pyobs-aravis/issues/52
-- pyobs-iagvt (GWDG GitLab): https://gitlab.gwdg.de/iagvt/pyobs-iagvt/-/work_items/33
-- pyobs-monet (GWDG GitLab): https://gitlab.gwdg.de/monet/pyobs-monet/-/work_items/17
+- pyobs-asi: https://github.com/pyobs/pyobs-asi/issues/43 -- done, `5550ff8`
+- pyobs-fli: https://github.com/pyobs/pyobs-fli/issues/99 -- done, `49d8feb`
+- pyobs-flipro: https://github.com/pyobs/pyobs-flipro/issues/49 -- done, `98d38cd`
+- pyobs-qhyccd: https://github.com/pyobs/pyobs-qhyccd/issues/78 -- done, `31c5b75`. The issue text's
+  "needs a default policy" framing turned out to be wrong -- `open()` already hardcoded gain=10/
+  offset=140 before reading them back, the survey just missed those two lines. Fixed by making
+  them `default_gain`/`default_offset` constructor options instead of a new design question; issue
+  text is now stale and should be corrected or closed.
+- pyobs-sbig: https://github.com/pyobs/pyobs-sbig/issues/87 -- done, `e73dae3`
+- pyobs-aravis: https://github.com/pyobs/pyobs-aravis/issues/52 -- done, `f855158`
+- pyobs-iagvt (GWDG GitLab): https://gitlab.gwdg.de/iagvt/pyobs-iagvt/-/work_items/33 -- done,
+  `1f0587a`. The exposure-time gap (item 3, shared with `GregoryCamera`) still needs the
+  `pyobs-aravis>=2.0.0` pin bumped to a release containing `f855158` before it actually takes
+  effect -- the fix is inherited automatically once that happens, no further code change needed.
+- pyobs-monet (GWDG GitLab): https://gitlab.gwdg.de/monet/pyobs-monet/-/work_items/17 -- done,
+  `01b03f3`
 
 ## Callers
 

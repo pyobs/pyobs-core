@@ -88,8 +88,8 @@ estimated start times.
 - [x] New meta fields `VIDFRAME`, `DATE-OBS` (start), `DATE-SRC`, `DATE-ARR`, `EXPTIME`,
       `SETGEN`, `CROP-X`, `CROP-Y`, `SWBIN`.
 - [x] Per (frame, crop, bin) byte cache.
-- [ ] Update [`basevideo-raw-frame-streaming.md`](../design/basevideo-raw-frame-streaming.md) wire
-      format section (new keys are documented in `basevideo-live-view.md` implementation notes).
+- [x] Update [`basevideo-raw-frame-streaming.md`](../design/basevideo-raw-frame-streaming.md) wire
+      format section.
 
 ## Phase 5: stream guiding (pyobs-core)
 

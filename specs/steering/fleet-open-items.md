@@ -5,6 +5,13 @@ Status: standing snapshot — last checked 2026-09-28.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-29**: `BaseVideo` redesign opened. Filed pyobs-core #924 (configurable stretch for
+  16-bit live-view JPEGs) and #925 (`grab_data()` polling and `_set_image()` sleeps, superseded by
+  the grab-path design), pyobs-asi #46 (`AsiVideo`) and pyobs-qhyccd #81 (`QHYCCDVideo`), all
+  assigned to Tim. Added four *proposed* design docs (`basevideo-frame-source.md`,
+  `basevideo-grab-path.md`, `basevideo-live-view.md`, `guiding-raw-stream.md`) and one plan
+  (`2026-09-29-basevideo-frame-buffer-redesign.md`); referenced from pyobs-gui and
+  pyobs-web-client `specs/index.md`. Other issue rows not re-checked.
 - **2026-09-28**: pyobs-web-client #40-#47 closed on GitHub (all 8 already fixed on `main`, see
   the 2026-09-10 entry for commits) and removed from the issues table, where they had been
   re-added despite that entry. #40 also got a follow-up (`a91be56`, on `develop`): dropped the
@@ -330,15 +337,19 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (4, checked 2026-09-28)
+## Open issues (8, checked 2026-09-28; 4 added 2026-09-29)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#924](https://github.com/pyobs/pyobs-core/issues/924) | BaseVideo: configurable stretch for 16-bit live view JPEGs | filed 2026-09-29; covered by `basevideo-live-view.md` §1, plan phase 6 |
+| pyobs-core | [#925](https://github.com/pyobs/pyobs-core/issues/925) | BaseVideo: replace grab_data() polling and _set_image() sleeps with a future | filed 2026-09-29; superseded by `basevideo-grab-path.md`, plan phase 2 (the future-only fix remains an option as a stopgap) |
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
+| pyobs-asi | [#46](https://github.com/pyobs/pyobs-asi/issues/46) | Add AsiVideo module implementing IVideo | filed 2026-09-29; to be written on the new `frames()` contract (`basevideo-frame-source.md`), plan phase 3b; no per-frame timestamps in live mode |
+| pyobs-qhyccd | [#81](https://github.com/pyobs/pyobs-qhyccd/issues/81) | Add QHYCCDVideo module implementing IVideo | filed 2026-09-29; needs live-mode Cython bindings first; plan phase 3b; no per-frame timestamps in live mode |
 | pyobs-gui | [#168](https://github.com/pyobs/pyobs-gui/issues/168) | Desktop notifications for module ERROR / log ERROR-CRITICAL while running | filed 2026-09-14; independent of pyobs-core's push-notification module — same signals, but for an operator already at a running/connected pyobs-gui, via `QSystemTrayIcon::showMessage()` (not decided); no design doc yet |
 
 ## Open plans
@@ -348,9 +359,18 @@ One row per issue — same layout for every repo.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
   (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot, see below.
+- [2026-09-29-basevideo-frame-buffer-redesign.md](../plans/2026-09-29-basevideo-frame-buffer-redesign.md):
+  *proposed, not started*. Phases 1-8 for the `BaseVideo` redesign; waits on review of the four
+  design docs below.
 
 ### Design docs still *proposed*
 
+- [basevideo-frame-source.md](../design/basevideo-frame-source.md),
+  [basevideo-grab-path.md](../design/basevideo-grab-path.md),
+  [basevideo-live-view.md](../design/basevideo-live-view.md),
+  [guiding-raw-stream.md](../design/guiding-raw-stream.md): `BaseVideo` redesign (frame buffer and
+  driver contract, grab path, selectable live view, stream guiding) (#924, #925). Written
+  2026-09-29, not yet reviewed; open questions listed in each doc.
 - [interface_versioning.md](../design/interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.

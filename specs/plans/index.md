@@ -298,3 +298,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   `IResettable`, `IDataPipeline`, `IDataStack` in `BaseCamera`/`BaseVideo`. **implemented
   (pyobs-core, phases 1-7); phase 8 (opening driver issues) waits on Tim's go-ahead after
   merge/release** (2026-09-27; Repos: pyobs-core, driver plugins)
+- [2026-09-29-basevideo-frame-buffer-redesign.md](2026-09-29-basevideo-frame-buffer-redesign.md):
+  `BaseVideo` frame buffer + `frames()` driver contract, grab path, raw-stream extensions, stream
+  guiding, selectable live view. **proposed, not started; design docs not yet reviewed**
+  (2026-09-29; #924, #925; Repos: pyobs-core, pyobs-gui, pyobs-web-client, driver plugins)

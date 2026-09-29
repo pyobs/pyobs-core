@@ -3,8 +3,18 @@
 Living architecture/design docs, one per feature or subsystem. Kept around after landing
 (`status: implemented`), not deleted.
 
+- [basevideo-frame-source.md](basevideo-frame-source.md): base-owned capture loop, timestamped
+  frames, settings generation and frame buffer for `BaseVideo`; new `frames()` driver contract.
+  *proposed* (2026-09-29; Repos: pyobs-core, driver plugins)
+- [basevideo-grab-path.md](basevideo-grab-path.md): `grab_data()`/`grab_stack()` as frame-buffer
+  consumers, off the frame loop, with exposure-start timing. *proposed* (2026-09-29; supersedes
+  the fix in #925; Repos: pyobs-core, driver plugins)
 - [basevideo-http-auth.md](basevideo-http-auth.md) — shared-token auth + browser login
   page for `BaseVideo`'s HTTP endpoints. *implemented* (Repos: pyobs-core, pyobs-gui)
+- [basevideo-live-view.md](basevideo-live-view.md): user-selectable live view, MJPEG with
+  server-side stretch for slow links, raw with client-side stretch/cuts for fast ones; raw-stream
+  crop/metadata extensions. *proposed* (2026-09-29; absorbs #924; Repos: pyobs-core, pyobs-gui,
+  pyobs-web-client)
 - [basevideo-raw-frame-streaming.md](basevideo-raw-frame-streaming.md) — `BaseVideo` raw-frame
   streaming endpoint alongside the existing MJPEG live view. *implemented*
 - [combinestack.md](combinestack.md) — `pyobs.images.processors.stack`: processors that collapse
@@ -16,6 +26,8 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   registry. *implemented, closed*
 - [gui-standalone-binary.md](gui-standalone-binary.md) — `pyobs-gui` as a standalone binary.
   *rejected 2026-09-14* — real build came out several GB (Repos: pyobs-core, pyobs-gui)
+- [guiding-raw-stream.md](guiding-raw-stream.md): `AutoGuiding` consuming `/video.raw` instead of
+  `grab_data()`, discarding frames exposed during corrections. *proposed* (2026-09-29)
 - [icamera_iexposure.md](icamera_iexposure.md) — decouple camera identity from exposure-progress
   state. *implemented, closed* (#437)
 - [idatasequence.md](idatasequence.md) — server-side counted data sequences. *implemented,

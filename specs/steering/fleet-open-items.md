@@ -5,6 +5,10 @@ Status: standing snapshot — last checked 2026-09-28.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-29**: PR #926 (`BaseVideo` frame buffer, grab path, raw-stream extensions, stream
+  guiding) merged to `develop`. Removed #924 and #925 from the table (fixed on `develop`; they stay
+  open on GitHub until the release to `main`). Follow-up issues now point at `develop` and are
+  unblocked, pending a pyobs-core release for the driver repos.
 - **2026-09-29**: `BaseVideo` redesign opened. Filed pyobs-core #924 (configurable stretch for
   16-bit live-view JPEGs) and #925 (`grab_data()` polling and `_set_image()` sleeps, superseded by
   the grab-path design), pyobs-asi #46 (`AsiVideo`) and pyobs-qhyccd #81 (`QHYCCDVideo`), all
@@ -339,14 +343,12 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (14, checked 2026-09-28; 10 added 2026-09-29)
+## Open issues (12, checked 2026-09-28; changed 2026-09-29, see changelog)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#924](https://github.com/pyobs/pyobs-core/issues/924) | BaseVideo: configurable stretch for 16-bit live view JPEGs | filed 2026-09-29; fixed in PR #926 (not yet merged) |
-| pyobs-core | [#925](https://github.com/pyobs/pyobs-core/issues/925) | BaseVideo: replace grab_data() polling and _set_image() sleeps with a future | filed 2026-09-29; fixed by the grab-path redesign in PR #926 (not yet merged) |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
@@ -368,7 +370,8 @@ One row per issue — same layout for every repo.
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
   (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot, see below.
 - [2026-09-29-basevideo-frame-buffer-redesign.md](../plans/2026-09-29-basevideo-frame-buffer-redesign.md):
-  *in progress*. pyobs-core phases (1, 2, 4, 5, server side of 6) in PR #926 (2026-09-29);
+  *in progress*. pyobs-core phases (1, 2, 4, 5, server side of 6) merged to `develop` (PR #926,
+  2026-09-29);
   driver migration (3, 3b, 7), clients (6) and shim removal (8) open.
 
 ### Design docs still *proposed*
@@ -378,7 +381,7 @@ One row per issue — same layout for every repo.
   [basevideo-live-view.md](../design/basevideo-live-view.md),
   [guiding-raw-stream.md](../design/guiding-raw-stream.md): `BaseVideo` redesign (frame buffer and
   driver contract, grab path, selectable live view, stream guiding) (#924, #925). pyobs-core side
-  implemented in PR #926, not yet merged; implementation notes at the end of each doc.
+  merged to `develop` (PR #926); implementation notes at the end of each doc.
 - [interface_versioning.md](../design/interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.

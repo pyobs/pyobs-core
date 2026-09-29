@@ -1,7 +1,7 @@
 # `BaseVideo`: `grab_data()` / `grab_stack()` on top of the frame buffer
 
-Status: implemented in pyobs-core (branch `feature/basevideo-frame-buffer`, 2026-09-29), not yet
-merged. Depends on
+Status: implemented in pyobs-core (PR #926, merged to `develop` 2026-09-29, not yet
+released). Depends on
 [`basevideo-frame-source.md`](basevideo-frame-source.md).
 
 Repos: pyobs-core (this doc, `BaseVideo`), driver plugins that override `_create_image()` or

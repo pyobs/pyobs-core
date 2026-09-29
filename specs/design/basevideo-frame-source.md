@@ -1,7 +1,7 @@
 # `BaseVideo`: base-owned capture loop, timestamped frames and a frame buffer
 
-Status: implemented in pyobs-core (branch `feature/basevideo-frame-buffer`, 2026-09-29), not yet
-merged; driver migration (pyobs-aravis etc.) still open. Plan:
+Status: implemented in pyobs-core (PR #926, merged to `develop` 2026-09-29, not yet released);
+driver migration (pyobs-aravis etc.) still open. Plan:
 [`2026-09-29-basevideo-frame-buffer-redesign.md`](../plans/2026-09-29-basevideo-frame-buffer-redesign.md).
 
 Repos: pyobs-core (this doc, `BaseVideo`), driver plugins (pyobs-aravis, pyobs-tis, pyobs-v4l,

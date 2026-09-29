@@ -1,7 +1,7 @@
 # Guiding from the `BaseVideo` raw stream
 
-Status: implemented in pyobs-core (branch `feature/basevideo-frame-buffer`, 2026-09-29), not yet
-merged, not yet tried on a real camera. Depends on
+Status: implemented in pyobs-core (PR #926, merged to `develop` 2026-09-29, not yet
+released), not yet tried on a real camera. Depends on
 [`basevideo-frame-source.md`](basevideo-frame-source.md) (exposure start times, settings
 generation) and the raw-stream extensions in [`basevideo-live-view.md`](basevideo-live-view.md) §3
 (crop, `FRAMENUM`, `DATE-OBS`, `EXPTIME`, `GENERATION`).

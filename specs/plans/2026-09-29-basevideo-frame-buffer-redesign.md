@@ -1,7 +1,7 @@
 # Plan: `BaseVideo` frame buffer, grab path, live view and stream guiding
 
 Status: in progress. Phases 1, 2, 4, 5 and the server side of 6 implemented on branch
-`feature/basevideo-frame-buffer` (2026-09-29), PR pending review. Open design questions for those
+`feature/basevideo-frame-buffer`, merged to `develop` as PR #926 (2026-09-29). Open design questions for those
 phases were decided during implementation; see "Implementation notes" in each design doc.
 
 Repos: pyobs-core (phases 1, 2, 4, 5 and server side of 6), pyobs-aravis (phase 3),

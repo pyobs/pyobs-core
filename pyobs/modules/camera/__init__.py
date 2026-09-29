@@ -11,5 +11,16 @@ from .basevideo import BaseVideo
 from .dummycamera import DummyCamera
 from .dummyspectrograph import DummySpectrograph
 from .pipelinecamera import PipelineCamera
+from .videoframes import Frame, FrameRecord, StartSource
 
-__all__ = ["BaseCamera", "BaseVideo", "BaseSpectrograph", "DummyCamera", "DummySpectrograph", "PipelineCamera"]
+__all__ = [
+    "BaseCamera",
+    "BaseVideo",
+    "BaseSpectrograph",
+    "DummyCamera",
+    "DummySpectrograph",
+    "Frame",
+    "FrameRecord",
+    "PipelineCamera",
+    "StartSource",
+]

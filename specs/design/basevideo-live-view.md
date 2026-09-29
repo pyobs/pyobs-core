@@ -1,6 +1,7 @@
 # `BaseVideo`: selectable live view, MJPEG for slow links, raw with client-side stretch for fast
 
-Status: proposed (2026-09-29). Not implemented, no plan yet. Server side depends on
+Status: server side implemented in pyobs-core (branch `feature/basevideo-frame-buffer`,
+2026-09-29), not yet merged; pyobs-gui and pyobs-web-client not started. Server side depends on
 [`basevideo-frame-source.md`](basevideo-frame-source.md) for frame metadata.
 
 Repos: pyobs-core (this doc, `BaseVideo` endpoints), pyobs-gui (`VideoWidget`),
@@ -120,3 +121,19 @@ raw is for the LAN or for small crops.
   connection; browsers cap those per host (about 6 in Chrome, to be verified). A dashboard with
   several cameras behind one host could hit this.
 - Colour cameras: stretch per channel or on luminance.
+
+## Implementation notes (2026-09-29)
+
+- Stretch code lives in `pyobs/utils/stretch.py` (`StretchParams`, `stretch_to_uint8()`), so
+  pyobs-gui can reuse it for client-side stretching.
+- Cuts: added a `full` mode (the dtype's range; for uint16 within one grey level of the old
+  `/256`). Module default `cuts=None` means `full` for 8-bit data and `minmax` otherwise, so 8-bit
+  webcams look unchanged.
+- No background encoder tasks: the first connection that needs a frame in a given setting
+  encodes it (in an executor), all others with the same setting reuse that result.
+- Raw meta keys differ from §3, to stay valid 8-character FITS keywords and not clash with the
+  nightly `FRAMENUM`: `VIDFRAME` (frame number), `SETGEN` (settings generation), `SWBIN`
+  (software binning), plus `DATE-SRC`, `DATE-ARR`, `EXPTIME`, `CROP-X`, `CROP-Y` as designed. The
+  crop origin is also written as `XORGSUBF`/`YORGSUBF` before the local headers are built, so
+  `CRPIX1/2` are right for the cropped frame.
+- Software binning is a block mean, so binned frames are float32.

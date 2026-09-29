@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -79,40 +78,30 @@ async def test_set_exposure_time_zero_falls_back_to_fps_one() -> None:
     assert dv._fps == 1.0
 
 
-# ── _frame_task ─────────────────────────────────────────────────────────────
+# ── frames ──────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_frame_task_sets_image_when_active(mocker) -> None:
-    dv = make_dummyvideo(image_size=(4, 3))
-    dv._active = True
-    dv._set_image = AsyncMock()
+async def test_frames_yields_timestamped_frames(mocker) -> None:
+    dv = make_dummyvideo(image_size=(4, 3), fps=4.0)
+    mocker.patch("pyobs.modules.camera.dummyvideo.asyncio.sleep", AsyncMock())
 
-    async def fake_sleep(t: float) -> None:
-        raise asyncio.CancelledError()
+    frame = await anext(dv.frames())
 
-    mocker.patch("pyobs.modules.camera.dummyvideo.asyncio.sleep", side_effect=fake_sleep)
-
-    with pytest.raises(asyncio.CancelledError):
-        await dv._frame_task()
-
-    dv._set_image.assert_awaited_once()
-    data = dv._set_image.await_args[0][0]
-    assert data.shape == (3, 4)  # (h, w)
+    assert frame.data.shape == (3, 4)  # (h, w)
+    assert frame.exposure_time == 0.25
+    assert frame.start is not None
+    assert frame.generation == 0
 
 
 @pytest.mark.asyncio
-async def test_frame_task_skips_image_when_inactive(mocker) -> None:
+async def test_set_exposure_time_starts_new_generation(mocker) -> None:
     dv = make_dummyvideo()
-    dv._active = False
-    dv._set_image = AsyncMock()
+    dv._comm.set_state = AsyncMock()
+    mocker.patch("pyobs.modules.camera.dummyvideo.asyncio.sleep", AsyncMock())
 
-    async def fake_sleep(t: float) -> None:
-        raise asyncio.CancelledError()
+    await dv.set_exposure_time(0.5)
+    frame = await anext(dv.frames())
 
-    mocker.patch("pyobs.modules.camera.dummyvideo.asyncio.sleep", side_effect=fake_sleep)
-
-    with pytest.raises(asyncio.CancelledError):
-        await dv._frame_task()
-
-    dv._set_image.assert_not_called()
+    assert frame.generation == 1
+    assert frame.exposure_time == 0.5

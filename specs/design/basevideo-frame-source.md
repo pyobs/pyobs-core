@@ -1,6 +1,8 @@
 # `BaseVideo`: base-owned capture loop, timestamped frames and a frame buffer
 
-Status: proposed (2026-09-29). Not implemented, no plan yet.
+Status: implemented in pyobs-core (branch `feature/basevideo-frame-buffer`, 2026-09-29), not yet
+merged; driver migration (pyobs-aravis etc.) still open. Plan:
+[`2026-09-29-basevideo-frame-buffer-redesign.md`](../plans/2026-09-29-basevideo-frame-buffer-redesign.md).
 
 Repos: pyobs-core (this doc, `BaseVideo`), driver plugins (pyobs-aravis, pyobs-tis, pyobs-v4l,
 and the planned video modules in pyobs-asi and pyobs-qhyccd).
@@ -154,3 +156,15 @@ Migration order:
 - Default `buffer_frames`, and whether it should scale with frame size.
 - Aravis timestamp semantics (see table): needs a test on the real cameras before the grab path
   or guiding relies on `start_source == "device"`.
+
+## Implementation notes (2026-09-29)
+
+- Code: `pyobs/modules/camera/videoframes.py` (`Frame`, `FrameRecord`, `StartSource`, `FrameBuffer`),
+  `BaseVideo._add_frame()`, `_frame_loop()`, `_new_generation()`, `frames()`.
+- `buffer_frames` defaults to 4 (open question decided).
+- `FrameBuffer` has `wait_frame(predicate)`, `wait_newer(number)` (latest-wins) and
+  `next_after(number)` (consecutive, raises `FramesDroppedError`) instead of an `iter_frames()`
+  generator.
+- The shim takes `exposure_time` from the driver's `_exposure_time` attribute if present, so shim
+  frames get an estimated start instead of none.
+- `DummyVideo` is the first driver on the new contract.

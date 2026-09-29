@@ -300,5 +300,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   merge/release** (2026-09-27; Repos: pyobs-core, driver plugins)
 - [2026-09-29-basevideo-frame-buffer-redesign.md](2026-09-29-basevideo-frame-buffer-redesign.md):
   `BaseVideo` frame buffer + `frames()` driver contract, grab path, raw-stream extensions, stream
-  guiding, selectable live view. **proposed, not started; design docs not yet reviewed**
+  guiding, selectable live view. **in progress: pyobs-core phases in PR #926; drivers, clients open**
   (2026-09-29; #924, #925; Repos: pyobs-core, pyobs-gui, pyobs-web-client, driver plugins)

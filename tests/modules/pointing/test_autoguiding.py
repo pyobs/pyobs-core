@@ -15,6 +15,7 @@ from pyobs.interfaces import (
     IRunning,
 )
 from pyobs.modules.pointing.autoguiding import AutoGuiding
+from pyobs.modules.pointing.guidingsource import GrabDataSource, RawStreamSource
 from pyobs.utils.enums import ExposureStatus, OffsetFrame
 from pyobs.utils.offsets import ApplyOffsets
 from pyobs.utils.offsets.applyoffsets import OffsetResult
@@ -125,7 +126,7 @@ async def test_stop_disables_guiding_and_waits_for_idle() -> None:
     ag._comm.set_state = AsyncMock()
     camera = MagicMock(spec=IExposure)
     camera.get_state = MagicMock(return_value=None)  # no state -> loop exits immediately
-    ag._comm.proxy = MagicMock(return_value=make_proxy_cm(camera))
+    ag._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(camera))
 
     await ag.stop()
 
@@ -135,13 +136,24 @@ async def test_stop_disables_guiding_and_waits_for_idle() -> None:
 
 
 @pytest.mark.asyncio
+async def test_stop_does_not_wait_for_camera_without_exposure_state() -> None:
+    ag = make_guiding()
+    ag._comm.set_state = AsyncMock()
+    ag._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(None))  # e.g. a video camera
+
+    await ag.stop()
+
+    assert ag._enabled is False
+
+
+@pytest.mark.asyncio
 async def test_stop_waits_until_camera_idle(mocker) -> None:
     ag = make_guiding()
     ag._comm.set_state = AsyncMock()
     camera = MagicMock(spec=IExposure)
     states = [MagicMock(status=ExposureStatus.EXPOSING), MagicMock(status=ExposureStatus.IDLE)]
     camera.get_state = MagicMock(side_effect=states)
-    ag._comm.proxy = MagicMock(return_value=make_proxy_cm(camera))
+    ag._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(camera))
     mocker.patch("pyobs.modules.pointing.autoguiding.asyncio.sleep", AsyncMock())
 
     await ag.stop()
@@ -330,6 +342,27 @@ async def test_process_image_resets_on_large_separation() -> None:
 
 
 @pytest.mark.asyncio
+async def test_process_image_without_telescope_position_skips_separation_check() -> None:
+    ag = make_guiding(separation_reset=1.0)
+    ag._enabled = True
+    ag._comm.set_state = AsyncMock()
+    ref = make_image()
+    await ag._reset_guiding(enabled=True, image=ref)
+    ag.has_proxy = AsyncMock(return_value=False)
+    ag.run_pipeline = AsyncMock(side_effect=lambda image: image)
+
+    image = make_image(date_obs="2024-01-01T00:00:05.000")
+    del image.header["TEL-RA"]
+    del image.header["TEL-DEC"]
+
+    result = await ag._process_image(image)
+
+    # not reset as a new reference, but processed further
+    assert ag._ref_header is ref.header
+    assert result is image
+
+
+@pytest.mark.asyncio
 async def test_process_image_resets_on_filter_change() -> None:
     ag = make_guiding()
     ag._enabled = True
@@ -430,6 +463,7 @@ async def test_process_image_applies_offsets_successfully() -> None:
     assert result is not None
     assert ag._loop_closed is True
     apply.assert_awaited_once()
+    assert ag._last_correction_time is not None
 
 
 @pytest.mark.asyncio
@@ -532,3 +566,63 @@ async def test_auto_guiding_takes_and_processes_image_when_enabled(mocker) -> No
     camera.grab_data.assert_awaited_once()
     ag._process_image.assert_awaited_once_with(image)
     assert sleep_calls == 1
+
+
+# ── frame sources ───────────────────────────────────────────────────────────
+
+
+def test_frame_source_defaults_to_grab_data() -> None:
+    ag = make_guiding()
+    assert isinstance(ag._frame_source(), GrabDataSource)
+
+
+def test_frame_source_uses_raw_stream_when_configured() -> None:
+    ag = make_guiding(stream="/webcam/video.raw", crop_size=64)
+    source = ag._frame_source()
+    assert isinstance(source, RawStreamSource)
+    assert source._path == "/webcam/video.raw"
+    assert source._crop_size == 64
+
+
+def test_frame_source_stream_true_asks_camera_for_path() -> None:
+    ag = make_guiding(stream=True)
+    source = ag._frame_source()
+    assert isinstance(source, RawStreamSource)
+    assert source._path is None
+
+
+def test_not_before_follows_last_correction_and_settle_time() -> None:
+    ag = make_guiding(settle_time=2.0)
+    assert ag._not_before() == 0.0
+    ag._last_correction_time = 100.0
+    assert ag._not_before() == 102.0
+
+
+@pytest.mark.asyncio
+async def test_auto_guiding_resets_source_without_reference(mocker) -> None:
+    ag = make_guiding()
+    ag._enabled = True
+    source = MagicMock()
+    source.reset = AsyncMock()
+    source.close = AsyncMock()
+    source.next_image = AsyncMock(return_value=make_image())
+    ag._source = source
+    ag._process_image = AsyncMock(return_value=None)
+    mocker.patch("pyobs.modules.pointing.autoguiding.asyncio.sleep", AsyncMock())
+
+    await ag._auto_guiding_step(source)
+
+    source.reset.assert_awaited_once()
+    source.next_image.assert_awaited_once_with(ag._exposure_time, 0.0)
+
+
+@pytest.mark.asyncio
+async def test_auto_guiding_closes_source_when_disabled(mocker) -> None:
+    ag = make_guiding()
+    source = MagicMock()
+    source.close = AsyncMock()
+    mocker.patch("pyobs.modules.pointing.autoguiding.asyncio.sleep", AsyncMock())
+
+    await ag._auto_guiding_step(source)
+
+    source.close.assert_awaited_once()

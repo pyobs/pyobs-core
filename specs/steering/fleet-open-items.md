@@ -1,10 +1,15 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-28.
+Status: standing snapshot — last checked 2026-09-29.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-29** (later): re-queried the fleet with per-repo `gh api`. pyobs-aravis #56
+  (`_wait_for_frame` thread leak, `1890e7a`) and #57 (`AravisCamera` on `frames()`, `64620dc`) are
+  both on `develop` (released as v2.1.0), so they are not in the table (issues stay open pending
+  closure). Every other open issue outside the table is already landed on `develop` (see 2026-09-18
+  entry). Table down to 11.
 - **2026-09-29**: PR #926 (`BaseVideo` frame buffer, grab path, raw-stream extensions, stream
   guiding) merged to `develop`. Removed #924 and #925 from the table (fixed on `develop`; they stay
   open on GitHub until the release to `main`). Follow-up issues now point at `develop` and are
@@ -343,7 +348,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (12, checked 2026-09-28; changed 2026-09-29, see changelog)
+## Open issues (11, checked 2026-09-29, see changelog)
 
 One row per issue — same layout for every repo.
 
@@ -353,7 +358,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
-| pyobs-aravis | [#57](https://github.com/pyobs/pyobs-aravis/issues/57) | Move AravisCamera to the new BaseVideo frames() contract with frame timestamps | filed 2026-09-29; blocked on pyobs-core PR #926; plan phase 3, needs a hardware timestamp test |
 | pyobs-asi | [#46](https://github.com/pyobs/pyobs-asi/issues/46) | Add AsiVideo module implementing IVideo | filed 2026-09-29; to be written on the new `frames()` contract (`basevideo-frame-source.md`), plan phase 3b; no per-frame timestamps in live mode |
 | pyobs-qhyccd | [#81](https://github.com/pyobs/pyobs-qhyccd/issues/81) | Add QHYCCDVideo module implementing IVideo | filed 2026-09-29; needs live-mode Cython bindings first; plan phase 3b; no per-frame timestamps in live mode |
 | pyobs-tis | [#23](https://github.com/pyobs/pyobs-tis/issues/23) | Move TisCamera to the new BaseVideo frames() contract | filed 2026-09-29; blocked on pyobs-core PR #926; plan phase 7 |
@@ -372,7 +376,7 @@ One row per issue — same layout for every repo.
 - [2026-09-29-basevideo-frame-buffer-redesign.md](../plans/2026-09-29-basevideo-frame-buffer-redesign.md):
   *in progress*. pyobs-core phases (1, 2, 4, 5, server side of 6) merged to `develop` (PR #926,
   2026-09-29);
-  driver migration (3, 3b, 7), clients (6) and shim removal (8) open.
+  driver migration (3b, 7; 3 done for pyobs-aravis), clients (6) and shim removal (8) open.
 
 ### Design docs still *proposed*
 

@@ -68,6 +68,8 @@ estimated start times.
 
 ## Phase 3: pyobs-aravis on the new contract
 
+Issue: pyobs/pyobs-aravis#57.
+
 - [ ] Test on real hardware what `ArvBuffer.get_timestamp()` and `get_system_timestamp()` return
       and when they are latched; decide which to use and how to map to UTC. Record the result in
       the frame-source design doc.
@@ -100,12 +102,15 @@ Decide first: how the guider learns the camera's settings generation; `settle_ti
 - [x] `t_settled` tracking after offsets; `not_before` filtering with the estimated-start margin.
 - [x] Guider-side header requests (telescope, filter, focus) merged into decoded frames.
 - [x] Crop around the guide star, fallback to full frame without a star.
-- [ ] Re-centre the crop when the star drifts towards the edge (currently only on reference reset).
+- [ ] Re-centre the crop when the star drifts towards the edge (currently only on reference reset),
+      pyobs/pyobs-core#927.
 - [x] Tests with a fake raw stream: frames before `t_settled` are skipped, `EXPTIME` filtering,
       missing peer headers skip only their checks.
 - [ ] Try on an Aravis-based camera once phase 3 is deployed.
 
 ## Phase 6: live view (pyobs-core, pyobs-gui, pyobs-web-client)
+
+Issues: pyobs/pyobs-gui#182, pyobs/pyobs-web-client#58.
 
 Decide first: default mode per client; colour handling.
 
@@ -120,6 +125,8 @@ Decide first: default mode per client; colour handling.
 - [ ] Check browser connection limits with several cameras on one page.
 
 ## Phase 7: remaining drivers
+
+Issues: pyobs/pyobs-tis#23, pyobs/pyobs-v4l#27.
 
 - [ ] pyobs-tis and pyobs-v4l on `frames()`; check whether their bindings expose buffer
       timestamps.

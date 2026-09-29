@@ -1,7 +1,7 @@
 # `BaseVideo`: base-owned capture loop, timestamped frames and a frame buffer
 
-Status: implemented in pyobs-core (PR #926, merged to `develop` 2026-09-29, not yet released);
-driver migration (pyobs-aravis etc.) still open. Plan:
+Status: implemented in pyobs-core (PR #926, released in `v2.13.0`). pyobs-aravis migrated
+(its `specs/plans/2026-09-29-frames-migration.md`); pyobs-tis, pyobs-v4l still open. Plan:
 [`2026-09-29-basevideo-frame-buffer-redesign.md`](../plans/2026-09-29-basevideo-frame-buffer-redesign.md).
 
 Repos: pyobs-core (this doc, `BaseVideo`), driver plugins (pyobs-aravis, pyobs-tis, pyobs-v4l,
@@ -77,8 +77,8 @@ async def frames(self) -> AsyncIterator[Frame]:
 - Blocking SDK calls stay the driver's job (the existing `_run_blocking` pattern in pyobs-asi
   and pyobs-qhyccd); the iterator itself must not block the event loop.
 - Ownership: a yielded `data` array must not be reused or mutated by the driver. Drivers that
-  recycle SDK buffers copy before yielding. (To verify per driver: whether pyobs-aravis'
-  `_array_from_buffer_address()` already copies before the buffer is pushed back.)
+  recycle SDK buffers copy before yielding. (pyobs-aravis' `_array_from_buffer_address()`
+  copies, checked 2026-09-29.)
 
 ### 3. Settings generation
 
@@ -159,7 +159,8 @@ Migration order:
 
 ## Implementation notes (2026-09-29)
 
-- Code: `pyobs/modules/camera/videoframes.py` (`Frame`, `FrameRecord`, `StartSource`, `FrameBuffer`),
+- Code: `pyobs/modules/camera/videoframes.py` (`Frame`, `FrameRecord`, `StartSource`, `FrameBuffer`;
+  the first three re-exported from `pyobs.modules.camera` for drivers),
   `BaseVideo._add_frame()`, `_frame_loop()`, `_new_generation()`, `frames()`.
 - `buffer_frames` defaults to 4 (open question decided).
 - `FrameBuffer` has `wait_frame(predicate)`, `wait_newer(number)` (latest-wins) and

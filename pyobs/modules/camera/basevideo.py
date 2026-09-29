@@ -10,7 +10,6 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from enum import StrEnum
 from typing import Any, NamedTuple
 
-import aiohttp
 import numpy as np
 import PIL.Image
 from aiohttp import web
@@ -550,8 +549,10 @@ class BaseVideo(
             last_time = time.time()
             try:
                 await response.write(b"--jpgboundary\r\nContent-type: image/jpeg\r\n\r\n" + jpeg + b"\r\n")
-            except aiohttp.client_exceptions.ClientConnectionResetError:
-                # end stream
+            except ConnectionError:
+                # client went away -- end stream. Catches more than ClientConnectionResetError:
+                # aiohttp's drain can also raise a plain ConnectionError("Connection lost"), which
+                # would otherwise escape and get logged as an error with a full traceback
                 break
 
         # return response
@@ -668,8 +669,10 @@ class BaseVideo(
                     b"Content-Type: application/octet-stream\r\n"
                     b"X-Pyobs-Frame-Meta: " + meta + b"\r\n\r\n" + frame + b"\r\n"
                 )
-            except aiohttp.client_exceptions.ClientConnectionResetError:
-                # end stream
+            except ConnectionError:
+                # client went away -- end stream. Catches more than ClientConnectionResetError:
+                # aiohttp's drain can also raise a plain ConnectionError("Connection lost"), which
+                # would otherwise escape and get logged as an error with a full traceback
                 break
 
         # return response

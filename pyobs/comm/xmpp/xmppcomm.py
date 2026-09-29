@@ -65,6 +65,18 @@ def _retry_delay(attempt: int, cap: float = 30.0, base: float = 1.0) -> float:
     return random.uniform(0, min(cap, base * (2 ** min(attempt, 60))))
 
 
+def _iq_failure_reason(e: slixmpp.exceptions.IqError | slixmpp.exceptions.IqTimeout) -> str:
+    """Short description of why an IQ failed, for retry-loop warnings.
+
+    Distinguishes a server error reply (e.g. item-not-found: the pubsub node doesn't exist, so
+    the publisher never published to it) from a timeout (the server or connection is stalled).
+    Without this, both look identical in the "still failing" warnings.
+    """
+    if isinstance(e, slixmpp.exceptions.IqError):
+        return f"error: {e.condition}" + (f" ({e.text})" if e.text else "")
+    return "timeout"
+
+
 def _log_task_exception(task: asyncio.Task[Any]) -> None:
     """Retrieve and log a background task's exception, if it failed.
 
@@ -998,13 +1010,15 @@ class XmppComm(Comm):
                 try:
                     await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
                     return
-                except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout) as e:
                     attempt += 1
                     if attempt == 30:
                         log.warning(
-                            "Still failing to subscribe to event node %s after %d attempts, will keep retrying",
+                            "Still failing to subscribe to event node %s after %d attempts (last %s), "
+                            "will keep retrying",
                             node,
                             attempt,
+                            _iq_failure_reason(e),
                         )
                     await asyncio.sleep(_retry_delay(attempt))
         except Exception:
@@ -1364,13 +1378,15 @@ class XmppComm(Comm):
                 try:
                     await self._safe_send(self.client.plugin["xep_0060"].subscribe, self._pubsub_service, node)
                     break
-                except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout) as e:
                     attempt += 1
                     if attempt == 30:
                         log.warning(
-                            "Still failing to subscribe to state node %s after %d attempts, will keep retrying",
+                            "Still failing to subscribe to state node %s after %d attempts (last %s), "
+                            "will keep retrying",
                             node,
                             attempt,
+                            _iq_failure_reason(e),
                         )
                     await asyncio.sleep(_retry_delay(attempt))
             else:

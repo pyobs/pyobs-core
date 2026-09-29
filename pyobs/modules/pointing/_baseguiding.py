@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from abc import ABCMeta
 from typing import Any
 
@@ -66,6 +67,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._last_offset_frame: OffsetFrame | None = None
         self._last_offset_lon: float | None = None
         self._last_offset_lat: float | None = None
+        # when the last offset was applied (UTC unix time), None if none yet
+        self._last_correction_time: float | None = None
 
         # headers of last and of reference image
         self._last_header = None
@@ -211,10 +214,16 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             await self._reset_guiding(image=image)
             return None
 
-        # check RA/Dec in header and separation
-        c1 = SkyCoord(ra=image.header["TEL-RA"] * u.deg, dec=image.header["TEL-DEC"] * u.deg, frame="icrs")
-        c2 = SkyCoord(ra=self._ref_header["TEL-RA"] * u.deg, dec=self._ref_header["TEL-DEC"] * u.deg, frame="icrs")
-        separation = c1.separation(c2).deg
+        # check RA/Dec in header and separation -- skipped if the telescope's headers are missing,
+        # e.g. for a stream frame whose header request to the telescope timed out
+        has_coords = all(k in h for h in (image.header, self._ref_header) for k in ("TEL-RA", "TEL-DEC"))
+        if not has_coords:
+            log.warning("No telescope position in image or reference, skipping separation check.")
+        separation = 0.0
+        if has_coords:
+            c1 = SkyCoord(ra=image.header["TEL-RA"] * u.deg, dec=image.header["TEL-DEC"] * u.deg, frame="icrs")
+            c2 = SkyCoord(ra=self._ref_header["TEL-RA"] * u.deg, dec=self._ref_header["TEL-DEC"] * u.deg, frame="icrs")
+            separation = c1.separation(c2).deg
         if self._separation_reset is not None and separation * 3600.0 > self._separation_reset:
             log.warning(
                 'Nominal position of reference and new image differ by %.2f", resetting reference...',
@@ -286,6 +295,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             async with self.proxy(self._telescope, ITelescope) as telescope:
                 result = await self._apply(image, telescope, location)
                 if result.applied:
+                    self._last_correction_time = time.time()
                     await self._set_loop_state(True, result.frame, result.lon, result.lat)
                     log.info("Finished image.")
                 else:

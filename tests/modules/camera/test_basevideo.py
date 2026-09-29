@@ -5,6 +5,8 @@ import hashlib
 import hmac
 import json
 import time
+from collections.abc import AsyncIterator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
@@ -15,9 +17,11 @@ from pyobs.comm import Comm
 from pyobs.events import NewImageEvent
 from pyobs.interfaces import IImageType, IVideo
 from pyobs.modules import Module
-from pyobs.modules.camera.basevideo import _COOKIE_NAME, BaseVideo, ImageRequest, LastImage, NextImage
+from pyobs.modules.camera.basevideo import _COOKIE_NAME, BaseVideo, NextImage
+from pyobs.modules.camera.videoframes import Frame, FrameRecord, StartSource
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ImageType
+from pyobs.utils.stretch import StretchParams
 
 
 def make_basevideo(**kwargs) -> BaseVideo:
@@ -29,8 +33,10 @@ def make_request(
     filename: str | None = None,
     headers: dict[str, str] | None = None,
     cookies: dict[str, str] | None = None,
+    query: dict[str, str] | None = None,
 ) -> MagicMock:
     request = MagicMock()
+    request.query = query or {}
     request.match_info = {} if filename is None else {"filename": filename}
     request.headers = headers or {}
     request.cookies = cookies or {}
@@ -250,30 +256,28 @@ async def test_active_update_skips_deactivate_when_recently_active(mocker) -> No
 
 
 @pytest.mark.asyncio
-async def test_image_jpeg_returns_none_when_no_last_image() -> None:
+async def test_image_jpeg_returns_none_when_no_frame() -> None:
     bv = make_basevideo()
     bv.activate_camera = AsyncMock()
 
     num, jpeg = await bv.image_jpeg()
 
     bv.activate_camera.assert_awaited_once()
-    assert num == 0
+    assert num is None
     assert jpeg is None
 
 
 @pytest.mark.asyncio
-async def test_image_jpeg_returns_last_jpeg() -> None:
+async def test_image_jpeg_returns_newest_frame_as_jpeg() -> None:
     bv = make_basevideo()
     bv.activate_camera = AsyncMock()
-    bv._frame_num = 5
-    bv._last_image = LastImage(
-        data=np.zeros((2, 2)), image=None, jpeg=b"jpeg-bytes", filename=None, date_obs="2024-01-01T00:00:00.000000"
-    )
+    await bv._add_frame(Frame(np.zeros((4, 4), dtype=np.uint16)))
+    await bv._add_frame(Frame(np.ones((4, 4), dtype=np.uint16)))
 
     num, jpeg = await bv.image_jpeg()
 
-    assert num == 5
-    assert jpeg == b"jpeg-bytes"
+    assert num == 1
+    assert jpeg is not None and jpeg.startswith(b"\xff\xd8")
 
 
 # ── create_jpeg ─────────────────────────────────────────────────────────────
@@ -291,96 +295,137 @@ def test_create_jpeg_handles_uint8() -> None:
     assert jpeg.startswith(b"\xff\xd8")
 
 
-# ── _set_image ──────────────────────────────────────────────────────────────
+def test_create_jpeg_applies_stretch_params() -> None:
+    data = np.arange(64, dtype=np.uint16).reshape(8, 8)
+    linear = BaseVideo.create_jpeg(data, StretchParams(cuts="full"))
+    stretched = BaseVideo.create_jpeg(data, StretchParams(stretch="asinh", cuts="minmax"))
+    assert linear != stretched
+
+
+def test_init_rejects_invalid_stretch_defaults() -> None:
+    with pytest.raises(ValueError):
+        make_basevideo(stretch="nonsense")
+    with pytest.raises(ValueError):
+        make_basevideo(jpeg_quality=0)
+
+
+# ── frame buffer: _add_frame / _set_image / frames() ────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_set_image_stores_last_image_and_increments_frame_num() -> None:
-    bv = make_basevideo(video_path=None)
-    data = np.zeros((4, 4))
+async def test_add_frame_numbers_frames_and_stores_them() -> None:
+    bv = make_basevideo()
 
-    await bv._set_image(data)
+    await bv._add_frame(Frame(np.zeros((4, 4))))
+    record = await bv._add_frame(Frame(np.ones((4, 4))))
 
-    assert bv._frame_num == 1
-    assert bv._last_image is not None
-    assert bv._last_image.data is data
-    assert bv._last_image.jpeg is None  # video_path disabled
+    assert record.number == 1
+    assert bv._frame_num == 2
+    assert bv._frames.latest() is record
 
 
 @pytest.mark.asyncio
-async def test_set_image_flips_when_configured() -> None:
-    bv = make_basevideo(video_path=None, flip=True)
+async def test_add_frame_flips_when_configured() -> None:
+    bv = make_basevideo(flip=True)
     data = np.arange(16).reshape(4, 4).astype(float)
 
-    await bv._set_image(data)
+    record = await bv._add_frame(Frame(data))
 
-    np.testing.assert_array_equal(bv._last_image.data, np.flip(data, axis=0))
-
-
-@pytest.mark.asyncio
-async def test_set_image_generates_jpeg_when_video_enabled() -> None:
-    bv = make_basevideo(interval=0.0)
-    data = np.zeros((4, 4), dtype=np.uint8)
-
-    await bv._set_image(data)
-
-    assert bv._last_image.jpeg is not None
-    assert bv._last_image.jpeg.startswith(b"\xff\xd8")
+    np.testing.assert_array_equal(record.data, np.flip(data, axis=0))
 
 
 @pytest.mark.asyncio
-async def test_set_image_throttles_jpeg_generation_by_interval() -> None:
-    bv = make_basevideo(interval=1000.0)
-    bv._last_time = __import__("time").time()  # just generated one
+async def test_add_frame_start_time_sources() -> None:
+    bv = make_basevideo(readout_time=0.5)
+
+    device = await bv._add_frame(Frame(np.zeros((2, 2)), start=100.0, exposure_time=2.0))
+    estimated = await bv._add_frame(Frame(np.zeros((2, 2)), exposure_time=2.0))
+    unknown = await bv._add_frame(Frame(np.zeros((2, 2))))
+
+    assert device.start == 100.0 and device.start_source == StartSource.DEVICE
+    assert estimated.start_source == StartSource.ESTIMATED
+    assert estimated.start == pytest.approx(estimated.arrival - 2.5)
+    assert unknown.start is None and unknown.start_source == StartSource.UNKNOWN
+
+
+@pytest.mark.asyncio
+async def test_add_frame_uses_current_generation_unless_given() -> None:
+    bv = make_basevideo()
+    bv._new_generation()
+
+    implicit = await bv._add_frame(Frame(np.zeros((2, 2))))
+    explicit = await bv._add_frame(Frame(np.zeros((2, 2)), generation=0))
+
+    assert implicit.generation == 1
+    assert explicit.generation == 0
+
+
+@pytest.mark.asyncio
+async def test_set_image_shim_feeds_buffer_with_estimated_start() -> None:
+    bv = make_basevideo()
+    bv._exposure_time = 0.5  # type: ignore[attr-defined]
 
     await bv._set_image(np.zeros((4, 4)))
 
-    assert bv._last_image.jpeg is None  # interval not elapsed yet
+    record = bv._frames.latest()
+    assert record is not None
+    assert record.exposure_time == 0.5
+    assert record.start_source == StartSource.ESTIMATED
+
+
+class _IteratorVideo(BaseVideo):
+    """Driver on the frames() contract, fed from a queue; records when acquisition stops."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(comm=MagicMock(spec=Comm), **kwargs)
+        self.queue: asyncio.Queue[Frame | Exception] = asyncio.Queue()
+        self.stopped = 0
+
+    async def frames(self) -> AsyncIterator[Frame]:
+        try:
+            while True:
+                item = await self.queue.get()
+                if isinstance(item, Exception):
+                    raise item
+                yield item
+        finally:
+            self.stopped += 1
 
 
 @pytest.mark.asyncio
-async def test_set_image_creates_image_and_fulfills_pending_requests() -> None:
-    bv = make_basevideo(video_path=None)
-    bv.request_fits_headers = AsyncMock(return_value={})
-    bv._create_image = AsyncMock(return_value=("the-image", "the-filename.fits"))
+async def test_frames_iterator_runs_while_active_and_is_closed_on_deactivate() -> None:
+    bv = _IteratorVideo()
 
-    request = ImageRequest(broadcast=True)
-    bv._image_requests.append(request)
-    bv._next_image = NextImage(
-        date_obs="now", image_type=ImageType.OBJECT, header_futures={}, broadcast=True, pipeline=None
-    )
+    await bv.activate_camera()
+    await bv.queue.put(Frame(np.zeros((2, 2))))
+    await asyncio.sleep(0.01)
+    assert bv._frames.last_number == 0
 
-    await bv._set_image(np.zeros((4, 4)))
-
-    assert request.image == "the-image"
-    assert request.filename == "the-filename.fits"
-    # request is still pending (not yet removed by grab_data()), so a fresh
-    # _next_image gets prepared again for the following frame
-    assert bv._next_image is not None
+    await bv.deactivate_camera()
+    assert bv.stopped == 1
+    assert bv._frame_loop_task is None
 
 
 @pytest.mark.asyncio
-async def test_set_image_prepares_next_image_when_requests_pending() -> None:
-    bv = make_basevideo(video_path=None)
-    bv.request_fits_headers = AsyncMock(return_value={"h": "x"})
-    bv._image_requests.append(ImageRequest(broadcast=True))
+async def test_frames_iterator_is_restarted_after_error(mocker) -> None:
+    mocker.patch("pyobs.modules.camera.basevideo._FRAME_LOOP_MIN_BACKOFF", 0.01)
+    bv = _IteratorVideo()
 
-    await bv._set_image(np.zeros((4, 4)))
+    await bv.activate_camera()
+    await bv.queue.put(RuntimeError("usb hiccup"))
+    await bv.queue.put(Frame(np.zeros((2, 2))))
+    await asyncio.sleep(0.1)
 
-    assert bv._next_image is not None
-    assert bv._next_image.image_type == bv._image_type
-    assert bv._next_image.broadcast is True
-    assert bv._next_image.header_futures == {"h": "x"}
+    assert bv.stopped >= 1
+    assert bv._frames.last_number == 0
+    await bv.deactivate_camera()
 
 
 @pytest.mark.asyncio
-async def test_set_image_does_not_prepare_next_image_without_requests() -> None:
-    bv = make_basevideo(video_path=None)
-    bv.request_fits_headers = AsyncMock(return_value={})
-
-    await bv._set_image(np.zeros((4, 4)))
-
-    assert bv._next_image is None
+async def test_no_frame_loop_without_frames_iterator() -> None:
+    bv = make_basevideo()
+    await bv.activate_camera()
+    assert bv._frame_loop_task is None
 
 
 # ── _create_image ───────────────────────────────────────────────────────────
@@ -393,7 +438,14 @@ async def test_create_image_sets_headers_and_delegates_to_finish() -> None:
     bv.add_fits_headers = AsyncMock()
     bv._finish_image = AsyncMock(return_value=("image", "filename.fits"))
     next_image = NextImage(
-        date_obs="2024-01-01T00:00:00", image_type=ImageType.DARK, header_futures={}, broadcast=False, pipeline=None
+        date_obs="2024-01-01T00:00:00",
+        image_type=ImageType.DARK,
+        header_futures={},
+        broadcast=False,
+        pipeline=None,
+        exposure_time=2.0,
+        date_src=StartSource.ESTIMATED,
+        frame_number=7,
     )
 
     result = await bv._create_image(np.zeros((4, 4)), next_image)
@@ -404,6 +456,9 @@ async def test_create_image_sets_headers_and_delegates_to_finish() -> None:
     image_arg = bv.add_requested_fits_headers.await_args[0][0]
     assert image_arg.header["DATE-OBS"] == "2024-01-01T00:00:00"
     assert image_arg.header["IMAGETYP"] == ImageType.DARK
+    assert image_arg.header["EXPTIME"] == 2.0
+    assert image_arg.header["DATE-SRC"] == "estimated"
+    assert image_arg.header["VIDFRAME"] == 7
     bv._finish_image.assert_awaited_once_with(image_arg, False, ImageType.DARK)
 
 
@@ -460,42 +515,175 @@ async def test_finish_image_skips_broadcast_when_not_requested() -> None:
 # ── grab_data ───────────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
-async def test_grab_data_returns_filename_once_fulfilled() -> None:
-    bv = make_basevideo()
+def _grab_ready(bv: BaseVideo) -> None:
     bv.activate_camera = AsyncMock()
-
-    async def fulfill_after_delay() -> None:
-        await asyncio.sleep(0.02)
-        async with bv._image_request_lock:
-            for req in bv._image_requests:
-                req.image = "image"
-                req.filename = "grabbed.fits"
-
-    asyncio.create_task(fulfill_after_delay())
-
-    filename = await bv.grab_data(broadcast=True)
-
-    assert filename == "grabbed.fits"
-    assert len(bv._image_requests) == 0  # removed after fulfillment
+    bv.request_fits_headers = AsyncMock(return_value={})
+    bv._create_image = AsyncMock(side_effect=lambda data, next_image: ("image", f"frame-{next_image.frame_number}"))
 
 
 @pytest.mark.asyncio
-async def test_grab_data_raises_when_never_gets_filename() -> None:
+async def test_grab_data_returns_first_frame_started_after_request() -> None:
     bv = make_basevideo()
-    bv.activate_camera = AsyncMock()
+    _grab_ready(bv)
 
-    async def fulfill_with_no_filename() -> None:
-        await asyncio.sleep(0.02)
-        async with bv._image_request_lock:
-            for req in bv._image_requests:
-                req.image = "image"
-                req.filename = None
+    task = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    t_request = time.time() - 0.005
 
-    asyncio.create_task(fulfill_with_no_filename())
+    # frame 0 was exposing when the request came in (started before it), frame 1 wasn't
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=t_request - 1.0, exposure_time=1.0))
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time(), exposure_time=0.01))
+
+    assert await asyncio.wait_for(task, timeout=2) == "frame-1"
+
+
+@pytest.mark.asyncio
+async def test_grab_data_ignores_frames_already_in_buffer() -> None:
+    bv = make_basevideo()
+    _grab_ready(bv)
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time() - 1.0, exposure_time=0.5))
+
+    task = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time(), exposure_time=0.01))
+
+    assert await asyncio.wait_for(task, timeout=2) == "frame-1"
+
+
+@pytest.mark.asyncio
+async def test_grab_data_late_request_does_not_get_frame_exposing_at_request_time() -> None:
+    """Regression for the late-joiner bug (#925): a request arriving while a frame is already
+    exposing must not be served that frame, even if an earlier request is."""
+    bv = make_basevideo()
+    _grab_ready(bv)
+
+    early = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    frame0_start = time.time()
+    await asyncio.sleep(0.01)
+    late = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=frame0_start, exposure_time=0.02))
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time(), exposure_time=0.02))
+
+    assert await asyncio.wait_for(early, timeout=2) == "frame-0"
+    assert await asyncio.wait_for(late, timeout=2) == "frame-1"
+
+
+@pytest.mark.asyncio
+async def test_grab_data_estimated_start_needs_one_frame_margin() -> None:
+    bv = make_basevideo()
+    _grab_ready(bv)
+
+    task = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    # estimated start = arrival - 0.5s, i.e. before the request: could be a queued frame
+    await bv._add_frame(Frame(np.zeros((2, 2)), exposure_time=0.5))
+    await asyncio.sleep(0.01)
+    assert not task.done()
+
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time() + 1.0, exposure_time=0.5))
+    assert await asyncio.wait_for(task, timeout=2) == "frame-1"
+
+
+@pytest.mark.asyncio
+async def test_grab_data_unknown_start_skips_frame_in_progress() -> None:
+    bv = make_basevideo()
+    _grab_ready(bv)
+    await bv._add_frame(Frame(np.zeros((2, 2))))  # frame 0, before the request
+
+    task = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    await bv._add_frame(Frame(np.zeros((2, 2))))  # frame 1, was exposing at request time
+    await asyncio.sleep(0.01)
+    assert not task.done()
+    await bv._add_frame(Frame(np.zeros((2, 2))))  # frame 2
+
+    assert await asyncio.wait_for(task, timeout=2) == "frame-2"
+
+
+@pytest.mark.asyncio
+async def test_grab_data_waits_for_current_settings_generation() -> None:
+    bv = make_basevideo()
+    _grab_ready(bv)
+    bv._new_generation()
+
+    task = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time(), exposure_time=0.01, generation=0))
+    await asyncio.sleep(0.01)
+    assert not task.done()
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time(), exposure_time=0.01, generation=1))
+
+    assert await asyncio.wait_for(task, timeout=2) == "frame-1"
+
+
+@pytest.mark.asyncio
+async def test_grab_data_requests_headers_at_request_time() -> None:
+    bv = make_basevideo()
+    _grab_ready(bv)
+
+    task = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    bv.request_fits_headers.assert_awaited_once()
+    task.cancel()
+
+
+@pytest.mark.asyncio
+async def test_frames_keep_flowing_while_grab_data_builds_image() -> None:
+    """A slow image build (e.g. a peer not answering its FITS header request) must not stall the
+    frame buffer, unlike the old _set_image()-based handoff."""
+    bv = make_basevideo()
+    _grab_ready(bv)
+    release = asyncio.Event()
+
+    async def slow_create(data: Any, next_image: NextImage) -> tuple[str, str]:
+        await release.wait()
+        return "image", "slow.fits"
+
+    bv._create_image = slow_create  # type: ignore[method-assign]
+
+    task = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time(), exposure_time=0.01))
+    await asyncio.sleep(0.01)
+
+    # grab_data() is now stuck building the image; frames still go into the buffer
+    for _ in range(3):
+        await asyncio.wait_for(bv._add_frame(Frame(np.zeros((2, 2)))), timeout=0.5)
+    assert bv._frames.last_number == 3
+
+    release.set()
+    assert await asyncio.wait_for(task, timeout=2) == "slow.fits"
+
+
+@pytest.mark.asyncio
+async def test_grab_data_wraps_unexpected_errors() -> None:
+    bv = make_basevideo()
+    _grab_ready(bv)
+    bv._create_image = AsyncMock(side_effect=RuntimeError("pipeline broke"))
+
+    task = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time(), exposure_time=0.01))
 
     with pytest.raises(exc.GrabImageError):
-        await bv.grab_data()
+        await asyncio.wait_for(task, timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_grab_data_passes_pyobs_errors_through() -> None:
+    bv = make_basevideo()
+    _grab_ready(bv)
+    bv._create_image = AsyncMock(side_effect=exc.ImageError("bad"))
+
+    task = asyncio.create_task(bv.grab_data())
+    await asyncio.sleep(0.01)
+    await bv._add_frame(Frame(np.zeros((2, 2)), start=time.time(), exposure_time=0.01))
+
+    with pytest.raises(exc.ImageError):
+        await asyncio.wait_for(task, timeout=2)
 
 
 # ── set_image_type ──────────────────────────────────────────────────────────
@@ -555,35 +743,23 @@ def test_routes_not_registered_when_raw_disabled() -> None:
 # ── raw-frame streaming ─────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
-async def test_set_image_sets_new_frame_event() -> None:
-    bv = make_basevideo(video_path=None)
-    bv._new_frame.clear()
-
-    await bv._set_image(np.zeros((4, 4)))
-
-    assert bv._new_frame.is_set()
-
-
-@pytest.mark.asyncio
-async def test_new_frame_event_coalesces_multiple_sets() -> None:
-    bv = make_basevideo(video_path=None)
-    bv._new_frame.clear()
-
-    for _ in range(5):
-        await bv._set_image(np.zeros((4, 4)))
-
-    # asyncio.Event is a boolean, not a counter: five sets collapse into one wake
-    assert bv._new_frame.is_set()
-    bv._new_frame.clear()
-    assert not bv._new_frame.is_set()
+def _no_exposure_record(data: np.ndarray, number: int = 0) -> FrameRecord:
+    return FrameRecord(
+        number=number,
+        data=data,
+        arrival=1700000000.0,
+        start=1699999999.0,
+        start_source=StartSource.DEVICE,
+        exposure_time=1.0,
+        generation=3,
+    )
 
 
 def test_raw_frame_meta_and_little_endian_bytes() -> None:
     bv = make_basevideo()
     data = np.arange(6, dtype=np.uint16).reshape(2, 3)
 
-    meta_bytes, frame = bv._raw_frame(data, "2024-01-01T00:00:00.000000")
+    meta_bytes, frame = bv._raw_frame(_no_exposure_record(data, number=5))
 
     meta = json.loads(meta_bytes)
     assert meta["DTYPE"] == "<u2"
@@ -591,32 +767,100 @@ def test_raw_frame_meta_and_little_endian_bytes() -> None:
     assert meta["NAXIS2"] == 2
     assert "DATE-OBS" in meta
     assert "IMAGETYP" in meta
+    assert meta["VIDFRAME"] == 5
+    assert meta["DATE-SRC"] == "device"
+    assert meta["EXPTIME"] == 1.0
+    assert meta["SETGEN"] == 3
+    assert (meta["CROP-X"], meta["CROP-Y"], meta["SWBIN"]) == (0, 0, 1)
     # little-endian: value 0 -> 00 00, value 1 -> 01 00
     assert frame == data.astype("<u2").tobytes()
     assert frame[:4] == b"\x00\x00\x01\x00"
 
 
-@pytest.mark.asyncio
-async def test_raw_handler_writes_once_per_wake_and_keeps_active(mocker) -> None:
+def test_raw_frame_crop_and_binning() -> None:
     bv = make_basevideo()
+    data = np.arange(100, dtype=np.uint16).reshape(10, 10)
 
-    # several frames arriving before the handler starts coalesce into a single wake
-    for _ in range(3):
-        await bv._set_image(np.zeros((4, 4), dtype=np.uint16))
+    meta_bytes, frame = bv._raw_frame(_no_exposure_record(data), crop=(2, 4, 4, 4), binning=2)
+
+    meta = json.loads(meta_bytes)
+    assert (meta["NAXIS1"], meta["NAXIS2"]) == (2, 2)
+    assert (meta["CROP-X"], meta["CROP-Y"], meta["SWBIN"]) == (2, 4, 2)
+    assert meta["XORGSUBF"] == 2 and meta["YORGSUBF"] == 4
+    expected = data[4:8, 2:6].astype(np.float32).reshape(2, 2, 2, 2).mean(axis=(1, 3))
+    np.testing.assert_array_equal(np.frombuffer(frame, dtype=meta["DTYPE"]).reshape(2, 2), expected)
+
+
+def test_raw_frame_crop_is_clipped_and_empty_crop_raises() -> None:
+    bv = make_basevideo()
+    data = np.zeros((10, 10), dtype=np.uint16)
+
+    meta, _ = bv._raw_frame(_no_exposure_record(data), crop=(8, 8, 5, 5))
+    assert (json.loads(meta)["NAXIS1"], json.loads(meta)["NAXIS2"]) == (2, 2)
+
+    with pytest.raises(ValueError):
+        bv._raw_frame(_no_exposure_record(data), crop=(20, 20, 5, 5))
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        {"x": "1"},
+        {"x": "a", "y": "0", "w": "1", "h": "1"},
+        {"x": "0", "y": "0", "w": "0", "h": "1"},
+        {"bin": "0"},
+        {"max_rate": "-1"},
+    ],
+)
+def test_parse_raw_params_rejects_invalid(query: dict[str, str]) -> None:
+    with pytest.raises(web.HTTPBadRequest):
+        BaseVideo._parse_raw_params(make_request(query=query))
+
+
+def test_parse_raw_params_valid() -> None:
+    crop, binning, rate = BaseVideo._parse_raw_params(
+        make_request(query={"x": "1", "y": "2", "w": "3", "h": "4", "bin": "2", "max_rate": "5"})
+    )
+    assert crop == (1, 2, 3, 4) and binning == 2 and rate == 5.0
+
+
+def _one_shot_response(mocker) -> MagicMock:
+    from aiohttp.client_exceptions import ClientConnectionResetError
 
     response = MagicMock()
     response.prepare = AsyncMock()
-    from aiohttp.client_exceptions import ClientConnectionResetError
-
     response.write = AsyncMock(side_effect=ClientConnectionResetError())
     mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+    return response
+
+
+@pytest.mark.asyncio
+async def test_raw_handler_sends_newest_frame_and_keeps_active(mocker) -> None:
+    bv = make_basevideo()
+
+    # several frames arriving before the handler starts: latest wins
+    for i in range(3):
+        await bv._add_frame(Frame(np.full((4, 4), i, dtype=np.uint16)))
+
+    response = _one_shot_response(mocker)
 
     await bv.raw_handler(make_request())
 
-    # one wake -> one write, despite three _set_image calls; connection is active
     assert response.write.await_count == 1
+    assert b'"VIDFRAME":2' in response.write.await_args.args[0]
     assert bv.camera_active is True
     assert bv._active_time > 0
+
+
+@pytest.mark.asyncio
+async def test_raw_handler_bad_params_rejected_before_activation() -> None:
+    bv = make_basevideo()
+    bv.activate_camera = AsyncMock()
+
+    with pytest.raises(web.HTTPBadRequest):
+        await bv.raw_handler(make_request(query={"bin": "0"}))
+
+    bv.activate_camera.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -624,13 +868,7 @@ async def test_raw_handler_touches_activity_without_new_frame(mocker) -> None:
     # no frame has arrived yet -- the wait must time out and re-touch activity
     # anyway, per design doc §5, instead of blocking indefinitely
     bv = make_basevideo(sleep_time=0.02)
-
-    response = MagicMock()
-    response.prepare = AsyncMock()
-    from aiohttp.client_exceptions import ClientConnectionResetError
-
-    response.write = AsyncMock(side_effect=ClientConnectionResetError())
-    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+    response = _one_shot_response(mocker)
 
     real_activate = bv.activate_camera
     activate_calls = 0
@@ -642,13 +880,12 @@ async def test_raw_handler_touches_activity_without_new_frame(mocker) -> None:
         if activate_calls == 2:
             # this is the timeout-triggered re-touch with no frame yet produced;
             # now produce one so the next loop iteration can wake normally
-            await bv._set_image(np.zeros((2, 2), dtype=np.uint16))
+            await bv._add_frame(Frame(np.zeros((2, 2), dtype=np.uint16)))
 
     bv.activate_camera = activate_side_effect  # type: ignore[method-assign]
 
     await bv.raw_handler(make_request())
 
-    # call #1: on connect: call #2: timeout re-touch (no frame yet); call #3: after real wake
     assert activate_calls >= 2
     assert response.write.await_count == 1
     assert bv.camera_active is True
@@ -656,15 +893,10 @@ async def test_raw_handler_touches_activity_without_new_frame(mocker) -> None:
 
 @pytest.mark.asyncio
 async def test_raw_handler_dedupes_frame_build_across_consumers(mocker) -> None:
-    # two simultaneous raw clients waking for the *same* frame must not each pay for
-    # the header build/JSON serialization/tobytes() copy -- only the first computes
-    # it, the second reuses the cached (meta, frame) bytes (#769). Both handlers are
-    # started while genuinely blocked on the (unset) event, so a single set() wakes
-    # both in the same batch -- mirrors Event.wait()'s real coalescing behavior,
-    # unlike calling raw_handler() while the event happens to already be set.
+    # two raw clients reading the same frame in the same crop must not each pay for the header
+    # build/JSON serialization/tobytes() copy -- only the first computes it (#769)
     bv = make_basevideo()
-    await bv._set_image(np.zeros((4, 4), dtype=np.uint16))
-    bv._new_frame.clear()
+    await bv._add_frame(Frame(np.zeros((4, 4), dtype=np.uint16)))
 
     from aiohttp.client_exceptions import ClientConnectionResetError
 
@@ -680,13 +912,7 @@ async def test_raw_handler_dedupes_frame_build_across_consumers(mocker) -> None:
     mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", side_effect=make_response)
     raw_frame_spy = mocker.spy(bv, "_raw_frame")
 
-    task1 = asyncio.create_task(bv.raw_handler(make_request()))
-    task2 = asyncio.create_task(bv.raw_handler(make_request()))
-    await asyncio.sleep(0)  # let both tasks reach the event wait and actually suspend
-
-    await bv._set_image(np.ones((4, 4), dtype=np.uint16))  # single wake -> both proceed
-
-    await asyncio.wait_for(asyncio.gather(task1, task2), timeout=2)
+    await asyncio.wait_for(asyncio.gather(bv.raw_handler(make_request()), bv.raw_handler(make_request())), timeout=2)
 
     assert raw_frame_spy.call_count == 1
     assert len(responses) == 2
@@ -694,24 +920,74 @@ async def test_raw_handler_dedupes_frame_build_across_consumers(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_raw_handler_recomputes_after_new_frame(mocker) -> None:
-    # the cache must not serve stale bytes once a new frame has arrived
+async def test_raw_handler_builds_separately_per_crop(mocker) -> None:
     bv = make_basevideo()
-    await bv._set_image(np.zeros((4, 4), dtype=np.uint16))
-
-    from aiohttp.client_exceptions import ClientConnectionResetError
-
-    response = MagicMock()
-    response.prepare = AsyncMock()
-    response.write = AsyncMock(side_effect=ClientConnectionResetError())
-    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+    await bv._add_frame(Frame(np.zeros((4, 4), dtype=np.uint16)))
+    _one_shot_response(mocker)
     raw_frame_spy = mocker.spy(bv, "_raw_frame")
 
     await bv.raw_handler(make_request())
-    await bv._set_image(np.ones((4, 4), dtype=np.uint16))
+    await bv.raw_handler(make_request(query={"x": "0", "y": "0", "w": "2", "h": "2"}))
+
+    assert raw_frame_spy.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_raw_handler_recomputes_after_new_frame(mocker) -> None:
+    # the cache must not serve stale bytes once a new frame has arrived
+    bv = make_basevideo()
+    await bv._add_frame(Frame(np.zeros((4, 4), dtype=np.uint16)))
+    _one_shot_response(mocker)
+    raw_frame_spy = mocker.spy(bv, "_raw_frame")
+
+    await bv.raw_handler(make_request())
+    await bv._add_frame(Frame(np.ones((4, 4), dtype=np.uint16)))
     await bv.raw_handler(make_request())
 
     assert raw_frame_spy.call_count == 2
+
+
+# ── MJPEG live view ─────────────────────────────────────────────────────────
+
+
+def test_parse_jpeg_params_defaults_and_overrides() -> None:
+    bv = make_basevideo(stretch="sqrt", cuts="percentile", cut_lo=1.0, cut_hi=99.0, jpeg_quality=70)
+
+    params, quality = bv._parse_jpeg_params(make_request())
+    assert params == StretchParams(stretch="sqrt", cuts="percentile", lo=1.0, hi=99.0)
+    assert quality == 70
+
+    params, quality = bv._parse_jpeg_params(
+        make_request(
+            query={"stretch": "asinh", "cuts": "manual", "lo": "10", "hi": "20", "scale": "2", "quality": "50"}
+        )
+    )
+    assert params == StretchParams(stretch="asinh", cuts="manual", lo=10.0, hi=20.0, scale=2)
+    assert quality == 50
+
+
+@pytest.mark.parametrize(
+    "query", [{"stretch": "nope"}, {"cuts": "manual"}, {"scale": "0"}, {"quality": "100"}, {"lo": "abc"}]
+)
+def test_parse_jpeg_params_rejects_invalid(query: dict[str, str]) -> None:
+    bv = make_basevideo()
+    with pytest.raises(web.HTTPBadRequest):
+        bv._parse_jpeg_params(make_request(query=query))
+
+
+@pytest.mark.asyncio
+async def test_video_handler_shares_encoding_per_setting(mocker) -> None:
+    bv = make_basevideo()
+    await bv._add_frame(Frame(np.arange(16, dtype=np.uint16).reshape(4, 4)))
+    _one_shot_response(mocker)
+    encode_spy = mocker.spy(BaseVideo, "create_jpeg")
+
+    await bv.video_handler(make_request())
+    await bv.video_handler(make_request())
+    assert encode_spy.call_count == 1
+
+    await bv.video_handler(make_request(query={"stretch": "asinh"}))
+    assert encode_spy.call_count == 2
 
 
 # ── token auth ─────────────────────────────────────────────────────────────
@@ -835,7 +1111,7 @@ async def test_video_handler_accepts_valid_bearer(mocker) -> None:
     response.prepare = AsyncMock()
     response.write = AsyncMock(side_effect=ClientConnectionResetError())
     mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
-    bv.image_jpeg = AsyncMock(return_value=(1, b"jpeg-bytes"))
+    await bv._add_frame(Frame(np.zeros((4, 4), dtype=np.uint16)))
 
     await bv.video_handler(make_request(headers={"Authorization": "Bearer secret"}))
 
@@ -853,7 +1129,7 @@ async def test_video_handler_accepts_valid_cookie(mocker) -> None:
     response.prepare = AsyncMock()
     response.write = AsyncMock(side_effect=ClientConnectionResetError())
     mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
-    bv.image_jpeg = AsyncMock(return_value=(1, b"jpeg-bytes"))
+    await bv._add_frame(Frame(np.zeros((4, 4), dtype=np.uint16)))
 
     await bv.video_handler(make_request(cookies={_COOKIE_NAME: _session_value("secret")}))
 

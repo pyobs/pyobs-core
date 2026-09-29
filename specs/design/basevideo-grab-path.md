@@ -1,6 +1,7 @@
 # `BaseVideo`: `grab_data()` / `grab_stack()` on top of the frame buffer
 
-Status: proposed (2026-09-29). Not implemented, no plan yet. Depends on
+Status: implemented in pyobs-core (branch `feature/basevideo-frame-buffer`, 2026-09-29), not yet
+merged. Depends on
 [`basevideo-frame-source.md`](basevideo-frame-source.md).
 
 Repos: pyobs-core (this doc, `BaseVideo`), driver plugins that override `_create_image()` or
@@ -112,3 +113,16 @@ uses `_set_image()`).
   filename (needs matching `broadcast`/`image_type`/`pipeline`), or build per caller? Per caller is
   simpler and the case is rare.
 - Whether an estimated start time should be marked in the FITS header, and with which keyword.
+
+## Implementation notes (2026-09-29)
+
+- No new `_image_from_frame()` hook. `_create_image(data, next_image)` stays the hook and is now
+  called from `grab_data()` for every driver; `NextImage` got optional fields (`exposure_time`,
+  `date_src`, `date_arrival`, `frame_number`), so existing overrides keep working unchanged.
+- Open questions decided: concurrent `grab_data()` calls build their images per caller; the start
+  time source goes into the FITS header as `DATE-SRC` (`device`/`estimated`/`unknown`), the arrival
+  time as `DATE-ARR`, the stream frame number as `VIDFRAME` (`FRAMENUM` is already the nightly
+  counter from `FitsHeaderMixin`).
+- `grab_data()` also keeps the camera awake while waiting (1 s keep-alive), like `grab_stack()`.
+- `grab_stack()` fails with `GrabImageError` if the settings generation changes mid-stack.
+- Timeouts: `grab_data()` allows 3 frame times + 30 s, `grab_stack()` `count + 2` frames.

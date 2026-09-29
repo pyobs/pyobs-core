@@ -1,6 +1,7 @@
 # Guiding from the `BaseVideo` raw stream
 
-Status: proposed (2026-09-29). Not implemented, no plan yet. Depends on
+Status: implemented in pyobs-core (branch `feature/basevideo-frame-buffer`, 2026-09-29), not yet
+merged, not yet tried on a real camera. Depends on
 [`basevideo-frame-source.md`](basevideo-frame-source.md) (exposure start times, settings
 generation) and the raw-stream extensions in [`basevideo-live-view.md`](basevideo-live-view.md) §3
 (crop, `FRAMENUM`, `DATE-OBS`, `EXPTIME`, `GENERATION`).
@@ -110,3 +111,18 @@ cheap.
   whether full-frame reference frames need `bin`.
 - How the guider learns the camera's settings generation (state field vs. return value).
 - Whether `settle_time` should come from the telescope module rather than guider config.
+
+## Implementation notes (2026-09-29)
+
+- Code: `pyobs/modules/pointing/guidingsource.py` (`GuidingFrameSource`, `GrabDataSource`,
+  `RawStreamSource`); `AutoGuiding` options `stream` (`True` = ask the camera's `IVideo`
+  capabilities for the path, or a VFS path), `crop_size`, `settle_time`.
+- Settings generation (§4): the guider doesn't read the camera's generation. It compares the
+  frame's `EXPTIME` with the requested exposure time instead (1 % tolerance). That needs no
+  interface change and covers the one setting the guider changes.
+- Crop (§5): the box is placed around the brightest SEP source in a full frame whenever the guider
+  has no reference image. There is no re-centring while guiding yet; a lost star only recovers via
+  a reference reset.
+- Peer FITS headers are requested via the new module-level `request_fits_headers()` in
+  `pyobs/mixins/fitsheader.py`, excluding the guider itself.
+- `AutoGuiding.stop()` now uses `safe_proxy` for `IExposure`, since video cameras don't have it.

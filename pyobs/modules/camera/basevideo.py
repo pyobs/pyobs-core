@@ -758,6 +758,8 @@ class BaseVideo(
         for key in image.header:
             meta[key] = self._json_safe(image.header[key])
         meta["DTYPE"] = data.dtype.newbyteorder("<").str
+        # NAXISn alone doesn't tell a client how many axes to read (e.g. colour frames are 3D)
+        meta["NAXIS"] = data.ndim
         meta["VIDFRAME"] = record.number
         meta["DATE-SRC"] = str(record.start_source)
         meta["DATE-ARR"] = record.date_arrival

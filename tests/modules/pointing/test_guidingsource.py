@@ -153,3 +153,55 @@ def test_accept_estimated_start_gets_one_frame_margin() -> None:
     assert source._accept(meta, t - 1.0) is True
     assert source._accept(meta, t - 0.5) is False
     assert source._accept({**meta, "DATE-SRC": "device"}, t - 0.5) is True
+
+
+def test_accept_unknown_start_takes_second_frame_arriving_after_not_before() -> None:
+    source = make_source("http://unused")
+    t = 1_700_000_000.0
+    meta = {"DATE-OBS": Time(t + 1, format="unix").isot, "DATE-ARR": Time(t + 1, format="unix").isot}
+    meta["DATE-SRC"] = "unknown"
+
+    # DATE-OBS (= arrival) is after not_before, but the frame may have started before it
+    assert source._accept(meta, t, arrived=1) is False
+    assert source._accept(meta, t, arrived=2) is True
+
+
+@pytest.mark.asyncio
+async def test_raw_stream_source_unknown_start_skips_frame_in_progress(video_server: tuple[BaseVideo, str]) -> None:
+    video, url = video_server
+    source = make_source(url)
+    not_before = time.time()
+    feeder = asyncio.create_task(
+        add_later(video, [Frame(np.full((2, 2), i, dtype=np.uint16)) for i in range(2)], delay=0.2)
+    )
+
+    try:
+        image = await asyncio.wait_for(source.next_image(None, not_before), timeout=5)
+    finally:
+        await source.close()
+        await feeder
+
+    assert image.header["DATE-SRC"] == "unknown"
+    assert image.header["VIDFRAME"] == 1
+
+
+@pytest.mark.asyncio
+async def test_raw_stream_source_decodes_colour_frame(video_server: tuple[BaseVideo, str]) -> None:
+    video, url = video_server
+    source = make_source(url)
+    data = np.arange(4 * 5 * 3, dtype=np.uint8).reshape(4, 5, 3)
+    await video._add_frame(Frame(data, start=time.time(), exposure_time=0.1))
+    feeder = asyncio.create_task(
+        add_later(video, [Frame(data + 1, start=time.time() + 1, exposure_time=0.1)], delay=0.2)
+    )
+
+    try:
+        # two frames in a row: a desynced stream would fail to parse the second one
+        first = await asyncio.wait_for(source.next_image(None, 0.0), timeout=5)
+        second = await asyncio.wait_for(source.next_image(None, time.time() + 0.5), timeout=5)
+    finally:
+        await source.close()
+        await feeder
+
+    np.testing.assert_array_equal(first.data, data)
+    np.testing.assert_array_equal(second.data, data + 1)

@@ -763,6 +763,7 @@ def test_raw_frame_meta_and_little_endian_bytes() -> None:
 
     meta = json.loads(meta_bytes)
     assert meta["DTYPE"] == "<u2"
+    assert meta["NAXIS"] == 2
     assert meta["NAXIS1"] == 3
     assert meta["NAXIS2"] == 2
     assert "DATE-OBS" in meta

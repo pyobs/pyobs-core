@@ -201,21 +201,45 @@ class RawStreamSource(GuidingFrameSource):
         if self._response is None or self._connected_crop != crop:
             await self._connect(crop)
 
+        # number of frames read here that arrived after not_before, for frames without a start time
+        arrived = 0
         while True:
             try:
                 meta, data = await self._read_part()
             except (aiohttp.ClientError, ConnectionError, EOFError, ValueError) as e:
                 await self.close()
                 raise exc.GrabImageError(f"Could not read from raw stream: {e}")
-            if self._accept(meta, not_before):
+            if self._arrived_after(meta, not_before):
+                arrived += 1
+            if self._accept(meta, not_before, arrived):
                 return meta, data
 
-    def _accept(self, meta: dict[str, Any], not_before: float) -> bool:
-        """Whether a frame started after not_before and was taken with the requested exposure time."""
+    @staticmethod
+    def _arrived_after(meta: dict[str, Any], not_before: float) -> bool:
+        """Whether a frame arrived at the camera module at or after not_before."""
+        try:
+            return bool(Time(meta["DATE-ARR"]).unix >= not_before)
+        except (KeyError, ValueError):
+            return False
+
+    def _accept(self, meta: dict[str, Any], not_before: float, arrived: int = 0) -> bool:
+        """Whether a frame started after not_before and was taken with the requested exposure time.
+
+        Args:
+            meta: Frame meta data.
+            not_before: Earliest allowed exposure start as UTC unix time.
+            arrived: Number of frames (including this one) that arrived after not_before, used for
+                frames without any start time.
+        """
         exptime = meta.get("EXPTIME")
         if self._exposure_time is not None and exptime is not None:
             if abs(exptime - self._exposure_time) > _EXPTIME_TOLERANCE * self._exposure_time:
                 return False
+
+        # no start time at all: DATE-OBS is only the arrival time. Like BaseVideo.grab_data(), skip the
+        # frame that was exposing at not_before, i.e. take the second frame arriving after it
+        if meta.get("DATE-SRC") == "unknown":
+            return arrived >= 2
 
         try:
             start = Time(meta["DATE-OBS"]).unix

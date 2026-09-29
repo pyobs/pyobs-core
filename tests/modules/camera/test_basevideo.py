@@ -854,6 +854,22 @@ async def test_raw_handler_sends_newest_frame_and_keeps_active(mocker) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("handler", ["raw_handler", "video_handler"])
+async def test_stream_handler_ends_quietly_on_connection_lost(mocker, handler: str) -> None:
+    # aiohttp's drain raises a plain ConnectionError("Connection lost") on some disconnects, not
+    # ClientConnectionResetError -- that must end the stream, not escape as an unhandled error
+    bv = make_basevideo()
+    response = MagicMock()
+    response.prepare = AsyncMock()
+    response.write = AsyncMock(side_effect=ConnectionError("Connection lost"))
+    mocker.patch("pyobs.modules.camera.basevideo.web.StreamResponse", return_value=response)
+    await bv._add_frame(Frame(np.zeros((4, 4), dtype=np.uint16)))
+
+    assert await getattr(bv, handler)(make_request()) is response
+    assert response.write.await_count == 1
+
+
+@pytest.mark.asyncio
 async def test_raw_handler_bad_params_rejected_before_activation() -> None:
     bv = make_basevideo()
     bv.activate_camera = AsyncMock()

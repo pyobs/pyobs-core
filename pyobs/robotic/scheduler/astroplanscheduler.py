@@ -3,12 +3,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import multiprocessing as mp
+import queue
+import traceback
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
 import astroplan
 import astropy.units as u
 from astroplan import FixedTarget, ObservingBlock
+from astropy.time import Time as AstropyTime
 
 from pyobs.object import Object
 from pyobs.robotic.instruments import InstrumentCapabilities
@@ -21,6 +24,9 @@ if TYPE_CHECKING:
     from pyobs.robotic import Observation, ObservationList, Project, Task
 
 log = logging.getLogger(__name__)
+
+# (task id, start, end) of a scheduled block, as sent back from the scheduler process
+ScheduledBlock = tuple[Any, AstropyTime, AstropyTime]
 
 
 class AstroplanScheduler(TaskScheduler):
@@ -124,7 +130,8 @@ class AstroplanScheduler(TaskScheduler):
                     task.duration * u.second,
                     priority,
                     constraints=[c.to_astroplan() for c in task.constraints] if task.constraints else None,
-                    configuration={"request": task},
+                    # no task in configuration: scheduled blocks are pickled back from the worker process,
+                    # and tasks reference unpicklable comm proxies; _convert_blocks matches by name instead
                     name=task.id,
                 )
             )
@@ -134,27 +141,39 @@ class AstroplanScheduler(TaskScheduler):
 
     async def _schedule_blocks(
         self, blocks: list[ObservingBlock], start: Time, end: Time, constraints: list[Any], abort: asyncio.Event
-    ) -> list[ObservingBlock]:
+    ) -> list[ScheduledBlock]:
 
         # run actual scheduler in separate process and wait for it
-        queue_out: mp.Queue[list[ObservingBlock]] = mp.Queue()
+        queue_out: mp.Queue[tuple[str, Any]] = mp.Queue()
         p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, self.observer, queue_out))
         p.start()
 
-        # wait for process to finish
-        # note that the process only finishes, when the queue is empty! so we have to poll the queue first
-        # and then the process.
-        loop = asyncio.get_running_loop()
-        future = loop.run_in_executor(None, queue_out.get, True)  # type: ignore[arg-type]
-        while not future.done():
+        # wait for result, polling the queue: the process only finishes when the queue is drained, and a
+        # blocking get() would hang forever if the process dies without sending anything
+        while True:
             if abort.is_set():
                 p.kill()
                 return []
-            else:
-                await asyncio.sleep(0.1)
-        scheduled_blocks: list[ObservingBlock] = await future
+            try:
+                status, result = queue_out.get_nowait()
+                break
+            except queue.Empty:
+                pass
+            if not p.is_alive():
+                # anything put before exit has been flushed to the pipe by now
+                try:
+                    status, result = queue_out.get_nowait()
+                    break
+                except queue.Empty:
+                    raise RuntimeError(f"Scheduler process exited with code {p.exitcode} without sending a result.")
+            await asyncio.sleep(0.1)
+
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, p.join)
 
+        if status == "error":
+            raise RuntimeError(f"Scheduler process failed:\n{result}")
+        scheduled_blocks: list[ScheduledBlock] = result
         return scheduled_blocks
 
     @staticmethod
@@ -164,38 +183,44 @@ class AstroplanScheduler(TaskScheduler):
         end: Time,
         constraints: list[Any],
         observer: Any,
-        scheduled_blocks: mp.Queue[list[ObservingBlock]],
+        queue_out: mp.Queue[tuple[str, Any]],
     ) -> None:
-        """Actually do the scheduling, usually run in a separate process."""
+        """Actually do the scheduling, usually run in a separate process.
+
+        Only plain (name, start, end) tuples are sent back, since the result is pickled and blocks may
+        reference objects that can't be pickled.
+        """
 
         # log it
         log.info("Calculating schedule for %d schedulable block(s) starting at %s...", len(blocks), start)
 
-        # we don't need any transitions
-        transitioner = astroplan.Transitioner()
+        try:
+            # we don't need any transitions
+            transitioner = astroplan.Transitioner()
 
-        # create scheduler
-        scheduler = astroplan.PriorityScheduler(constraints, observer, transitioner=transitioner)
+            # create scheduler
+            scheduler = astroplan.PriorityScheduler(constraints, observer, transitioner=transitioner)
 
-        # run scheduler
-        logging.disable(logging.WARNING)
-        time_range = astroplan.Schedule(start, end)
-        schedule = scheduler(blocks, time_range)
-        logging.disable(logging.NOTSET)
+            # run scheduler
+            logging.disable(logging.WARNING)
+            try:
+                time_range = astroplan.Schedule(start, end)
+                schedule = scheduler(blocks, time_range)
+            finally:
+                logging.disable(logging.NOTSET)
 
-        # put scheduled blocks in queue
-        scheduled_blocks.put(schedule.scheduled_blocks)
+            # put scheduled blocks in queue
+            queue_out.put(("ok", [(b.name, b.start_time, b.end_time) for b in schedule.scheduled_blocks]))
 
-        # clean up
-        del transitioner, scheduler, schedule
+        except Exception:
+            queue_out.put(("error", traceback.format_exc()))
 
-    async def _convert_blocks(self, blocks: list[ObservingBlock], tasks: list[Task]) -> ObservationList:
+    async def _convert_blocks(self, blocks: list[ScheduledBlock], tasks: list[Task]) -> ObservationList:
         from pyobs.robotic import Observation, ObservationList
 
         scheduled_tasks = ObservationList()
-        for block in blocks:
+        for task_id, block_start, block_end in blocks:
             # find task
-            task_id = block.name
             for task in tasks:
                 if task.id == task_id:
                     break
@@ -203,9 +228,7 @@ class AstroplanScheduler(TaskScheduler):
                 raise ValueError(f"Could not find task with id '{task_id}'")
 
             # create scheduled task
-            scheduled_tasks.append(
-                Observation(task=task, start=block.start_time, end=block.end_time, target=task.target)
-            )
+            scheduled_tasks.append(Observation(task=task, start=block_start, end=block_end, target=task.target))
 
         return scheduled_tasks
 

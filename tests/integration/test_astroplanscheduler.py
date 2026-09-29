@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import os
+import threading
+from collections.abc import AsyncIterator
+from typing import Any
+from unittest.mock import patch
+
 import pytest
 
 from pyobs.robotic import Task
@@ -65,6 +72,53 @@ async def test_schedules_single_task(scheduler: AstroplanScheduler) -> None:
     assert observations[0].task.id == "betelgeuse"
     assert observations[0].start >= START
     assert observations[0].end <= END
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_schedules_task_that_cannot_be_pickled(scheduler: AstroplanScheduler) -> None:
+    """Tasks referencing unpicklable objects (e.g. comm proxies) still get scheduled."""
+    task = make_task("betelgeuse", BETELGEUSE)
+    object.__setattr__(task, "_unpicklable", threading.Lock())
+    observations = [obs async for obs in asyncio_timeout(scheduler.schedule([task], [], START, END))]
+
+    assert len(observations) == 1
+    assert observations[0].task is task
+
+
+def _exit_silently(*args: Any) -> None:
+    os._exit(0)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_scheduler_process_exiting_without_result_raises(
+    scheduler: AstroplanScheduler, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A scheduler process that dies without sending a result raises instead of hanging."""
+    monkeypatch.setattr(AstroplanScheduler, "_schedule_process", staticmethod(_exit_silently))
+    task = make_task("betelgeuse", BETELGEUSE)
+    with pytest.raises(RuntimeError, match="without sending a result"):
+        [obs async for obs in asyncio_timeout(scheduler.schedule([task], [], START, END))]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_scheduler_process_error_is_raised(scheduler: AstroplanScheduler) -> None:
+    """An exception in the scheduler process is raised in the caller."""
+    task = make_task("betelgeuse", BETELGEUSE)
+    with patch("astroplan.PriorityScheduler.__call__", side_effect=ValueError("boom")):
+        with pytest.raises(RuntimeError, match="boom"):
+            [obs async for obs in asyncio_timeout(scheduler.schedule([task], [], START, END))]
+
+
+async def asyncio_timeout(it: AsyncIterator[Any], timeout: float = 60.0) -> AsyncIterator[Any]:
+    """Iterate with a timeout per item, so a hanging scheduler fails the test instead of blocking it."""
+    while True:
+        try:
+            yield await asyncio.wait_for(anext(it), timeout)
+        except StopAsyncIteration:
+            return
 
 
 @pytest.mark.asyncio

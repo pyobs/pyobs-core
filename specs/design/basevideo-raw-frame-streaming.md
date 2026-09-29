@@ -140,6 +140,21 @@ Byte order: always little-endian on the wire (`.astype(..., copy=False)` / expli
 needed), don't rely on host native order — a consumer on different hardware would silently
 misdecode otherwise.
 
+**Update (2026-09-29, PR #926):** the wire format was extended by
+[`basevideo-live-view.md`](basevideo-live-view.md) §3 and
+[`basevideo-frame-source.md`](basevideo-frame-source.md):
+
+- Query parameters on `/video.raw`: `x`, `y`, `w`, `h` (crop in unbinned pixels, all four or none),
+  `bin` (software binning, block mean, so binned frames are float32), `max_rate` (frames per
+  second for this connection).
+- Additional meta keys: `VIDFRAME` (in-memory frame number, not persisted; lets clients detect
+  dropped frames, which the "no substitute counter" decision above didn't need yet), `DATE-OBS` is
+  now the exposure start instead of the arrival time, `DATE-SRC` (`device`/`estimated`/`unknown`),
+  `DATE-ARR` (arrival time), `EXPTIME`, `SETGEN` (settings generation), `CROP-X`, `CROP-Y`, `SWBIN`.
+  With a crop, `XORGSUBF`/`YORGSUBF` are set before the local headers are built, so `CRPIX1/2`
+  match the cropped frame.
+- A client-side decoder exists in `pyobs.modules.pointing.guidingsource.RawStreamSource`.
+
 ### 4. Capability advertisement: `mjpeg`/`raw`, both `str | None`, on by default
 
 `VideoCapabilities` (`pyobs/interfaces/IVideo.py:10-11`) currently has one field, `video: str` (the

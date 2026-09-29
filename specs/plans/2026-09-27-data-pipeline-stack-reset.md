@@ -923,6 +923,33 @@ Opened 2026-09-27, against [pyobs-core 2.11.0](https://github.com/pyobs/pyobs-co
 
 No issue needed for pyobs-tis / pyobs-v4l (see phase 7 findings).
 
+## Phase 9: Driver reset()/full_reset() overrides (implemented 2026-09-28)
+
+All eight opened issues implemented and pushed to `develop` in their respective repos. None of the
+issues themselves have been closed yet.
+
+- pyobs-fli: `full_reset()` moves cooling out of `open()` -- `49d8feb`
+- pyobs-flipro: same shape -- `98d38cd`
+- pyobs-sbig: same shape (its `open()` call was unconditional) -- `e73dae3`
+- pyobs-asi: `reset()` restores gain/offset/image format, `full_reset()` moves cooling out of
+  `open()` -- `5550ff8`
+- pyobs-aravis: `reset()` restores exposure time; no `full_reset()` needed (its hardware setup in
+  `open()` already only logs on failure) -- `f855158`
+- pyobs-qhyccd: `reset()` restores gain/offset via new `default_gain`/`default_offset` constructor
+  options, `full_reset()` moves cooling + custom SDK params out of `open()` -- `31c5b75`. The
+  "needs a default policy" framing in the issue and in this plan's own draft turned out to be
+  wrong: `open()` already hardcoded gain=10/offset=140 before reading them back, the phase-7
+  survey missed those two lines. No design decision was actually needed, just making the existing
+  hardcoded values configurable.
+- pyobs-monet: `FliBonnShutter`/`QHYCCDBonnShutter` get `full_reset()` overrides moving the
+  shutter-blade positioning out of `open()`, calling the parent driver's `full_reset()` first --
+  `01b03f3`
+- pyobs-iagvt: `FTS.reset()` wires the existing `_reset_scan_mode()` into `IResettable`;
+  `FiberCamera.reset()` restores gain from `self._settings["Gain"]` when configured (confirmed
+  live in `config/astro159/fibercamera.yaml`) -- `1f0587a`. The `GregoryCamera`/`FiberCamera`
+  exposure-time gap (shared via `AravisCamera`) needs no separate code change here: it resolves
+  automatically once this repo's `pyobs-aravis>=2.0.0` pin picks up a release containing `f855158`.
+
 ## Follow-ups (not part of this plan)
 
 - Stack combine processors, designed in
@@ -930,8 +957,8 @@ No issue needed for pyobs-tis / pyobs-v4l (see phase 7 findings).
   class per method). Original note: mean,
   median, sum, kappa-sigma (`astropy.stats.sigma_clip`), float32, run in an executor, 2D input
   passed through unchanged, removes `CTYPE3`/`NAXIS3`, keeps `NFRAMES` and `FRAMES`.
-- Driver `reset()` overrides for extra settings, and `full_reset()` overrides with hardware
-  setup moved out of `open()` (from phase 7), one driver at a time.
+- ~~Driver `reset()` overrides for extra settings, and `full_reset()` overrides with hardware
+  setup moved out of `open()` (from phase 7), one driver at a time.~~ Done, see phase 9 above.
 - pyobs-gui: pipeline selector and stack button in `CameraWidget`, reset and full-reset buttons.
 - Mastermind calling `full_reset()` at the start of the night.
 - RPC hardening: `xml_to_params()` silently drops surplus params. Separate issue.

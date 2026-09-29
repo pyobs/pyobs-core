@@ -1,12 +1,14 @@
 """Tests for BaseVideo.grab_stack(), the IDataStack implementation.
 
-See specs/design/idatastack.md.
+See specs/design/idatastack.md and specs/design/basevideo-grab-path.md.
 """
 
 from __future__ import annotations
 
 import asyncio
 import os
+import time
+from collections.abc import AsyncIterator
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -16,7 +18,8 @@ import pytest
 import pyobs.utils.exceptions as exc
 from pyobs.images import Image, ImageProcessor
 from pyobs.interfaces import IDataStack
-from pyobs.modules.camera.dummyvideo import DummyVideo
+from pyobs.modules.camera.basevideo import BaseVideo
+from pyobs.modules.camera.videoframes import Frame
 
 # frame_number=False (with a filename pattern that doesn't need FRAMENUM): the per-frame
 # FRAMENUM default does a real VFS read+write, which is both irrelevant here and, under this
@@ -24,35 +27,55 @@ from pyobs.modules.camera.dummyvideo import DummyVideo
 _TEST_FILENAMES = "/webcam/pyobs-{DAY-OBS|date:}-{DATE-OBS|time:}.fits"
 
 
-def make_video(**kwargs: Any) -> DummyVideo:
-    video = DummyVideo(fps=1000, image_size=(4, 4), frame_number=False, filenames=_TEST_FILENAMES, **kwargs)
+class QueueVideo(BaseVideo):
+    """Driver on the frames() contract whose frames come from a queue."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(frame_number=False, filenames=_TEST_FILENAMES, **kwargs)
+        self.queue: asyncio.Queue[Frame] = asyncio.Queue()
+
+    async def frames(self) -> AsyncIterator[Frame]:
+        while True:
+            yield await self.queue.get()
+
+
+def make_video(cls: type[QueueVideo] = QueueVideo, **kwargs: Any) -> QueueVideo:
+    video = cls(**kwargs)
     video.comm.set_state = AsyncMock()
     video.comm.set_capabilities = AsyncMock()
     video.request_fits_headers = AsyncMock(return_value={})
     return video
 
 
-def stack_state_calls(video: DummyVideo) -> list[Any]:
+def stack_state_calls(video: BaseVideo) -> list[Any]:
     return [c.args[1] for c in video.comm.set_state.await_args_list if c.args[0] is IDataStack]
 
 
-async def feed_frames(video: DummyVideo, values: list[int], delay: float = 0.02) -> None:
+async def feed(video: QueueVideo, data: np.ndarray, delay: float = 0.02, **kwargs: Any) -> None:
+    """Feed one frame that starts exposing now."""
+    await asyncio.sleep(delay)
+    await video.queue.put(Frame(data=data, start=time.time(), exposure_time=0.001, **kwargs))
+
+
+async def feed_frames(video: QueueVideo, values: list[int], delay: float = 0.02) -> None:
     for value in values:
-        await asyncio.sleep(delay)
-        await video._set_image(np.full((4, 4), value, dtype=np.uint16))
+        await feed(video, np.full((4, 4), value, dtype=np.uint16), delay)
 
 
-# ── happy path / arming semantics ───────────────────────────────────────────
+# ── happy path / first-frame semantics ─────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_grab_stack_skips_arming_frame() -> None:
-    """The request is armed on the first frame after grab_stack() is called; frames are
-    collected only from the one after that."""
+async def test_grab_stack_starts_with_first_frame_started_after_call() -> None:
+    """A frame that started exposing before grab_stack() was called is skipped; collection starts
+    with the first frame that started afterwards."""
     video = make_video()
+    await video.activate_camera()
 
     task = asyncio.create_task(video.grab_stack(3))
-    await feed_frames(video, [10, 20, 30, 40])
+    await asyncio.sleep(0.02)
+    await video.queue.put(Frame(np.full((4, 4), 10, dtype=np.uint16), start=time.time() - 1, exposure_time=0.001))
+    await feed_frames(video, [20, 30, 40])
 
     filename = await asyncio.wait_for(task, timeout=10)
     data = video._cache[os.path.basename(filename)]
@@ -98,19 +121,16 @@ async def test_grab_stack_requests_headers_once() -> None:
 
 @pytest.mark.asyncio
 async def test_grab_stack_frames_are_copied() -> None:
-    """cube[i] = data must copy, not alias -- a driver reusing its buffer across frames must
-    not corrupt already-collected frames."""
+    """cube[i] = data must copy, not alias -- a frame's array must not be able to change an
+    already-collected frame."""
     video = make_video()
 
     task = asyncio.create_task(video.grab_stack(2))
     buf = np.full((4, 4), 1, dtype=np.uint16)
+    await feed(video, buf)  # first collected frame -- written into cube[0]
     await asyncio.sleep(0.02)
-    await video._set_image(buf)  # arming frame
-    await asyncio.sleep(0.02)
-    await video._set_image(buf)  # first collected frame -- writes into request.cube[0]
-    buf[:] = 99  # mutate the same buffer the driver would reuse
-    await asyncio.sleep(0.02)
-    await video._set_image(buf)  # second collected frame
+    buf[:] = 99  # mutate the same array
+    await feed(video, buf)  # second collected frame
 
     filename = await asyncio.wait_for(task, timeout=10)
     data = video._cache[os.path.basename(filename)]
@@ -164,20 +184,15 @@ async def test_grab_data_during_stack_still_works() -> None:
 
 
 @pytest.mark.asyncio
-async def test_grab_stack_memory_cap_advisory_from_last_image() -> None:
+async def test_grab_stack_memory_cap_advisory_from_newest_frame() -> None:
     video = make_video(max_stack_bytes=100)
-    video._last_image = _FakeLastImage(np.zeros((4, 4), dtype=np.uint16))
+    await video._add_frame(Frame(np.zeros((4, 4), dtype=np.uint16)))
 
     with pytest.raises(exc.InvalidArgumentError):
         await video.grab_stack(5)
 
-    # rejected before any request was even installed
-    assert video._stack_request is None
-
-
-class _FakeLastImage:
-    def __init__(self, data: np.ndarray) -> None:
-        self.data = data
+    # rejected before the stack was even started
+    assert video._stack_abort is None
 
 
 @pytest.mark.asyncio
@@ -199,12 +214,42 @@ async def test_grab_stack_color_frame_raises_grabimageerror() -> None:
     video = make_video()
 
     task = asyncio.create_task(video.grab_stack(3))
-    await asyncio.sleep(0.02)
-    await video._set_image(np.full((4, 4), 1, dtype=np.uint16))  # arming frame
-    await asyncio.sleep(0.02)
-    await video._set_image(np.ones((3, 4, 4), dtype=np.uint16))  # collected: color frame
+    await feed(video, np.ones((3, 4, 4), dtype=np.uint16))
 
     with pytest.raises(exc.GrabImageError):
+        await asyncio.wait_for(task, timeout=10)
+
+
+# ── dropped frames / settings changes ────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_grab_stack_fails_when_frames_were_dropped() -> None:
+    video = make_video(buffer_frames=2)
+
+    task = asyncio.create_task(video.grab_stack(5))
+    await feed_frames(video, [1])
+    await asyncio.sleep(0.02)
+
+    # three frames in a row without giving the stack a chance to run: one falls out of the buffer
+    for value in (2, 3, 4):
+        await video._add_frame(Frame(np.full((4, 4), value, dtype=np.uint16), exposure_time=0.001))
+
+    with pytest.raises(exc.GrabImageError, match="dropped"):
+        await asyncio.wait_for(task, timeout=10)
+
+
+@pytest.mark.asyncio
+async def test_grab_stack_fails_when_settings_change() -> None:
+    video = make_video()
+
+    task = asyncio.create_task(video.grab_stack(3))
+    await feed_frames(video, [1])
+    await asyncio.sleep(0.02)
+    video._new_generation()
+    await feed_frames(video, [2])
+
+    with pytest.raises(exc.GrabImageError, match="settings changed"):
         await asyncio.wait_for(task, timeout=10)
 
 
@@ -222,7 +267,7 @@ async def test_grab_stack_abort_mid_stack() -> None:
     with pytest.raises(exc.AbortedError):
         await asyncio.wait_for(task, timeout=10)
 
-    assert video._stack_request is None
+    assert video._stack_abort is None
     last_state = stack_state_calls(video)[-1]
     assert (last_state.count_total, last_state.count_left) == (0, 0)
 
@@ -256,7 +301,7 @@ async def test_grab_stack_keeps_camera_active(mocker) -> None:
 
 @pytest.mark.asyncio
 async def test_grab_stack_pipeline_runs_after_finish_image_override_headers() -> None:
-    class _TaggingVideo(DummyVideo):
+    class _TaggingVideo(QueueVideo):
         async def _finish_image(self, image: Image, broadcast: bool, image_type: Any) -> tuple[Image, str]:
             image.header["CUSTOM"] = True
             return await super()._finish_image(image, broadcast, image_type)
@@ -270,17 +315,7 @@ async def test_grab_stack_pipeline_runs_after_finish_image_override_headers() ->
             del image.header["NAXIS3"]
             return image
 
-    video = _TaggingVideo(
-        fps=1000,
-        image_size=(4, 4),
-        frame_number=False,
-        filenames=_TEST_FILENAMES,
-        pipelines={"mean": [_RequireHeaderStep()]},
-        default_pipeline="mean",
-    )
-    video.comm.set_state = AsyncMock()
-    video.comm.set_capabilities = AsyncMock()
-    video.request_fits_headers = AsyncMock(return_value={})
+    video = make_video(_TaggingVideo, pipelines={"mean": [_RequireHeaderStep()]}, default_pipeline="mean")
 
     task = asyncio.create_task(video.grab_stack(3))
     await feed_frames(video, [1, 2, 3, 4])

@@ -5,6 +5,7 @@ import logging
 import math
 import os
 from asyncio import Task
+from collections.abc import Iterable
 from typing import Any, cast
 
 from astropy.io import fits
@@ -18,6 +19,96 @@ from pyobs.utils.time import Time
 from pyobs.utils.versions import version_fits_headers
 
 log = logging.getLogger(__name__)
+
+
+async def request_fits_headers(
+    module: Module, namespaces: list[str] | None = None, before: bool = True, exclude: Iterable[str] = ()
+) -> dict[str, Task[Any]]:
+    """Request FITS headers from all other modules that provide them.
+
+    Args:
+        module: Module to send the requests from.
+        namespaces: Namespaces to request, None for all.
+        before: Request IFitsHeaderBefore headers if True, IFitsHeaderAfter otherwise.
+        exclude: Names of clients not to ask.
+
+    Returns:
+        Futures from all modules.
+    """
+
+    # init
+    futures: dict[str, Task[Any]] = {}
+
+    # we can only do this with a comm module
+    if module._comm:
+        # get clients that provide fits headers
+        clients = await module._comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
+
+        # create and run a threads in which the fits headers are fetched
+        for client in clients:
+            if client in exclude:
+                continue
+            log.debug("Requesting FITS headers from %s...", client)
+            if before:
+                async with module.proxy(client, IFitsHeaderBefore) as proxy:
+                    futures[client] = asyncio.create_task(proxy.get_fits_header_before(namespaces))
+            else:
+                async with module.proxy(client, IFitsHeaderAfter) as proxy:
+                    futures[client] = asyncio.create_task(proxy.get_fits_header_after(namespaces))
+
+    # finished
+    return futures
+
+
+async def add_requested_fits_headers(
+    image: Image | fits.PrimaryHDU, futures: dict[str, Task[Any]], timeout: float
+) -> None:
+    """Add requested FITS headers to header of given image.
+
+    Args:
+        image: Image with header to add to.
+        futures: Futures to get headers from, see request_fits_headers().
+        timeout: Maximum seconds to wait for all of them together.
+    """
+
+    # Bound the whole collection to a single deadline: a peer that never answers its
+    # IQ (e.g. a laptop put to sleep without closing its client) would otherwise stall
+    # the frame for the full XMPP IQ timeout (~120s) per dead peer. Give up on anything
+    # still pending and proceed without its headers.
+    pending: set[Task[Any]] = set()
+    if futures:
+        _, pending = await asyncio.wait(futures.values(), timeout=timeout)
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+
+    # get fits headers from other clients
+    for client, future in futures.items():
+        # join thread
+        log.info("Fetching FITS headers from %s...", client)
+        if future in pending:
+            log.warning("Could not fetch FITS headers from %s: timed out.", client)
+            continue
+
+        try:
+            headers = future.result()
+        except exc.RemoteError as e:
+            log.warning("Could not fetch FITS headers from %s: %s.", client, str(e))
+            continue
+        except Exception as e:
+            # XmppComm.execute() only converts IqError/IqTimeout into RemoteError; anything
+            # else raised while making or deserializing the RPC call (e.g. a peer returning a
+            # malformed IFitsHeaderBefore/After response) escapes as a raw exception. That must
+            # not take down the whole exposure -- log and skip this peer's headers (#767).
+            log.warning("Could not fetch FITS headers from %s: unexpected %s: %s.", client, type(e).__name__, str(e))
+            continue
+
+        # add them to fits file
+        if headers:
+            log.debug("Adding additional FITS headers from %s...", client)
+            for key, entry in headers.items():
+                image.header[key] = (entry.value, entry.comment)
 
 
 class FitsHeaderMixin:
@@ -76,32 +167,8 @@ class FitsHeaderMixin:
         Returns:
             Futures from all modules.
         """
-
-        # init
-        futures: dict[str, Task[Any]] = {}
-
-        # we can only do this with a comm module
         module = cast(Module, cast(object, self))
-        if module._comm:
-            # get clients that provide fits headers
-            clients = await module._comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
-
-            # create and run a threads in which the fits headers are fetched
-            for client in clients:
-                log.debug("Requesting FITS headers from %s...", client)
-                if before:
-                    async with module.proxy(client, IFitsHeaderBefore) as proxy:
-                        futures[client] = asyncio.create_task(
-                            proxy.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
-                        )
-                else:
-                    async with module.proxy(client, IFitsHeaderAfter) as proxy:
-                        futures[client] = asyncio.create_task(
-                            proxy.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
-                        )
-
-        # finished
-        return futures
+        return await request_fits_headers(module, self._fitsheadermixin_fits_namespaces, before=before)
 
     async def add_requested_fits_headers(self, image: Image | fits.PrimaryHDU, futures: dict[str, Task[Any]]) -> None:
         """Add requested FITS headers to header of given image.
@@ -110,47 +177,7 @@ class FitsHeaderMixin:
             image: Image with header to add to.
             futures: Futures to get headers from.
         """
-
-        # Bound the whole collection to a single deadline: a peer that never answers its
-        # IQ (e.g. a laptop put to sleep without closing its client) would otherwise stall
-        # the frame for the full XMPP IQ timeout (~120s) per dead peer. Give up on anything
-        # still pending and proceed without its headers.
-        pending: set[Task[Any]] = set()
-        if futures:
-            _, pending = await asyncio.wait(futures.values(), timeout=self._fitsheadermixin_header_timeout)
-            for task in pending:
-                task.cancel()
-            if pending:
-                await asyncio.gather(*pending, return_exceptions=True)
-
-        # get fits headers from other clients
-        for client, future in futures.items():
-            # join thread
-            log.info("Fetching FITS headers from %s...", client)
-            if future in pending:
-                log.warning("Could not fetch FITS headers from %s: timed out.", client)
-                continue
-
-            try:
-                headers = future.result()
-            except exc.RemoteError as e:
-                log.warning("Could not fetch FITS headers from %s: %s.", client, str(e))
-                continue
-            except Exception as e:
-                # XmppComm.execute() only converts IqError/IqTimeout into RemoteError; anything
-                # else raised while making or deserializing the RPC call (e.g. a peer returning a
-                # malformed IFitsHeaderBefore/After response) escapes as a raw exception. That must
-                # not take down the whole exposure -- log and skip this peer's headers (#767).
-                log.warning(
-                    "Could not fetch FITS headers from %s: unexpected %s: %s.", client, type(e).__name__, str(e)
-                )
-                continue
-
-            # add them to fits file
-            if headers:
-                log.debug("Adding additional FITS headers from %s...", client)
-                for key, entry in headers.items():
-                    image.header[key] = (entry.value, entry.comment)
+        await add_requested_fits_headers(image, futures, self._fitsheadermixin_header_timeout)
 
     def add_local_fits_headers(self, image: Image | fits.PrimaryHDU) -> None:
         """Add the cheap, local FITS headers to the given image (no I/O, no comm).
@@ -518,4 +545,6 @@ __all__ = [
     "SpectrumFitsHeaderMixin",
     "FilterHeaderMixin",
     "FocuserHeaderMixin",
+    "request_fits_headers",
+    "add_requested_fits_headers",
 ]

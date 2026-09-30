@@ -5,6 +5,19 @@ Status: standing snapshot — last checked 2026-09-29.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-09-29** (evening): pyobs-asi #46 (`AsiVideo`, `69c7959`) and pyobs-qhyccd #81
+  (`QHYCCDVideo` plus live-mode bindings, `ecda1fe`) implemented on `frames()`, released as
+  pyobs-asi v2.1.0 and pyobs-qhyccd v2.1.0, both issues closed. Removed from the table. Neither
+  has run on real hardware yet (open points listed under the plan entry below). Also dropped the
+  stale "blocked on pyobs-core PR #926" notes from the pyobs-tis/pyobs-v4l/pyobs-gui/pyobs-web-client
+  rows: #926 is merged and released in v2.13.0. Table down to 9. Closed the issues that were
+  already fixed and released but still open on GitHub, each with a comment naming the release:
+  pyobs-core #924/#925 (v2.13.0), #902 (v2.9.0), #895 (v2.8.8), #871/#858 (v2.7.0), #831/#832
+  (v2.2.0); pyobs-aravis #56/#57 (v2.1.0). Every open GitHub issue in the fleet is now in the table.
+  Then pyobs-tis #23 (`3e41b2e`) and pyobs-v4l #27 (`e09f238`) moved to `frames()` and released
+  as pyobs-tis v2.1.0 and pyobs-v4l v2.1.0, both closed; the v4l change also fixes a busy loop on
+  failed reads and converts BGR frames to greyscale by default. Neither tested on hardware yet.
+  Table down to 7.
 - **2026-09-29** (later): re-queried the fleet with per-repo `gh api`. pyobs-aravis #56
   (`_wait_for_frame` thread leak, `1890e7a`) and #57 (`AravisCamera` on `frames()`, `64620dc`) are
   both on `develop` (released as v2.1.0), so they are not in the table (issues stay open pending
@@ -348,7 +361,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (11, checked 2026-09-29, see changelog)
+## Open issues (7, checked 2026-09-29, see changelog)
 
 One row per issue — same layout for every repo.
 
@@ -358,12 +371,8 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
-| pyobs-asi | [#46](https://github.com/pyobs/pyobs-asi/issues/46) | Add AsiVideo module implementing IVideo | filed 2026-09-29; to be written on the new `frames()` contract (`basevideo-frame-source.md`), plan phase 3b; no per-frame timestamps in live mode |
-| pyobs-qhyccd | [#81](https://github.com/pyobs/pyobs-qhyccd/issues/81) | Add QHYCCDVideo module implementing IVideo | filed 2026-09-29; needs live-mode Cython bindings first; plan phase 3b; no per-frame timestamps in live mode |
-| pyobs-tis | [#23](https://github.com/pyobs/pyobs-tis/issues/23) | Move TisCamera to the new BaseVideo frames() contract | filed 2026-09-29; blocked on pyobs-core PR #926; plan phase 7 |
-| pyobs-v4l | [#27](https://github.com/pyobs/pyobs-v4l/issues/27) | Move v4lCamera to the new BaseVideo frames() contract | filed 2026-09-29; blocked on pyobs-core PR #926; plan phase 7 |
-| pyobs-gui | [#182](https://github.com/pyobs/pyobs-gui/issues/182) | Live view: choose MJPEG (server stretch) or raw stream (client stretch) | filed 2026-09-29; blocked on pyobs-core PR #926; plan phase 6 |
-| pyobs-web-client | [#58](https://github.com/pyobs/pyobs-web-client/issues/58) | Live view: choose MJPEG (server stretch) or raw stream (client stretch) | filed 2026-09-29; blocked on pyobs-core PR #926; plan phase 6 |
+| pyobs-gui | [#182](https://github.com/pyobs/pyobs-gui/issues/182) | Live view: choose MJPEG (server stretch) or raw stream (client stretch) | filed 2026-09-29; unblocked (pyobs-core v2.13.0); plan phase 6 |
+| pyobs-web-client | [#58](https://github.com/pyobs/pyobs-web-client/issues/58) | Live view: choose MJPEG (server stretch) or raw stream (client stretch) | filed 2026-09-29; unblocked (pyobs-core v2.13.0); plan phase 6 |
 | pyobs-gui | [#168](https://github.com/pyobs/pyobs-gui/issues/168) | Desktop notifications for module ERROR / log ERROR-CRITICAL while running | filed 2026-09-14; independent of pyobs-core's push-notification module — same signals, but for an operator already at a running/connected pyobs-gui, via `QSystemTrayIcon::showMessage()` (not decided); no design doc yet |
 
 ## Open plans
@@ -375,8 +384,11 @@ One row per issue — same layout for every repo.
   (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot, see below.
 - [2026-09-29-basevideo-frame-buffer-redesign.md](../plans/2026-09-29-basevideo-frame-buffer-redesign.md):
   *in progress*. pyobs-core phases (1, 2, 4, 5, server side of 6) merged to `develop` (PR #926,
-  2026-09-29);
-  driver migration (3b, 7; 3 done for pyobs-aravis), clients (6) and shim removal (8) open.
+  2026-09-29, released v2.13.0). Phase 3 (pyobs-aravis) and 3b (pyobs-asi v2.1.0, pyobs-qhyccd
+  v2.1.0) code landed; 3b still needs a hardware check (QHY binned window offsets, stale frames
+  after a live-mode restart, `readout_time` per sensor), so its boxes stay unticked. Phase 7 code landed for pyobs-tis
+  v2.1.0 and pyobs-v4l v2.1.0 (not hardware-tested). Open: downstream `AravisCamera` subclasses
+  (7), clients (6), shim removal (8).
 
 ### Design docs still *proposed*
 

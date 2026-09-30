@@ -250,7 +250,7 @@ class DarkBiasScript(Script):
             by_combo = await science_exptimes_for_night(self.archive, self.site, night)
             exptimes = self._flatten_matching_exptimes(by_combo)
             if not exptimes:
-                log.warning(
+                log.info(
                     "No science exptimes found for night %s at binning %s; nothing to expose.",
                     night,
                     self._binning_str(),

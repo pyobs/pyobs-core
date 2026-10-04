@@ -5,6 +5,21 @@ Status: standing snapshot — last checked 2026-10-04.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-04** (skill run): first run of the `update-fleet-open-items` skill. Re-queried all 26
+  GitHub repos in the org (`gh repo list`): the same 7 open issues as before, no new, no closed,
+  none with a fix released, so nothing closed or filed. Table stays at 6 (pyobs-gui #182 is on
+  `develop` as `767c8a0`, in no tag yet, latest pyobs-gui tag is v2.5.3). `pyobs-auth` is in the
+  org but not in the tiers doc (0 open issues). Plans and designs checked against commits in the
+  local checkouts. Added the two pyobs-web-client items with open work: the Android weather
+  widgets plan (implemented 2026-09-29, open: Android < 12 untested, picker previews for < 12) and
+  `native-app-shell-capacitor.md` (in progress, iOS blocked on Mac access, same as mobile-first
+  Phase 4). Stale status lines found, plan files not touched: pyobs-flipro
+  `2026-08-16-nogil-libflipro-driver-calls.md` still says "in progress", but every box except
+  "update this status" is ticked, `with nogil:` is in `fliprodriver.pyx` and its issue is closed;
+  pyobs-portal `2026-09-01-portal-instrument-config-app.md` still says "proposed", but `140f48c`
+  implemented it (#133, closes #116). Not checked: pyobs-web-admin design docs (no status
+  lines), the GitLab fleet repos (out of scope), and the code behind plan checkboxes beyond the
+  two above. Table unchanged at 6.
 - **2026-10-04** (later): re-queried the fleet, no new issues. pyobs-gui #182 (live-view mode:
   MJPEG or raw stream) landed on `develop` (`767c8a0`, not yet released, issue stays open), so its
   row is gone. Doing it exposed a pyobs-core bug: `stretch_to_uint8()` resolved the cuts after
@@ -427,3 +442,9 @@ One line per plan — same layout for every repo.
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)
+- **pyobs-web-client** — [2026-09-28-android-weather-widget.md](../../pyobs-web-client/specs/plans/2026-09-28-android-weather-widget.md) —
+  Android home-screen widgets for pyobs-weather instances (*implemented* 2026-09-29, device
+  verified; open: Android < 12 untested, picker preview PNGs for < 12)
+- **pyobs-web-client** — [native-app-shell-capacitor.md](../../pyobs-web-client/specs/design/native-app-shell-capacitor.md) —
+  Capacitor app shell, Android first (*in progress*; push, secure storage and offline screen done,
+  iOS blocked on Mac access)

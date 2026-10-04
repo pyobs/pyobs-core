@@ -1348,3 +1348,85 @@ async def test_ping_handler_stays_open_with_token() -> None:
     bv = make_basevideo(token="secret")
     response = await bv.ping_handler(make_request())
     assert response.status == 200
+
+
+# ── CORS for /video.raw ─────────────────────────────────────────────────────
+
+
+async def _cors_client(**kwargs: Any) -> Any:
+    from aiohttp.test_utils import TestClient, TestServer
+
+    bv = make_basevideo(raw_path="/webcam/raw", **kwargs)
+    bv.activate_camera = AsyncMock()  # type: ignore[method-assign]
+    client = TestClient(TestServer(bv._app))
+    await client.start_server()
+    return client
+
+
+@pytest.mark.asyncio
+async def test_cors_preflight_allowed_origin_bypasses_auth() -> None:
+    client = await _cors_client(token="secret", cors_origins=["http://a.example"])
+    try:
+        headers = {"Origin": "http://a.example", "Access-Control-Request-Method": "GET"}
+        resp = await client.options("/video.raw", headers=headers)
+        assert resp.status == 200
+        assert resp.headers["Access-Control-Allow-Origin"] == "http://a.example"
+        assert resp.headers["Access-Control-Allow-Methods"] == "GET"
+        assert resp.headers["Access-Control-Allow-Headers"] == "Authorization"
+        assert "Access-Control-Max-Age" in resp.headers
+        assert "Origin" in resp.headers["Vary"]
+        assert "Access-Control-Allow-Credentials" not in resp.headers
+
+        # the actual request is still protected, and the 401 carries CORS headers
+        resp = await client.get("/video.raw", headers={"Origin": "http://a.example"})
+        assert resp.status == 401
+        assert resp.headers["Access-Control-Allow-Origin"] == "http://a.example"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_cors_preflight_disallowed_origin() -> None:
+    client = await _cors_client(cors_origins=["http://a.example"])
+    try:
+        resp = await client.options("/video.raw", headers={"Origin": "http://evil.example"})
+        assert resp.status == 403
+        assert "Access-Control-Allow-Origin" not in resp.headers
+        resp = await client.get("/ping", headers={"Origin": "http://a.example"})
+        assert "Access-Control-Allow-Origin" not in resp.headers
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_cors_wildcard() -> None:
+    client = await _cors_client(cors_origins=["*"])
+    try:
+        resp = await client.options("/video.raw", headers={"Origin": "http://any.example"})
+        assert resp.status == 200
+        assert resp.headers["Access-Control-Allow-Origin"] == "*"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_cors_off_by_default() -> None:
+    client = await _cors_client()
+    try:
+        resp = await client.options("/video.raw", headers={"Origin": "http://a.example"})
+        assert resp.status == 405
+        resp = await client.get("/video.raw", headers={"Origin": "http://a.example", "Authorization": "x"})
+        assert "Access-Control-Allow-Origin" not in resp.headers
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_cors_header_on_bad_request_error() -> None:
+    client = await _cors_client(cors_origins=["*"])
+    try:
+        resp = await client.get("/video.raw?x=1", headers={"Origin": "http://a.example"})
+        assert resp.status == 400
+        assert resp.headers["Access-Control-Allow-Origin"] == "*"
+    finally:
+        await client.close()

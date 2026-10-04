@@ -157,6 +157,7 @@ class BaseVideo(
         cut_lo: float | None = None,
         cut_hi: float | None = None,
         jpeg_quality: int = 80,
+        cors_origins: list[str] | None = None,
         **kwargs: Any,
     ):
         """Creates a new BaseWebcam.
@@ -197,6 +198,10 @@ class BaseVideo(
             cut_lo: Default low cut (percentile or value, depending on cuts).
             cut_hi: Default high cut (percentile or value, depending on cuts).
             jpeg_quality: Default JPEG quality for the MJPEG live view.
+            cors_origins: Origins allowed to read /video.raw from a browser on another origin, or
+                ["*"] for any. None (default) sends no CORS headers. Browsers authenticate with the
+                Bearer header only (no credentials mode), so "*" is valid, but without a token it
+                lets any web page the user visits read the stream.
         """
         super().__init__(
             fits_namespaces=fits_namespaces,
@@ -262,7 +267,10 @@ class BaseVideo(
         # without it, concurrent connections each sleep independently and the rate scales
         # with concurrency instead of being capped
         self._login_lock = asyncio.Lock()
-        self._app = web.Application()
+        self._cors_origins = cors_origins
+        self._app = web.Application(middlewares=[self._cors_middleware] if cors_origins else [])
+        if cors_origins:
+            self._app.on_response_prepare.append(self._cors_on_prepare)
         routes = [web.get("/ping", self.ping_handler), web.get("/{filename}", self.image_handler)]
         if self._video_path is not None:
             routes += [web.get("/", self.web_handler), web.get("/video.mjpg", self.video_handler)]
@@ -398,6 +406,59 @@ class BaseVideo(
             return
         if not (self._check_bearer(request) or self._check_cookie(request)):
             raise web.HTTPUnauthorized()
+
+    def _cors_origin(self, request: web.Request) -> str | None:
+        """Returns the Access-Control-Allow-Origin value for this request, None if CORS doesn't apply.
+
+        Only /video.raw is covered. Returns "*" if any origin is allowed, otherwise the request's
+        own origin if it is in the list.
+
+        Args:
+            request: Request to check.
+        """
+        if not self._cors_origins or request.path != "/video.raw":
+            return None
+        if "*" in self._cors_origins:
+            return "*"
+        origin = request.headers.get("Origin")
+        return origin if origin in self._cors_origins else None
+
+    @web.middleware
+    async def _cors_middleware(
+        self, request: web.Request, handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        """Answers CORS preflights for /video.raw, before and without any auth check.
+
+        Browsers never send credentials on a preflight, so it must not go through _check_auth.
+        Headers on the actual responses are added in _cors_on_prepare.
+        """
+        if request.method == "OPTIONS" and request.path == "/video.raw" and self._cors_origins:
+            allow = self._cors_origin(request)
+            if allow is None:
+                return web.Response(status=403)
+            return web.Response(
+                headers={
+                    "Access-Control-Allow-Origin": allow,
+                    "Access-Control-Allow-Methods": "GET",
+                    "Access-Control-Allow-Headers": "Authorization",
+                    "Access-Control-Max-Age": "86400",
+                    "Vary": "Origin",
+                }
+            )
+        return await handler(request)
+
+    async def _cors_on_prepare(self, request: web.Request, response: web.StreamResponse) -> None:
+        """Adds CORS headers to every /video.raw response, including 401/400 and the stream itself.
+
+        Done on prepare because the stream response is prepared inside the handler, after which
+        its headers can no longer change. Without them on error responses, the browser would hide
+        the real status behind a generic CORS failure.
+        """
+        allow = self._cors_origin(request)
+        if allow is None:
+            return
+        response.headers["Access-Control-Allow-Origin"] = allow
+        response.headers["Vary"] = "Origin"
 
     async def login_handler(self, request: web.Request) -> web.Response:
         """Handles GET access to /login and returns the login form.

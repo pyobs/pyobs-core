@@ -180,8 +180,11 @@ data or touches hardware requires header-or-cookie.
 - `secure` cookie flag behind a TLS-terminating reverse proxy: no clean auto-detect
   exists; proposal is to document the knob and add a `cookie_secure` param only if a
   site actually needs it.
-- CORS: `BaseVideo` endpoints carry no CORS headers today. `<img>` embedding doesn't
-  need them, and no in-tree web app fetches `BaseVideo` directly (browser-side image
-  fetching goes through `HttpFileCache`, which got its own `OPTIONS` preflight in the
-  HttpFileCache plan). If a JS browser consumer of `BaseVideo` appears later, mirror
-  that `OPTIONS` handler — out of scope here.
+- CORS: resolved by issue #942. `/video.raw` gets opt-in CORS via the `cors_origins` option
+  (`None` = off, `["*"]` = any origin). An aiohttp middleware answers the `OPTIONS` preflight
+  before any auth check (browsers send no credentials on it; a disallowed origin gets 403), and
+  an `on_response_prepare` hook adds `Access-Control-Allow-Origin` to every `/video.raw`
+  response, including 401/400 and the stream itself. No `Allow-Credentials`: cross-origin
+  clients use the Bearer header, so the `SameSite=Lax` login cookie is not involved. `/video.mjpg`
+  is not covered, `<img>` doesn't need it. Without a token, `["*"]` lets any web page read the
+  stream.

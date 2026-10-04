@@ -72,9 +72,9 @@ far enough switches the server-side crop (§3) to save bandwidth.
 - pyobs-gui: Qt, decoding in a worker thread, stretch in numpy.
 - pyobs-web-client: `fetch()` with a streamed body, multipart parsing in JS, stretch on a
   canvas (WebGL if CPU is too slow for large frames). Auth: `fetch()` can send the Bearer header
-  directly; whether the web client has the token or relies on the login cookie, and what that
-  means for cross-origin requests (CORS), needs checking against
-  [`basevideo-http-auth.md`](basevideo-http-auth.md).
+  directly; cross-origin use needs the opt-in `cors_origins` option on the module (issue #942,
+  see [`basevideo-http-auth.md`](basevideo-http-auth.md)). The client must use the Bearer
+  header, the login cookie is not sent cross-origin.
 
 ### 3. Raw-stream extensions
 

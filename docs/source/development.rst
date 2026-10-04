@@ -101,7 +101,7 @@ A couple of standalone scripts under :file:`scripts/` (top level, not :file:`scr
 :ref:`xmpp-diagnostics` for those) support the release process itself, rather than pyobs at runtime.
 
 ``check_changelog.sh`` is run by CI against a release tag, and fails if a minor/major release is being
-tagged without a matching entry in :file:`CHANGELOG.rst` (dev pre-releases and patch releases are exempt
+tagged without a matching entry in :file:`CHANGELOG.md` (dev pre-releases and patch releases are exempt
 — see the script's own header comment for the exact rules)::
 
     ./scripts/check_changelog.sh v1.54.0

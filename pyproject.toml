@@ -1,10 +1,11 @@
 [project]
 name = "pyobs-core"
-version = "2.14.0"
+version = "2.14.1"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
 license = "MIT"
+readme = "README.md"
 dependencies = [
     "astropy>=7.0.1,<9",
     "numpy>=2.2.5,<3",
@@ -22,6 +23,12 @@ dependencies = [
     "pillow>=12.3.0",
     "astropy-iers-data>=0.2026.6.22.1.23.34",
 ]
+
+[project.urls]
+Homepage = "https://www.pyobs.org"
+Documentation = "https://docs.pyobs.org"
+Repository = "https://github.com/pyobs/pyobs-core"
+Issues = "https://github.com/pyobs/pyobs-core/issues"
 
 [project.optional-dependencies]
 full = [
@@ -83,6 +90,7 @@ dev = [
     "aioresponses>=0.7.8",
     "coverage>=7.9.2",
     "sphinx>=8.2.3",
+    "myst-parser>=4.0.1",
     "sphinx-rtd-theme>=3.0.2",
     "pyside6-stubs>=6.7.3.0",
     "radon>=6.0.1",

@@ -48,6 +48,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.intersphinx",
+    "myst_parser",
     # "sphinx_autodoc_typehints",
 ]
 

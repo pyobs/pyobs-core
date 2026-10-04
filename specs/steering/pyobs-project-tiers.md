@@ -86,6 +86,13 @@ track pyobs-core's major version and which aren't:
   pyobs-core dependency floor is also stale (`>=1.17.2`), well behind current pyobs-core. Doesn't
   comply with the version policy
 
+### Shared libraries
+
+- pyobs-auth — shared Keycloak/OIDC authentication client for the pyobs web services (Python, uv,
+  Django) — 2.x, complies with the version policy. No pyobs-core dependency. Used by
+  pyobs-archive, pyobs-portal, pyobs-weather, pyobs-web-admin and pyobs-pipeline (`pyobs-auth>=2.1.0`
+  in each, checked 2026-10-04). Design: `specs/design/shared-auth-keycloak.md`
+
 ## Homepage
 
 - pyobs.github.io — static site (Ruby, Jekyll, GitHub Pages)

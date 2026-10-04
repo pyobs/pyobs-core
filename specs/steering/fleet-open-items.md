@@ -5,6 +5,30 @@ Status: standing snapshot — last checked 2026-10-04.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-04** (skill run): first run of the `update-fleet-open-items` skill. Re-queried all 26
+  GitHub repos in the org (`gh repo list`): the same 7 open issues as before, no new, no closed,
+  none with a fix released, so nothing closed or filed. Table stays at 6 (pyobs-gui #182 is on
+  `develop` as `767c8a0`, in no tag yet, latest pyobs-gui tag is v2.5.3). `pyobs-auth` is in the
+  org but not in the tiers doc (0 open issues). Plans and designs checked against commits in the
+  local checkouts. Added the two pyobs-web-client items with open work: the Android weather
+  widgets plan (implemented 2026-09-29, open: Android < 12 untested, picker previews for < 12) and
+  `native-app-shell-capacitor.md` (in progress, iOS blocked on Mac access, same as mobile-first
+  Phase 4). Stale status lines found, plan files not touched: pyobs-flipro
+  `2026-08-16-nogil-libflipro-driver-calls.md` still says "in progress", but every box except
+  "update this status" is ticked, `with nogil:` is in `fliprodriver.pyx` and its issue is closed;
+  pyobs-portal `2026-09-01-portal-instrument-config-app.md` still says "proposed", but `140f48c`
+  implemented it (#133, closes #116). Not checked: pyobs-web-admin design docs (no status
+  lines), the GitLab fleet repos (out of scope), and the code behind plan checkboxes beyond the
+  two above. Table unchanged at 6.
+- **2026-10-04** (later): re-queried the fleet, no new issues. pyobs-gui #182 (live-view mode:
+  MJPEG or raw stream) landed on `develop` (`767c8a0`, not yet released, issue stays open), so its
+  row is gone. Doing it exposed a pyobs-core bug: `stretch_to_uint8()` resolved the cuts after
+  downsampling to float32, so `cuts=full` with `scale > 1` raised and closed the MJPEG stream, and
+  the raw stream meta had no original dtype for binned frames. Fixed in `3e68e906` (cuts follow the
+  input dtype, optional `dtype` argument, `SRCDTYPE` in the raw meta), released as pyobs-core
+  v2.13.4; pyobs-gui's floor is `>=2.13.4`. The gui part has not had a manual test with
+  `test/video.yaml` yet, and the follow-up issue for zoom plus server-side crop is not filed.
+  Table down to 6.
 - **2026-10-04**: re-queried the fleet with per-repo `gh api` (all 26 repos in the tiers doc plus
   `pyobs.github.io`). The four "use brand color as page accent color" issues filed 2026-09-29
   (pyobs-archive #66 `888b6bb`, pyobs-portal #160 `dc50f4c`, pyobs-weather #41 `968c51b`,
@@ -371,7 +395,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (7, checked 2026-10-04, see changelog)
+## Open issues (6, checked 2026-10-04, see changelog)
 
 One row per issue — same layout for every repo.
 
@@ -381,7 +405,6 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
-| pyobs-gui | [#182](https://github.com/pyobs/pyobs-gui/issues/182) | Live view: choose MJPEG (server stretch) or raw stream (client stretch) | filed 2026-09-29; unblocked (pyobs-core v2.13.0); plan phase 6 |
 | pyobs-web-client | [#58](https://github.com/pyobs/pyobs-web-client/issues/58) | Live view: choose MJPEG (server stretch) or raw stream (client stretch) | filed 2026-09-29; unblocked (pyobs-core v2.13.0); plan phase 6 |
 | pyobs-gui | [#168](https://github.com/pyobs/pyobs-gui/issues/168) | Desktop notifications for module ERROR / log ERROR-CRITICAL while running | filed 2026-09-14; independent of pyobs-core's push-notification module — same signals, but for an operator already at a running/connected pyobs-gui, via `QSystemTrayIcon::showMessage()` (not decided); no design doc yet |
 
@@ -398,7 +421,7 @@ One row per issue — same layout for every repo.
   v2.1.0) code landed; 3b still needs a hardware check (QHY binned window offsets, stale frames
   after a live-mode restart, `readout_time` per sensor), so its boxes stay unticked. Phase 7 code landed for pyobs-tis
   v2.1.0 and pyobs-v4l v2.1.0 (not hardware-tested). Open: downstream `AravisCamera` subclasses
-  (7), clients (6), shim removal (8).
+  (7), clients (6: pyobs-gui landed on `develop`, pyobs-web-client #58 open), shim removal (8).
 
 ### Design docs still *proposed*
 
@@ -419,3 +442,9 @@ One line per plan — same layout for every repo.
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)
+- **pyobs-web-client** — [2026-09-28-android-weather-widget.md](../../pyobs-web-client/specs/plans/2026-09-28-android-weather-widget.md) —
+  Android home-screen widgets for pyobs-weather instances (*implemented* 2026-09-29, device
+  verified; open: Android < 12 untested, picker preview PNGs for < 12)
+- **pyobs-web-client** — [native-app-shell-capacitor.md](../../pyobs-web-client/specs/design/native-app-shell-capacitor.md) —
+  Capacitor app shell, Android first (*in progress*; push, secure storage and offline screen done,
+  iOS blocked on Mac access)

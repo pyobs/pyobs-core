@@ -5,6 +5,37 @@ Status: standing snapshot — last checked 2026-10-04.
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-04** (skill run, after the desktop notification work in pyobs-gui): re-queried all 27
+  live GitHub repos (`gh repo list`) and every open issue; the tiers doc names 8 more repos that are
+  not live on GitHub (not queried). pyobs-gui #168 (desktop notifications) landed on `develop`
+  (policy `dbf3aaf`, backend `2d39b0e`, manager `a68a4b2`, test button `1c86150`, user docs
+  `dd409a1`; no pyobs-gui release contains it, latest tag is v2.5.3), so its row is gone and the
+  issue stays open pending release. Same for #185 (`8f4c500`, PR #187) and #186 (PR #190,
+  `1ddc106`), which were never rows; #186 has not been tried in a real standalone session. Also
+  fixed the same day: pyobs-gui `9066c29`, importing pyobs-gui after pyobs-core (the order of
+  `pyobs <config>`) failed since the settings schema because pydantic loads lazily after PySide6;
+  no release contained it. pyobs-core v2.13.5 is out (`VirtualFileSystem.set_roots()`, PR #939,
+  `0806737c`); nothing in the commits since the last check touches #927, #915 or #819 (only
+  dependency bumps), and pyobs-brot and pyobs-web-client have no commits on `develop` since.
+  Rows added: pyobs-gui #192 to #197, six open checks of the notification work (Windows shortcut
+  COM code, macOS, GNOME, startup summary, shutdown traceback, app icon), filed 2026-10-04 by
+  Tim and Claude outside the skill. Filed by this run, each named as a follow-up in a plan or PR and
+  with no existing issue: pyobs-core #941 (dedicated unknown-root exception, PR #939 "not in this
+  PR", pyobs-gui plan step 2) and pyobs-gui #198 (zoom and pan with server-side crop, unticked box
+  in `2026-09-29-live-view-mjpeg-raw.md`). Closed nothing: no open issue has its fix in a release.
+  Plans and designs: dropped `basevideo-frame-source.md` and `basevideo-grab-path.md` from
+  "still proposed" (both say implemented); `basevideo-live-view.md` and `guiding-raw-stream.md`
+  stay, rewritten. Added the three pyobs-gui plans under sibling repos. Stale status lines found,
+  files not touched: pyobs-gui `specs/plans/2026-10-04-settings-dialog.md` and its design doc and
+  index say "proposed" although steps 1 to 5 landed (and the unticked docs and status boxes in
+  steps 6 and 7 are done: `dd409a1`); pyobs-gui `2026-08-28-structuredconfig-widget.md` says
+  "proposed" but PR #158 (`b99c3d4`) shipped in v2.4.0 and #154 closed 2026-09-01; pyobs-core
+  `basevideo-live-view.md` still says "not yet released" and "pyobs-gui (#182) not started",
+  `basevideo-grab-path.md` and `guiding-raw-stream.md` say "not yet released" (v2.13.0 is out); its
+  plan has the unticked gui mode-switch box although #182 landed. The earlier-noted stale
+  pyobs-flipro and pyobs-portal plan statuses are unchanged. Not re-checked: the GitLab fleet repos
+  (out of scope), pyobs-web-client plans beyond the three listed, pyobs-web-admin designs, and the
+  code behind plan checkboxes beyond the ones named. Table 6 to 13.
 - **2026-10-04** (skill run): first run of the `update-fleet-open-items` skill. Re-queried all 26
   GitHub repos in the org (`gh repo list`): the same 7 open issues as before, no new, no closed,
   none with a fix released, so nothing closed or filed. Table stays at 6 (pyobs-gui #182 is on
@@ -395,18 +426,25 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (6, checked 2026-10-04, see changelog)
+## Open issues (13, checked 2026-10-04, see changelog)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 | pyobs-web-client | [#58](https://github.com/pyobs/pyobs-web-client/issues/58) | Live view: choose MJPEG (server stretch) or raw stream (client stretch) | filed 2026-09-29; unblocked (pyobs-core v2.13.0); plan phase 6 |
-| pyobs-gui | [#168](https://github.com/pyobs/pyobs-gui/issues/168) | Desktop notifications for module ERROR / log ERROR-CRITICAL while running | filed 2026-09-14; independent of pyobs-core's push-notification module — same signals, but for an operator already at a running/connected pyobs-gui, via `QSystemTrayIcon::showMessage()` (not decided); no design doc yet |
+| pyobs-gui | [#198](https://github.com/pyobs/pyobs-gui/issues/198) | Live view: zoom and pan with a server-side crop | filed 2026-10-04; follow-up to #182, the raw-stream crop (`x`/`y`/`w`/`h`) already exists in pyobs-core |
+| pyobs-gui | [#197](https://github.com/pyobs/pyobs-gui/issues/197) | Add a pyobs app icon (notifications still show the Python logo) | filed 2026-10-04; no logo file in the repository, needs a decision on the logo |
+| pyobs-gui | [#196](https://github.com/pyobs/pyobs-gui/issues/196) | Traceback at shutdown after SIGTERM (hideEvent without running loop, event filter recursion) | filed 2026-10-04; not yet checked whether it is older than the notification work |
+| pyobs-gui | [#195](https://github.com/pyobs/pyobs-gui/issues/195) | Live check of the startup summary for modules already in ERROR | filed 2026-10-04; only unit tested so far |
+| pyobs-gui | [#194](https://github.com/pyobs/pyobs-gui/issues/194) | GNOME: live check of desktop notifications | filed 2026-10-04; needs a GNOME session; done on KDE |
+| pyobs-gui | [#193](https://github.com/pyobs/pyobs-gui/issues/193) | macOS: check desktop notifications on a Mac | filed 2026-10-04; never tried, needs a Mac |
+| pyobs-gui | [#192](https://github.com/pyobs/pyobs-gui/issues/192) | Windows: verify Start Menu shortcut creation for desktop notifications (create_link_com untested) | filed 2026-10-04; the COM code has never run on Windows |
 
 ## Open plans
 
@@ -425,12 +463,12 @@ One row per issue — same layout for every repo.
 
 ### Design docs still *proposed*
 
-- [basevideo-frame-source.md](../design/basevideo-frame-source.md),
-  [basevideo-grab-path.md](../design/basevideo-grab-path.md),
-  [basevideo-live-view.md](../design/basevideo-live-view.md),
-  [guiding-raw-stream.md](../design/guiding-raw-stream.md): `BaseVideo` redesign (frame buffer and
-  driver contract, grab path, selectable live view, stream guiding) (#924, #925). pyobs-core side
-  merged to `develop` (PR #926); implementation notes at the end of each doc.
+- [basevideo-live-view.md](../design/basevideo-live-view.md): selectable live view of `BaseVideo`
+  (MJPEG or raw). *Partially implemented*: server side in pyobs-core v2.13.0, pyobs-gui landed on
+  `develop` (#182), pyobs-web-client open (#58), zoom plus server-side crop in the gui is #198.
+- [guiding-raw-stream.md](../design/guiding-raw-stream.md): guiding from the `BaseVideo` raw
+  stream. *Implemented* in pyobs-core v2.13.0, not yet tried on a real camera; re-centring the
+  crop is #927.
 - [interface_versioning.md](../design/interface_versioning.md) — additive interface versioning
   (`IDome`, `IDomeV2`, ...) (#819). Sanity-checked against `develop` 2026-08-28 (MRO/diamond,
   registration, discovery, wire round-trip all verified); gaps recorded before a plan; no plan yet.
@@ -448,3 +486,14 @@ One line per plan — same layout for every repo.
 - **pyobs-web-client** — [native-app-shell-capacitor.md](../../pyobs-web-client/specs/design/native-app-shell-capacitor.md) —
   Capacitor app shell, Android first (*in progress*; push, secure storage and offline screen done,
   iOS blocked on Mac access)
+- **pyobs-gui**: [2026-09-29-live-view-mjpeg-raw.md](../../pyobs-gui/specs/2026-09-29-live-view-mjpeg-raw.md):
+  live view mode, MJPEG or raw (*in progress*; landed on `develop` as #182, open: manual test with
+  `test/video.yaml`, zoom and crop follow-up #198)
+- **pyobs-gui**: [2026-10-04-desktop-notifications.md](../../pyobs-gui/specs/plans/2026-10-04-desktop-notifications.md):
+  desktop notifications for module `ERROR` and log `ERROR`/`CRITICAL` (*implemented* on `develop`,
+  checked on KDE; open: Windows shortcut #192, macOS #193, GNOME #194, startup summary #195,
+  shutdown traceback #196, app icon #197)
+- **pyobs-gui**: [2026-10-04-settings-dialog.md](../../pyobs-gui/specs/plans/2026-10-04-settings-dialog.md):
+  settings schema, YAML config and standalone settings dialog (*implemented* on `develop`, steps 1
+  to 5; the plan and the index still say "proposed", open: dedicated unknown-root exception in
+  pyobs-core, #941)

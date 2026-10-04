@@ -150,8 +150,9 @@ misdecode otherwise.
 - Additional meta keys: `VIDFRAME` (in-memory frame number, not persisted; lets clients detect
   dropped frames, which the "no substitute counter" decision above didn't need yet), `DATE-OBS` is
   now the exposure start instead of the arrival time, `DATE-SRC` (`device`/`estimated`/`unknown`),
-  `DATE-ARR` (arrival time), `EXPTIME`, `SETGEN` (settings generation), `CROP-X`, `CROP-Y`, `SWBIN`.
-  With a crop, `XORGSUBF`/`YORGSUBF` are set before the local headers are built, so `CRPIX1/2`
+  `DATE-ARR` (arrival time), `EXPTIME`, `SETGEN` (settings generation), `CROP-X`, `CROP-Y`, `SWBIN`, and
+  `SRCDTYPE` (dtype before binning: binned data is float32, a client needs the original to resolve
+  `full` cuts; pass it as `dtype` to `stretch_to_uint8()`). With a crop, `XORGSUBF`/`YORGSUBF` are set before the local headers are built, so `CRPIX1/2`
   match the cropped frame.
 - A client-side decoder exists in `pyobs.modules.pointing.guidingsource.RawStreamSource`.
 

@@ -725,6 +725,7 @@ class BaseVideo(
             ValueError: If the crop lies completely outside the frame, or binning is larger than it.
         """
         data = record.data
+        source_dtype = data.dtype
         x0, y0 = 0, 0
         if crop is not None:
             x, y, w, h = crop
@@ -761,6 +762,9 @@ class BaseVideo(
         for key in image.header:
             meta[key] = self._json_safe(image.header[key])
         meta["DTYPE"] = data.dtype.newbyteorder("<").str
+        # binning turns integer data into float32, so a client needs the original dtype to resolve
+        # "full" cuts and the default cuts mode
+        meta["SRCDTYPE"] = source_dtype.newbyteorder("<").str
         # NAXISn alone doesn't tell a client how many axes to read (e.g. colour frames are 3D)
         meta["NAXIS"] = data.ndim
         meta["VIDFRAME"] = record.number

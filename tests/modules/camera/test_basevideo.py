@@ -763,6 +763,7 @@ def test_raw_frame_meta_and_little_endian_bytes() -> None:
 
     meta = json.loads(meta_bytes)
     assert meta["DTYPE"] == "<u2"
+    assert meta["SRCDTYPE"] == "<u2"
     assert meta["NAXIS"] == 2
     assert meta["NAXIS1"] == 3
     assert meta["NAXIS2"] == 2
@@ -787,6 +788,8 @@ def test_raw_frame_crop_and_binning() -> None:
     meta = json.loads(meta_bytes)
     assert (meta["NAXIS1"], meta["NAXIS2"]) == (2, 2)
     assert (meta["CROP-X"], meta["CROP-Y"], meta["SWBIN"]) == (2, 4, 2)
+    # binned data is float32, the original dtype stays available
+    assert (meta["DTYPE"], meta["SRCDTYPE"]) == ("<f4", "<u2")
     assert meta["XORGSUBF"] == 2 and meta["YORGSUBF"] == 4
     expected = data[4:8, 2:6].astype(np.float32).reshape(2, 2, 2, 2).mean(axis=(1, 3))
     np.testing.assert_array_equal(np.frombuffer(frame, dtype=meta["DTYPE"]).reshape(2, 2), expected)

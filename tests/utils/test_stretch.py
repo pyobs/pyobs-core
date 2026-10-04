@@ -74,3 +74,31 @@ def test_downsample_block_mean() -> None:
 def test_invalid_params(kwargs: dict) -> None:
     with pytest.raises(ValueError):
         StretchParams(**kwargs)
+
+
+@pytest.mark.parametrize("cuts", [None, "full"])
+def test_downsampled_8bit_keeps_full_range_cuts(cuts: str | None) -> None:
+    data = np.full((8, 8), 100, dtype=np.uint8)
+
+    out = stretch_to_uint8(data, StretchParams(cuts=cuts, scale=2))  # type: ignore[arg-type]
+
+    assert out.shape == (4, 4)
+    assert np.all(out == 100)
+
+
+def test_downsampled_16bit_full_cuts_use_input_dtype() -> None:
+    data = np.full((8, 8), 32768, dtype=np.uint16)
+
+    out = stretch_to_uint8(data, StretchParams(cuts="full", scale=2))
+
+    assert np.all(out == 128)
+
+
+def test_dtype_argument_for_already_downsampled_data() -> None:
+    binned = np.full((4, 4), 32768.0, dtype=np.float32)
+
+    out = stretch_to_uint8(binned, StretchParams(cuts="full"), dtype=np.uint16)
+
+    assert np.all(out == 128)
+    with pytest.raises(ValueError):
+        stretch_to_uint8(binned, StretchParams(cuts="full"))

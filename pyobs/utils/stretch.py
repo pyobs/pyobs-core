@@ -75,26 +75,29 @@ def downsample(data: NDArray[Any], factor: int) -> NDArray[Any]:
     return cropped.reshape(shape).mean(axis=(1, 3))
 
 
-def compute_cuts(data: NDArray[Any], params: StretchParams) -> tuple[float, float]:
+def compute_cuts(data: NDArray[Any], params: StretchParams, dtype: Any = None) -> tuple[float, float]:
     """Computes the low and high cut for the given data.
 
     Args:
         data: Image data.
         params: Stretch parameters.
+        dtype: dtype that decides the ``full`` range and the default cuts mode, if different from the
+            data's, e.g. when it was downsampled to float32 from integer data. Defaults to the data's dtype.
 
     Returns:
         Tuple of (low, high) data values.
     """
+    dtype = np.dtype(dtype) if dtype is not None else data.dtype
     cuts = params.cuts
     if cuts is None:
-        cuts = "full" if data.dtype == np.uint8 else "minmax"
+        cuts = "full" if dtype == np.uint8 else "minmax"
 
     if cuts == "manual":
         return float(params.lo), float(params.hi)  # type: ignore[arg-type]
     if cuts == "full":
-        if not np.issubdtype(data.dtype, np.integer):
+        if not np.issubdtype(dtype, np.integer):
             raise ValueError("Cuts mode 'full' needs integer data.")
-        info = np.iinfo(data.dtype)
+        info = np.iinfo(dtype)
         return float(info.min), float(info.max)
 
     sample = data[::_CUTS_SUBSAMPLE, ::_CUTS_SUBSAMPLE] if data.shape[0] > 256 else data
@@ -109,7 +112,7 @@ def compute_cuts(data: NDArray[Any], params: StretchParams) -> tuple[float, floa
     return float(low), float(high)
 
 
-def stretch_to_uint8(data: NDArray[Any], params: StretchParams | None = None) -> NDArray[np.uint8]:
+def stretch_to_uint8(data: NDArray[Any], params: StretchParams | None = None, dtype: Any = None) -> NDArray[np.uint8]:
     """Maps image data to 8 bit for display.
 
     Colour images (3D, colour as last axis) use the same cuts for all channels.
@@ -117,18 +120,22 @@ def stretch_to_uint8(data: NDArray[Any], params: StretchParams | None = None) ->
     Args:
         data: Image data.
         params: Stretch parameters, defaults if None.
+        dtype: dtype the cuts follow, if the data was already downsampled from a different one (e.g. a
+            binned raw frame that was integer data before). Defaults to the data's dtype.
 
     Returns:
         8-bit image.
     """
     params = params if params is not None else StretchParams()
+    # downsampling turns integer data into float32, the cuts follow the input
+    dtype = np.dtype(dtype) if dtype is not None else data.dtype
     data = downsample(data, params.scale)
 
     # fast path: 8-bit data with its full range and a linear stretch is already what we want
     if data.dtype == np.uint8 and params.stretch == "linear" and params.cuts in (None, "full"):
         return data
 
-    low, high = compute_cuts(data, params)
+    low, high = compute_cuts(data, params, dtype)
     span = high - low if high > low else 1.0
     x = np.clip((data.astype(np.float32) - low) / span, 0.0, 1.0)
 

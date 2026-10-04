@@ -31,13 +31,26 @@ class VirtualFileSystem:
             roots: Dictionary containing roots, see :mod:`~pyobs.vfs` for examples.
         """
 
-        # if no root for 'pyobs' is given, add one
-        self._roots: dict[str, Any] = {
+        self._roots: dict[str, Any] = {}
+        self.set_roots(roots)
+
+    def set_roots(self, roots: dict[str, Any] | None = None) -> None:
+        """Replace the roots of this VFS, e.g. after the user changed them at runtime.
+
+        The default roots ``pyobs`` and ``robotic`` are always present unless overridden by `roots`.
+        Anything set before is dropped. The new dictionary replaces the old one in a single
+        assignment, so files being opened in other threads see either the old or the new roots.
+
+        Args:
+            roots: Dictionary containing roots, see :mod:`~pyobs.vfs` for examples.
+        """
+        new_roots: dict[str, Any] = {
             "pyobs": {"class": "pyobs.vfs.LocalFile", "root": "/opt/pyobs/storage/"},
             "robotic": {"class": "pyobs.vfs.LocalFile", "root": "/opt/pyobs/robotic/"},
         }
         if roots is not None:
-            self._roots.update(roots)
+            new_roots.update(roots)
+        self._roots = new_roots
 
     @staticmethod
     def split_root(path: str) -> tuple[str, str]:

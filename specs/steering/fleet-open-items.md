@@ -1,10 +1,20 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-09-29.
+Status: standing snapshot — last checked 2026-10-04.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-04**: re-queried the fleet with per-repo `gh api` (all 26 repos in the tiers doc plus
+  `pyobs.github.io`). The four "use brand color as page accent color" issues filed 2026-09-29
+  (pyobs-archive #66 `888b6bb`, pyobs-portal #160 `dc50f4c`, pyobs-weather #41 `968c51b`,
+  pyobs-web-admin #101 `1014bc0`) were already released the same day (v2.1.2, v2.5.2, v2.2.2,
+  v2.3.6) and are now closed with a comment naming the release; never in the table.
+  pyobs-asi #49 (v2.1.0 failed to import on Python 3.11/3.12, `threading.Lock | None` annotation, reported
+  externally 2026-10-02) fixed (`29342a7`), released as pyobs-asi v2.1.1 and closed; never in the table. pyobs-asi CI now also tests 3.11 and 3.12. The 7 table
+  rows were checked against `develop` commits since 2026-09-29: none landed (pyobs-gui/web-client
+  commits for #182/#58 only reference the design docs). Plans and design docs not re-checked.
+  Table unchanged at 7.
 - **2026-09-29** (evening): pyobs-asi #46 (`AsiVideo`, `69c7959`) and pyobs-qhyccd #81
   (`QHYCCDVideo` plus live-mode bindings, `ecda1fe`) implemented on `frames()`, released as
   pyobs-asi v2.1.0 and pyobs-qhyccd v2.1.0, both issues closed. Removed from the table. Neither
@@ -361,7 +371,7 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (7, checked 2026-09-29, see changelog)
+## Open issues (7, checked 2026-10-04, see changelog)
 
 One row per issue — same layout for every repo.
 

@@ -389,11 +389,11 @@ wheels = [
 
 [[package]]
 name = "astropy-iers-data"
-version = "0.2026.9.7.0.56.14"
+version = "0.2026.9.28.0.59.37"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/89/59/cf5b6457636c95e8a640427ad289e0fdc09ec054ab3bf74c4dba8eaa5f6d/astropy_iers_data-0.2026.9.7.0.56.14.tar.gz", hash = "sha256:eb7f05464ab43603ff3cddbfbf2fe3c6abc925fe5dd0f268d95d7f8872cf4fe7", size = 1946211, upload-time = "2026-09-07T00:56:55.758Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/87/93f546ac5da9ea32dc90a764e77d451a888400b0119d92232c848114de50/astropy_iers_data-0.2026.9.28.0.59.37.tar.gz", hash = "sha256:e93b4334ea1e719c47382f8d3dc6fd1b97fd6706a2ddf717b8506e1faee45845", size = 1948491, upload-time = "2026-09-28T01:00:20.916Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/5f/7872fc61dc9cbf27abb5303967dcdbc016fa80bc5cd483064fe74b59ab02/astropy_iers_data-0.2026.9.7.0.56.14-py3-none-any.whl", hash = "sha256:b24396f527feb4ec4b4ef0dcba820246ac7ecb1eed91ebb9e767d64774349659", size = 2001670, upload-time = "2026-09-07T00:56:54.114Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/bf/ece8947ee55581e93c7b694b5dafecea2c559afa56a83a03bba9c021d0da/astropy_iers_data-0.2026.9.28.0.59.37-py3-none-any.whl", hash = "sha256:950a82adf7169c0bbf4a5b4aefd5412568436db6e22e0d056791fe3f30100d67", size = 2003931, upload-time = "2026-09-28T01:00:19.359Z" },
 ]
 
 [[package]]

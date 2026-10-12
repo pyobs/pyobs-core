@@ -223,6 +223,7 @@ class XmppComm(Comm):
         self._interface_cache: dict[str, asyncio.Future[list[type[Interface]]]] = {}
         self._interface_features: dict[str, list[str]] = {}
         self._peer_sent_events: dict[str, set[tuple[str, int]]] = {}
+        self._discovery_retries: dict[str, asyncio.Task[None]] = {}
         self._warned_version_mismatches: set[tuple[str, str]] = set()
         self._user = user
         self._password = password
@@ -436,8 +437,10 @@ class XmppComm(Comm):
         self._capabilities = {}  # clear capabilities on reconnect
 
         # disconnect all clients
-        for jid in self._online_clients:
+        for jid in list(self._online_clients):
             self._jid_got_offline(jid)
+        for jid in list(self._discovery_retries):
+            self._cancel_discovery_retry(jid)
 
         if client.kicked_by_conflict:
             # another session took over our JID/resource -- reconnecting would just
@@ -508,32 +511,35 @@ class XmppComm(Comm):
         # return them from cache
         return await self._interface_cache[client]
 
-    async def _get_interfaces(self, jid: str, attempts: int = 3) -> list[str]:
+    async def _get_interfaces(self, jid: str, attempts: int = 3) -> list[str] | None:
         """Return list of interfaces for the given JID.
 
         Args:
             jid: JID to get interfaces for.
 
         Returns:
-            List of interface names or empty list, if an error occurred.
+            List of interface names, empty if the peer answered but does not implement IModule, or None
+            if disco#info itself failed (error, timeout, no or malformed answer).
         """
 
         # request features
         try:
             info = await self._safe_send(self.client.plugin["xep_0030"].get_info, jid=jid, cached=False)
-        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
-            return []
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout) as e:
+            log.warning("disco#info for %s failed (%s).", jid, _iq_failure_reason(e))
+            return None
 
         # extract pyobs interface names
         if info is None:
-            return []
+            return None
         try:
             if isinstance(info, slixmpp.stanza.iq.Iq):
                 info = info["disco_info"]
             prefix = "urn:pyobs:interface:"
             features = [i for i in info["features"] if i.startswith(prefix)]
         except TypeError:
-            raise IndexError()
+            log.warning("Malformed disco#info answer from %s.", jid)
+            return None
 
         # cache raw features for this JID, so a later version-mismatch can be diagnosed
         self._interface_features[jid] = features
@@ -563,7 +569,10 @@ class XmppComm(Comm):
                 return []
             else:
                 await asyncio.sleep(5)
-                interface_names = await self._get_interfaces(jid, attempts - 1)
+                retried = await self._get_interfaces(jid, attempts - 1)
+                if retried is None:
+                    return None
+                interface_names = retried
 
         # finished
         return interface_names
@@ -705,6 +714,55 @@ class XmppComm(Comm):
         if jid == self._jid:
             return
 
+        # try to get the peer online; if its disco#info failed, keep trying in the background, since
+        # slixmpp won't fire got_online again until the peer went offline and came back
+        if await self._process_online(msg):
+            self._cancel_discovery_retry(jid)
+        elif jid not in self._discovery_retries:
+            task = asyncio.create_task(self._retry_discovery(msg))
+            self._discovery_retries[jid] = task
+            task.add_done_callback(_log_task_exception)
+
+    def _cancel_discovery_retry(self, jid: str) -> None:
+        """Cancel a pending background disco#info retry for the given JID, if any."""
+        task = self._discovery_retries.pop(jid, None)
+        if task is not None and task is not asyncio.current_task():
+            task.cancel()
+
+    async def _retry_discovery(self, msg: Any) -> None:
+        """Repeat the disco#info of a peer that failed it, until it works or the peer is gone.
+
+        Args:
+            msg: Presence message of the peer.
+        """
+        jid = msg["from"].full
+        try:
+            attempt = 0
+            while jid not in self._online_clients:
+                attempt += 1
+                if attempt == 30:
+                    log.warning(
+                        "Still failing to get disco#info for %s after %d attempts, will keep retrying", jid, attempt
+                    )
+                await asyncio.sleep(_retry_delay(attempt))
+                if await self._process_online(msg):
+                    log.info("Got disco#info for %s after %d retries.", jid, attempt)
+                    return
+        finally:
+            if self._discovery_retries.get(jid) is asyncio.current_task():
+                del self._discovery_retries[jid]
+
+    async def _process_online(self, msg: Any) -> bool:
+        """Get interfaces of a peer that came online and register it.
+
+        Args:
+            msg: XMPP presence message.
+
+        Returns:
+            False if disco#info failed and it should be tried again, True otherwise.
+        """
+        jid = msg["from"].full
+
         # clear interface cache, just in case there is something there
         if jid in self._interface_cache:
             del self._interface_cache[jid]
@@ -715,6 +773,16 @@ class XmppComm(Comm):
         # request interfaces
         interface_names = await self._get_interfaces(jid)
 
+        # disco#info failed: fail waiting get_interfaces() calls instead of reporting "no interfaces"
+        if interface_names is None:
+            if jid not in self._discovery_retries:
+                log.warning("disco#info for %s failed, retrying in background.", jid)
+            future = self._interface_cache.pop(jid, None)
+            if future is not None and not future.done():
+                future.set_exception(IndexError(f"disco#info for {jid} failed."))
+                future.exception()  # mark as retrieved, there may be no waiter
+            return False
+
         # if no interfaces are implemented (not even IModule), quit here
         if len(interface_names) == 0:
             module = jid[: jid.index("@")]
@@ -724,7 +792,7 @@ class XmppComm(Comm):
             future = self._interface_cache.get(jid)
             if future is not None and not future.done():
                 future.set_result([])
-            return
+            return True
 
         # store interfaces — guard against a second _got_online for the same JID
         # (ejabberd may send multiple presence stanzas) racing against the first
@@ -775,6 +843,7 @@ class XmppComm(Comm):
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
+        return True
 
     def _fire_presence_callbacks(self, module_name: str, state: ModuleState, status: str) -> None:
         """Call every presence callback registered for a module, isolating failures.
@@ -845,6 +914,8 @@ class XmppComm(Comm):
         if jid in self._interface_cache:
             del self._interface_cache[jid]
         self._interface_features.pop(jid, None)
+        self._peer_sent_events.pop(jid, None)
+        self._cancel_discovery_retry(jid)
 
         # send event
         self._send_event_to_module(ModuleClosedEvent(), module_name)
@@ -1106,9 +1177,11 @@ class XmppComm(Comm):
         event = EventFactory.from_dict(body)
         if event is None:
             return
-        if time.time() - event.timestamp > 30:
+        age = time.time() - event.timestamp
+        if age > 30:
             # event is more than 30 seconds old, ignore it
             # we do this do avoid resent events after a reconnect
+            log.info("Dropping %s from %s, %.1f s old.", type(event).__name__, from_module, age)
             return
 
         # send it to module

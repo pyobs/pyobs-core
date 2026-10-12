@@ -373,3 +373,18 @@ async def test_schedule_threads_instrument_capabilities_end_to_end() -> None:
 
     assert len(observations) >= 1
     assert (observations[0].end - observations[0].start).sec == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_find_next_best_task_without_tasks() -> None:
+    scheduler = OnDemandScheduler()
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
+    data = DataProvider(observer)
+    start = Time.now()
+
+    best, merit = await scheduler.find_next_best_task([], {}, start, start + TimeDelta(1 * u.day), data)
+
+    assert best is None
+    assert merit == 0.0

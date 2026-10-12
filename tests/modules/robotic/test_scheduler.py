@@ -1083,3 +1083,22 @@ async def test_schedule_worker_publishes_last_reschedule(mocker) -> None:
 
     state = _state_for(scheduler._comm.set_state, IRoboticScheduler)
     assert state.last_reschedule is not None
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_removed_task_with_string_id(caplog: pytest.LogCaptureFixture) -> None:
+    # portal task ids are strings: logging the removed id must not raise (caplog's handler re-raises
+    # formatting errors, like CommLoggingHandler does) and _tasks must be updated
+    scheduler = make_scheduler()
+    task1 = DummyTask(id="abc", name="t1", duration=100)
+    scheduler._tasks = [task1]
+    scheduler._last_task_id = None
+    scheduler._task_archive.get_schedulable_tasks = AsyncMock(return_value=[])
+    scheduler._task_archive.get_projects = AsyncMock(return_value=[])
+    scheduler._schedule.get_schedule = AsyncMock(return_value=ObservationList())
+
+    with caplog.at_level("INFO"):
+        await scheduler._update_schedule()
+
+    assert scheduler._tasks == []
+    assert scheduler._need_update is True

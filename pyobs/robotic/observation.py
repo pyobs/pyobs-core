@@ -45,20 +45,27 @@ class Observation(BaseModel):
     consumes it -- it is always None for the pending/in_progress states Mastermind schedules
     on, and is declared so the portal's payloads keep validating under ``extra="forbid"``."""
 
+    @property
+    def task_id(self) -> Any:
+        """Id of the task: ``task.id`` for a full ``Task``, else ``task`` itself (the portal serializes
+        it as a plain id)."""
+        return self.task.id if isinstance(self.task, Task) else self.task
+
     def __str__(self) -> str:
-        return (
-            f"Observation {self.id} of {self.task.name} (#{self.task.id}) "
-            f"from {self.start} to {self.end} [{self.state}]"
-        )
+        if isinstance(self.task, Task):
+            task = f"{self.task.name} (#{self.task.id})"
+        else:
+            task = f"#{self.task}"
+        return f"Observation {self.id} of {task} from {self.start} to {self.end} [{self.state}]"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Observation):
-            return bool(self.task.id == other.task.id and self.start == other.start and self.end == other.end)
+            return bool(self.task_id == other.task_id and self.start == other.start and self.end == other.end)
         return super().__eq__(other)
 
     def __ne__(self, other: object) -> bool:
         if isinstance(other, Observation):
-            return bool(self.task.id != other.task.id or self.start != other.start or self.end != other.end)
+            return bool(self.task_id != other.task_id or self.start != other.start or self.end != other.end)
         return super().__ne__(other)
 
     def __lt__(self, other: object) -> bool:
@@ -107,7 +114,7 @@ class ObservationList(UserList[Observation]):  # noqa: F821
     def filter(
         self,
         state: ObservationState | None = None,
-        task_id: int | None = None,
+        task_id: Any | None = None,
         start_before: Time | None = None,
         start_after: Time | None = None,
         end_before: Time | None = None,
@@ -117,7 +124,7 @@ class ObservationList(UserList[Observation]):  # noqa: F821
         if state is not None:
             new_list = [obs for obs in new_list if obs.state == state]
         if task_id is not None:
-            new_list = [obs for obs in new_list if obs.task.id == task_id]
+            new_list = [obs for obs in new_list if obs.task_id == task_id]
         if start_before is not None:
             new_list = [obs for obs in new_list if obs.start <= start_before]
         if start_after is not None:

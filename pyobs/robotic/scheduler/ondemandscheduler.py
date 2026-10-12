@@ -316,6 +316,10 @@ class OnDemandScheduler(TaskScheduler):
         instrument_capabilities: InstrumentCapabilities | None = None,
     ) -> tuple[Task | None, float]:
 
+        # nothing to choose from
+        if len(tasks) == 0:
+            return None, 0.0
+
         # evaluate all merit functions at given time
         merits = await run_cpu_bound(
             self.evaluate_constraints_and_merits, tasks, projects, start, end, data, instrument_capabilities

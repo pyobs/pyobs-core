@@ -23,7 +23,7 @@ import pytest
 
 from pyobs.comm.xmpp import XmppComm
 from pyobs.comm.xmpp.xmppcomm import _log_task_exception
-from pyobs.events import LogEvent
+from pyobs.events import Event, LogEvent
 
 
 def _make_comm() -> XmppComm:
@@ -116,6 +116,22 @@ async def test_payload_notification_is_dispatched() -> None:
     assert from_module == "peer"
     assert isinstance(event, LogEvent)
     assert event.message == "hello"
+
+
+class _XmppPluginEvent(Event):
+    pass
+
+
+@pytest.mark.asyncio
+async def test_plugin_event_notification_is_dispatched() -> None:
+    """An event class defined outside pyobs.events is deserialized and dispatched (#952 item 4)."""
+    comm = _make_comm()
+    node = XmppComm._event_node("peer", _XmppPluginEvent)
+    payload = json.dumps(_XmppPluginEvent().to_json())
+    with patch.object(comm, "_send_event_to_module") as send:
+        await comm._handle_event(_event_msg(node, payload), node)
+    send.assert_called_once()
+    assert isinstance(send.call_args.args[0], _XmppPluginEvent)
 
 
 @pytest.mark.asyncio

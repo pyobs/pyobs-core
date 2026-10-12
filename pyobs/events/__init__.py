@@ -5,7 +5,7 @@ TODO: write doc
 __title__ = "Events"
 
 from .badweather import BadWeatherEvent
-from .event import Event
+from .event import Event, EventFactory, get_registered_event, registered_events
 from .exposurestatuschanged import ExposureStatusChangedEvent
 from .filterchanged import FilterChangedEvent
 from .focusfound import FocusFoundEvent
@@ -31,6 +31,9 @@ __all__ = [
     "BadWeatherEvent",
     "ExposureStatusChangedEvent",
     "Event",
+    "EventFactory",
+    "get_registered_event",
+    "registered_events",
     "FilterChangedEvent",
     "FocusFoundEvent",
     "GoodWeatherEvent",

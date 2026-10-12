@@ -316,4 +316,4 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-10-12-exception-types-across-the-wire.md](2026-10-12-exception-types-across-the-wire.md):
   module-specific `PyobsError` types arrive as `UnclassifiedError` on callers that never imported
   them; add a `<bases>` ancestor fallback to RPC faults, document it, then decide on the three
-  errors it doesn't fix. **steps 1 and 2 implemented, step 3 proposed** (2026-10-12; #952 item 8; Repos: pyobs-core)
+  errors it doesn't fix. **implemented** (step 3 as 3B) (2026-10-12; #952 item 8; Repos: pyobs-core)

@@ -91,13 +91,15 @@ message.
 
 .. note::
 
-   **Current state of three errors.** :class:`~pyobs.modules.telescope.BaseTelescope` raises
+   **Three errors of the core modules.** :class:`~pyobs.modules.telescope.BaseTelescope` raises
    ``AltitudeLimitError`` (in ``pyobs.modules.telescope.basetelescope``), the weather module raises
    ``WeatherResponseError`` (in ``pyobs.modules.weather.weather``), and the script runner raises
-   ``ScriptError`` (in ``pyobs.robotic.scripts.exceptions``). All three derive from ``PyobsError`` directly,
-   so they have no other base class to fall back to. A caller that did not import their module receives them
-   as ``UnclassifiedError``. Check ``original_type`` if you need to tell them apart. This may change in a
-   later release.
+   ``ScriptError`` (in ``pyobs.robotic.scripts.exceptions``). In 2.14.2 they derive from ``PyobsError``
+   directly, so a caller that did not import their module receives them as ``UnclassifiedError``; check
+   ``original_type`` if you need to tell them apart. From the first release after 2.14.2 they derive from
+   :class:`~pyobs.utils.exceptions.PointingLimitError` (``AltitudeLimitError``) and
+   :class:`~pyobs.utils.exceptions.GeneralError` (the other two), so a caller that did not import their
+   module receives that class, with the name in ``original_type``.
 
 
 Defining your own error in a driver
@@ -207,16 +209,14 @@ package installed:
            # with my_driver installed: type(e) is ShutterJammedError, no original_type
            log.warning("Roof failed (%s): %s", getattr(e, "original_type", type(e).__name__), e)
 
-**An error without a base class** (current state, see the note above). The telescope raises
-``AltitudeLimitError`` for a target below its limit. A caller that did not import the telescope module
-receives it as ``UnclassifiedError``:
+**An expected condition.** The telescope raises ``AltitudeLimitError`` for a target below its limit. It is
+not a ``MotionError`` on purpose: nothing was attempted, so it must not count as a motion failure. A caller
+that did not import the telescope module still catches it as ``PointingLimitError`` (from the first release
+after 2.14.2, see the note above; in 2.14.2 it arrives as ``UnclassifiedError``):
 
 .. code-block:: python
 
    try:
        await telescope.move_radec(ra, dec)
-   except exc.UnclassifiedError as e:
-       if e.original_type == "pyobs.modules.telescope.basetelescope.AltitudeLimitError":
-           ...  # the target is not reachable right now, pick another one
-       else:
-           raise
+   except exc.PointingLimitError:
+       ...  # the target is not reachable right now, pick another one

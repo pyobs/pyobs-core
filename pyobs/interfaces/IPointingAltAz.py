@@ -35,7 +35,8 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
 
         Raises:
             NotSupportedError: If this device doesn't support Alt/Az pointing.
-            AltitudeLimitError: If the destination is below the configured altitude limit.
+            PointingLimitError: If the destination is outside the pointing limits, e.g. below the configured
+                altitude limit (AltitudeLimitError).
             MoveError: If device could not be moved.
         """
         ...

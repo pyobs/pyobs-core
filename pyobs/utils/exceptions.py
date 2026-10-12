@@ -115,6 +115,15 @@ class MoveError(MotionError):
     pass
 
 
+class PointingLimitError(PyobsError):
+    """The requested destination is outside the configured pointing limits (today the minimum altitude, later
+    e.g. sun distance or dome limits). Nothing was attempted and the device is fine, so this is an expected
+    condition: defer or skip the target, don't alert and don't retry right away. Deliberately not a
+    MotionError, so that it never counts towards a module's repeated-motion-failure escalation."""
+
+    pass
+
+
 class GrabImageError(PyobsError):
     pass
 

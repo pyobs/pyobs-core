@@ -313,3 +313,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   `Event` subclasses outside `pyobs.events` get no handler on any transport and are dropped by
   `EventFactory` over XMPP; add an `Event` registry via `__init_subclass__`. **implemented**
   (2026-10-12; #952 item 4; Repos: pyobs-core)
+- [2026-10-12-exception-types-across-the-wire.md](2026-10-12-exception-types-across-the-wire.md):
+  module-specific `PyobsError` types arrive as `UnclassifiedError` on callers that never imported
+  them; add a `<bases>` ancestor fallback to RPC faults, document it, then decide on the three
+  errors it doesn't fix. **step 1 implemented, steps 2 and 3 proposed** (2026-10-12; #952 item 8; Repos: pyobs-core)

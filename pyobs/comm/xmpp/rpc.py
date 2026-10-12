@@ -114,6 +114,22 @@ def fault_to_xml(exception: Exception) -> ET.Element:
     msg_elem.text = getattr(exception, "message", None) or str(exception)
     pyobs_fault.append(exc_elem)
     pyobs_fault.append(msg_elem)
+
+    # PyobsError ancestors (nearest first), so a caller that never imported the exception's own module can
+    # still raise the nearest class it knows (e.g. MotionError). PyobsError itself and UnclassifiedError carry
+    # no information. If original_type was sent above, the exception itself is already an ancestor-resolved
+    # class (second hop), which the name no longer tells, so it goes first.
+    candidates = type(exception).__mro__ if original_type else type(exception).__mro__[1:]
+    bases = [
+        c
+        for c in candidates
+        if isinstance(c, type) and issubclass(c, exc.PyobsError) and c not in (exc.PyobsError, exc.UnclassifiedError)
+    ]
+    bases_elem = ET.Element("bases")
+    for c in bases:
+        base_elem = ET.SubElement(bases_elem, "base")
+        base_elem.text = f"{c.__module__}.{c.__qualname__}"
+    pyobs_fault.append(bases_elem)
     value_elem.append(pyobs_fault)
     fault.append(value_elem)
     return fault
@@ -133,6 +149,47 @@ def xml_to_fault(fault_elem: ET.Element) -> tuple[str, str]:
     exc_name = (exc_el.text if exc_el is not None else None) or _fallback_name
     msg = (msg_el.text if msg_el is not None else None) or ""
     return exc_name, msg
+
+
+def xml_to_fault_bases(fault_elem: ET.Element) -> list[str]:
+    """Parse <fault> and return the qualified names of the exception's PyobsError ancestors, nearest first.
+
+    Empty if the fault has none, e.g. when it comes from a peer that does not send them.
+    """
+    value_elem = fault_elem.find(f"{{{_NS}}}value")
+    if value_elem is None:
+        return []
+    pyobs_fault = value_elem.find(f"{{{_PYOBS_NS}}}fault")
+    if pyobs_fault is None:
+        return []
+    return [b.text for b in pyobs_fault.iterfind("bases/base") if b.text]
+
+
+def reconstruct_fault(name: str, message: str, bases: list[str], remote_module: str) -> exc.PyobsError:
+    """Build the exception for a received fault.
+
+    The exact class is used if it is registered here. If not (never a PyobsError, or its defining module was
+    never imported in this process), the nearest registered ancestor from `bases` is used, and failing that
+    UnclassifiedError. In both fallbacks the name survives as `original_type`.
+
+    Args:
+        name: Qualified name of the exception, as sent.
+        message: Message of the exception.
+        bases: Qualified names of its PyobsError ancestors, nearest first.
+        remote_module: Name of the module the fault came from.
+
+    Returns:
+        The exception to raise.
+    """
+    exception_class = exc.PyobsError.resolve(name)
+    if exception_class is not None:
+        # real registered type (e.g. FocusError) -- raised as itself, not wrapped
+        return exception_class(message, remote_module=remote_module)
+    for base in bases:
+        ancestor = exc.PyobsError.resolve(base)
+        if ancestor is not None and ancestor is not exc.UnclassifiedError:
+            return ancestor(message, original_type=name, remote_module=remote_module)
+    return exc.UnclassifiedError(message, original_type=name, remote_module=remote_module)
 
 
 # ---------------------------------------------------------------------------
@@ -291,14 +348,7 @@ class RPC:
         exc_name, msg = xml_to_fault(fault_elem)
 
         sender = iq["from"].node
-        exception_class = exc.PyobsError.resolve(exc_name)
-        if exception_class is not None:
-            # real registered type (e.g. FocusError) -- raised as itself, not wrapped
-            exception: exc.PyobsError = exception_class(msg, remote_module=sender)
-        else:
-            # unresolvable: never a PyobsError to begin with, or its defining module was never
-            # imported in this process -- the qualified name string still survives as original_type
-            exception = exc.UnclassifiedError(msg, original_type=exc_name, remote_module=sender)
+        exception = reconstruct_fault(exc_name, msg, xml_to_fault_bases(fault_elem), sender)
 
         # same correlation id Module.execute() logged on the origin side -- an operator can jump
         # straight from this caller-side exception to the matching detailed log line, by id

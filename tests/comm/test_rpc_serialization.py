@@ -229,3 +229,51 @@ class TestReconstructFault:
         second = reconstruct_fault(*xml_to_fault(fault_elem), xml_to_fault_bases(fault_elem), "gateway")
         assert type(second) is exc.MotionError
         assert second.original_type == name
+
+
+class TestCoreModuleErrors:
+    """The module-specific errors of core derive from a core class, so a caller that never imported their module
+    still gets that class (#952 item 8)."""
+
+    def test_altitude_limit_error_is_a_pointing_limit_error_but_not_a_motion_error(self) -> None:
+        from pyobs.modules.telescope.basetelescope import AltitudeLimitError
+
+        assert issubclass(AltitudeLimitError, exc.PointingLimitError)
+        # guards BaseTelescope's _register_exception(exc.MotionError, ...) escalation
+        assert not issubclass(AltitudeLimitError, exc.MotionError)
+        assert not issubclass(exc.PointingLimitError, exc.MotionError)
+
+    def test_weather_and_script_errors_are_general_errors_not_module_errors(self) -> None:
+        from pyobs.modules.weather.weather import WeatherResponseError
+        from pyobs.robotic.scripts.exceptions import ScriptError
+
+        for cls in (WeatherResponseError, ScriptError):
+            assert issubclass(cls, exc.GeneralError)
+            assert not issubclass(cls, exc.ModuleError)
+
+    @pytest.mark.parametrize(
+        ("module", "name", "expected"),
+        [
+            ("pyobs.modules.telescope.basetelescope", "AltitudeLimitError", exc.PointingLimitError),
+            ("pyobs.modules.weather.weather", "WeatherResponseError", exc.GeneralError),
+            ("pyobs.robotic.scripts.exceptions", "ScriptError", exc.GeneralError),
+        ],
+    )
+    def test_unimported_core_error_arrives_as_its_core_base(self, module: str, name: str, expected: type) -> None:
+        import importlib
+
+        cls = getattr(importlib.import_module(module), name)
+        qualified_name = f"{cls.__module__}.{cls.__qualname__}"
+        # the wire name does not change, so old peers resolve it as before
+        assert qualified_name == f"{module}.{name}"
+
+        fault_elem = fault_to_xml(cls("boom"))
+        saved = exc.PyobsError._registry.pop(qualified_name)
+        try:
+            e = reconstruct_fault(*xml_to_fault(fault_elem), xml_to_fault_bases(fault_elem), "telescope")
+        finally:
+            exc.PyobsError._registry[qualified_name] = saved
+
+        assert type(e) is expected
+        assert e.original_type == qualified_name
+        assert e.message == "boom"

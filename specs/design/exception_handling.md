@@ -1462,7 +1462,10 @@ fault without it behaves as before, so no combination of versions gets worse. Im
 in the fault was considered again and rejected again: importing runs its code, driver modules load vendor
 libraries, and a bad fault would become code execution.
 
-Errors that derive from `PyobsError` directly (`AltitudeLimitError`, `WeatherResponseError`,
-`ScriptError`) have no ancestor to fall back to. What to do with those is open, see
-`specs/plans/2026-10-12-exception-types-across-the-wire.md` step 3. The user documentation is the guide
+Errors that derived from `PyobsError` directly (`AltitudeLimitError`, `WeatherResponseError`,
+`ScriptError`) had no ancestor to fall back to. Resolved without moving them (plan
+`specs/plans/2026-10-12-exception-types-across-the-wire.md` step 3B, so §D and §5 stay as they are): a
+new core `PointingLimitError(PyobsError)` is the base of `AltitudeLimitError` (a sibling of `MotionError`
+on purpose, nothing was attempted), and the other two now derive from the existing `GeneralError`. Their
+qualified names did not change, so nothing about the wire or old peers changes. The user documentation is the guide
 `docs/source/recipes/exceptions.rst`.

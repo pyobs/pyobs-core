@@ -143,6 +143,13 @@ ParkError
    :members:
    :undoc-members:
 
+PointingLimitError
+^^^^^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.PointingLimitError
+   :members:
+   :undoc-members:
+
 RemoteError
 ^^^^^^^^^^^
 

@@ -20,7 +20,7 @@ from pyobs.utils.versions import version_fits_headers
 log = logging.getLogger(__name__)
 
 
-class WeatherResponseError(exc.PyobsError):
+class WeatherResponseError(exc.GeneralError):
     """The weather station's API response was malformed or incomplete (missing an expected field)
     -- plausibly transient (a flaky station/network), worth retrying, as opposed to a caller
     passing a bad station/sensor name."""

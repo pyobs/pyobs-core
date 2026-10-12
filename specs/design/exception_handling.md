@@ -1445,3 +1445,24 @@ Found and fixed in the same pass: `fault_to_xml` was also serializing `str(excep
 passes that string straight back in as the new instance's `message`, so the *caller's* own
 `__str__` formatted it a second time on top -- every exception that ever crossed the wire arrived
 with a doubled `"<ClassName> <ClassName> message"` once displayed. Now serializes the raw message.
+
+## Revisited (#952 item 8, 2026-10-12): base-class catches were missed
+
+§D's argument ("whoever needs the precise type already imports it") holds for the leaf type, but not
+for a caller that catches a *base* class: `except exc.MotionError:` around a proxy call never imports a
+driver's own `MotionError` subclass, so the fault arrived as `UnclassifiedError` and went past the block.
+
+Added: an optional `<bases>` element in the fault with the `PyobsError` ancestors (nearest first, without
+`PyobsError` and `UnclassifiedError`), and a caller-side fallback to the nearest registered one, with
+`original_type` kept (`reconstruct_fault` in `comm/xmpp/rpc.py`; PR #958, merged to `develop`, not in
+v2.14.2, ships with the first release after it). On the second hop of an ancestor-resolved exception
+(`original_type` set), the exception's own class goes first in `<bases>`. Only XMPP serializes;
+`LocalComm` hands the exception object over as is. Old peers ignore the element and a
+fault without it behaves as before, so no combination of versions gets worse. Importing the module named
+in the fault was considered again and rejected again: importing runs its code, driver modules load vendor
+libraries, and a bad fault would become code execution.
+
+Errors that derive from `PyobsError` directly (`AltitudeLimitError`, `WeatherResponseError`,
+`ScriptError`) have no ancestor to fall back to. What to do with those is open, see
+`specs/plans/2026-10-12-exception-types-across-the-wire.md` step 3. The user documentation is the guide
+`docs/source/recipes/exceptions.rst`.

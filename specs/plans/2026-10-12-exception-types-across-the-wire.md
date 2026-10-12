@@ -1,6 +1,6 @@
 # Module-specific `PyobsError` types arrive as `UnclassifiedError` on callers that never imported them
 
-Status: step 1 implemented (PR 1), steps 2 and 3 proposed
+Status: steps 1 and 2 implemented (PR #958, docs PR), step 3 proposed
 
 Repos: pyobs-core
 

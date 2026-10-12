@@ -317,3 +317,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   module-specific `PyobsError` types arrive as `UnclassifiedError` on callers that never imported
   them; add a `<bases>` ancestor fallback to RPC faults, document it, then decide on the three
   errors it doesn't fix. **implemented** (step 3 as 3B) (2026-10-12; #952 item 8; Repos: pyobs-core)
+- [2026-10-12-state-subscriber-reads-old-item-after-restart.md](2026-10-12-state-subscriber-reads-old-item-after-restart.md):
+  a fresh state subscriber received the old process's item after a module restart; ranked
+  explanations from code reading, evidence requested on the issue, candidate fixes.
+  **waiting for evidence** (2026-10-12; #952 item 7; Repos: pyobs-core)

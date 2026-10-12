@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import pytest
 
 from pyobs.events import (
     BadWeatherEvent,
+    Event,
+    EventFactory,
     ExposureStatusChangedEvent,
     FilterChangedEvent,
     FocusFoundEvent,
@@ -28,8 +31,9 @@ from pyobs.events import (
     TaskSkippedEvent,
     TaskStartedEvent,
     TestEvent,
+    get_registered_event,
+    registered_events,
 )
-from pyobs.events.event import EventFactory
 from pyobs.utils.enums import ExposureStatus, ImageType, MotionStatus
 from pyobs.utils.time import Time
 
@@ -502,3 +506,57 @@ def test_test_event_roundtrip() -> None:
     e = TestEvent(message="ping")
     result = EventFactory.from_dict(e.to_json())
     assert isinstance(result, TestEvent)
+
+
+# ── events defined outside pyobs.events ───────────────────────────────────────
+
+
+class _PluginEvent(Event):
+    pass
+
+
+class _PluginDataEvent(Event):
+    def __init__(self, value: int = 0, **kwargs: Any):
+        Event.__init__(self)
+        self.data = {"value": value}
+        self.value = value
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> Event:
+        return cls(value=d["value"])
+
+
+def test_plugin_event_is_registered() -> None:
+    assert get_registered_event("_PluginEvent") is _PluginEvent
+    assert registered_events()["_PluginEvent"] is _PluginEvent
+    assert get_registered_event("Event") is Event
+    assert get_registered_event("NewImageEvent") is NewImageEvent
+    assert get_registered_event("DoesNotExist") is None
+
+
+def test_factory_creates_plugin_event() -> None:
+    event = _PluginEvent()
+    created = EventFactory.from_dict(event.to_json())
+    assert isinstance(created, _PluginEvent)
+    assert created.uuid == event.uuid
+    assert created.timestamp == event.timestamp
+
+
+def test_factory_roundtrips_plugin_event_with_data() -> None:
+    created = EventFactory.from_dict(_PluginDataEvent(value=3).to_json())
+    assert isinstance(created, _PluginDataEvent)
+    assert created.value == 3
+
+
+def test_event_name_clash_raises() -> None:
+    with pytest.raises(TypeError, match="already registered"):
+        type("_PluginEvent", (Event,), {"__module__": "some.other.module"})
+    # the original stays registered
+    assert get_registered_event("_PluginEvent") is _PluginEvent
+
+
+def test_event_redefinition_in_same_module_replaces() -> None:
+    first = type("_ReloadedEvent", (Event,), {"__module__": "some.module"})
+    second = type("_ReloadedEvent", (Event,), {"__module__": "some.module"})
+    assert get_registered_event("_ReloadedEvent") is second
+    assert second is not first

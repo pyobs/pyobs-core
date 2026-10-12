@@ -309,3 +309,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   a failed disco#info is treated as "no interfaces": peer stays invisible, event subscriptions are
   skipped for good, an empty proxy is cached; also log events dropped as too old. **implemented**
   (2026-10-12; #952 items 3, 5, 6; Repos: pyobs-core)
+- [2026-10-12-derived-events-for-module-event-classes.md](2026-10-12-derived-events-for-module-event-classes.md):
+  `Event` subclasses outside `pyobs.events` get no handler on any transport and are dropped by
+  `EventFactory` over XMPP; add an `Event` registry via `__init_subclass__`. **implemented**
+  (2026-10-12; #952 item 4; Repos: pyobs-core)

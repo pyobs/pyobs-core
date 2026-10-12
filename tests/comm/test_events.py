@@ -5,11 +5,8 @@ inverse, so a caller (e.g. a GUI widget torn down on client disconnect) could
 never stop receiving events -- the stale handler stayed in _event_handlers
 forever, keeping the caller alive and firing on every future matching event.
 
-Uses ModuleOpenedEvent/LogEvent (real pyobs.events members with no subclasses)
-rather than a locally-defined Event subclass -- Comm._get_derived_events()
-scans pyobs.events' own namespace for subclasses of the given class, so a
-class that isn't itself reachable from pyobs.events would resolve to an empty
-list and never actually reach _event_handlers.
+Event classes are found through the event registry, so classes defined outside pyobs.events
+(plugins, or the test module itself) work like the real ones.
 """
 
 from __future__ import annotations
@@ -20,7 +17,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from pyobs.comm.comm import Comm
-from pyobs.events import LogEvent, ModuleOpenedEvent
+from pyobs.events import Event, LogEvent, ModuleOpenedEvent, MoveAltAzEvent, MoveEvent, MoveRaDecEvent, NewImageEvent
 
 
 def _bare_comm() -> Comm:
@@ -248,3 +245,58 @@ async def test_unregister_event_expands_derived_events() -> None:
 
     await comm.unregister_event(LogEvent, handler)
     assert handler not in comm._event_handlers[LogEvent]
+
+
+class _CommPluginEvent(Event):
+    pass
+
+
+class _PluginImage(NewImageEvent):
+    pass
+
+
+@pytest.mark.asyncio
+async def test_register_event_for_plugin_event_dispatches() -> None:
+    comm = _bare_comm()
+    handler = AsyncMock(return_value=True)
+
+    await comm.register_event(_CommPluginEvent, handler)
+    assert handler in comm._event_handlers[_CommPluginEvent]
+
+    comm._send_event_to_module(_CommPluginEvent(), "x")
+    await asyncio.sleep(0)
+    handler.assert_called_once()
+
+    await comm.unregister_event(_CommPluginEvent, handler)
+    assert handler not in comm._event_handlers[_CommPluginEvent]
+
+
+@pytest.mark.asyncio
+async def test_handler_for_core_event_also_covers_plugin_subclass() -> None:
+    """#952 item 4: a plugin subclass of a core event reaches the handler registered for the core event."""
+    comm = _bare_comm()
+    handler = AsyncMock(return_value=True)
+
+    await comm.register_event(NewImageEvent, handler)
+
+    assert {NewImageEvent, _PluginImage} <= set(comm._event_handlers)
+    event = _PluginImage(filename="x.fits")
+    comm._send_event_to_module(event, "x")
+    await asyncio.sleep(0)
+    handler.assert_called_once()
+    assert handler.call_args[0][0] is event
+
+
+@pytest.mark.asyncio
+async def test_register_event_without_handler_declares_plugin_event_as_sent() -> None:
+    comm = _bare_comm()
+    await comm.register_event(_CommPluginEvent)
+    assert _CommPluginEvent in comm._events_sent
+
+
+@pytest.mark.asyncio
+async def test_register_event_still_covers_core_subclasses() -> None:
+    comm = _bare_comm()
+    handler = AsyncMock(return_value=True)
+    await comm.register_event(MoveEvent, handler)
+    assert {MoveEvent, MoveRaDecEvent, MoveAltAzEvent} <= set(comm._event_handlers)

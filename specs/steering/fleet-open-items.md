@@ -1,10 +1,20 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-10-04.
+Status: standing snapshot — last checked 2026-10-04, pyobs-core rows updated 2026-10-12.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-12** (pyobs-core only, other repos not re-queried): external issues #952 and #953
+  (MichaelJEvan) worked on. On `develop`, none released: #953 and #952 items 1 and 2 (PR #955,
+  string task ids, empty task list), items 3, 5 and 6 (PR #956, failed disco#info retried instead
+  of read as "no interfaces", empty proxy not cached, dropped old events logged), item 4 (PR #957,
+  `Event` registry), item 8 step 1 (PR #958, `<bases>` ancestor fallback in RPC faults). So the
+  #953 row is gone and the #952 row now lists items 7 and 8 only (plan
+  `2026-10-12-exception-types-across-the-wire.md`, steps 2 and 3 open). New: #959 (remote faults
+  such as `AltitudeLimitError` count towards `RemoteError` escalation in pointing and flat-field),
+  found while doing item 8, not reproduced. Commented on #952 and #953. #954 not looked at. Table
+  stays at 18.
 - **2026-10-04** (skill run, after the desktop notification work in pyobs-gui): re-queried all 27
   live GitHub repos (`gh repo list`) and every open issue; the tiers doc names 8 more repos that are
   not live on GitHub (not queried). pyobs-gui #168 (desktop notifications) landed on `develop`
@@ -432,9 +442,9 @@ One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; possible fix in step 3B of the exception plan |
 | pyobs-core | [#954](https://github.com/pyobs/pyobs-core/issues/954) | MoonIlluminationConstraint: still refuses a task after the Moon has set. Intended? | **external** (MichaelJEvan); filed 2026-10-11; `__call__` ignores Moon altitude, `to_astroplan()` allows it below the horizon |
-| pyobs-core | [#953](https://github.com/pyobs/pyobs-core/issues/953) | FollowMerit crashes the whole scheduler run once any observation tonight is completed | **external** (MichaelJEvan); filed 2026-10-09; *bug* — `ObservationList.filter(task_id=...)` reads `obs.task.id`, portal observations carry `task` as a plain string |
-| pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; *bug* list — `%d` with string task ids in `scheduler.py:233` (deactivated tasks keep being planned), `np.argmax` on empty merits, skipped XMPP event subscription after disco#info timeout; body has more items |
+| pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; items 1 to 6 are on `develop`; open: item 7 (fresh state-node subscriber got the old process's item after a restart on ejabberd, not traced) and item 8 (module-specific `PyobsError` arrives as `UnclassifiedError`, step 1 landed, docs and `AltitudeLimitError` next) |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
@@ -465,6 +475,11 @@ One row per issue — same layout for every repo.
   after a live-mode restart, `readout_time` per sensor), so its boxes stay unticked. Phase 7 code landed for pyobs-tis
   v2.1.0 and pyobs-v4l v2.1.0 (not hardware-tested). Open: downstream `AravisCamera` subclasses
   (7), clients (6: pyobs-gui landed on `develop`, pyobs-web-client #58 open), shim removal (8).
+
+- [2026-10-12-exception-types-across-the-wire.md](../plans/2026-10-12-exception-types-across-the-wire.md):
+  *step 1 implemented* (PR #958, `<bases>` fallback). Open: step 2 (guide page, API reference,
+  design doc notes) and step 3 (`AltitudeLimitError`, `WeatherResponseError`, `ScriptError`; 3B
+  recommended, `PointingLimitError`). #952 item 8, #959.
 
 ### Design docs still *proposed*
 

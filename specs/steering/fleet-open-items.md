@@ -426,16 +426,21 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (13, checked 2026-10-04, see changelog)
+## Open issues (18, checked 2026-10-04, see changelog)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#954](https://github.com/pyobs/pyobs-core/issues/954) | MoonIlluminationConstraint: still refuses a task after the Moon has set. Intended? | **external** (MichaelJEvan); filed 2026-10-11; `__call__` ignores Moon altitude, `to_astroplan()` allows it below the horizon |
+| pyobs-core | [#953](https://github.com/pyobs/pyobs-core/issues/953) | FollowMerit crashes the whole scheduler run once any observation tonight is completed | **external** (MichaelJEvan); filed 2026-10-09; *bug* — `ObservationList.filter(task_id=...)` reads `obs.task.id`, portal observations carry `task` as a plain string |
+| pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; *bug* list — `%d` with string task ids in `scheduler.py:233` (deactivated tasks keep being planned), `np.argmax` on empty merits, skipped XMPP event subscription after disco#info timeout; body has more items |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
-| pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
+| pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
+| pyobs-archive | [#74](https://github.com/pyobs/pyobs-archive/issues/74) | Findings from running the archive on a MacBook M5 Pro (no Docker), 2.1.4 | **external** (MichaelJEvan); filed 2026-10-08; hardcoded `/usr/bin/fpack`, Frame row saved before fpack (no transaction), upside-down preview, wrong image name in `docker-compose.yaml`, white loading overlay |
+| pyobs-portal | [#169](https://github.com/pyobs/pyobs-portal/issues/169) | Findings from running the portal on a plain machine (no Docker), 2.5.5 | **external** (MichaelJEvan); filed 2026-10-08; `.env.example` vs `SQL_*` settings, no `[build-system]`, needs `pyobs-core[full]`, negative priorities, no UI to cancel pending observations; body has more items |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 | pyobs-web-client | [#58](https://github.com/pyobs/pyobs-web-client/issues/58) | Live view: choose MJPEG (server stretch) or raw stream (client stretch) | filed 2026-09-29; unblocked (pyobs-core v2.13.0); plan phase 6 |
 | pyobs-gui | [#198](https://github.com/pyobs/pyobs-gui/issues/198) | Live view: zoom and pan with a server-side crop | filed 2026-10-04; follow-up to #182, the raw-stream crop (`x`/`y`/`w`/`h`) already exists in pyobs-core |

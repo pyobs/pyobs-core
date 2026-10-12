@@ -155,6 +155,7 @@ Guides
    recipes/simulation
    recipes/jupyter
    recipes/xmpp-diagnostics
+   recipes/exceptions
    recipes/full-observatory-stack
    config_examples/iag50cm
    config_examples/iagvt

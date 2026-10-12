@@ -477,9 +477,8 @@ One row per issue — same layout for every repo.
   (7), clients (6: pyobs-gui landed on `develop`, pyobs-web-client #58 open), shim removal (8).
 
 - [2026-10-12-exception-types-across-the-wire.md](../plans/2026-10-12-exception-types-across-the-wire.md):
-  *step 1 implemented* (PR #958, `<bases>` fallback). Open: step 2 (guide page, API reference,
-  design doc notes) and step 3 (`AltitudeLimitError`, `WeatherResponseError`, `ScriptError`; 3B
-  recommended, `PointingLimitError`). #952 item 8, #959.
+  *steps 1 and 2 implemented* (PR #958, `<bases>` fallback, then the guide page). Open: step 3
+  (`AltitudeLimitError`, `WeatherResponseError`, `ScriptError`; 3B recommended, `PointingLimitError`). #952 item 8, #959.
 
 ### Design docs still *proposed*
 

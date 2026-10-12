@@ -24,6 +24,13 @@ AcquisitionError
    :members:
    :undoc-members:
 
+ArchiveError
+^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.ArchiveError
+   :members:
+   :undoc-members:
+
 DeviceBusyError
 ^^^^^^^^^^^^^^^
 

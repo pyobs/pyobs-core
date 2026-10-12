@@ -14,9 +14,13 @@ Two independent axes live in this hierarchy:
 A domain exception raised on the far side of an RPC call is looked up in the registry below by its
 fully-qualified name and re-raised locally as its real type, tagged with `remote_module` (see
 `comm/xmpp/rpc.py`'s fault reconstruction) -- it does not travel wrapped in a `RemoteError`. If the
-type can't be resolved (its defining module was never imported in this process, or it was never a
-`PyobsError` to begin with), it arrives as `UnclassifiedError` instead, with the original type name
-preserved as `original_type`.
+type can't be resolved because its defining module was never imported in this process, it falls back
+to the nearest of its base classes that is registered here (the fault carries their names, see
+`comm/xmpp/rpc.py`; not in 2.14.2), e.g. `MotionError` for a driver's own `MotionError` subclass, with
+the original type name preserved as `original_type`. If there is no such base class, or the exception
+was never a `PyobsError` to begin with, it arrives as `UnclassifiedError`, again with `original_type`.
+Driver authors should therefore subclass the closest class of this module, not `PyobsError` itself. See
+the "Exceptions across modules" guide in the documentation.
 
 Every subclass registers itself automatically via `__init_subclass__` (`PyobsError._registry`);
 there's nothing to do at definition time beyond subclassing the right branch of the hierarchy.
@@ -32,7 +36,12 @@ __title__ = "Exceptions"
 
 
 class PyobsError(Exception):
-    """Base class for all exceptions"""
+    """Base class for all exceptions.
+
+    Define your own errors by subclassing the closest class of this module (e.g. `MotionError`), not
+    `PyobsError` itself: a caller that did not import your module then still receives the nearest of these
+    classes, otherwise it gets `UnclassifiedError`.
+    """
 
     _registry: dict[str, type[PyobsError]] = {}
 
@@ -168,8 +177,9 @@ class UnclassifiedError(PyobsError):
     """Wraps an exception that isn't part of the deliberate PyobsError contract -- either it never
     was a PyobsError to begin with (a builtin, a vendor SDK exception) and escaped a module's own
     method body unconverted, or it crossed an RPC boundary and couldn't be reconstructed as its real
-    type because its defining module was never imported in this process. The original type name
-    survives as `original_type` even when the class itself doesn't."""
+    type because its defining module was never imported in this process and none of its base classes
+    (other than `PyobsError`) is known here either. The original type name survives as `original_type`
+    even when the class itself doesn't."""
 
     pass
 

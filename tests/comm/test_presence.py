@@ -354,6 +354,7 @@ async def test_got_online_resolves_future_when_no_interfaces_found() -> None:
     comm._online_clients = []
     comm._presence_callbacks = {}
     comm._event_handlers = {}
+    comm._discovery_retries = {}
     comm._get_interfaces = AsyncMock(return_value=[])
 
     msg = {"from": MagicMock(full="camera@localhost/pyobs", username="camera"), "show": "", "status": ""}
@@ -391,6 +392,7 @@ async def test_got_online_completes_despite_broken_presence_callback() -> None:
     comm._presence_callbacks = {"camera": [MagicMock(side_effect=RuntimeError("Signal source has been deleted"))]}
     comm._event_handlers = {ModuleOpenedEvent: [handler]}
     comm._event_handler_tasks = {}
+    comm._discovery_retries = {}
     comm._get_interfaces = AsyncMock(return_value=["IModule"])
 
     msg = {"from": MagicMock(full="camera@localhost/pyobs", username="camera"), "show": "", "status": ""}

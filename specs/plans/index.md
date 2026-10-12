@@ -304,4 +304,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   (2026-09-29; #924, #925; Repos: pyobs-core, pyobs-gui, pyobs-web-client, driver plugins)
 - [2026-10-12-string-task-ids-and-empty-scheduler-run.md](2026-10-12-string-task-ids-and-empty-scheduler-run.md):
   string portal task ids break a `%d` log line, `FollowMerit`/`ObservationList.filter`, and an empty
-  task list crashes `find_next_best_task`. **implemented, uncommitted** (2026-10-12; #952 items 1-2, #953; Repos: pyobs-core)
+  task list crashes `find_next_best_task`. **implemented** (2026-10-12; #952 items 1-2, #953; Repos: pyobs-core)
+- [2026-10-12-disco-info-failure-handling.md](2026-10-12-disco-info-failure-handling.md):
+  a failed disco#info is treated as "no interfaces": peer stays invisible, event subscriptions are
+  skipped for good, an empty proxy is cached; also log events dropped as too old. **implemented**
+  (2026-10-12; #952 items 3, 5, 6; Repos: pyobs-core)

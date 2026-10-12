@@ -151,6 +151,10 @@ class Comm:
                 if interface.has_own_state():
                     await self.subscribe_state(client, interface, functools.partial(proxy.update_state, interface))
 
+            # a proxy without interfaces is useless and would stay stale (e.g. peer's disco#info not
+            # answered yet), so do not cache it
+            if len(interfaces) == 0:
+                return proxy
             self._proxies[client] = proxy
 
         return self._proxies[client]

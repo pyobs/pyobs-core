@@ -10,6 +10,7 @@ from astropy.coordinates import EarthLocation
 
 from pyobs.robotic import Observation, Task
 from pyobs.robotic.observation import ObservationList
+from pyobs.robotic.scheduler.dataprovider import DataProvider
 from pyobs.robotic.scheduler.observationarchiveevolution import ObservationArchiveEvolution
 from pyobs.utils.time import Time
 
@@ -33,8 +34,8 @@ async def test_prefetch_populates_task_and_night_cache() -> None:
     observer = make_observer()
     evolution = ObservationArchiveEvolution(observer, mock_archive)
     tasks = [make_task(1), make_task(2)]
-    start = Time.now()
-    night = start.to_datetime().date()
+    start = Time("2026-10-13T03:00:00")
+    night = DataProvider(observer, evolution).night(start)
 
     await evolution.prefetch(tasks, start, night)
 
@@ -50,8 +51,8 @@ async def test_freeze_prevents_lazy_task_fetch() -> None:
     observer = make_observer()
     evolution = ObservationArchiveEvolution(observer, mock_archive)
     tasks = [make_task(1)]
-    start = Time.now()
-    night = start.to_datetime().date()
+    start = Time("2026-10-13T03:00:00")
+    night = DataProvider(observer, evolution).night(start)
 
     await evolution.prefetch(tasks, start, night)
     evolution.freeze()
@@ -76,8 +77,8 @@ async def test_freeze_night_miss_seeds_empty() -> None:
     observer = make_observer()
     evolution = ObservationArchiveEvolution(observer, mock_archive)
     tasks = [make_task(1)]
-    start = Time.now()
-    night = start.to_datetime().date()
+    start = Time("2026-10-13T03:00:00")
+    night = DataProvider(observer, evolution).night(start)
 
     await evolution.prefetch(tasks, start, night)
     evolution.freeze()
@@ -103,8 +104,8 @@ async def test_evolve_after_freeze_prefetched_task() -> None:
     evolution = ObservationArchiveEvolution(observer, mock_archive)
     task = make_task(1)
     tasks = [task]
-    start = Time.now()
-    night = start.to_datetime().date()
+    start = Time("2026-10-13T03:00:00")
+    night = DataProvider(observer, evolution).night(start)
 
     await evolution.prefetch(tasks, start, night)
     evolution.freeze()
@@ -126,14 +127,16 @@ async def test_evolve_after_freeze_future_night() -> None:
     evolution = ObservationArchiveEvolution(observer, mock_archive)
     task = make_task(1)
     tasks = [task]
-    start = Time.now()
-    night = start.to_datetime().date()
+    start = Time("2026-10-13T03:00:00")
+    night = DataProvider(observer, evolution).night(start)
 
     await evolution.prefetch(tasks, start, night)
     evolution.freeze()
 
     future_night = night + datetime.timedelta(days=1)
-    scheduled = Observation(task=task, start=start, end=start, priority=1.0)
+    scheduled = Observation(
+        task=task, start=start + datetime.timedelta(days=1), end=start + datetime.timedelta(days=1), priority=1.0
+    )
     await evolution.evolve(scheduled, future_night)
 
     assert len(evolution._obs_for_task[task.id]) == 1
@@ -149,8 +152,8 @@ async def test_prefetch_without_archive() -> None:
     observer = make_observer()
     evolution = ObservationArchiveEvolution(observer, None)
     tasks = [make_task(1), make_task(2)]
-    start = Time.now()
-    night = start.to_datetime().date()
+    start = Time("2026-10-13T03:00:00")
+    night = DataProvider(observer, evolution).night(start)
 
     await evolution.prefetch(tasks, start, night)
     evolution.freeze()
@@ -164,8 +167,8 @@ async def test_freeze_without_archive_unprefetched_task_raises() -> None:
     observer = make_observer()
     evolution = ObservationArchiveEvolution(observer, None)
     tasks = [make_task(1)]
-    start = Time.now()
-    night = start.to_datetime().date()
+    start = Time("2026-10-13T03:00:00")
+    night = DataProvider(observer, evolution).night(start)
 
     await evolution.prefetch(tasks, start, night)
     evolution.freeze()
@@ -185,8 +188,8 @@ async def test_freeze_night_canary_catches_past_night() -> None:
     observer = make_observer()
     evolution = ObservationArchiveEvolution(observer, mock_archive)
     tasks = [make_task(1)]
-    start = Time.now()
-    night = start.to_datetime().date()
+    start = Time("2026-10-13T03:00:00")
+    night = DataProvider(observer, evolution).night(start)
 
     await evolution.prefetch(tasks, start, night)
     evolution.freeze()

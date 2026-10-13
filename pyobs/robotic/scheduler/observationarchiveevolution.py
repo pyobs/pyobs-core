@@ -7,6 +7,7 @@ from uuid import uuid4
 from astroplan import Observer
 
 from ...utils.time import Time
+from .observingperiod import ObservingMode, ObservingPeriods
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -17,7 +18,10 @@ if TYPE_CHECKING:
 
 
 class ObservationArchiveEvolution:
-    def __init__(self, observer: Observer, obs_archive: ObservationArchive | None = None):
+    def __init__(
+        self, observer: Observer, obs_archive: ObservationArchive | None = None, *, mode: ObservingMode = "night"
+    ):
+        self.periods = ObservingPeriods(observer, mode)
         self._obs_archive = obs_archive
         self._obs_for_task: dict[Any, ObservationList] = {}
         self._obs_for_night: dict[datetime.date, ObservationList] = {}
@@ -32,7 +36,7 @@ class ObservationArchiveEvolution:
         self._current_night = night
         for task in tasks:
             await self.observations_for_task(task)
-        await self.observations_for_night(night)
+        await self.observations_for_night(night, time=start)
 
     def freeze(self) -> None:
         """Freezes observation cache. After this: a task-id miss raises RuntimeError; a night
@@ -42,6 +46,9 @@ class ObservationArchiveEvolution:
 
     async def evolve(self, scheduled_task: Observation, night: datetime.date) -> None:
         from pyobs.robotic.observation import Observation, ObservationState
+
+        if self.periods.key(scheduled_task.start) != night:
+            raise ValueError("Evolved observation does not match its observing period key.")
 
         obs = Observation(
             id=str(uuid4()),
@@ -54,15 +61,8 @@ class ObservationArchiveEvolution:
         await self.observations_for_task(scheduled_task.task)
         self._obs_for_task[scheduled_task.task.id].append(obs)
 
-        # `night` is the caller's responsibility (DataProvider.night(scheduled_task.start), see
-        # OnDemandScheduler.schedule()) rather than computed here from Time.now(): a schedule() run
-        # covers up to `schedule_range` (~24h) ahead, so "the night this task happens" can differ
-        # from "the night it is right now" when evolve() runs -- using Time.now() filed every task
-        # under whichever night was current at evolve()-time, not the night it was actually
-        # scheduled into, which a later FollowMerit/PerNightMerit lookup (keyed by the task's own
-        # time) would then miss. Also avoids redoing an uncached astropy sunset computation here
-        # when DataProvider.night() already has a cached one for this exact time.
-        await self.observations_for_night(night)
+        # The same reset cycle owns real and simulated history, including future periods.
+        await self.observations_for_night(night, time=scheduled_task.start)
         self._obs_for_night[night].append(obs)
 
     async def observations_for_task(self, task: Task) -> ObservationList:
@@ -82,14 +82,12 @@ class ObservationArchiveEvolution:
                 self._obs_for_task[task.id] = ObservationList()
         return self._obs_for_task[task.id]
 
-    async def observations_for_night(self, date: datetime.date) -> ObservationList:
-        """Returns list of observations for the given task.
+    async def observations_for_night(self, date: datetime.date, *, time: Time | None = None) -> ObservationList:
+        """Completed observations starting in the selected half-open history cycle.
 
-        Args:
-            date: Date of night to get observations for.
-
-        Returns:
-            List of observations for the given task.
+        ``date`` is the UTC date of the opening sunrise (night mode) or sunset (day mode).
+        ``time`` anchors standalone/lazy calls; date-only calls require a unique reset event.
+        Cached reads and frozen future-cycle seeding never perform archive I/O.
         """
         from pyobs.robotic.observation import ObservationList, ObservationState
 
@@ -102,11 +100,11 @@ class ObservationArchiveEvolution:
                 ), f"Night {date} not prefetched and not strictly after current night {self._current_night}."
                 self._obs_for_night[date] = ObservationList()
             elif self._obs_archive is not None:
-                start = Time(datetime.datetime.combine(date, datetime.time(0, 0, 0)))
-                end = Time(datetime.datetime.combine(date, datetime.time(23, 59, 59)))
-                self._obs_for_night[date] = await self._obs_archive.get_observations(
-                    end_after=start, start_before=end, state=ObservationState.COMPLETED
+                start, end = self.periods.bounds(date, time)
+                observations = await self._obs_archive.get_observations(
+                    start_after=start, start_before=end, state=ObservationState.COMPLETED
                 )
+                self._obs_for_night[date] = ObservationList([obs for obs in observations if start <= obs.start < end])
             else:
                 self._obs_for_night[date] = ObservationList()
         return self._obs_for_night[date]

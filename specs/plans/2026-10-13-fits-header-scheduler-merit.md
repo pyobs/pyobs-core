@@ -1,6 +1,6 @@
 # Keep the scheduler's merit on the observation and write it into the FITS header
 
-Status: core part implemented (2026-10-13, PR in pyobs-core), portal part in a pyobs-portal PR.
+Status: implemented (pyobs-core PR #964 in v2.15.0, pyobs-portal PR #170 in v2.6.0).
 
 Repos: pyobs-core, pyobs-portal
 

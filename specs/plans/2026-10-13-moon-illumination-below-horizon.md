@@ -1,6 +1,6 @@
 # Ignore Moon illumination limits below the horizon
 
-Status: implemented, merged to develop 2026-10-13 (PR #968, c301e252); not yet released.
+Status: implemented, merged to develop 2026-10-13 (PR #968, c301e252); included in v2.16.0.
 
 Issue: [pyobs-core #954](https://github.com/pyobs/pyobs-core/issues/954)
 

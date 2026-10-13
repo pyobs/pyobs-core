@@ -1,6 +1,6 @@
 # FollowMerit: observing periods for nighttime and solar operation
 
-Status: implemented 2026-10-13; pending PR merge to develop
+Status: implemented 2026-10-13; merged to develop in PR #969 (`0fb9fddd`), included in v2.16.0
 Issue: [pyobs-core#967](https://github.com/pyobs/pyobs-core/issues/967)
 Date: 2026-10-13
 
@@ -163,4 +163,4 @@ Implementation and tests are complete; release and deployment follow merge.
   requirement for task-scoped archive queries is unchanged; a general period query was already
   unsupported there and is not introduced by this fix.
 
-- [ ] Merge the implementation PR and remove #967/this plan from the fleet open-items view.
+- [x] Merge the implementation PR (#969) and remove #967/this plan from the fleet open-items view.

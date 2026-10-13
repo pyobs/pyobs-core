@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import astroplan
 import numpy as np
@@ -22,6 +22,10 @@ class AirmassConstraint(Constraint):
     cost: float = 2.0
     target_dependent: bool = True
     max_airmass: float = Field(ge=1.0, le=9.9, default=1.3)
+    req_token: ClassVar[str | None] = "AIRMASS"
+
+    def req_fields(self) -> dict[str, tuple[int | float | str, str]]:
+        return {"MAX": (float(self.max_airmass), "")}
 
     def to_astroplan(self) -> astroplan.AirmassConstraint:
         return astroplan.AirmassConstraint(max=self.max_airmass)

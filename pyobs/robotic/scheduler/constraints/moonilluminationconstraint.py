@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import astroplan
 from pydantic import Field
@@ -19,6 +19,10 @@ class MoonIlluminationConstraint(Constraint):
 
     cost: float = 3.0
     max_phase: float = Field(ge=0.0, le=1.0, default=0.0)
+    req_token: ClassVar[str | None] = "MOONFRAC"
+
+    def req_fields(self) -> dict[str, tuple[int | float | str, str]]:
+        return {"MAX": (float(self.max_phase), "fraction")}
 
     def to_astroplan(self) -> astroplan.MoonIlluminationConstraint:
         return astroplan.MoonIlluminationConstraint(max=self.max_phase)

@@ -11,7 +11,15 @@ from pyobs.events import TaskSkippedEvent
 from pyobs.interfaces import FitsHeaderEntry
 from pyobs.modules.robotic.mastermind import Mastermind
 from pyobs.robotic import Observation, ObservationArchive, ObservationState
-from pyobs.robotic.task import Task
+from pyobs.robotic.scheduler.constraints import (
+    AirmassConstraint,
+    MoonIlluminationConstraint,
+    MoonSeparationConstraint,
+    SolarElevationConstraint,
+    TimeConstraint,
+)
+from pyobs.robotic.scheduler.constraints.constraint import Constraint
+from pyobs.robotic.task import Project, Task
 from pyobs.robotic.taskrunner import TaskRunner
 from pyobs.utils.time import Time
 
@@ -41,6 +49,185 @@ async def test_get_fits_header_before_includes_version_headers(mocker) -> None:
     hdr = await mm.get_fits_header_before()
 
     assert hdr["HIERARCH TESTMASTERMIND VERSION PYOBS-CORE"].value == "2.4.1"
+
+
+# ── REQ cards: what the frame was asked for (#962) ───────────────────────────
+
+
+def make_request_task(**kwargs) -> Task:
+    return Task(id=1, name="task1", project="p1", **kwargs)
+
+
+@pytest.mark.asyncio
+async def test_header_has_priority_and_all_constraint_cards(mocker) -> None:
+    mocker.patch("pyobs.modules.robotic.mastermind.version_fits_headers", return_value={})
+    mm = make_mastermind()
+    start = Time("2026-10-13T20:00:00")
+    mm._task = make_request_task(
+        priority=2.5,
+        constraints=[
+            AirmassConstraint(max_airmass=1.4),
+            MoonSeparationConstraint(min_distance=20.0),
+            MoonIlluminationConstraint(max_phase=0.5),
+            SolarElevationConstraint(),
+            TimeConstraint(start=start, end=start + 1.0 * u.hour),
+        ],
+    )
+    mm._project_priority = 3.0
+
+    hdr = await mm.get_fits_header_before()
+
+    assert {k: v.value for k, v in hdr.items() if k.startswith("HIERARCH REQ")} == {
+        "HIERARCH REQ PRIORITY": 2.5,
+        "HIERARCH REQ PROJECT PRIORITY": 3.0,
+        "HIERARCH REQ AIRMASS MAX": 1.4,
+        "HIERARCH REQ MOONDIST MIN": 20.0,
+        "HIERARCH REQ MOONFRAC MAX": 0.5,
+        "HIERARCH REQ SUNALT MIN": -90.0,
+        "HIERARCH REQ SUNALT MAX": -18.0,
+        "HIERARCH REQ SUNALT DIR": "both",
+        "HIERARCH REQ TIME START": "2026-10-13T20:00:00.000",
+        "HIERARCH REQ TIME END": "2026-10-13T21:00:00.000",
+    }
+    assert hdr["REQNUM"].value == "1"
+
+
+@pytest.mark.asyncio
+async def test_header_numbers_constraints_of_the_same_type(mocker) -> None:
+    mocker.patch("pyobs.modules.robotic.mastermind.version_fits_headers", return_value={})
+    mm = make_mastermind()
+    start = Time("2026-10-13T20:00:00")
+    mm._task = make_request_task(
+        constraints=[
+            SolarElevationConstraint(max_elevation=-12.0),
+            SolarElevationConstraint(max_elevation=-18.0),
+            TimeConstraint(start=start, end=start + 1.0 * u.hour),
+            TimeConstraint(start=start + 2.0 * u.hour, end=start + 3.0 * u.hour),
+        ]
+    )
+
+    hdr = await mm.get_fits_header_before()
+
+    assert hdr["HIERARCH REQ SUNALT MAX"].value == -12.0
+    assert hdr["HIERARCH REQ SUNALT2 MAX"].value == -18.0
+    assert hdr["HIERARCH REQ TIME START"].value == "2026-10-13T20:00:00.000"
+    assert hdr["HIERARCH REQ TIME2 START"].value == "2026-10-13T22:00:00.000"
+
+
+@pytest.mark.asyncio
+async def test_header_without_constraints_and_priority_has_no_req_cards(mocker) -> None:
+    mocker.patch("pyobs.modules.robotic.mastermind.version_fits_headers", return_value={})
+    mm = make_mastermind()
+    mm._task = make_request_task(priority=None)
+
+    hdr = await mm.get_fits_header_before()
+
+    assert not [k for k in hdr if k.startswith("HIERARCH REQ")]
+    assert hdr["TASK"].value == "task1"
+
+
+@pytest.mark.asyncio
+async def test_header_plugin_constraint_adds_nothing(mocker) -> None:
+    class PluginConstraint(Constraint):
+        def to_astroplan(self):
+            raise NotImplementedError
+
+        async def __call__(self, time, task, data) -> bool:
+            return True
+
+    mocker.patch("pyobs.modules.robotic.mastermind.version_fits_headers", return_value={})
+    mm = make_mastermind()
+    mm._task = make_request_task(priority=None, constraints=[PluginConstraint()])
+
+    hdr = await mm.get_fits_header_before()
+
+    assert not [k for k in hdr if k.startswith("HIERARCH REQ")]
+
+
+@pytest.mark.asyncio
+async def test_header_keeps_first_card_on_a_key_clash(mocker) -> None:
+    class StrictAirmass(AirmassConstraint):
+        pass
+
+    mocker.patch("pyobs.modules.robotic.mastermind.version_fits_headers", return_value={})
+    mm = make_mastermind()
+    mm._task = make_request_task(
+        priority=None, constraints=[AirmassConstraint(max_airmass=1.3), StrictAirmass(max_airmass=1.1)]
+    )
+
+    hdr = await mm.get_fits_header_before()
+
+    assert hdr["HIERARCH REQ AIRMASS MAX"].value == 1.3
+
+
+@pytest.mark.asyncio
+async def test_lookup_project_priority() -> None:
+    mm = make_mastermind()
+    task = make_request_task()
+
+    # no task archive
+    mm._task_archive = None
+    assert await mm._lookup_project_priority(task) is None
+
+    # archive with the project
+    mm._task_archive = MagicMock()
+    mm._task_archive.get_projects = AsyncMock(return_value=[Project(code="x"), Project(code="p1", priority=4.0)])
+    assert await mm._lookup_project_priority(task) == 4.0
+
+    # unknown project, project without priority, task without project
+    assert await mm._lookup_project_priority(Task(id=2, name="t", project="other")) is None
+    mm._task_archive.get_projects = AsyncMock(return_value=[Project(code="p1", priority=None)])
+    assert await mm._lookup_project_priority(task) is None
+    assert await mm._lookup_project_priority(Task(id=3, name="t")) is None
+
+    # archive without projects (e.g. filesystem)
+    mm._task_archive.get_projects = AsyncMock(side_effect=NotImplementedError)
+    assert await mm._lookup_project_priority(task) is None
+
+
+@pytest.mark.asyncio
+async def test_project_priority_is_taken_at_task_start_and_cleared_afterwards(mocker) -> None:
+    mocker.patch("pyobs.modules.robotic.mastermind.version_fits_headers", return_value={})
+    mm = make_mastermind()
+    project = Project(code="p1", priority=4.0)
+    mm._task_archive = MagicMock()
+    mm._task_archive.get_projects = AsyncMock(return_value=[project])
+    _prepare(mm, [make_observation(make_request_task(), start=Time.now())])
+    mm._next_obsnum = AsyncMock(return_value="20261013-001")
+
+    seen: list[object] = []
+
+    async def run_task(task: Task, target: object) -> None:
+        # the project changes while the task runs: the frames of this run keep the value from the start
+        project.priority = 9.0
+        hdr = await mm.get_fits_header_before()
+        seen.append(hdr["HIERARCH REQ PROJECT PRIORITY"].value)
+
+    mm._task_runner.run_task = run_task
+
+    await _run_briefly(mm, mocker, iterations=2)  # cancelled in the sleep after the first task
+
+    assert seen == [4.0]
+    assert mm._project_priority is None
+
+
+@pytest.mark.asyncio
+async def test_project_priority_is_cleared_after_a_failed_task(mocker) -> None:
+    mm = make_mastermind()
+    mm._task_archive = MagicMock()
+    mm._task_archive.get_projects = AsyncMock(return_value=[Project(code="p1", priority=4.0)])
+    _prepare(mm, [make_observation(make_request_task(), start=Time.now())])
+    mm._next_obsnum = AsyncMock(return_value="20261013-001")
+    mm._task_runner.run_task = AsyncMock(side_effect=RuntimeError("failed"))
+    # a failed task loops straight on without sleeping: end the loop with the second lookup
+    mm._observation_archive.get_next_observation = AsyncMock(
+        side_effect=[make_observation(make_request_task(), start=Time.now()), asyncio.CancelledError()]
+    )
+
+    await _run_briefly(mm, mocker)
+
+    assert mm._project_priority is None
+    assert mm._task is None
 
 
 # ── _same_observation ────────────────────────────────────────────────────────

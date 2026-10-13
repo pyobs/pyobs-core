@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class FollowMerit(Merit):
-    """Merit functions that only returns after another given task has run this night."""
+    """Merit functions that only returns after another given task has run this observing period."""
 
     task_id: Any = Field(default_factory=str)
 
@@ -23,7 +23,7 @@ class FollowMerit(Merit):
 
         # get all observations for tonight
         night = data.night(time)
-        observations = await data.archive.observations_for_night(night)
+        observations = await data.archive.observations_for_night(night, time=time)
 
         # filter for successful ones of the given task
         observations = observations.filter(task_id=self.task_id, state=ObservationState.COMPLETED)

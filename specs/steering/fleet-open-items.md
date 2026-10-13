@@ -1,14 +1,30 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — last checked 2026-10-04, pyobs-core rows updated 2026-10-12.
+Status: standing snapshot — GitHub issues and local fleet plans checked 2026-10-13.
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
-- **2026-10-13** (#954): implemented the agreed below-horizon illumination exemption and
-  cached Moon AltAz helper, with boundary, Astroplan parity and cache tests. Pending PR merge;
-  issue and plan remain open until the fix lands on `develop`.
+- **2026-10-13** (#954): PR #968 merged to `develop` (`c301e252`), CI pytest/Ruff/Pyrefly
+  passed. Removed #954 and its plan from open items; not yet released. Table 17.
 
+- **2026-10-13** (#954 planning): reproduced the Moon-illumination disagreement after moonset;
+  agreed to ignore the limit strictly below 0 degrees, matching astroplan. Added
+  `2026-10-13-moon-illumination-below-horizon.md` (proposed); implementation remains open.
+  No GitHub issue changes. Table remains 18.
+- **2026-10-13** (fleet refresh): queried all 26 non-archived GitHub repos; 26 open issues,
+  of which 18 still need implementation or investigation. Added pyobs-core #967 (FollowMerit
+  fetches a UTC calendar day instead of the observing night; reporter supplied measurements).
+  Removed pyobs-web-client #58: phases a-c landed (`a17d8f3`, `a2403f4`, `d723040`) and shipped
+  in v0.14.0; remaining checks are in its plan entry. BROT #83/#85 are already released in
+  v2.3.0/v2.4.0 (`65e439d`, `bbb4474`), so never added. The other excluded open GitHub issues
+  are core #962 and gui #168/#182/#185/#186 (implementation released; platform checks remain
+  separate gui issues). No GitHub issues were changed. Added the missing state-subscriber,
+  web-client live-view and Aravis verification plans, plus local IAG open plans and deployment
+  checks. Corrected sibling links. Some sibling indexes/status lines lag their plan bodies and
+  releases; this refresh updates only this snapshot. GitLab issue trackers and live deployments
+  were not queried; four fleet projects lack local clones, so their plans were not checked.
+  Table remains 18.
 - **2026-10-13** (releases, pyobs-core and pyobs-portal only): pyobs-core v2.15.0 and pyobs-portal v2.6.0
   released. #953 closed. #952 items 1 to 6 and 8 and #962 (parts 6 to 9, PRs #963, #964 and pyobs-portal #170)
   are released, so the #962 row and its two plans are gone; #962 stays open on GitHub until the reporter
@@ -450,14 +466,21 @@ open pending a release to `main`), never annotate them.** Only open items live h
 
 Repos: the whole pyobs fleet.
 
-## Open issues (18, checked 2026-10-04, pyobs-core 2026-10-13, see changelog)
+Snapshot scope: issues from the 26 non-archived repos in the `pyobs` GitHub org, including
+the homepage; local plans from the 27 cloned fleet projects (including archived pyobs-polaris
+and the four IAG repos). GitLab issue trackers are not covered. Local plans could not be checked
+for pyobs-astrometry, pyobs-allsky-cloudcover, pyobs-dashboard-utils or pyobs.github.io because
+those clones are absent. Plan summaries use the plan body and local commits/tags when an index
+is stale; hardware/deployment status is taken from the docs, not a new live check.
+
+## Open issues (17, checked 2026-10-13)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#967](https://github.com/pyobs/pyobs-core/issues/967) | FollowMerit: "tonight" is a UTC calendar day, so a task that ran after 00:00 UTC is not seen until the next sunset | **external** (MichaelJEvan); filed 2026-10-13; reproduced locally 2026-10-13 with real sunset calculation and a mock archive: current-night post-midnight completion missed, previous-night completion accepted; `observations_for_night()` fetches 00:00–23:59:59 UTC although `DataProvider.night()` uses the last sunset; proposed plan [2026-10-13-follow-merit-observing-night.md](../plans/2026-10-13-follow-merit-observing-night.md), implemented for nighttime and solar daytime operation, pending PR merge; night mode resets at sunrise, day mode at sunset |
 | pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
-| pyobs-core | [#954](https://github.com/pyobs/pyobs-core/issues/954) | MoonIlluminationConstraint: still refuses a task after the Moon has set. Intended? | **external** (MichaelJEvan); filed 2026-10-11; below-horizon exemption implemented with cached altitude and regression tests; pending PR merge; [plan](../plans/2026-10-13-moon-illumination-below-horizon.md) |
 | pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; items 1 to 6 and 8 released in v2.15.0; open: item 7 only (fresh state-node subscriber got the old process's item after a restart on ejabberd; waiting for the reporter's logs, asked 2026-10-12, plan `2026-10-12-state-subscriber-reads-old-item-after-restart.md`) |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
@@ -466,7 +489,6 @@ One row per issue — same layout for every repo.
 | pyobs-archive | [#74](https://github.com/pyobs/pyobs-archive/issues/74) | Findings from running the archive on a MacBook M5 Pro (no Docker), 2.1.4 | **external** (MichaelJEvan); filed 2026-10-08; hardcoded `/usr/bin/fpack`, Frame row saved before fpack (no transaction), upside-down preview, wrong image name in `docker-compose.yaml`, white loading overlay |
 | pyobs-portal | [#169](https://github.com/pyobs/pyobs-portal/issues/169) | Findings from running the portal on a plain machine (no Docker), 2.5.5 | **external** (MichaelJEvan); filed 2026-10-08; `.env.example` vs `SQL_*` settings, no `[build-system]`, needs `pyobs-core[full]`, negative priorities, no UI to cancel pending observations; body has more items |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
-| pyobs-web-client | [#58](https://github.com/pyobs/pyobs-web-client/issues/58) | Live view: choose MJPEG (server stretch) or raw stream (client stretch) | filed 2026-09-29; unblocked (pyobs-core v2.13.0); plan phase 6 |
 | pyobs-gui | [#198](https://github.com/pyobs/pyobs-gui/issues/198) | Live view: zoom and pan with a server-side crop | filed 2026-10-04; follow-up to #182, the raw-stream crop (`x`/`y`/`w`/`h`) already exists in pyobs-core |
 | pyobs-gui | [#197](https://github.com/pyobs/pyobs-gui/issues/197) | Add a pyobs app icon (notifications still show the Python logo) | filed 2026-10-04; no logo file in the repository, needs a decision on the logo |
 | pyobs-gui | [#196](https://github.com/pyobs/pyobs-gui/issues/196) | Traceback at shutdown after SIGTERM (hideEvent without running loop, event filter recursion) | filed 2026-10-04; not yet checked whether it is older than the notification work |
@@ -479,26 +501,30 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
-- [2026-10-13-moon-illumination-below-horizon.md](../plans/2026-10-13-moon-illumination-below-horizon.md) —
-  *implemented, pending PR merge* (#954). Ignore illumination strictly below 0 degrees,
-  enforcing the inclusive limit at/above the horizon; cached altitude and regression tests.
-
+- [2026-10-13-follow-merit-observing-night.md](../plans/2026-10-13-follow-merit-observing-night.md) —
+  *implemented, pending PR merge* (#967). Nighttime sunrise cycles and solar sunset cycles,
+  scheduler-owned mode, shared FollowMerit/PerNightMerit membership and preserved prefetch/freeze.
+- [2026-10-12-state-subscriber-reads-old-item-after-restart.md](../plans/2026-10-12-state-subscriber-reads-old-item-after-restart.md) —
+  *waiting for evidence* (#952 item 7). Logs requested 2026-10-12; no reporter reply as of
+  2026-10-13, no fix chosen.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
-  (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot, see below.
+  (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot per the plan.
 - [2026-09-29-basevideo-frame-buffer-redesign.md](../plans/2026-09-29-basevideo-frame-buffer-redesign.md):
   *in progress*. pyobs-core phases (1, 2, 4, 5, server side of 6) merged to `develop` (PR #926,
   2026-09-29, released v2.13.0). Phase 3 (pyobs-aravis) and 3b (pyobs-asi v2.1.0, pyobs-qhyccd
   v2.1.0) code landed; 3b still needs a hardware check (QHY binned window offsets, stale frames
   after a live-mode restart, `readout_time` per sensor), so its boxes stay unticked. Phase 7 code landed for pyobs-tis
-  v2.1.0 and pyobs-v4l v2.1.0 (not hardware-tested). Open: downstream `AravisCamera` subclasses
-  (7), clients (6: pyobs-gui landed on `develop`, pyobs-web-client #58 open), shim removal (8).
+  v2.1.0 and pyobs-v4l v2.1.0 (not hardware-tested). Downstream `AravisCamera` subclasses in
+  pyobs-iagvt released in v2.4.0. Open: driver/subclass hardware verification (3/3b/7), client
+  verification (6: gui v2.6.0 and web-client v0.14.0 code released), shim removal (8).
 
-### Design docs still *proposed*
+### Design docs with open work or verification
 
 - [basevideo-live-view.md](../design/basevideo-live-view.md): selectable live view of `BaseVideo`
-  (MJPEG or raw). *Partially implemented*: server side in pyobs-core v2.13.0, pyobs-gui landed on
-  `develop` (#182), pyobs-web-client open (#58), zoom plus server-side crop in the gui is #198.
+  (MJPEG or raw). Server side in pyobs-core v2.13.0 (CORS in v2.14.0), gui mode choice released
+  in v2.6.0, web-client modes and zoom/crop released in v0.14.0. Open: client verification
+  listed below, zoom plus server-side crop in the gui (#198).
 - [guiding-raw-stream.md](../design/guiding-raw-stream.md): guiding from the `BaseVideo` raw
   stream. *Implemented* in pyobs-core v2.13.0, not yet tried on a real camera; re-centring the
   crop is #927.
@@ -510,23 +536,67 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
-- **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
+- **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)
-- **pyobs-web-client** — [2026-09-28-android-weather-widget.md](../../pyobs-web-client/specs/plans/2026-09-28-android-weather-widget.md) —
+- **pyobs-web-client** — [2026-09-28-android-weather-widget.md](../../../pyobs-web-client/specs/plans/2026-09-28-android-weather-widget.md) —
   Android home-screen widgets for pyobs-weather instances (*implemented* 2026-09-29, device
   verified; open: Android < 12 untested, picker preview PNGs for < 12)
-- **pyobs-web-client** — [native-app-shell-capacitor.md](../../pyobs-web-client/specs/design/native-app-shell-capacitor.md) —
+- **pyobs-web-client** — [native-app-shell-capacitor.md](../../../pyobs-web-client/specs/design/native-app-shell-capacitor.md) —
   Capacitor app shell, Android first (*in progress*; push, secure storage and offline screen done,
   iOS blocked on Mac access)
-- **pyobs-gui**: [2026-09-29-live-view-mjpeg-raw.md](../../pyobs-gui/specs/2026-09-29-live-view-mjpeg-raw.md):
-  live view mode, MJPEG or raw (*in progress*; landed on `develop` as #182, open: manual test with
+- **pyobs-gui**: [2026-09-29-live-view-mjpeg-raw.md](../../../pyobs-gui/specs/2026-09-29-live-view-mjpeg-raw.md):
+  live view mode, MJPEG or raw (*implementation released* in v2.6.0; open: manual test with
   `test/video.yaml`, zoom and crop follow-up #198)
-- **pyobs-gui**: [2026-10-04-desktop-notifications.md](../../pyobs-gui/specs/plans/2026-10-04-desktop-notifications.md):
-  desktop notifications for module `ERROR` and log `ERROR`/`CRITICAL` (*implemented* on `develop`,
+- **pyobs-gui**: [2026-10-04-desktop-notifications.md](../../../pyobs-gui/specs/plans/2026-10-04-desktop-notifications.md):
+  desktop notifications for module `ERROR` and log `ERROR`/`CRITICAL` (*implemented, released* in v2.6.0,
   checked on KDE; open: Windows shortcut #192, macOS #193, GNOME #194, startup summary #195,
   shutdown traceback #196, app icon #197)
-- **pyobs-gui**: [2026-10-04-settings-dialog.md](../../pyobs-gui/specs/plans/2026-10-04-settings-dialog.md):
-  settings schema, YAML config and standalone settings dialog (*implemented* on `develop`, steps 1
+- **pyobs-gui**: [2026-10-04-settings-dialog.md](../../../pyobs-gui/specs/plans/2026-10-04-settings-dialog.md):
+  settings schema, YAML config and standalone settings dialog (*implemented, released* in v2.6.0, steps 1
   to 5; the plan and the index still say "proposed", open: dedicated unknown-root exception in
   pyobs-core, #941)
+
+- **pyobs-web-client** — [2026-10-04-video-live-view-modes.md](../../../pyobs-web-client/specs/plans/2026-10-04-video-live-view-modes.md) —
+  *implementation released* in v0.14.0; the plan header/index still say planned. Open: run the
+  committed MJPEG/raw E2E tests, measure 2048×2048 Canvas cost, check multi-camera connection
+  limits and Android WebView streaming; colour-camera support remains separate work.
+- **pyobs-aravis** — [2026-09-29-frames-migration.md](../../../pyobs-aravis/specs/plans/2026-09-29-frames-migration.md) —
+  *Phase 1 released* in v2.1.0; plan header/index and release checkbox are stale. Open: hardware
+  acquisition-restart/read-back checks, timestamp/PTP investigation and optional device
+  timestamps, long-running hardware verification.
+
+### IAG internal plans (local docs only)
+
+These entries describe remaining work recorded locally; GitLab issue and production state were
+not refreshed. Several indexes still say proposed or uncommitted although code is released.
+
+- **pyobs-iag50** — [2026-08-23-iag50-pyobs-core-2x-migration.md](../../../pyobs-iag50/specs/plans/2026-08-23-iag50-pyobs-core-2x-migration.md) —
+  *implemented*, pending manual smoke test on real hardware; the index's "code fixes not yet
+  done" summary is stale.
+- **pyobs-iag50** — [2026-09-13-per-science-exptime-darks.md](../../../pyobs-iag50/specs/plans/2026-09-13-per-science-exptime-darks.md) —
+  *implemented, pending deploy*: morning per-science-exposure darks through DIRECT SCRIPT tasks.
+- **pyobs-iag50** — [2026-09-18-iag50srv-host-firewall-hardening.md](../../../pyobs-iag50/specs/plans/2026-09-18-iag50srv-host-firewall-hardening.md) —
+  *planned, not implemented*: host firewall preparation for the proposed WireGuard tunnel.
+- **pyobs-iagvt** — [2026-09-02-fts-local-staging-imagewatcher.md](../../../pyobs-iagvt/specs/plans/2026-09-02-fts-local-staging-imagewatcher.md) —
+  *partially implemented*: local staging/relocation and scratch-path correction landed;
+  real-hardware dry run, outage/headroom checks and rollout remain.
+- **pyobs-iagvt** — [2026-09-04-fts-live-preview.md](../../../pyobs-iagvt/specs/plans/2026-09-04-fts-live-preview.md) —
+  *base feature released and hardware verified* in v2.3.5; follow-up preview configuration and
+  archive suppression have further verification recorded in the plan. Its index's unreleased
+  base-feature status is stale.
+- **pyobs-iagvt** — [2026-09-27-gregorycamera-idatastack-migration.md](../../../pyobs-iagvt/specs/plans/2026-09-27-gregorycamera-idatastack-migration.md) —
+  *proposed, not started*: on-demand stacks and flatfield/crop pipeline replacing continuous
+  Gregory averaging; coordinate with the frames migration.
+- **pyobs-iagvt** — [2026-09-29-aravis-frames-migration.md](../../../pyobs-iagvt/specs/plans/2026-09-29-aravis-frames-migration.md) —
+  *Phase 1 released* in v2.4.0 (`478b1ba`); the plan still says unreleased/waiting for Aravis.
+  Hardware restart/timestamp/read-back checks, deployed averaging-config check and long-running
+  verification remain.
+- **pyobs-iagvt** — [2026-09-29-suncamera-speedup.md](../../../pyobs-iagvt/specs/plans/2026-09-29-suncamera-speedup.md) —
+  *proposed, not started*: guiding-cycle measurement, cached/off-loop disk detection and
+  float32 output, plus threshold/fallback fixes.
+- **pyobs-iagvt** — [2026-09-29-suncamera-stacked-grabs.md](../../../pyobs-iagvt/specs/plans/2026-09-29-suncamera-stacked-grabs.md) —
+  *implementation released* in v2.5.0 (`92c724a`); plan/index still say uncommitted/not deployed.
+  On-sky verification and coordination with the speedup work remain; deployment not rechecked.
+- **pyobs-monet** — [2026-09-15-monetn-infra-migration.md](../../../pyobs-monet/specs/plans/2026-09-15-monetn-infra-migration.md) —
+  *in progress* per local plan: sections 1–6 done; web-admin deployment (section 7) next.

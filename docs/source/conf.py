@@ -178,6 +178,7 @@ nitpick_ignore = [
     ("py:class", "pyobs.object.PydanticModel"),
     ("py:class", "pyobs.images.image.MetaClass"),
     ("py:class", "ConfigValue"),
+    ("py:class", "ObservingMode"),
     # private implementation details not part of the public API surface
     ("py:class", "pyobs.comm.proxy._ProxyContext"),
     ("py:class", "pyobs.comm.xmpp.xmppclient.XmppClient"),

@@ -155,6 +155,8 @@ Implementation and tests are complete; release and deployment follow merge.
 - Scheduler suite: 127 passed, 1 skipped. Archive suite also passes (185 tests); six existing
   ERFA dubious-year warnings remain in scheduler tests.
 - Ruff on production and scheduler tests: passed. Pyrefly: 0 errors.
+- Sphinx builds have 48 unresolved-reference warnings on unchanged develop; the observing-mode
+  alias is listed with the existing non-class type aliases to avoid a new cross-reference warning.
 - Tests use bundled IERS data without downloads. Date-only calls require a unique daily reset;
   canonical events from fixed UTC anchors make exact-event membership consistent.
 - No portal schema/API changes or deployment configuration changes were made. LCO's existing

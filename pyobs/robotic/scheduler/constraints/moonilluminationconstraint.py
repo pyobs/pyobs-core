@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class MoonIlluminationConstraint(Constraint):
-    """Moon illumination constraint."""
+    """Maximum Moon illumination (inclusive), ignored when the Moon is below the horizon."""
 
     cost: float = 3.0
     max_phase: float = Field(ge=0.0, le=1.0, default=0.0)
@@ -28,6 +28,8 @@ class MoonIlluminationConstraint(Constraint):
         return astroplan.MoonIlluminationConstraint(max=self.max_phase)
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
+        if float(data.moon_altaz(time).alt.degree) < 0.0:
+            return True
         moon_illumination = data.moon_illumination(time)
         return moon_illumination <= self.max_phase
 

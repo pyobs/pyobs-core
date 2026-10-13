@@ -70,6 +70,11 @@ class DataProvider:
         return astropy.coordinates.get_body("moon", time)
 
     @cache
+    def moon_altaz(self, time: Time) -> SkyCoord:
+        """Returns the Moon's AltAz coordinates at the given time, as seen by the observer."""
+        return self.observer.moon_altaz(time)
+
+    @cache
     def moon_illumination(self, time: Time) -> float:
         """Returns the Moon's illumination fraction at the given time."""
         return float(self.observer.moon_illumination(time))

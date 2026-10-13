@@ -100,3 +100,30 @@ def test_cache_does_not_leak_across_instances(mocker) -> None:
 
     # both instances call through -- no cross-instance cache hit
     assert spy.call_count == 2
+
+
+def test_moon_altaz_is_cached_per_time(mocker) -> None:
+    observer = make_observer()
+    data = DataProvider(observer)
+    result = mocker.sentinel.moon_altaz
+    spy = mocker.patch.object(observer, "moon_altaz", return_value=result)
+    t1 = Time("2025-11-03T18:00:00", scale="utc")
+    t2 = Time("2025-11-03T19:00:00", scale="utc")
+
+    assert data.moon_altaz(t1) is result
+    assert data.moon_altaz(t1) is result
+    assert data.moon_altaz(t2) is result
+    assert spy.call_args_list == [mocker.call(t1), mocker.call(t2)]
+
+
+def test_moon_altaz_cache_does_not_leak_across_instances(mocker) -> None:
+    observer = make_observer()
+    data1 = DataProvider(observer)
+    data2 = DataProvider(observer)
+    spy = mocker.patch.object(observer, "moon_altaz")
+    time = Time("2025-11-03T18:00:00", scale="utc")
+
+    data1.moon_altaz(time)
+    data2.moon_altaz(time)
+
+    assert spy.call_args_list == [mocker.call(time), mocker.call(time)]

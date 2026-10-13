@@ -64,6 +64,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
         self._cant_run_reason: str | None = None
         self._next_observation: Observation | None = None
         self._project_priority: float | None = None
+        self._observation: Observation | None = None
 
         # add thread func
         self.add_background_task(self._run_thread, True)
@@ -259,6 +260,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
 
             # task is definitely not None here
             self._task = observation.task
+            self._observation = observation
             self._task_target = observation.target
             self._project_priority = await self._lookup_project_priority(observation.task)
             self._obsnum = await self._next_obsnum()
@@ -299,6 +301,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
                 await self.comm.send_event(TaskFailedEvent(name=self._task.name, id=self._task.id, obsnum=self._obsnum))
                 self._task = None
                 self._project_priority = None
+                self._observation = None
                 self._task_target = None
                 self._obsnum = None
                 self._task_start = None
@@ -316,6 +319,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
             log.info("Finished task %s.", self._task.name)
             self._task = None
             self._project_priority = None
+            self._observation = None
             self._task_target = None
             self._obsnum = None
             self._task_start = None
@@ -364,6 +368,10 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
                 hdr["HIERARCH REQ PRIORITY"] = FitsHeaderEntry(float(self._task.priority), "")
             if self._project_priority is not None:
                 hdr["HIERARCH REQ PROJECT PRIORITY"] = FitsHeaderEntry(float(self._project_priority), "")
+            if self._observation is not None and self._observation.priority is not None:
+                # the value the scheduler ranked this slot by when it planned it (merit times task priority times
+                # project priority), only set by schedulers that fill Observation.priority
+                hdr["HIERARCH REQ MERIT"] = FitsHeaderEntry(float(self._observation.priority), "plan-time rank")
             counts: dict[type, int] = {}
             for constraint in self._task.constraints:
                 counts[type(constraint)] = counts.get(type(constraint), 0) + 1

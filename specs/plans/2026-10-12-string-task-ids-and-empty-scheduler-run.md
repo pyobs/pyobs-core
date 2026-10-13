@@ -1,6 +1,6 @@
 # Scheduler: string task ids from the portal and the empty-task crash
 
-Status: implemented, uncommitted (2026-10-12).
+Status: implemented (PR #955), released in v2.15.0.
 
 Repos: pyobs-core
 

@@ -161,6 +161,66 @@ async def test_header_keeps_first_card_on_a_key_clash(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_header_has_the_plan_time_merit(mocker) -> None:
+    mocker.patch("pyobs.modules.robotic.mastermind.version_fits_headers", return_value={})
+    mm = make_mastermind()
+    mm._task = make_request_task(priority=None)
+    mm._observation = make_observation(mm._task)
+    mm._observation.priority = 2.5
+
+    hdr = await mm.get_fits_header_before()
+
+    assert hdr["HIERARCH REQ MERIT"].value == 2.5
+
+
+@pytest.mark.asyncio
+async def test_header_without_merit_has_no_merit_card(mocker) -> None:
+    mocker.patch("pyobs.modules.robotic.mastermind.version_fits_headers", return_value={})
+    mm = make_mastermind()
+    mm._task = make_request_task(priority=None)
+    mm._observation = make_observation(mm._task)  # priority None, e.g. AstroplanScheduler or an LCO observation
+
+    hdr = await mm.get_fits_header_before()
+
+    assert "HIERARCH REQ MERIT" not in hdr
+
+
+@pytest.mark.asyncio
+async def test_observation_is_kept_during_the_run_and_cleared_afterwards(mocker) -> None:
+    mm = make_mastermind()
+    observation = make_observation(make_request_task(), start=Time.now())
+    observation.priority = 7.0
+    _prepare(mm, [observation])
+    mm._next_obsnum = AsyncMock(return_value="20261013-001")
+    seen: list[object] = []
+
+    async def run_task(task: Task, target: object) -> None:
+        seen.append(mm._observation)
+
+    mm._task_runner.run_task = run_task
+
+    await _run_briefly(mm, mocker, iterations=2)
+
+    assert seen == [observation]
+    assert mm._observation is None
+
+
+@pytest.mark.asyncio
+async def test_observation_is_cleared_after_a_failed_task(mocker) -> None:
+    mm = make_mastermind()
+    _prepare(mm, [make_observation(make_request_task(), start=Time.now())])
+    mm._next_obsnum = AsyncMock(return_value="20261013-001")
+    mm._task_runner.run_task = AsyncMock(side_effect=RuntimeError("failed"))
+    mm._observation_archive.get_next_observation = AsyncMock(
+        side_effect=[make_observation(make_request_task(), start=Time.now()), asyncio.CancelledError()]
+    )
+
+    await _run_briefly(mm, mocker)
+
+    assert mm._observation is None
+
+
+@pytest.mark.asyncio
 async def test_lookup_project_priority() -> None:
     mm = make_mastermind()
     task = make_request_task()

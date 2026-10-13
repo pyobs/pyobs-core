@@ -91,6 +91,7 @@ Card                                        Value
 ==========================================  ==========================================================
 ``HIERARCH REQ PRIORITY``                   Priority of the task
 ``HIERARCH REQ PROJECT PRIORITY``           Priority of its project (if the task archive knows it)
+``HIERARCH REQ MERIT``                     Plan-time ranking value of this slot (see below)
 ``HIERARCH REQ AIRMASS MAX``                Maximum airmass of an ``AirmassConstraint``
 ``HIERARCH REQ MOONDIST MIN``               Minimum Moon distance in degrees (``MoonSeparationConstraint``)
 ``HIERARCH REQ MOONFRAC MAX``               Maximum Moon illumination, 0 to 1 (``MoonIlluminationConstraint``)
@@ -98,6 +99,14 @@ Card                                        Value
 ``HIERARCH REQ SUNALT DIR``                 ``rising``, ``setting`` or ``both``
 ``HIERARCH REQ TIME START`` / ``END``       Time window in UTC (``TimeConstraint``)
 ==========================================  ==========================================================
+
+``REQ MERIT`` is the value the scheduler ranked the slot by when it planned it: the merit of the task times
+its priority times the priority of its project, evaluated for the planned start. It is stored with the
+observation (``Observation.priority``) and can differ from what the scheduler would compute at the actual start
+of the run, because the task may start a little later, or priorities may have been edited since. Only
+schedulers that fill ``Observation.priority`` produce it, today the ``OnDemandScheduler``; a scheduler of your
+own has to set it, otherwise the card is missing. The portal keeps it from the first pyobs-portal release after 2.5.5 on (older portals
+drop it).
 
 The cards for Moon distance, Moon illumination and Sun elevation use the same names as the values measured
 by the telescope (``MOONDIST``, ``MOONFRAC``, ``SUNALT``), so a frame can be compared with the limit it ran

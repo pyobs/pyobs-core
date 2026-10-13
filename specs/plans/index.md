@@ -335,5 +335,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   (2026-10-13; #954; pyobs-core)
 - [2026-10-13-follow-merit-observing-night.md](2026-10-13-follow-merit-observing-night.md):
   fix #967 with consistent observing periods for nighttime and solar daytime operation;
-  preserve prefetch/freeze and standalone use. **proposed — period/configuration decisions open**
+  preserve prefetch/freeze and standalone use. **implemented, pending PR merge**
   (2026-10-13; pyobs-core)

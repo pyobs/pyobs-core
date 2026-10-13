@@ -18,6 +18,7 @@ from . import DataProvider
 from ._executor import run_cpu_bound
 from .constraints import Constraint
 from .observationarchiveevolution import ObservationArchiveEvolution
+from .observingperiod import ObservingMode
 from .taskscheduler import TaskScheduler
 
 if TYPE_CHECKING:
@@ -37,13 +38,18 @@ class OnDemandScheduler(TaskScheduler):
         twilight: str = "astronomical",
         observation_archive: ObservationArchive | dict[str, Any] | None = None,
         constraints: list[Constraint] | list[dict[str, Any]] | None = None,
+        mode: ObservingMode = "night",
         **kwargs: Any,
     ):
         """Initialize a new scheduler.
 
         Args:
             twilight: astronomical or nautical
+            mode: history reset cycle: night (sunrise) or solar day (sunset).
         """
+        if mode not in ("day", "night"):
+            raise ValueError("Observing mode must be 'day' or 'night'.")
+        self._mode: ObservingMode = mode
         Object.__init__(self, **kwargs)
 
         # get obs archive
@@ -70,7 +76,7 @@ class OnDemandScheduler(TaskScheduler):
         if self._observer is None:
             raise RuntimeError("No observer given.")
 
-        archive = ObservationArchiveEvolution(self._observer, self._obs_archive)
+        archive = ObservationArchiveEvolution(self._observer, self._obs_archive, mode=self._mode)
         data = DataProvider(self._observer, archive)
         projects_dict = {project.code: project for project in projects}
 

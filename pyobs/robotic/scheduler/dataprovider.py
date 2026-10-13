@@ -13,6 +13,8 @@ from pyobs.robotic.scheduler.observationarchiveevolution import (
 )
 from pyobs.utils.time import Time
 
+from .observingperiod import ObservingMode
+
 
 @dataclass
 class TaskSuccess:
@@ -30,9 +32,19 @@ class DataProvider:
     to one schedule computation and never leaks stale values across runs.
     """
 
-    def __init__(self, observer: Observer, archive: ObservationArchiveEvolution | None = None):
+    def __init__(
+        self,
+        observer: Observer,
+        archive: ObservationArchiveEvolution | None = None,
+        *,
+        mode: ObservingMode | None = None,
+    ):
         self.observer = observer
-        self.archive = archive if archive else ObservationArchiveEvolution(observer)
+        if archive is not None and mode is not None and archive.periods.mode != mode:
+            raise ValueError("DataProvider and archive observing modes must match.")
+        self.archive = (
+            archive if archive else ObservationArchiveEvolution(observer, mode="night" if mode is None else mode)
+        )
 
     @cache
     def last_sunset(self, time: Time) -> Time:
@@ -50,9 +62,13 @@ class DataProvider:
 
     @cache
     def night(self, time: Time) -> datetime.date:
-        """Returns the time of the last sunset."""
-        sunset = self.last_sunset(time)
-        return sunset.to_datetime().date()
+        """Compatibility name for the selected observing-period key (UTC reset-event date)."""
+        return self.archive.periods.key(time)
+
+    @cache
+    def period_bounds(self, time: Time) -> tuple[Time, Time]:
+        """History bounds shared by prerequisites and per-period observation limits."""
+        return self.archive.periods.bounds(self.night(time), time)
 
     @cache
     def sun(self, time: Time) -> SkyCoord:

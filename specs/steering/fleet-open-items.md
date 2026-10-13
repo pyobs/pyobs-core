@@ -479,7 +479,7 @@ One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#967](https://github.com/pyobs/pyobs-core/issues/967) | FollowMerit: "tonight" is a UTC calendar day, so a task that ran after 00:00 UTC is not seen until the next sunset | **external** (MichaelJEvan); filed 2026-10-13; reproduced locally 2026-10-13 with real sunset calculation and a mock archive: current-night post-midnight completion missed, previous-night completion accepted; `observations_for_night()` fetches 00:00–23:59:59 UTC although `DataProvider.night()` uses the last sunset; proposed plan [2026-10-13-follow-merit-observing-night.md](../plans/2026-10-13-follow-merit-observing-night.md), revised for solar daytime operation; period/configuration decisions open, no implementation yet |
+| pyobs-core | [#967](https://github.com/pyobs/pyobs-core/issues/967) | FollowMerit: "tonight" is a UTC calendar day, so a task that ran after 00:00 UTC is not seen until the next sunset | **external** (MichaelJEvan); filed 2026-10-13; reproduced locally 2026-10-13 with real sunset calculation and a mock archive: current-night post-midnight completion missed, previous-night completion accepted; `observations_for_night()` fetches 00:00–23:59:59 UTC although `DataProvider.night()` uses the last sunset; proposed plan [2026-10-13-follow-merit-observing-night.md](../plans/2026-10-13-follow-merit-observing-night.md), implemented for nighttime and solar daytime operation, pending PR merge; night mode resets at sunrise, day mode at sunset |
 | pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
 | pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; items 1 to 6 and 8 released in v2.15.0; open: item 7 only (fresh state-node subscriber got the old process's item after a restart on ejabberd; waiting for the reporter's logs, asked 2026-10-12, plan `2026-10-12-state-subscriber-reads-old-item-after-restart.md`) |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
@@ -502,9 +502,8 @@ One row per issue — same layout for every repo.
 ### pyobs-core `specs/plans/`
 
 - [2026-10-13-follow-merit-observing-night.md](../plans/2026-10-13-follow-merit-observing-night.md) —
-  *proposed* (#967). Nighttime and solar daytime observing periods, consistent real/simulated
-  membership and prefetch/freeze; period boundaries, mode ownership and solar PerNightMerit
-  alignment need agreement before implementation.
+  *implemented, pending PR merge* (#967). Nighttime sunrise cycles and solar sunset cycles,
+  scheduler-owned mode, shared FollowMerit/PerNightMerit membership and preserved prefetch/freeze.
 - [2026-10-12-state-subscriber-reads-old-item-after-restart.md](../plans/2026-10-12-state-subscriber-reads-old-item-after-restart.md) —
   *waiting for evidence* (#952 item 7). Logs requested 2026-10-12; no reporter reply as of
   2026-10-13, no fix chosen.

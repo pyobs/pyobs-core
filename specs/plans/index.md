@@ -331,5 +331,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   Repos: pyobs-core, pyobs-portal)
 - [2026-10-13-moon-illumination-below-horizon.md](2026-10-13-moon-illumination-below-horizon.md):
   ignore `MoonIlluminationConstraint` below 0 degrees Moon altitude, matching astroplan;
-  cache Moon AltAz and cover the horizon boundary and scheduler parity. **implemented, pending PR merge**
+  cache Moon AltAz and cover the horizon boundary and scheduler parity. **implemented, merged to develop (PR #968)**
   (2026-10-13; #954; pyobs-core)
+- [2026-10-13-follow-merit-observing-night.md](2026-10-13-follow-merit-observing-night.md):
+  fix #967 with consistent observing periods for nighttime and solar daytime operation;
+  preserve prefetch/freeze and standalone use. **proposed — period/configuration decisions open**
+  (2026-10-13; pyobs-core)

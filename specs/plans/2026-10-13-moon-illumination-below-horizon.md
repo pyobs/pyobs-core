@@ -1,6 +1,6 @@
 # Ignore Moon illumination limits below the horizon
 
-Status: implemented 2026-10-13; pending PR merge to develop.
+Status: implemented, merged to develop 2026-10-13 (PR #968, c301e252); not yet released.
 
 Issue: [pyobs-core #954](https://github.com/pyobs/pyobs-core/issues/954)
 
@@ -43,7 +43,7 @@ with `max_phase=0.30`; values are approximate and all times are UTC:
 - [x] Expand the constraint's class docstring to state both the below-horizon exemption and
       the inclusive illumination limit at/above the horizon.
 - [x] Add the regression and cache tests below, then run the focused and scheduler checks.
-- [ ] After merge to `develop`, remove #954 and this plan
+- [x] After merge to `develop`, remove #954 and this plan
       from the fleet open-items snapshot according to that file's maintenance rule.
 
 Keep `max_phase` validation/default, constraint cost, serialization, and request metadata

@@ -5,6 +5,10 @@ Status: standing snapshot — last checked 2026-10-04, pyobs-core rows updated 2
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-13** (#954): implemented the agreed below-horizon illumination exemption and
+  cached Moon AltAz helper, with boundary, Astroplan parity and cache tests. Pending PR merge;
+  issue and plan remain open until the fix lands on `develop`.
+
 - **2026-10-13** (releases, pyobs-core and pyobs-portal only): pyobs-core v2.15.0 and pyobs-portal v2.6.0
   released. #953 closed. #952 items 1 to 6 and 8 and #962 (parts 6 to 9, PRs #963, #964 and pyobs-portal #170)
   are released, so the #962 row and its two plans are gone; #962 stays open on GitHub until the reporter
@@ -453,7 +457,7 @@ One row per issue — same layout for every repo.
 | Repo | # | Title | Notes |
 |---|---|---|---|
 | pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
-| pyobs-core | [#954](https://github.com/pyobs/pyobs-core/issues/954) | MoonIlluminationConstraint: still refuses a task after the Moon has set. Intended? | **external** (MichaelJEvan); filed 2026-10-11; `__call__` ignores Moon altitude, `to_astroplan()` allows it below the horizon |
+| pyobs-core | [#954](https://github.com/pyobs/pyobs-core/issues/954) | MoonIlluminationConstraint: still refuses a task after the Moon has set. Intended? | **external** (MichaelJEvan); filed 2026-10-11; below-horizon exemption implemented with cached altitude and regression tests; pending PR merge; [plan](../plans/2026-10-13-moon-illumination-below-horizon.md) |
 | pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; items 1 to 6 and 8 released in v2.15.0; open: item 7 only (fresh state-node subscriber got the old process's item after a restart on ejabberd; waiting for the reporter's logs, asked 2026-10-12, plan `2026-10-12-state-subscriber-reads-old-item-after-restart.md`) |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
@@ -474,6 +478,10 @@ One row per issue — same layout for every repo.
 ## Open plans
 
 ### pyobs-core `specs/plans/`
+
+- [2026-10-13-moon-illumination-below-horizon.md](../plans/2026-10-13-moon-illumination-below-horizon.md) —
+  *implemented, pending PR merge* (#954). Ignore illumination strictly below 0 degrees,
+  enforcing the inclusive limit at/above the horizon; cached altitude and regression tests.
 
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1

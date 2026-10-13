@@ -329,3 +329,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   the portal stores `Observation.priority` (the scheduler's plan-time ranking value) and the
   mastermind writes it as `HIERARCH REQ MERIT`. **implemented** (2026-10-13; #962 part 8; core v2.15.0, portal v2.6.0;
   Repos: pyobs-core, pyobs-portal)
+- [2026-10-13-moon-illumination-below-horizon.md](2026-10-13-moon-illumination-below-horizon.md):
+  ignore `MoonIlluminationConstraint` below 0 degrees Moon altitude, matching astroplan;
+  cache Moon AltAz and cover the horizon boundary and scheduler parity. **implemented, pending PR merge**
+  (2026-10-13; #954; pyobs-core)

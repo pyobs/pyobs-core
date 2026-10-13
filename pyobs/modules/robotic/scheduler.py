@@ -230,7 +230,7 @@ class Scheduler(Module, IRunnable, IRoboticScheduler):
         log.info("Removed: %d, added: %d, changed: %d", len(removed), len(added), len(changed))
         if len(removed) == 1:
             log.info(
-                "Found 1 removed block with ID %d. Last task ID was %s, current is %s.",
+                "Found 1 removed block with ID %s. Last task ID was %s, current is %s.",
                 removed[0],
                 str(self._last_task_id),
                 str(self._current_task_id),

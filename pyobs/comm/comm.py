@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import inspect
 import logging
 from collections.abc import Callable, Coroutine
 from typing import TYPE_CHECKING, Any, overload
 
-from pyobs.events import Event, LogEvent, ModuleClosedEvent
+from pyobs.events import Event, LogEvent, ModuleClosedEvent, registered_events
 from pyobs.interfaces import Interface
 from pyobs.interfaces.interface import get_registered_interface
 from pyobs.utils.enums import ModuleState
@@ -151,6 +150,10 @@ class Comm:
                 if interface.has_own_state():
                     await self.subscribe_state(client, interface, functools.partial(proxy.update_state, interface))
 
+            # a proxy without interfaces is useless and would stay stale (e.g. peer's disco#info not
+            # answered yet), so do not cache it
+            if len(interfaces) == 0:
+                return proxy
             self._proxies[client] = proxy
 
         return self._proxies[client]
@@ -416,17 +419,12 @@ class Comm:
         Returns:
             list of event classes.
         """
-        import pyobs.events
-
-        event_classes: list[type[Event]] = []
-        for cls in inspect.getmembers(pyobs.events, inspect.isclass):
-            if issubclass(cls[1], event):
-                event_classes.append(cls[1])
-        return event_classes
+        return [cls for cls in registered_events().values() if issubclass(cls, event)]
 
     async def register_event(self, event_class: type[Event], handler: EventHandler | None = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
-        send them.
+        send them. Event classes derived from the given one are registered, too, but only those that have been
+        imported (and therefore registered) by now.
 
         Args:
             event_class: Class of event to register.

@@ -24,6 +24,11 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   *implemented*
 - [external_interfaces_registry.md](external_interfaces_registry.md) — external interfaces
   registry. *implemented, closed*
+- [gui-install-size-and-standalone-build.md](gui-install-size-and-standalone-build.md): slim
+  `pyobs-gui` install (1506 to 716 MB), base dependencies of `pyobs-core` trimmed to what the GUI
+  needs, experimental Nuitka build (764 MB) and its open astropy unit-format issue.
+  *dependency split implemented (`pyobs-core` 2.14.0, `pyobs-gui` 2.6.1), binary experimental*
+  (2026-10-04; Repos: pyobs-core, pyobs-gui, qfitswidget)
 - [gui-standalone-binary.md](gui-standalone-binary.md) — `pyobs-gui` as a standalone binary.
   *rejected 2026-09-14* — real build came out several GB (Repos: pyobs-core, pyobs-gui)
 - [guiding-raw-stream.md](guiding-raw-stream.md): `AutoGuiding` consuming `/video.raw` instead of

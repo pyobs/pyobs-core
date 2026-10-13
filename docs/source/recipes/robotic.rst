@@ -79,6 +79,46 @@ Create a directory ``/opt/pyobs/robotic/tasks/`` and save this as ``observe_m51.
 ones is chosen first. Both accept lists so multiple can be stacked.
 
 
+What a frame was asked for
+""""""""""""""""""""""""""
+
+The :class:`~pyobs.modules.robotic.Mastermind` writes the priorities and the constraints of the running
+task into the FITS header of every frame, next to ``TASK``, ``REQNUM``, ``PROJECT`` and ``OBSNUM``. The
+values are those of the task when the run started, so they stay available after the task has been edited:
+
+==========================================  ==========================================================
+Card                                        Value
+==========================================  ==========================================================
+``HIERARCH REQ PRIORITY``                   Priority of the task
+``HIERARCH REQ PROJECT PRIORITY``           Priority of its project (if the task archive knows it)
+``HIERARCH REQ MERIT``                     Plan-time ranking value of this slot (see below)
+``HIERARCH REQ AIRMASS MAX``                Maximum airmass of an ``AirmassConstraint``
+``HIERARCH REQ MOONDIST MIN``               Minimum Moon distance in degrees (``MoonSeparationConstraint``)
+``HIERARCH REQ MOONFRAC MAX``               Maximum Moon illumination, 0 to 1 (``MoonIlluminationConstraint``)
+``HIERARCH REQ SUNALT MIN`` / ``MAX``       Solar elevation limits in degrees (``SolarElevationConstraint``)
+``HIERARCH REQ SUNALT DIR``                 ``rising``, ``setting`` or ``both``
+``HIERARCH REQ TIME START`` / ``END``       Time window in UTC (``TimeConstraint``)
+==========================================  ==========================================================
+
+``REQ MERIT`` is the value the scheduler ranked the slot by when it planned it: the merit of the task times
+its priority times the priority of its project, evaluated for the planned start. It is stored with the
+observation (``Observation.priority``) and can differ from what the scheduler would compute at the actual start
+of the run, because the task may start a little later, or priorities may have been edited since. Only
+schedulers that fill ``Observation.priority`` produce it, today the ``OnDemandScheduler``; a scheduler of your
+own has to set it, otherwise the card is missing. The portal keeps it from the first pyobs-portal release after 2.5.5 on (older portals
+drop it).
+
+The cards for Moon distance, Moon illumination and Sun elevation use the same names as the values measured
+by the telescope (``MOONDIST``, ``MOONFRAC``, ``SUNALT``), so a frame can be compared with the limit it ran
+under. If a task has several constraints of one type, the later ones get a number on the second word:
+``HIERARCH REQ SUNALT2 MAX``, ``HIERARCH REQ TIME2 START``. Cards are only written for what exists: a task
+without constraints has none, and a task without a priority has no ``REQ PRIORITY``.
+
+A constraint of your own writes nothing until it declares a ``req_token`` (the second word of its cards,
+e.g. ``"SEEING"``) and a ``req_fields()`` method returning the values by name (``{"MAX": (2.5, "arcsec")}``).
+The whole card must fit into 80 characters, so keep comments short.
+
+
 Step 2 — Write a Script
 ^^^^^^^^^^^^^^^^^^^^^^^^
 

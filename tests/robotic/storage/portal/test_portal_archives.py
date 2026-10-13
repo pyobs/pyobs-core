@@ -1051,3 +1051,23 @@ async def test_poll_calls_instrument_capabilities_poll(mocker) -> None:
     instrument_poll = mocker.patch.object(archive, "_poll_instrument_capabilities", AsyncMock())
     await archive._poll()
     instrument_poll.assert_awaited_once()
+
+
+# ── Observation.priority on the wire (#962: pyobs-portal stores it) ──────────
+
+
+def test_observation_dump_for_the_portal_contains_priority() -> None:
+    obs = make_obs(make_task())
+    obs.priority = 2.5
+
+    data = obs.model_dump(use_task_id=True)
+
+    assert data["priority"] == 2.5
+    assert data["task"] == 1
+
+
+def test_observation_from_the_portal_with_priority_validates() -> None:
+    payload = {"id": 3, "task": 1, "start": T0.isot, "end": T1.isot, "state": "pending", "priority": 4.0}
+
+    assert Observation.model_validate(payload).priority == 4.0
+    assert Observation.model_validate({**payload, "priority": None}).priority is None

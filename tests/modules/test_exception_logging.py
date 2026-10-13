@@ -245,3 +245,30 @@ async def test_register_exception_remote_module_scoping() -> None:
         await module.execute("abort", sender="tester")
     await asyncio.sleep(0.01)
     assert seen == []
+
+
+@pytest.mark.asyncio
+async def test_ancestor_resolved_remote_fault_counts_for_domain_and_remote_handlers() -> None:
+    """A fault whose leaf class was not imported arrives as its core ancestor (see rpc.reconstruct_fault) and
+    counts towards handlers registered for that ancestor with module=, and, unchanged, towards RemoteError
+    handlers with module=. Handlers without module= only count locally raised exceptions."""
+    from pyobs.comm.xmpp.rpc import reconstruct_fault
+
+    module = _AbortableModule(exc.FocusError("unused"))
+    domain, remote = [], []
+
+    async def on_domain(exception: exc.PyobsError) -> None:
+        domain.append(exception)
+
+    async def on_remote(exception: exc.PyobsError) -> None:
+        remote.append(exception)
+
+    module._register_exception(exc.MotionError, 1, module="telescope", callback=on_domain)
+    module._register_exception(exc.RemoteError, 1, module="telescope", callback=on_remote)
+
+    fault = reconstruct_fault("plugin.NotImported", "stuck", ["pyobs.utils.exceptions.MotionError"], "telescope")
+    module._record_exception(fault)
+    await asyncio.sleep(0.01)
+
+    assert domain == [fault]
+    assert remote == [fault]

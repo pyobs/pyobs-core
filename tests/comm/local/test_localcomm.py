@@ -6,8 +6,12 @@ import pytest
 
 from pyobs.comm.local.localcomm import LocalComm
 from pyobs.comm.local.localnetwork import LocalNetwork
-from pyobs.events import BadWeatherEvent, GoodWeatherEvent, ModuleOpenedEvent
+from pyobs.events import BadWeatherEvent, GoodWeatherEvent, ModuleOpenedEvent, NewImageEvent
 from pyobs.interfaces import IExposureTime
+
+
+class _LocalPluginImage(NewImageEvent):
+    pass
 
 
 @pytest.fixture(autouse=True)
@@ -127,6 +131,21 @@ async def test_send_event_dispatches_to_all_clients(reset_network) -> None:
     await c2.register_event(BadWeatherEvent, handler)
 
     event = BadWeatherEvent()
+    await c1.send_event(event)
+
+    handler.assert_called_once()
+    assert handler.call_args[0][0] is event
+
+
+@pytest.mark.asyncio
+async def test_send_event_dispatches_plugin_subclass(reset_network) -> None:
+    c1 = make_comm("sender")
+    c2 = make_comm("receiver")
+
+    handler = AsyncMock(return_value=True)
+    await c2.register_event(NewImageEvent, handler)
+
+    event = _LocalPluginImage(filename="x.fits")
     await c1.send_event(event)
 
     handler.assert_called_once()

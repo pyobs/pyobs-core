@@ -367,6 +367,15 @@ or a domain type whose defining module was never imported in this process) arriv
 new ``UnclassifiedError`` instead of silently degrading to a bare ``RemoteError``, with the
 original type's qualified name preserved as ``UnclassifiedError.original_type``.
 
+.. note::
+
+   "Can live anywhere" holds on the sending side only: the caller gets the exception as its own type only
+   if the module defining it was imported in its process. Up to and including 2.14.2, any other class arrives
+   as ``UnclassifiedError``. From the first release after 2.14.2, the fault also carries the names of the
+   exception's base classes, so a class the caller does not have is raised as its nearest base class that it
+   knows (e.g. ``MotionError``), with the original name in ``original_type``. Both sides need that release.
+   See :ref:`exceptions`.
+
 ``register_exception``/``handle_exception`` move from module-level free functions with
 process-global state to ``Module._register_exception()`` — fixing a real cross-instance bug
 where two ``Module`` instances in the same process (``MultiModule``, or two instances

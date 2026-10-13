@@ -24,6 +24,13 @@ AcquisitionError
    :members:
    :undoc-members:
 
+ArchiveError
+^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.ArchiveError
+   :members:
+   :undoc-members:
+
 DeviceBusyError
 ^^^^^^^^^^^^^^^
 
@@ -133,6 +140,13 @@ ParkError
 ^^^^^^^^^
 
 .. autoexception:: pyobs.utils.exceptions.ParkError
+   :members:
+   :undoc-members:
+
+PointingLimitError
+^^^^^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.PointingLimitError
    :members:
    :undoc-members:
 

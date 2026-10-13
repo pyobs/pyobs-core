@@ -15,7 +15,7 @@ from pyobs.robotic.scheduler.merits import ConstantMerit, TimeWindowMerit
 from pyobs.robotic.scheduler.merits.timewindow import TimeWindow
 from pyobs.robotic.scheduler.ondemandscheduler import OnDemandScheduler
 from pyobs.robotic.scripts import Script
-from pyobs.robotic.task import TaskData
+from pyobs.robotic.task import Project, TaskData
 from pyobs.utils.time import Time
 
 
@@ -326,6 +326,34 @@ async def test_check_for_better_task_does_not_block_event_loop() -> None:
     assert heartbeats >= 4
 
 
+def test_created_observation_carries_the_ranking_value_as_priority() -> None:
+    task = Task(id=1, name="1", duration=100)
+
+    obs = OnDemandScheduler().create_scheduled_task(task, merit=12.5, time=Time.now())
+
+    assert obs.priority == 12.5
+
+
+@pytest.mark.asyncio
+async def test_ranking_value_is_merit_times_task_and_project_priority() -> None:
+    scheduler = OnDemandScheduler()
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
+    data = DataProvider(observer)
+    start = Time.now()
+    end = start + TimeDelta(5000 * u.day)
+    tasks: list[Task] = [
+        Task(id=1, name="1", project="p1", duration=100, priority=3.0, merits=[ConstantMerit(merit=2.0)])
+    ]
+
+    merits = await scheduler.evaluate_constraints_and_merits(
+        tasks, {"p1": Project(code="p1", priority=5.0)}, start, end, data
+    )
+
+    assert merits == [30.0]
+
+
 def test_create_scheduled_task_forwards_instrument_capabilities() -> None:
     scheduler = OnDemandScheduler()
     start = Time.now()
@@ -373,3 +401,18 @@ async def test_schedule_threads_instrument_capabilities_end_to_end() -> None:
 
     assert len(observations) >= 1
     assert (observations[0].end - observations[0].start).sec == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_find_next_best_task_without_tasks() -> None:
+    scheduler = OnDemandScheduler()
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
+    data = DataProvider(observer)
+    start = Time.now()
+
+    best, merit = await scheduler.find_next_best_task([], {}, start, start + TimeDelta(1 * u.day), data)
+
+    assert best is None
+    assert merit == 0.0

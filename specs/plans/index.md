@@ -302,3 +302,30 @@ Implementation plans, checklist-style. Newest at the bottom.
   `BaseVideo` frame buffer + `frames()` driver contract, grab path, raw-stream extensions, stream
   guiding, selectable live view. **in progress: pyobs-core phases merged (PR #926); drivers, clients open**
   (2026-09-29; #924, #925; Repos: pyobs-core, pyobs-gui, pyobs-web-client, driver plugins)
+- [2026-10-12-string-task-ids-and-empty-scheduler-run.md](2026-10-12-string-task-ids-and-empty-scheduler-run.md):
+  string portal task ids break a `%d` log line, `FollowMerit`/`ObservationList.filter`, and an empty
+  task list crashes `find_next_best_task`. **implemented** (2026-10-12; #952 items 1-2, #953; Repos: pyobs-core)
+- [2026-10-12-disco-info-failure-handling.md](2026-10-12-disco-info-failure-handling.md):
+  a failed disco#info is treated as "no interfaces": peer stays invisible, event subscriptions are
+  skipped for good, an empty proxy is cached; also log events dropped as too old. **implemented**
+  (2026-10-12; #952 items 3, 5, 6; Repos: pyobs-core)
+- [2026-10-12-derived-events-for-module-event-classes.md](2026-10-12-derived-events-for-module-event-classes.md):
+  `Event` subclasses outside `pyobs.events` get no handler on any transport and are dropped by
+  `EventFactory` over XMPP; add an `Event` registry via `__init_subclass__`. **implemented**
+  (2026-10-12; #952 item 4; Repos: pyobs-core)
+- [2026-10-12-exception-types-across-the-wire.md](2026-10-12-exception-types-across-the-wire.md):
+  module-specific `PyobsError` types arrive as `UnclassifiedError` on callers that never imported
+  them; add a `<bases>` ancestor fallback to RPC faults, document it, then decide on the three
+  errors it doesn't fix. **implemented** (step 3 as 3B) (2026-10-12; #952 item 8; Repos: pyobs-core)
+- [2026-10-12-state-subscriber-reads-old-item-after-restart.md](2026-10-12-state-subscriber-reads-old-item-after-restart.md):
+  a fresh state subscriber received the old process's item after a module restart; ranked
+  explanations from code reading, evidence requested on the issue, candidate fixes.
+  **waiting for evidence** (2026-10-12; #952 item 7; Repos: pyobs-core)
+- [2026-10-13-fits-header-constraints-and-priorities.md](2026-10-13-fits-header-constraints-and-priorities.md):
+  the mastermind writes the task's constraints, task priority and project priority as
+  `HIERARCH REQ ...` cards; each constraint class declares its own cards. **implemented**
+  (2026-10-13; #962 parts 6, 7, 9; Repos: pyobs-core)
+- [2026-10-13-fits-header-scheduler-merit.md](2026-10-13-fits-header-scheduler-merit.md):
+  the portal stores `Observation.priority` (the scheduler's plan-time ranking value) and the
+  mastermind writes it as `HIERARCH REQ MERIT`. **core part implemented, portal part open** (2026-10-13; #962 part 8;
+  Repos: pyobs-core, pyobs-portal)

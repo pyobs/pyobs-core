@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 import astroplan
 import astropy.units as u
@@ -26,6 +26,14 @@ class SolarElevationConstraint(Constraint):
     min_elevation: float = Field(ge=-90, le=90, default=-90.0)
     max_elevation: float = Field(ge=-90, le=90, default=-18.0)
     direction: Literal["rising", "setting", "both"] = "both"
+    req_token: ClassVar[str | None] = "SUNALT"
+
+    def req_fields(self) -> dict[str, tuple[int | float | str, str]]:
+        return {
+            "MIN": (float(self.min_elevation), "deg"),
+            "MAX": (float(self.max_elevation), "deg"),
+            "DIR": (self.direction, ""),
+        }
 
     def to_astroplan(self) -> astroplan.AtNightConstraint:
         if self.min_elevation > -90.0:

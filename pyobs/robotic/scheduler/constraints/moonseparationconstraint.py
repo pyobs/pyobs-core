@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import astroplan
 import astropy.units as u
@@ -23,6 +23,10 @@ class MoonSeparationConstraint(Constraint):
     cost: float = 3.0
     target_dependent: bool = True
     min_distance: float = Field(ge=0.0, le=180.0, default=30.0)
+    req_token: ClassVar[str | None] = "MOONDIST"
+
+    def req_fields(self) -> dict[str, tuple[int | float | str, str]]:
+        return {"MIN": (float(self.min_distance), "deg")}
 
     def to_astroplan(self) -> astroplan.MoonSeparationConstraint:
         return astroplan.MoonSeparationConstraint(min=self.min_distance * u.deg)

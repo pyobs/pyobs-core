@@ -1,6 +1,9 @@
 # Write a task's constraints and priorities into the FITS header
 
-Status: proposed
+Status: implemented (2026-10-13). Deviation from the plan, on Tim's request: the base `Constraint` builds
+the cards (`req_token` class variable plus `req_fields()`), so the subclasses do not import
+`FitsHeaderEntry` and only declare their values; `get_fits_headers(index)` stays on the base class and
+can still be overridden. The `_req_token` helper of the plan is gone.
 
 Repos: pyobs-core
 

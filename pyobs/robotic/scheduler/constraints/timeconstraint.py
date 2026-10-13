@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import astroplan
 from astropydantic import AstroPydanticTime
@@ -21,6 +21,10 @@ class TimeConstraint(Constraint):
 
     start: AstroPydanticTime = Field(default_factory=Time.now)
     end: AstroPydanticTime = Field(default_factory=Time.now)
+    req_token: ClassVar[str | None] = "TIME"
+
+    def req_fields(self) -> dict[str, tuple[int | float | str, str]]:
+        return {"START": (Time(self.start).isot, "UTC"), "END": (Time(self.end).isot, "UTC")}
 
     def to_astroplan(self) -> astroplan.TimeConstraint:
         return astroplan.TimeConstraint(min=self.start, max=self.end)

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import inspect
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import astroplan
 import numpy as np
 from astropy.coordinates import SkyCoord
 
+from pyobs.interfaces import FitsHeaderEntry
 from pyobs.object import Object
 from pyobs.utils.serialization import PolymorphicBaseModel, resolve_polymorphic_type_shorthand
 
@@ -47,6 +48,36 @@ class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):
         from pyobs.robotic.scheduler import constraints
 
         return [name for name, obj in inspect.getmembers(constraints) if inspect.isclass(obj)]
+
+    req_token: ClassVar[str | None] = None
+    """Token of this constraint type in its `HIERARCH REQ <TOKEN> <FIELD>` header cards, e.g. `"AIRMASS"`. Constraints
+    without a token write nothing to the header."""
+
+    def req_fields(self) -> dict[str, tuple[int | float | str, str]]:
+        """Values of this constraint for the FITS header, by field name (`"MAX"`), with a short comment each.
+
+        Together with `req_token` this records what a frame was asked for. The whole card (key, value and comment)
+        has to fit into 80 characters, so keep comments short or empty.
+        """
+        return {}
+
+    def get_fits_headers(self, index: int) -> dict[str, FitsHeaderEntry]:
+        """FITS header cards that record this constraint as part of what a frame was asked for.
+
+        Args:
+            index: 1 for the first constraint of this type in a task, 2 for the second, and so on. Later ones get the
+                number on the token: `HIERARCH REQ SUNALT MAX`, `HIERARCH REQ SUNALT2 MAX`.
+
+        Returns:
+            Dictionary of header cards, empty if the constraint declares no `req_token`.
+        """
+        if self.req_token is None:
+            return {}
+        token = self.req_token if index <= 1 else f"{self.req_token}{index}"
+        return {
+            f"HIERARCH REQ {token} {field}": FitsHeaderEntry(value, comment)
+            for field, (value, comment) in self.req_fields().items()
+        }
 
     async def filter_skycoord(self, time: Time, coords: SkyCoord, data: DataProvider) -> np.ndarray:
         """Returns a boolean mask of candidates passing this constraint.

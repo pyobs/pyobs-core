@@ -484,7 +484,7 @@ One row per issue — same layout for every repo.
   (7), clients (6: pyobs-gui landed on `develop`, pyobs-web-client #58 open), shim removal (8).
 
 - [2026-10-13-fits-header-constraints-and-priorities.md](../plans/2026-10-13-fits-header-constraints-and-priorities.md):
-  *proposed*. `HIERARCH REQ ...` cards for the task's constraints and priorities (#962 parts 6, 7).
+  *implemented* (#962 parts 6, 7), on `develop` once the PR is merged; part 8 below is open.
 - [2026-10-13-fits-header-scheduler-merit.md](../plans/2026-10-13-fits-header-scheduler-merit.md):
   *proposed*, pyobs-core and pyobs-portal. The portal stores `Observation.priority`, the mastermind
   writes `HIERARCH REQ MERIT` (#962 part 8). The portal side needs an entry in the portal's own

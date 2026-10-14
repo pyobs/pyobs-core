@@ -340,4 +340,4 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-10-14-solar-reset-search-window.md](2026-10-14-solar-reset-search-window.md):
   preserve a valid daily reset when Astroplan's follow-up search returns masked;
   cover northern seasonal sunrise/sunset drift and retain period validation.
-  **proposed** (2026-10-14; #972; pyobs-core)
+  **implemented, pending PR merge** (2026-10-14; #972; pyobs-core)

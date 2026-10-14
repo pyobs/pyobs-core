@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries were converted from the former CHANGELOG.rst.
 
+## [Unreleased]
+
+### Fixed
+
+- Preserve valid observing-period resets when Astroplan's follow-up search has no event
+  within its search window. Fixes northern nighttime scheduling with later autumn sunrises
+  and solar scheduling with later spring sunsets (#972).
+
 ## [2.14.0] - 2026-10-04
 
 - Slim base dependencies for pyobs-gui, move the rest to the full extra

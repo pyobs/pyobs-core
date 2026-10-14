@@ -67,13 +67,23 @@ async def test_reported_post_midnight_completion_and_previous_night_exclusion():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("mode", ["night", "day"])
-@pytest.mark.parametrize("longitude", [-70, 140])
-async def test_real_and_evolved_history_share_boundaries_and_merits(mode, longitude):
-    observer = Observer(location=EarthLocation.from_geodetic(longitude, -30, 200))
+@pytest.mark.parametrize(
+    "mode,longitude,latitude,stamp",
+    [
+        ("night", -70, -30, "2026-10-13T03:00:00"),
+        ("night", 140, -30, "2026-10-13T03:00:00"),
+        ("day", -70, -30, "2026-10-13T15:00:00"),
+        ("day", 140, -30, "2026-10-13T15:00:00"),
+        ("night", -76, 41.2, "2026-10-13T03:00:00"),
+        ("night", 9.9445, 51.5606, "2026-10-13T03:00:00"),
+        ("day", 9.9445, 51.5606, "2026-04-13T14:00:00"),
+    ],
+)
+async def test_real_and_evolved_history_share_boundaries_and_merits(mode, longitude, latitude, stamp):
+    observer = Observer(location=EarthLocation.from_geodetic(longitude, latitude, 200))
     prerequisite = Task(id="lights", name="Lights", duration=300)
     follower = Task(id="follow", name="Follow", duration=300)
-    time = Time("2026-10-13T15:00:00" if mode == "day" else "2026-10-13T03:00:00")
+    time = Time(stamp)
     empty = DataProvider(observer, mode=mode)
     start, end = empty.period_bounds(time)
     records = [
@@ -140,10 +150,19 @@ async def test_standalone_evolve_date_only_and_no_archive():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("mode", ["night", "day"])
-async def test_scheduler_propagates_mode_and_freezes_before_worker(mode, monkeypatch):
-    observer = Observer(location=EarthLocation.from_geodetic(-70, -30, 200))
-    time = Time("2026-10-13T15:00:00" if mode == "day" else "2026-10-13T03:00:00")
+@pytest.mark.parametrize(
+    "mode,longitude,latitude,stamp",
+    [
+        ("night", -70, -30, "2026-10-13T03:00:00"),
+        ("day", -70, -30, "2026-10-13T15:00:00"),
+        ("night", -76, 41.2, "2026-10-13T03:00:00"),
+        ("night", 9.9445, 51.5606, "2026-10-13T03:00:00"),
+        ("day", 9.9445, 51.5606, "2026-04-13T14:00:00"),
+    ],
+)
+async def test_scheduler_propagates_mode_and_freezes_before_worker(mode, longitude, latitude, stamp, monkeypatch):
+    observer = Observer(location=EarthLocation.from_geodetic(longitude, latitude, 200))
+    time = Time(stamp)
     task = Task(id="lights", name="Lights", duration=300)
     evolution, archive = make_archive(observer, [record("lights", time - datetime.timedelta(minutes=10))], mode)
     scheduler = OnDemandScheduler(mode=mode)
@@ -163,15 +182,27 @@ async def test_scheduler_propagates_mode_and_freezes_before_worker(mode, monkeyp
     assert len(result) == 1
     assert len(seen[0].archive._obs_for_night[seen[0].night(time)]) == 2
     assert archive.get_observations.call_count == 2
+    query = archive.get_observations.call_args_list[-1].kwargs
+    opening, closing = seen[0].period_bounds(time)
+    assert query["start_after"] == opening
+    assert query["start_before"] == closing
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("mode", ["night", "day"])
-async def test_full_schedule_resets_then_evolves_prerequisite_in_new_period(mode):
-    observer = Observer(location=EarthLocation.from_geodetic(-70, -30, 200))
+@pytest.mark.parametrize(
+    "mode,latitude,longitude,stamp",
+    [
+        ("night", -30, -70, "2026-10-13T15:00:00"),
+        ("day", -30, -70, "2026-10-13T15:00:00"),
+        ("night", 51.5606, 9.9445, "2026-10-13T03:00:00"),
+        ("day", 51.5606, 9.9445, "2026-04-13T14:00:00"),
+    ],
+)
+async def test_full_schedule_resets_then_evolves_prerequisite_in_new_period(mode, latitude, longitude, stamp):
+    observer = Observer(location=EarthLocation.from_geodetic(longitude, latitude, 200))
     data = DataProvider(observer, mode=mode)
     # Future scheduling starts shortly before a reset and spans into its next period.
-    _, reset = data.period_bounds(Time("2026-10-13T15:00:00"))
+    _, reset = data.period_bounds(Time(stamp))
     start = reset - datetime.timedelta(minutes=5)
     end = reset + datetime.timedelta(minutes=10)
     tasks = [

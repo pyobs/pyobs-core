@@ -4359,7 +4359,7 @@ wheels = [
 
 [[package]]
 name = "qfitswidget"
-version = "1.0.0"
+version = "1.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "astropy" },
@@ -4370,9 +4370,9 @@ dependencies = [
     { name = "opencv-python-headless" },
     { name = "qtpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e8/a8/e5b7faed2ed010a1d9cb6f05efdbca2cdd6101f97eab0d890077f8044a09/qfitswidget-1.0.0.tar.gz", hash = "sha256:8379eadb537c9ba7a0fcfbda78959c6329654668802da43dcd0b96558880dc8b", size = 16256, upload-time = "2026-06-08T10:53:46.243Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/43/5d3965b0f2ba9c11b5979042a5f9ee89cdddcf70979d2d48a13a0b95874d/qfitswidget-1.2.3.tar.gz", hash = "sha256:847906d45c2d39d761394244f106033d11b47de12da4a49dde25d841a08bee10", size = 25211, upload-time = "2026-10-04T20:12:37.798Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/ef/1de0a298bc5c010663068e04f57e5f1dff3917ac3bb7e73c19aacb851f05/qfitswidget-1.0.0-py3-none-any.whl", hash = "sha256:0d4ea2e336de02b16741a725ebd9e6adc71e5c3f33a2869aee815408304b4fae", size = 20459, upload-time = "2026-06-08T10:53:45.274Z" },
+    { url = "https://files.pythonhosted.org/packages/06/69/6194d1bc311af078ebe79477eb75f7bd7e6697276e2edab870da215d8bc7/qfitswidget-1.2.3-py3-none-any.whl", hash = "sha256:f30a69bde748e4ef985260c8c925461f3781ce01faddcc062d6389ebe17bf200", size = 31170, upload-time = "2026-10-04T20:12:36.726Z" },
 ]
 
 [[package]]

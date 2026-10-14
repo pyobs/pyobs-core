@@ -5,7 +5,7 @@ the cards (`req_token` class variable plus `req_fields()`), so the subclasses do
 `FitsHeaderEntry` and only declare their values; `get_fits_headers(index)` stays on the base class and
 can still be overridden. The `_req_token` helper of the plan is gone.
 
-Follow-up 2026-10-14 (#962): merged to develop in PR #974 (`a60e8ccb`), not yet released. Solar bounds at
+Follow-up 2026-10-14 (#962): merged to develop in PR #974 (`a60e8ccb`), included in v2.16.1. Solar bounds at
 -90 degrees minimum or +90 degrees maximum impose no limit and are omitted from the header.
 Effective defaults (maximum -18 degrees) and the direction card are retained.
 

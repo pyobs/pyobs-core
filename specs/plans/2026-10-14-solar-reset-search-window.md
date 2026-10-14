@@ -1,6 +1,6 @@
 # Preserve valid solar resets when Astroplan's follow-up search is empty
 
-Status: implemented 2026-10-14; pending PR merge and patch release
+Status: implemented 2026-10-14; merged to develop in PR #975 (`a9b4df9f`); included in v2.16.1
 Issue: [pyobs-core#972](https://github.com/pyobs/pyobs-core/issues/972)
 Date: 2026-10-14
 
@@ -156,7 +156,7 @@ where applicable.
   release on the 2.16 line (2.16.1 if still available). The issue blocks ordinary
   northern nighttime scheduling and seasonally affects solar daytime scheduling;
   no config migration or dependency downgrade should be needed.
-- [ ] After implementation and merge, update this plan/index with checks and PR,
+- [x] After implementation and merge, update this plan/index with checks and PR,
   then update the fleet tracking entry. Confirm the released package includes the
   fix before describing the incident as released; deployment remains a separate
   operational action.

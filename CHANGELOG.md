@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries were converted from the former CHANGELOG.rst.
 
+## [2.17.0] - 2026-10-14
+
+### Added
+
+- Select remote FITS header providers with camera `fits_header_modules` for both phases;
+  null preserves broadcast and an empty list requests none (#971, PR #977).
+- Apply provider namespace ownership in `BaseTelescope`, preserving dummy `TEL-FOCU`
+  and direct calls without a sender. Coordinate driver forwarding fixes in Alpaca #55
+  and BROT #88 before enabling configured namespace routing.
+
 ## [2.16.1] - 2026-10-14
 
 ### Fixed

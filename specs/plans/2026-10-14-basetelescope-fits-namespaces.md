@@ -1,6 +1,6 @@
 # Apply FITS namespaces in BaseTelescope
 
-Status: implemented (2026-10-14); [PR #977](https://github.com/pyobs/pyobs-core/pull/977).
+Status: implemented, release v2.17.0 (2026-10-14); [PR #977](https://github.com/pyobs/pyobs-core/pull/977).
 
 Repos: pyobs-core
 

@@ -5,6 +5,14 @@ Status: standing snapshot — GitHub issues and discussions checked 2026-10-14; 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-14** (#972 planning): Astra wrote the solar-reset search-window plan after local
+  reproduction and exploratory validation. Covers night/day operation and missing/ambiguous
+  event errors; production implementation remains open. Table remains 19.
+
+- **2026-10-14** (#962 follow-up): PR #974 merged to `develop` (`a60e8ccb`), with pytest,
+  Ruff and pyrefly passing. Removed #962 and its follow-up plan from open items; the solar
+  no-limit bound omission is not released yet. Table 19.
+
 - **2026-10-14** (GitHub refresh): queried all 26 non-archived fleet repos directly: 27 open
   issues, of which 20 need implementation or investigation. Added external core #971 (FITS
   header requests on a shared bus), #972 (v2.16.0 solar-reset lookup regression) and #973
@@ -490,16 +498,15 @@ for pyobs-astrometry, pyobs-allsky-cloudcover, pyobs-dashboard-utils or pyobs.gi
 those clones are absent. Plan summaries use the plan body and local commits/tags when an index
 is stale; hardware/deployment status is taken from the docs, not a new live check.
 
-## Open issues (20, checked 2026-10-14)
+## Open issues (19, checked 2026-10-14)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
 | pyobs-core | [#973](https://github.com/pyobs/pyobs-core/issues/973) | BaseTelescope writes altitude, airmass and Moon/Sun distance only for IPointingAltAz telescopes | **external** (MichaelJEvan); filed 2026-10-13; reporter measured missing `TEL-ALT`, `TEL-AZ`, `TEL-ZD`, `AIRMASS`, `MOONDIST` and `SUNDIST` without `IPointingAltAz`, despite available RA/Dec and site; requests geometry cards for RA/Dec-only telescopes; not yet investigated locally |
-| pyobs-core | [#972](https://github.com/pyobs/pyobs-core/issues/972) | v2.16.0: "No finite solar reset event" on every day that sunrise moves more than a minute later (now, at 41 N and at Göttingen) | **external** (MichaelJEvan); filed 2026-10-13; regression from #967 in v2.16.0: the follow-up sunrise/sunset query can return a masked event when the reset moves more than 60 s later daily, aborting `DataProvider.night()` and scheduling; reporter measured northern autumn sunrises and Göttingen spring sunsets; proposes retaining the event already found; not yet investigated locally |
+| pyobs-core | [#972](https://github.com/pyobs/pyobs-core/issues/972) | v2.16.0: "No finite solar reset event" on every day that sunrise moves more than a minute later (now, at 41 N and at Göttingen) | **external** (MichaelJEvan); filed 2026-10-13; regression from #967 in v2.16.0: the follow-up sunrise/sunset query can return a masked event when the reset moves more than 60 s later daily, aborting `DataProvider.night()` and scheduling; reproduced locally at 41.2 N and Göttingen for autumn sunrises and spring sunsets; the first event is valid but the next lies outside Astroplan's search window; proposed fix validated in memory across 21 site/date/mode cases; Astra plan [2026-10-14-solar-reset-search-window.md](../plans/2026-10-14-solar-reset-search-window.md) is proposed, implementation not started |
 | pyobs-core | [#971](https://github.com/pyobs/pyobs-core/issues/971) | Several telescopes on one bus: every telescope answers every camera's FITS header request | **external** (MichaelJEvan); filed 2026-10-13; reporter reproduced on a two-telescope/two-camera test bus: telescope cards overwrite each other and an unresponsive telescope delays unrelated cameras; proposes optional `fits_header_modules` selection on cameras; not yet investigated locally |
-| pyobs-core | [#962](https://github.com/pyobs/pyobs-core/issues/962) | Write what a run was asked for and ranked by into the FITS header: constraints, priorities, merit | **external** (MichaelJEvan); original constraints/priorities/merit implementation released in core v2.15.0 and portal v2.6.0; reporter confirmed real-run priority and merit cards on 2026-10-13, with constraint-frame confirmation still pending; follow-up implemented locally, pending PR merge: omit solar no-limit bounds (`MIN = -90`, `MAX = +90`), retain effective defaults and direction; original real-frame constraint confirmation remains pending |
 | pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
 | pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; items 1 to 6 and 8 released in v2.15.0; open: item 7 only (fresh state-node subscriber got the old process's item after a restart on ejabberd; waiting for the reporter's logs, asked 2026-10-12, plan `2026-10-12-state-subscriber-reads-old-item-after-restart.md`) |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
@@ -521,8 +528,10 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
-- [2026-10-13-fits-header-constraints-and-priorities.md](../plans/2026-10-13-fits-header-constraints-and-priorities.md) —
-  #962 no-limit solar-bound follow-up implemented locally, pending PR merge.
+- [2026-10-14-solar-reset-search-window.md](../plans/2026-10-14-solar-reset-search-window.md) —
+  *proposed* (#972): retain valid daily resets after masked follow-up searches, cover northern
+  nighttime and solar daytime drift, and preserve invalid/polar-event and boundary checks.
+
 
 - [2026-10-12-state-subscriber-reads-old-item-after-restart.md](../plans/2026-10-12-state-subscriber-reads-old-item-after-restart.md) —
   *waiting for evidence* (#952 item 7). Logs requested 2026-10-12; no reporter reply as of

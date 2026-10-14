@@ -246,6 +246,9 @@ async def test_add_fits_headers_sets_extname_and_static_headers() -> None:
 @pytest.mark.asyncio
 async def test_add_fits_headers_adds_frame_number_when_enabled() -> None:
     m = make_module(frame_number=True)
+    m._vfs = MagicMock()
+    m._vfs.read_yaml = AsyncMock(side_effect=FileNotFoundError)
+    m._vfs.write_yaml = AsyncMock()
     image = make_image(**{"DATE-OBS": "2024-01-01T03:00:00.000"})
 
     await m.add_fits_headers(image)
@@ -663,3 +666,110 @@ def test_warns_without_rotation(caplog) -> None:
 
     assert "CD matrix" in caplog.text
     assert "PC1_1" not in image.header
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("before", [True, False])
+@pytest.mark.parametrize(
+    "selection, expected", [(None, ["other", "own"]), ([], []), (["own", "own", "missing"], ["own"])]
+)
+async def test_provider_selection(before, selection, expected):
+    m = make_module(fits_header_modules=selection, fits_namespaces=["science"])
+    m._comm.clients_with_interface = AsyncMock(return_value=["other", "own"])
+    remotes = {}
+    for name in expected:
+        remote = MagicMock()
+        remote.get_fits_header_before = AsyncMock(return_value={})
+        remote.get_fits_header_after = AsyncMock(return_value={})
+        remotes[name] = remote
+
+    def proxy(name, interface):
+        # Any unselected proxy acquisition is a failure, not just an unwanted task.
+        assert name in remotes
+        assert interface is (IFitsHeaderBefore if before else IFitsHeaderAfter)
+        return make_proxy_cm(remotes[name])
+
+    m._comm.proxy = MagicMock(side_effect=proxy)
+    futures = await m.request_fits_headers(before=before)
+    assert list(futures) == expected
+    await asyncio.gather(*futures.values())
+    for remote in remotes.values():
+        method = remote.get_fits_header_before if before else remote.get_fits_header_after
+        method.assert_awaited_once_with(["science"])
+    if selection == []:
+        m._comm.clients_with_interface.assert_not_awaited()
+        m._comm.proxy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_provider_selection_materializes_iterables_and_preserves_discovery_order():
+    from pyobs.mixins.fitsheader import request_fits_headers
+
+    m = make_module()
+    m._comm.clients_with_interface = AsyncMock(return_value=["excluded", "second", "first"])
+    remote = MagicMock()
+    remote.get_fits_header_before = AsyncMock(return_value={})
+    m._comm.proxy = MagicMock(return_value=make_proxy_cm(remote))
+    futures = await request_fits_headers(m, exclude=iter(["excluded"]), only=iter(["first", "excluded", "second"]))
+    assert list(futures) == ["second", "first"]
+    await asyncio.gather(*futures.values())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("class_name", ["DummyCamera", "DummyVideo", "DummySpectrograph"])
+@pytest.mark.parametrize("selection", [None, [], ["own"]])
+async def test_provider_selection_through_config_factory(class_name, selection):
+    from pyobs.object import get_object
+
+    comm = MagicMock(spec=Comm)
+    comm.clients_with_interface = AsyncMock(return_value=["other", "own"])
+    remote = MagicMock()
+    remote.get_fits_header_before = AsyncMock(return_value={})
+    remote.get_fits_header_after = AsyncMock(return_value={})
+    comm.proxy = MagicMock(return_value=make_proxy_cm(remote))
+    module = get_object(
+        {"class": f"pyobs.modules.camera.{class_name.lower()}.{class_name}", "fits_header_modules": selection},
+        comm=comm,
+    )
+    for before in [True, False]:
+        futures = await module.request_fits_headers(before=before)
+        assert list(futures) == (["other", "own"] if selection is None else selection)
+        await asyncio.gather(*futures.values())
+
+
+@pytest.mark.asyncio
+async def test_two_cameras_route_telescope_headers_without_unrelated_requests():
+    from tests.modules.telescope.test_basetelescope import make_dummyradectelescope
+
+    cameras = {
+        name: make_module(fits_header_modules=[provider], fits_headers={"LOCAL": [1, "local"]})
+        for name, provider in [("camera1", "telescope1"), ("camera2", "telescope2")]
+    }
+    telescopes = {
+        name: make_dummyradectelescope(fits_namespaces={camera: ["TEL-RA", "TEL-DEC", "TEL-FOCU"]}, position=position)
+        for name, camera, position in [
+            ("telescope1", "camera1", (10, 20)),
+            ("telescope2", "camera2", (200, 30)),
+        ]
+    }
+    for camera_name, camera in cameras.items():
+        camera._comm.clients_with_interface = AsyncMock(return_value=["telescope2", "dead", "telescope1"])
+
+        def proxy(name, interface):
+            assert name in camera._fitsheadermixin_modules
+            remote = MagicMock()
+
+            async def get_headers(namespaces):
+                return await telescopes[name].get_fits_header_before(namespaces=namespaces, sender=camera_name)
+
+            remote.get_fits_header_before = AsyncMock(side_effect=get_headers)
+            return make_proxy_cm(remote)
+
+        camera._comm.proxy = MagicMock(side_effect=proxy)
+        image = make_image()
+        camera.add_local_fits_headers(image)
+        futures = await camera.request_fits_headers()
+        await camera.add_requested_fits_headers(image, futures)
+        assert image.header["TEL-RA"] == (10 if camera_name == "camera1" else 200)
+        assert image.header["TEL-FOCU"] == 50
+        assert image.header["LOCAL"] == 1

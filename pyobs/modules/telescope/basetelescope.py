@@ -26,7 +26,7 @@ from pyobs.interfaces import (
     TrackingMode,
     TrackingRateState,
 )
-from pyobs.mixins import MotionStatusMixin, WaitForMotionMixin, WeatherAwareMixin
+from pyobs.mixins import FitsNamespaceMixin, MotionStatusMixin, WaitForMotionMixin, WeatherAwareMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import MotionStatus
@@ -247,7 +247,14 @@ def _ra_rate_on_sky(ra1_deg: float, ra2_deg: float, dec_deg: float, dt_seconds: 
 
 
 class BaseTelescope(
-    Module, WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, metaclass=ABCMeta
+    Module,
+    WeatherAwareMixin,
+    MotionStatusMixin,
+    WaitForMotionMixin,
+    FitsNamespaceMixin,
+    ITelescope,
+    IFitsHeaderBefore,
+    metaclass=ABCMeta,
 ):
     """Base class for telescopes."""
 
@@ -841,8 +848,9 @@ class BaseTelescope(
         # loaded pyobs package versions
         hdr.update(version_fits_headers(self.name))
 
-        # finish
-        return hdr
+        # Apply ownership after all telescope cards have been assembled.
+        kwargs.setdefault("sender", "")
+        return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
     async def _celestial(self) -> None:
         """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""

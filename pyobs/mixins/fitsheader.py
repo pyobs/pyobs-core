@@ -22,7 +22,11 @@ log = logging.getLogger(__name__)
 
 
 async def request_fits_headers(
-    module: Module, namespaces: list[str] | None = None, before: bool = True, exclude: Iterable[str] = ()
+    module: Module,
+    namespaces: list[str] | None = None,
+    before: bool = True,
+    exclude: Iterable[str] = (),
+    only: Iterable[str] | None = None,
 ) -> dict[str, Task[Any]]:
     """Request FITS headers from all other modules that provide them.
 
@@ -30,11 +34,17 @@ async def request_fits_headers(
         module: Module to send the requests from.
         namespaces: Namespaces to request, None for all.
         before: Request IFitsHeaderBefore headers if True, IFitsHeaderAfter otherwise.
-        exclude: Names of clients not to ask.
+        exclude: Names of clients not to ask; takes precedence over only.
+        only: Names of clients to ask, None for all; an empty iterable requests none.
 
     Returns:
         Futures from all modules.
     """
+
+    selected = None if only is None else set(only)
+    excluded = set(exclude)
+    if selected == set():
+        return {}
 
     # init
     futures: dict[str, Task[Any]] = {}
@@ -46,7 +56,7 @@ async def request_fits_headers(
 
         # create and run a threads in which the fits headers are fetched
         for client in clients:
-            if client in exclude:
+            if client in excluded or (selected is not None and client not in selected):
                 continue
             log.debug("Requesting FITS headers from %s...", client)
             if before:
@@ -124,12 +134,14 @@ class FitsHeaderMixin:
         frame_number: bool = True,
         night_obs: bool = True,
         fits_header_timeout: float = 15.0,
+        fits_header_modules: list[str] | None = None,
         **kwargs: Any,
     ):
         """Initialise the mixin.
 
         Args:
             fits_namespaces: List of namespaces for FITS headers that this camera should request.
+            fits_header_modules: Remote provider names, None for all, [] for none; applies to both phases.
             fits_headers: Additional FITS headers.
             filename: Filename pattern for FITS images.
             frame_number: Whether to add frame number to FITS file header.
@@ -143,6 +155,7 @@ class FitsHeaderMixin:
         self._fitsheadermixin_filename_pattern = filenames
         self._fitsheadermixin_fits_headers = fits_headers if fits_headers is not None else {}
         self._fitsheadermixin_header_timeout = fits_header_timeout
+        self._fitsheadermixin_modules = None if fits_header_modules is None else list(fits_header_modules)
         if "OBSERVER" not in self._fitsheadermixin_fits_headers:
             self._fitsheadermixin_fits_headers["OBSERVER"] = ["pyobs", "Name of observer"]
         self._fitsheadermixin_night_obs = night_obs
@@ -168,7 +181,9 @@ class FitsHeaderMixin:
             Futures from all modules.
         """
         module = cast(Module, cast(object, self))
-        return await request_fits_headers(module, self._fitsheadermixin_fits_namespaces, before=before)
+        return await request_fits_headers(
+            module, self._fitsheadermixin_fits_namespaces, before=before, only=self._fitsheadermixin_modules
+        )
 
     async def add_requested_fits_headers(self, image: Image | fits.PrimaryHDU, futures: dict[str, Task[Any]]) -> None:
         """Add requested FITS headers to header of given image.

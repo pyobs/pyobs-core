@@ -502,14 +502,15 @@ for pyobs-astrometry, pyobs-allsky-cloudcover, pyobs-dashboard-utils or pyobs.gi
 those clones are absent. Plan summaries use the plan body and local commits/tags when an index
 is stale; hardware/deployment status is taken from the docs, not a new live check.
 
-## Open issues (18, checked 2026-10-14)
+## Open issues (19, checked 2026-10-14)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-alpaca | [#54](https://github.com/pyobs/pyobs-alpaca/issues/54) | Forward FITS namespace and sender metadata to BaseTelescope | [PR #55](https://github.com/pyobs/pyobs-alpaca/pull/55) open |
+| pyobs-brot | [#87](https://github.com/pyobs/pyobs-brot/issues/87) | Preserve FITS namespace metadata through telescope header overrides | [PR #88](https://github.com/pyobs/pyobs-brot/pull/88) open |
 | pyobs-core | [#973](https://github.com/pyobs/pyobs-core/issues/973) | BaseTelescope writes altitude, airmass and Moon/Sun distance only for IPointingAltAz telescopes | **external** (MichaelJEvan); filed 2026-10-13; reporter measured missing `TEL-ALT`, `TEL-AZ`, `TEL-ZD`, `AIRMASS`, `MOONDIST` and `SUNDIST` without `IPointingAltAz`, despite available RA/Dec and site; requests geometry cards for RA/Dec-only telescopes; not yet investigated locally |
-| pyobs-core | [#971](https://github.com/pyobs/pyobs-core/issues/971) | Several telescopes on one bus: every telescope answers every camera's FITS header request | **external** (MichaelJEvan); filed 2026-10-13; reporter reproduced on a two-telescope/two-camera test bus: telescope cards overwrite each other and an unresponsive telescope delays unrelated cameras; proposes optional `fits_header_modules` selection on cameras; not yet investigated locally |
 | pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
 | pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; items 1 to 6 and 8 released in v2.15.0; open: item 7 only (fresh state-node subscriber got the old process's item after a restart on ejabberd; waiting for the reporter's logs, asked 2026-10-12, plan `2026-10-12-state-subscriber-reads-old-item-after-restart.md`) |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |

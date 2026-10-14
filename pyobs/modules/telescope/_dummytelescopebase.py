@@ -36,7 +36,6 @@ from pyobs.interfaces import (
     TrackingRateCapabilities,
     TrackingRateState,
 )
-from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules import timeout
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.utils import exceptions as exc
@@ -57,7 +56,6 @@ class _DummyTelescopeBase(
     ITemperatures,
     ITrackingMode,
     ITrackingRate,
-    FitsNamespaceMixin,
     metaclass=ABCMeta,
 ):
     """Shared simulator for all dummy telescopes: position/motion, focus, filters,
@@ -370,7 +368,8 @@ class _DummyTelescopeBase(
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
     ) -> dict[str, FitsHeaderEntry]:
-        hdr = await BaseTelescope.get_fits_header_before(self)
+        kwargs.setdefault("sender", "")
+        hdr = await super().get_fits_header_before(namespaces=namespaces, **kwargs)
         hdr["TEL-FOCU"] = FitsHeaderEntry(self._focus, "Focus position [mm]")
         return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 

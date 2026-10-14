@@ -45,7 +45,8 @@ def test_str_with_task_object() -> None:
 @pytest.mark.asyncio
 async def test_follow_merit_with_plain_task_ids() -> None:
     class _Archive:
-        async def observations_for_night(self, night: object) -> ObservationList:
+        async def observations_for_night(self, night: object, *, time: Time | None = None) -> ObservationList:
+            assert time is not None
             return ObservationList([_obs("abc")])
 
     class _Data(DataProvider):

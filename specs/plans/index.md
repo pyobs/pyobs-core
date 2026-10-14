@@ -324,18 +324,30 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-10-13-fits-header-constraints-and-priorities.md](2026-10-13-fits-header-constraints-and-priorities.md):
   the mastermind writes the task's constraints, task priority and project priority as
   `HIERARCH REQ ...` cards; each constraint class declares its own cards. **implemented**
-  (2026-10-13; #962 parts 6, 7, 9; Repos: pyobs-core)
+  (2026-10-13; #962 parts 6, 7, 9; no-limit solar-bound follow-up included in v2.16.1 (PR #974); Repos: pyobs-core)
 - [2026-10-13-fits-header-scheduler-merit.md](2026-10-13-fits-header-scheduler-merit.md):
   the portal stores `Observation.priority` (the scheduler's plan-time ranking value) and the
   mastermind writes it as `HIERARCH REQ MERIT`. **implemented** (2026-10-13; #962 part 8; core v2.15.0, portal v2.6.0;
   Repos: pyobs-core, pyobs-portal)
+- [2026-10-13-moon-illumination-below-horizon.md](2026-10-13-moon-illumination-below-horizon.md):
+  ignore `MoonIlluminationConstraint` below 0 degrees Moon altitude, matching astroplan;
+  cache Moon AltAz and cover the horizon boundary and scheduler parity. **implemented, v2.16.0 (PR #968)**
+  (2026-10-13; #954; pyobs-core)
+- [2026-10-13-follow-merit-observing-night.md](2026-10-13-follow-merit-observing-night.md):
+  fix #967 with consistent observing periods for nighttime and solar daytime operation;
+  preserve prefetch/freeze and standalone use. **implemented, v2.16.0 (PR #969)**
+  (2026-10-13; pyobs-core)
+- [2026-10-14-solar-reset-search-window.md](2026-10-14-solar-reset-search-window.md):
+  preserve a valid daily reset when Astroplan's follow-up search returns masked;
+  cover northern seasonal sunrise/sunset drift and retain period validation.
+  **implemented, v2.16.1 (PR #975)** (2026-10-14; #972; pyobs-core)
 
 - [2026-10-14-basetelescope-fits-namespaces.md](2026-10-14-basetelescope-fits-namespaces.md):
   move provider namespace support into `BaseTelescope` and preserve the dummy focus contribution
-  with matching namespace context. **implemented on branch; PR #977 open** (2026-10-14; related #971; Repos: pyobs-core).
+  with matching namespace context. **implemented; PR #977** (2026-10-14; related #971; Repos: pyobs-core).
   Camera provider selection remains separate.
 
 - [2026-10-14-fits-header-provider-allowlist.md](2026-10-14-fits-header-provider-allowlist.md):
   optional camera `fits_header_modules` selection for before/after remote FITS providers;
-  preserve broadcast by default and support an empty selection. **implemented on branch; PR #977 open**
+  preserve broadcast by default and support an empty selection. **implemented; PR #977**
   (2026-10-14; #971; Repos: pyobs-core).

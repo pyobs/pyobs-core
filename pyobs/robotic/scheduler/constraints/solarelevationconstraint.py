@@ -29,11 +29,13 @@ class SolarElevationConstraint(Constraint):
     req_token: ClassVar[str | None] = "SUNALT"
 
     def req_fields(self) -> dict[str, tuple[int | float | str, str]]:
-        return {
-            "MIN": (float(self.min_elevation), "deg"),
-            "MAX": (float(self.max_elevation), "deg"),
-            "DIR": (self.direction, ""),
-        }
+        fields: dict[str, tuple[int | float | str, str]] = {}
+        if self.min_elevation > -90.0:
+            fields["MIN"] = (float(self.min_elevation), "deg")
+        if self.max_elevation < 90.0:
+            fields["MAX"] = (float(self.max_elevation), "deg")
+        fields["DIR"] = (self.direction, "")
+        return fields
 
     def to_astroplan(self) -> astroplan.AtNightConstraint:
         if self.min_elevation > -90.0:

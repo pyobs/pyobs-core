@@ -113,10 +113,45 @@ by the telescope (``MOONDIST``, ``MOONFRAC``, ``SUNALT``), so a frame can be com
 under. If a task has several constraints of one type, the later ones get a number on the second word:
 ``HIERARCH REQ SUNALT2 MAX``, ``HIERARCH REQ TIME2 START``. Cards are only written for what exists: a task
 without constraints has none, and a task without a priority has no ``REQ PRIORITY``.
+Solar elevation bounds that impose no limit (minimum -90 degrees or maximum +90 degrees)
+are omitted. Effective default limits, such as the maximum of -18 degrees, are still written.
 
 A constraint of your own writes nothing until it declares a ``req_token`` (the second word of its cards,
 e.g. ``"SEEING"``) and a ``req_fields()`` method returning the values by name (``{"MAX": (2.5, "arcsec")}``).
 The whole card must fit into 80 characters, so keep comments short.
+
+
+Observing periods for night and solar telescopes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``FollowMerit`` and ``PerNightMerit`` use the same observing-history period. On
+``OnDemandScheduler``, ``mode: night`` (the default) resets history at sunrise; ``mode: day``
+resets at sunset. These event-to-event cycles keep an evening-to-morning night session or a
+morning-to-evening solar session together, even when it crosses UTC midnight. Task constraints
+still determine when observing is allowed.
+
+For a solar telescope, set the mode on the planner, for example::
+
+    scheduler:
+      class: pyobs.robotic.scheduler.OnDemandScheduler
+      mode: day
+
+This setting is independent of an observation archive's own ``mode``. If a filesystem archive
+uses day mode for its files, configure the planner to match. Portal archive mode alone does not
+select the planner's history cycle.
+
+A completed observation belongs to the period in which it started: the opening event is
+included, the closing event is excluded. The next sunrise resets night-mode prerequisites and
+counts; the next sunset resets day-mode prerequisites and counts. A night calibration after
+sunrise cannot follow a prerequisite from before sunrise; similarly, solar follow-up work after
+sunset belongs to a new period. Sites without the required daily sunrise/sunset receive an
+explicit error; polar observing periods are not inferred.
+
+Custom planners using ``DataProvider`` or ``ObservationArchiveEvolution`` should pass
+``mode="day"`` for solar work. The compatibility method ``DataProvider.night(time)`` now
+returns the UTC date of the selected period's opening event. It is a history key, not a UTC
+calendar-day query. Archive reads must still finish before freezing the scheduler history for
+worker-thread merit evaluation.
 
 
 Step 2 — Write a Script

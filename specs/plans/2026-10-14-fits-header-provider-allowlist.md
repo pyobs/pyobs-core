@@ -1,6 +1,6 @@
 # Select remote FITS header providers for each camera
 
-Status: implemented on `codex/fits-header-provider-routing` (2026-10-14); [PR #977](https://github.com/pyobs/pyobs-core/pull/977) open.
+Status: implemented (2026-10-14); [PR #977](https://github.com/pyobs/pyobs-core/pull/977).
 
 Repos: pyobs-core
 

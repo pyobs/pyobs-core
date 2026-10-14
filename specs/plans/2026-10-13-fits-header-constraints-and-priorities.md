@@ -5,6 +5,10 @@ the cards (`req_token` class variable plus `req_fields()`), so the subclasses do
 `FitsHeaderEntry` and only declare their values; `get_fits_headers(index)` stays on the base class and
 can still be overridden. The `_req_token` helper of the plan is gone.
 
+Follow-up 2026-10-14 (#962): merged to develop in PR #974 (`a60e8ccb`), included in v2.16.1. Solar bounds at
+-90 degrees minimum or +90 degrees maximum impose no limit and are omitted from the header.
+Effective defaults (maximum -18 degrees) and the direction card are retained.
+
 Repos: pyobs-core
 
 ## Context
@@ -118,8 +122,8 @@ the request cards belong there, as #962 part 9 asks.
 | `TIME START`, `TIME END` | `Time.isot` in UTC, e.g. `"2026-10-13T20:15:00.000"` |
 
 - No rounding: the cards are for analysis, and Python's float repr is short for typical values.
-- All three `SUNALT` cards are always written for a `SolarElevationConstraint`, also the defaults
-  (`MIN` -90, `DIR` `"both"`), so every frame has the same columns.
+- `SUNALT` bound cards are written only for effective bounds: omit `MIN` -90 and `MAX` +90.
+  The effective default `MAX` -18 and the `DIR` card (including `"both"`) are retained.
 - Comments: units where they help and fit (`"deg"`, `"fraction"`), otherwise empty.
 - No task constraints: no constraint cards. Priority `None`: no `REQ PRIORITY` card. No project or
   project priority `None`: no `REQ PROJECT PRIORITY` card.
@@ -174,8 +178,8 @@ the request cards belong there, as #962 part 9 asks.
 
 ## Open questions
 
-1. **Write `SUNALT MIN` and `DIR` when they are the defaults (-90, `"both"`)?** Recommend yes:
-   constant columns are easier to analyse than missing ones, and the card cost is small.
+1. **Write `SUNALT MIN` and `DIR` when they are the defaults (-90, `"both"`)?** Updated
+   2026-10-14 after reporter feedback: omit the no-limit bound, retain the direction card.
 2. **Count per class or per header token?** Decided per type (class). A subclass of a built-in
    inherits its `get_fits_headers` and would produce the same keys as the built-in in the same task.
    Recommend: keep per class as decided, keep the first card on a clash and log at DEBUG; revisit

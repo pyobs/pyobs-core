@@ -324,7 +324,7 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-10-13-fits-header-constraints-and-priorities.md](2026-10-13-fits-header-constraints-and-priorities.md):
   the mastermind writes the task's constraints, task priority and project priority as
   `HIERARCH REQ ...` cards; each constraint class declares its own cards. **implemented**
-  (2026-10-13; #962 parts 6, 7, 9; Repos: pyobs-core)
+  (2026-10-13; #962 parts 6, 7, 9; no-limit solar-bound follow-up implemented locally 2026-10-14, pending PR merge; Repos: pyobs-core)
 - [2026-10-13-fits-header-scheduler-merit.md](2026-10-13-fits-header-scheduler-merit.md):
   the portal stores `Observation.priority` (the scheduler's plan-time ranking value) and the
   mastermind writes it as `HIERARCH REQ MERIT`. **implemented** (2026-10-13; #962 part 8; core v2.15.0, portal v2.6.0;

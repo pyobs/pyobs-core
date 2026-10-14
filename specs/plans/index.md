@@ -332,10 +332,10 @@ Implementation plans, checklist-style. Newest at the bottom.
 
 - [2026-10-14-basetelescope-fits-namespaces.md](2026-10-14-basetelescope-fits-namespaces.md):
   move provider namespace support into `BaseTelescope` and preserve the dummy focus contribution
-  with matching namespace context. **implemented on branch; PR pending** (2026-10-14; related #971; Repos: pyobs-core).
+  with matching namespace context. **implemented on branch; PR #977 open** (2026-10-14; related #971; Repos: pyobs-core).
   Camera provider selection remains separate.
 
 - [2026-10-14-fits-header-provider-allowlist.md](2026-10-14-fits-header-provider-allowlist.md):
   optional camera `fits_header_modules` selection for before/after remote FITS providers;
-  preserve broadcast by default and support an empty selection. **implemented on branch; PR pending**
+  preserve broadcast by default and support an empty selection. **implemented on branch; PR #977 open**
   (2026-10-14; #971; Repos: pyobs-core).

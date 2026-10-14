@@ -452,9 +452,9 @@ One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#971](https://github.com/pyobs/pyobs-core/issues/971) | Several telescopes on one bus: every telescope answers every camera's FITS header request | external (MichaelJEvan); namespace routing and provider selection implemented on branch; PR pending |
-| pyobs-alpaca | [#54](https://github.com/pyobs/pyobs-alpaca/issues/54) | Forward FITS namespace and sender metadata to BaseTelescope | coordinated with core #971; driver fix on branch, PR pending |
-| pyobs-brot | [#87](https://github.com/pyobs/pyobs-brot/issues/87) | Preserve FITS namespace metadata through telescope header overrides | coordinated with core #971; both variants fixed on branch, PR pending |
+| pyobs-core | [#971](https://github.com/pyobs/pyobs-core/issues/971) | Several telescopes on one bus: every telescope answers every camera's FITS header request | external (MichaelJEvan); namespace routing and provider selection on branch; [PR #977](https://github.com/pyobs/pyobs-core/pull/977) open |
+| pyobs-alpaca | [#54](https://github.com/pyobs/pyobs-alpaca/issues/54) | Forward FITS namespace and sender metadata to BaseTelescope | coordinated with core #971; driver fix on branch; [PR #55](https://github.com/pyobs/pyobs-alpaca/pull/55) open |
+| pyobs-brot | [#87](https://github.com/pyobs/pyobs-brot/issues/87) | Preserve FITS namespace metadata through telescope header overrides | coordinated with core #971; both variants fixed on branch; [PR #88](https://github.com/pyobs/pyobs-brot/pull/88) open |
 | pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
 | pyobs-core | [#954](https://github.com/pyobs/pyobs-core/issues/954) | MoonIlluminationConstraint: still refuses a task after the Moon has set. Intended? | **external** (MichaelJEvan); filed 2026-10-11; `__call__` ignores Moon altitude, `to_astroplan()` allows it below the horizon |
 | pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; items 1 to 6 and 8 released in v2.15.0; open: item 7 only (fresh state-node subscriber got the old process's item after a restart on ejabberd; waiting for the reporter's logs, asked 2026-10-12, plan `2026-10-12-state-subscriber-reads-old-item-after-restart.md`) |
@@ -490,12 +490,12 @@ One row per issue — same layout for every repo.
   (7), clients (6: pyobs-gui landed on `develop`, pyobs-web-client #58 open), shim removal (8).
 
 - [2026-10-14-basetelescope-fits-namespaces.md](../plans/2026-10-14-basetelescope-fits-namespaces.md):
-  *implemented on branch; PR pending*. Move provider namespace support into `BaseTelescope` and preserve the dummy focus
+  *implemented on branch; PR #977 open*. Move provider namespace support into `BaseTelescope` and preserve the dummy focus
   contribution with matching namespace context (related #971). Camera provider selection remains
   separate.
 
 - [2026-10-14-fits-header-provider-allowlist.md](../plans/2026-10-14-fits-header-provider-allowlist.md):
-  *implemented on branch; PR pending*. Optional camera `fits_header_modules` selection for before/after remote FITS
+  *implemented on branch; PR #977 open*. Optional camera `fits_header_modules` selection for before/after remote FITS
   providers; preserve broadcast by default and support an empty selection (#971).
 
 ### Design docs still *proposed*

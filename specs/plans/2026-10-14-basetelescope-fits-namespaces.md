@@ -1,6 +1,6 @@
 # Apply FITS namespaces in BaseTelescope
 
-Status: implemented on `codex/fits-header-provider-routing` (2026-10-14); PR pending.
+Status: implemented on `codex/fits-header-provider-routing` (2026-10-14); [PR #977](https://github.com/pyobs/pyobs-core/pull/977) open.
 
 Repos: pyobs-core
 
@@ -136,7 +136,8 @@ provider selection and namespaces, including two camera/telescope pairs and conf
 construction. Local Alpaca/BROT inheritance shapes are valid with the shared mixin; retained
 explicit driver bases preserve compatibility with older core versions. Their header overrides
 need metadata forwarding fixes tracked in pyobs-alpaca #54 and pyobs-brot #87, implemented in
-separate coordinated PRs. IAGVT SolarTelescope also calls the base without metadata and appends
+[Alpaca PR #55](https://github.com/pyobs/pyobs-alpaca/pull/55) and
+[BROT PR #88](https://github.com/pyobs/pyobs-brot/pull/88). IAGVT SolarTelescope also calls the base without metadata and appends
 cards without final filtering; configured ownership there needs a follow-up before enabling it.
 ASCOM is legacy synchronous code and was not migrated. No hardware or XMPP runtime test.
 

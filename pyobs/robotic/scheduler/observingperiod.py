@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import datetime
+import warnings
 from functools import cache
 from typing import Literal
 
 import numpy as np
-from astroplan import Observer
+from astroplan import Observer, TargetAlwaysUpWarning, TargetNeverUpWarning
 
 from pyobs.utils.time import Time
 
@@ -41,21 +42,35 @@ class ObservingPeriods:
         events: list[Time] = []
         for _ in range(3):
             try:
-                event = Time(event_func(reference, which="next"))
+                with warnings.catch_warnings():
+                    if events:
+                        # An empty follow-up search is expected when tomorrow's
+                        # reset falls beyond Astroplan's roughly 24-hour window.
+                        warnings.simplefilter("ignore", TargetAlwaysUpWarning)
+                        warnings.simplefilter("ignore", TargetNeverUpWarning)
+                    event = Time(event_func(reference, which="next"))
             except ValueError as error:
                 raise ValueError(f"No finite solar reset event for {date} in {self.mode} mode.") from error
-            if np.any(event.mask) or not np.all(np.isfinite(event.jd)):
+            if np.any(event.mask):
+                if events:
+                    # The valid reset is retained; bounds() resolves the next
+                    # date independently from its fixed UTC midnight anchor.
+                    break
                 raise ValueError(f"No finite solar reset event for {date} in {self.mode} mode.")
-            if event >= end:
-                if len(events) > 1:
-                    raise ValueError(f"Ambiguous solar reset date {date} in {self.mode} mode.")
-                return tuple(events)
+            if not np.all(np.isfinite(event.jd)):
+                raise ValueError(f"No finite solar reset event for {date} in {self.mode} mode.")
             if event <= reference:
                 raise ValueError("Solar reset events must increase.")
+            if event >= end:
+                break
             if event >= start:
                 events.append(event)
             reference = event + datetime.timedelta(minutes=1)
-        raise ValueError(f"Too many solar reset events for {date}.")
+        else:
+            raise ValueError(f"Too many solar reset events for {date}.")
+        if len(events) > 1:
+            raise ValueError(f"Ambiguous solar reset date {date} in {self.mode} mode.")
+        return tuple(events)
 
     def start(self, time: Time) -> Time:
         """Return the inclusive opening event of the cycle containing ``time``."""

@@ -1,9 +1,31 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — GitHub issues and local fleet plans checked 2026-10-13.
+Status: standing snapshot — GitHub issues and discussions checked 2026-10-14; local fleet plans last reviewed 2026-10-13.
 
 <details>
 <summary>Changelog (most recent first)</summary>
+
+- **2026-10-14** (#972 / v2.16.1): PR #975 merged to `develop` (`a9b4df9f`), CI pytest,
+  Ruff and pyrefly passed. Removed #972 and its plan from open items. Patch release v2.16.1
+  includes this solar-reset regression fix and #962's no-limit FITS-bound omission. Table 18.
+
+- **2026-10-14** (#972 planning): Astra wrote the solar-reset search-window plan after local
+  reproduction and exploratory validation. Covers night/day operation and missing/ambiguous
+  event errors; production implementation remains open. Table remains 19.
+
+- **2026-10-14** (#962 follow-up): PR #974 merged to `develop` (`a60e8ccb`), with pytest,
+  Ruff and pyrefly passing. Removed #962 and its follow-up plan from open items; the solar
+  no-limit bound omission is not released yet. Table 19.
+
+- **2026-10-14** (GitHub refresh): queried all 26 non-archived fleet repos directly: 27 open
+  issues, of which 20 need implementation or investigation. Added external core #971 (FITS
+  header requests on a shared bus), #972 (v2.16.0 solar-reset lookup regression) and #973
+  (measured geometry cards missing on RA/Dec-only telescopes). Re-added #962 for the reporter's
+  new request to omit no-limit constraint defaults; its original implementation is released
+  and real-run priority/merit cards are confirmed. #954 and #967 are closed after v2.16.0.
+  Seven other GitHub-open issues remain excluded because their implementation is released:
+  BROT #83/#85, GUI #168/#182/#185/#186 and web-client #58. No GitHub issues were changed.
+  Local plan inventories and GitLab trackers were not refreshed. Table 20.
 
 - **2026-10-13** (pyobs-core v2.16.0): release includes #954 (Moon illumination below the
   horizon) and #967 (observing periods for nighttime and solar scheduling). Both were already
@@ -480,17 +502,19 @@ for pyobs-astrometry, pyobs-allsky-cloudcover, pyobs-dashboard-utils or pyobs.gi
 those clones are absent. Plan summaries use the plan body and local commits/tags when an index
 is stale; hardware/deployment status is taken from the docs, not a new live check.
 
-## Open issues (16, checked 2026-10-13)
+## Open issues (18, checked 2026-10-14)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
+| pyobs-core | [#973](https://github.com/pyobs/pyobs-core/issues/973) | BaseTelescope writes altitude, airmass and Moon/Sun distance only for IPointingAltAz telescopes | **external** (MichaelJEvan); filed 2026-10-13; reporter measured missing `TEL-ALT`, `TEL-AZ`, `TEL-ZD`, `AIRMASS`, `MOONDIST` and `SUNDIST` without `IPointingAltAz`, despite available RA/Dec and site; requests geometry cards for RA/Dec-only telescopes; not yet investigated locally |
+| pyobs-core | [#971](https://github.com/pyobs/pyobs-core/issues/971) | Several telescopes on one bus: every telescope answers every camera's FITS header request | **external** (MichaelJEvan); filed 2026-10-13; reporter reproduced on a two-telescope/two-camera test bus: telescope cards overwrite each other and an unresponsive telescope delays unrelated cameras; proposes optional `fits_header_modules` selection on cameras; not yet investigated locally |
 | pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
 | pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; items 1 to 6 and 8 released in v2.15.0; open: item 7 only (fresh state-node subscriber got the old process's item after a restart on ejabberd; waiting for the reporter's logs, asked 2026-10-12, plan `2026-10-12-state-subscriber-reads-old-item-after-restart.md`) |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
-| pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage, waiting on Tim's decision on whether meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope` capabilities |
+| pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage; reporter runs a separate meridian-flip module and proposes Mastermind consume its advance/in-progress events to avoid starting exposures across a flip; event shape and integration remain undecided |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-archive | [#74](https://github.com/pyobs/pyobs-archive/issues/74) | Findings from running the archive on a MacBook M5 Pro (no Docker), 2.1.4 | **external** (MichaelJEvan); filed 2026-10-08; hardcoded `/usr/bin/fpack`, Frame row saved before fpack (no transaction), upside-down preview, wrong image name in `docker-compose.yaml`, white loading overlay |
 | pyobs-portal | [#169](https://github.com/pyobs/pyobs-portal/issues/169) | Findings from running the portal on a plain machine (no Docker), 2.5.5 | **external** (MichaelJEvan); filed 2026-10-08; `.env.example` vs `SQL_*` settings, no `[build-system]`, needs `pyobs-core[full]`, negative priorities, no UI to cancel pending observations; body has more items |
@@ -507,9 +531,11 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
+
+
 - [2026-10-12-state-subscriber-reads-old-item-after-restart.md](../plans/2026-10-12-state-subscriber-reads-old-item-after-restart.md) —
   *waiting for evidence* (#952 item 7). Logs requested 2026-10-12; no reporter reply as of
-  2026-10-13, no fix chosen.
+  2026-10-14, no fix chosen.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
   (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot per the plan.

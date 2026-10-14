@@ -113,6 +113,8 @@ by the telescope (``MOONDIST``, ``MOONFRAC``, ``SUNALT``), so a frame can be com
 under. If a task has several constraints of one type, the later ones get a number on the second word:
 ``HIERARCH REQ SUNALT2 MAX``, ``HIERARCH REQ TIME2 START``. Cards are only written for what exists: a task
 without constraints has none, and a task without a priority has no ``REQ PRIORITY``.
+Solar elevation bounds that impose no limit (minimum -90 degrees or maximum +90 degrees)
+are omitted. Effective default limits, such as the maximum of -18 degrees, are still written.
 
 A constraint of your own writes nothing until it declares a ``req_token`` (the second word of its cards,
 e.g. ``"SEEING"``) and a ``req_fields()`` method returning the values by name (``{"MAX": (2.5, "arcsec")}``).

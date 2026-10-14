@@ -39,12 +39,29 @@ def test_moon_illumination() -> None:
     assert values(MoonIlluminationConstraint(max_phase=0.4).get_fits_headers(1)) == {"HIERARCH REQ MOONFRAC MAX": 0.4}
 
 
-def test_solar_elevation_writes_defaults_too() -> None:
+def test_solar_elevation_omits_unbounded_default() -> None:
     assert values(SolarElevationConstraint().get_fits_headers(1)) == {
-        "HIERARCH REQ SUNALT MIN": -90.0,
         "HIERARCH REQ SUNALT MAX": -18.0,
         "HIERARCH REQ SUNALT DIR": "both",
     }
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum", "expected_bounds"),
+    [
+        (-90.0, 90.0, {}),
+        (-90.0, 89.0, {"MAX": 89.0}),
+        (-89.0, 90.0, {"MIN": -89.0}),
+        (-89.0, 89.0, {"MIN": -89.0, "MAX": 89.0}),
+    ],
+)
+def test_solar_elevation_only_writes_effective_bounds(
+    minimum: float, maximum: float, expected_bounds: dict[str, float]
+) -> None:
+    constraint = SolarElevationConstraint(min_elevation=minimum, max_elevation=maximum, direction="rising")
+    expected: dict[str, object] = {f"HIERARCH REQ SUNALT2 {name}": value for name, value in expected_bounds.items()}
+    expected["HIERARCH REQ SUNALT2 DIR"] = "rising"
+    assert values(constraint.get_fits_headers(2)) == expected
 
 
 def test_solar_elevation_with_values() -> None:
@@ -67,7 +84,6 @@ def test_time_window_as_utc_iso_strings() -> None:
 
 def test_later_constraint_of_a_type_gets_a_number_on_the_type_token() -> None:
     assert set(SolarElevationConstraint().get_fits_headers(2)) == {
-        "HIERARCH REQ SUNALT2 MIN",
         "HIERARCH REQ SUNALT2 MAX",
         "HIERARCH REQ SUNALT2 DIR",
     }

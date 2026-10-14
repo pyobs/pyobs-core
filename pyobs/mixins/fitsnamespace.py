@@ -13,7 +13,7 @@ class FitsNamespaceMixin:
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, fits_namespaces: dict[str, list[str]] | None = None, **kwargs: Any):
+    def __init__(self, fits_namespaces: dict[str, list[str] | None] | None = None, **kwargs: Any):
         self.__namespaces = {} if fits_namespaces is None else fits_namespaces
         super().__init__(**kwargs)
 
@@ -71,12 +71,12 @@ class FitsNamespaceMixin:
         if name not in self.__namespaces:
             # given namespace doesn't exist? then add none
             return
-        elif self.__namespaces[name] is None:
+        elif (entries := self.__namespaces[name]) is None:
             # take all keywords, if namespace is empty or none are given
             keywords.extend(hdr.keys())
-        elif isinstance(self.__namespaces[name], list):
+        elif isinstance(entries, list):
             # take only keywords from list
-            keywords.extend(self.__namespaces[name])
+            keywords.extend(entries)
         else:
             log.error("Unknown namespace format: %s", self.__namespaces[name])
 

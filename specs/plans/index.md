@@ -341,3 +341,13 @@ Implementation plans, checklist-style. Newest at the bottom.
   preserve a valid daily reset when Astroplan's follow-up search returns masked;
   cover northern seasonal sunrise/sunset drift and retain period validation.
   **implemented, v2.16.1 (PR #975)** (2026-10-14; #972; pyobs-core)
+
+- [2026-10-14-basetelescope-fits-namespaces.md](2026-10-14-basetelescope-fits-namespaces.md):
+  move provider namespace support into `BaseTelescope` and preserve the dummy focus contribution
+  with matching namespace context. **implemented; PR #977** (2026-10-14; related #971; Repos: pyobs-core).
+  Camera provider selection remains separate.
+
+- [2026-10-14-fits-header-provider-allowlist.md](2026-10-14-fits-header-provider-allowlist.md):
+  optional camera `fits_header_modules` selection for before/after remote FITS providers;
+  preserve broadcast by default and support an empty selection. **implemented; PR #977**
+  (2026-10-14; #971; Repos: pyobs-core).

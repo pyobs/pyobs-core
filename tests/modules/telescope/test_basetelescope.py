@@ -190,3 +190,48 @@ def test_propagate_elements_near_parabolic_returns_finite_radec():
     ra2, dec2 = _propagate_elements(elements, epoch + 1 * u.day)
     moved_deg = math.hypot(ra2 - ra, dec2 - dec)
     assert 0.1 < moved_deg < 30.0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mapping, sender, namespaces, expected",
+    [
+        (None, None, None, {"STATIC", "CELESTIAL", "VERSION"}),
+        ({}, "camera", [], {"STATIC", "CELESTIAL", "VERSION"}),
+        ({"camera": ["STATIC"], "science": ["CELESTIAL"]}, "camera", ["science"], {"STATIC", "CELESTIAL"}),
+        ({"camera": ["STATIC"]}, None, ["camera"], {"STATIC"}),
+        ({"camera": ["STATIC"]}, "unknown", None, set()),
+        ({"camera": []}, "camera", None, set()),
+        ({"camera": None}, "camera", None, {"STATIC", "CELESTIAL", "VERSION"}),
+    ],
+)
+async def test_base_telescope_namespace_filtering(mocker, mapping, sender, namespaces, expected):
+    from pyobs.modules.telescope.basetelescope import BaseTelescope
+
+    mocker.patch(
+        "pyobs.modules.telescope.basetelescope.version_fits_headers",
+        return_value={"VERSION": FitsHeaderEntry("2.15.0", "version")},
+    )
+    tel = make_dummyradectelescope(fits_namespaces=mapping, fits_headers={"STATIC": [42, "static"]})
+    tel._celestial_headers = {"CELESTIAL": [3, "celestial"]}
+    kwargs = {} if sender is None else {"sender": sender}
+    # Bypass the dummy override to prove the base itself owns filtering.
+    headers = await BaseTelescope.get_fits_header_before(tel, namespaces=namespaces, **kwargs)
+    assert set(headers) & {"STATIC", "CELESTIAL", "VERSION"} == expected
+    if mapping:
+        assert set(headers) == expected or mapping.get("camera", []) is None
+    if "STATIC" in headers:
+        assert headers["STATIC"] == FitsHeaderEntry(42, "static")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("keywords", [["STATIC", "TEL-FOCU"], ["STATIC"], []])
+async def test_dummy_namespace_filter_retains_focus_only_when_selected(keywords):
+    tel = make_dummyradectelescope(
+        fits_namespaces={"camera": keywords}, fits_headers={"STATIC": [1, "static"]}, focus=12
+    )
+    header = await tel.get_fits_header_before(sender="camera")
+    assert set(header) == set(keywords)
+    if "TEL-FOCU" in header:
+        assert header["TEL-FOCU"].value == 12
+    assert await tel.get_fits_header_before() == {}

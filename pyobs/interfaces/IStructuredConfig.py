@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..utils.config_schema import ConfigFieldSchema, ConfigSchema  # re-export
+from ..utils.config_schema import ConfigChoice, ConfigFieldSchema, ConfigSchema  # re-export
 from ..utils.time import Time
 from .IConfig import ConfigScalar
 from .interface import Interface
@@ -44,4 +44,4 @@ class IStructuredConfig(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IStructuredConfig", "ConfigAppliedState", "ConfigSchema", "ConfigFieldSchema"]
+__all__ = ["IStructuredConfig", "ConfigAppliedState", "ConfigSchema", "ConfigFieldSchema", "ConfigChoice"]

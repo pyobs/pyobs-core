@@ -64,3 +64,33 @@ async def test_set_config_round_trips_via_published_state() -> None:
 
     assert len(received) == 1
     assert received[0].config == {"exposure": 2.5}
+
+
+@pytest.mark.asyncio
+async def test_typed_choice_capability_and_config_state() -> None:
+    from typing import Literal
+
+    from pydantic import BaseModel, Field
+
+    from pyobs.utils.config_schema import pydantic_to_schema
+
+    class Config(BaseModel):
+        detector: Literal[16416, 16417] = Field(
+            default=16416,
+            json_schema_extra={"x-pyobs-choices": [{"value": 16416, "label": "Detector A"}]},
+        )
+
+    camera = LocalComm("camera")
+    observer = LocalComm("observer")
+    await camera.set_capabilities(IStructuredConfig, pydantic_to_schema(Config))
+    caps = await observer.get_capabilities("camera", IStructuredConfig)
+    assert caps is not None
+    assert caps.fields["detector"].choices is not None
+    choice = caps.fields["detector"].choices[0]
+    assert choice.label == "Detector A"
+    assert type(choice.value) is int
+    config = Config.model_validate({"detector": choice.value})
+    received: list[ConfigAppliedState] = []
+    await observer.subscribe_state("camera", IStructuredConfig, received.append)
+    await camera.set_state(IStructuredConfig, ConfigAppliedState(config=config.model_dump()))
+    assert type(received[0].config["detector"]) is int

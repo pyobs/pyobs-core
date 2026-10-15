@@ -351,3 +351,5 @@ Implementation plans, checklist-style. Newest at the bottom.
   optional camera `fits_header_modules` selection for before/after remote FITS providers;
   preserve broadcast by default and support an empty selection. **implemented; PR #977**
   (2026-10-14; #971; Repos: pyobs-core).
+- [2026-10-14-typed-config-choices.md](2026-10-14-typed-config-choices.md) — **implemented; release pending**. Typed structured-config choices, shared label metadata,
+  transport compatibility and coordinated core/GUI/portal rollout (pyobs-gui#211).

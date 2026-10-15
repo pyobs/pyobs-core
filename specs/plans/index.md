@@ -353,3 +353,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   (2026-10-14; #971; Repos: pyobs-core).
 - [2026-10-14-typed-config-choices.md](2026-10-14-typed-config-choices.md) — **implemented; release pending**. Typed structured-config choices, shared label metadata,
   transport compatibility and coordinated core/GUI/portal rollout (pyobs-gui#211).
+- [2026-10-15-basetelescope-radec-geometry-headers.md](2026-10-15-basetelescope-radec-geometry-headers.md) —
+  derive telescope geometry FITS cards from RA/Dec, time and site independently of
+  `IPointingAltAz`, retaining interface-gated state publication. **implemented; PR pending** (#973; Repos: pyobs-core).

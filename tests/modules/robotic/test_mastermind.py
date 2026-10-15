@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import astropy.units as u
 import pytest
+from astroplan import Observer
+from astropy.coordinates import EarthLocation
+from astropy.utils import iers
 
 from pyobs.comm import Comm
 from pyobs.events import TaskSkippedEvent
@@ -22,10 +26,12 @@ from pyobs.robotic.scheduler.constraints.constraint import Constraint
 from pyobs.robotic.task import Project, Task
 from pyobs.robotic.taskrunner import TaskRunner
 from pyobs.utils.time import Time
+from pyobs.vfs import VirtualFileSystem
 
 
 def make_mastermind(**kwargs) -> Mastermind:
     comm = MagicMock(spec=Comm)
+    comm.name = "test-mastermind"
     schedule = MagicMock(spec=ObservationArchive)
     runner = MagicMock(spec=TaskRunner)
     return Mastermind(comm=comm, schedule=schedule, runner=runner, **kwargs)
@@ -404,3 +410,22 @@ async def test_run_thread_does_not_skip_when_task_may_start_late(mocker) -> None
     await _run_briefly(mm, mocker, iterations=6)
 
     assert _skipped_events(mm) == []
+
+
+@pytest.mark.asyncio
+async def test_next_obsnum_keeps_real_night_across_midnight(tmp_path: Path, mocker) -> None:
+    observer = Observer(location=EarthLocation.from_geodetic(-76, 41.2), timezone="UTC")
+    vfs = VirtualFileSystem(roots={"pyobs": {"class": "pyobs.vfs.LocalFile", "root": str(tmp_path)}})
+    now = mocker.patch.object(Time, "now")
+    with iers.conf.set_temp("auto_download", False):
+        for timestamp, expected in [
+            ("2026-10-14T21:00:00", "20261014-001"),
+            ("2026-10-14T23:59:00", "20261014-002"),
+            ("2026-10-15T00:01:00", "20261014-003"),
+            ("2026-10-15T12:00:00", "20261015-001"),
+        ]:
+            now.return_value = Time(timestamp)
+            mm = make_mastermind(observer=observer, vfs=vfs)
+            assert await mm._next_obsnum() == expected
+            night, counter = expected.split("-")
+            assert await vfs.read_yaml(mm._obsnum_cache) == {"night": night, "obsnum": int(counter)}

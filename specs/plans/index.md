@@ -361,3 +361,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   keep `Time.night_obs()` stable from local civil noon to noon and use the sunset's
   local date, preventing mid-night `DAY-OBS`/cached-counter flips and repeated frame
   names. **implemented, merged PR #999; issue #995 closed; release and deployment pending** (Repos: pyobs-core).
+
+- [2026-10-15-expected-pointing-fault-escalation.md](2026-10-15-expected-pointing-fault-escalation.md) —
+  exclude expected pointing-limit faults from broad remote-error escalation while
+  preserving explicit domain handlers and genuine failure thresholds. **implemented; PR #1000**
+  (#959; Repos: pyobs-core).

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -272,3 +273,111 @@ async def test_ancestor_resolved_remote_fault_counts_for_domain_and_remote_handl
 
     assert domain == [fault]
     assert remote == [fault]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fault_kind", ["core", "leaf", "fallback"])
+async def test_expected_remote_pointing_faults_only_trigger_explicit_handlers(fault_kind):
+    from pyobs.comm.xmpp.rpc import reconstruct_fault
+    from pyobs.modules.telescope.basetelescope import AltitudeLimitError
+
+    if fault_kind == "fallback":
+        fault = reconstruct_fault(
+            "unimported_driver.PointingRejected",
+            "below limit",
+            ["pyobs.utils.exceptions.PointingLimitError"],
+            "telescope",
+        )
+        assert type(fault) is exc.PointingLimitError
+        assert fault.original_type == "unimported_driver.PointingRejected"
+    else:
+        cls = exc.PointingLimitError if fault_kind == "core" else AltitudeLimitError
+        fault = cls("below limit", remote_module="telescope")
+    assert fault.remote_module == "telescope"
+    module = _AbortableModule(fault)
+    broad, domain, ancestor, leaf = (AsyncMock() for _ in range(4))
+    module._register_exception(exc.RemoteError, 3, module="telescope", callback=broad)
+    module._register_exception(exc.PointingLimitError, 3, module="telescope", callback=domain)
+    module._register_exception(exc.PyobsError, 3, module="telescope", callback=ancestor)
+    if fault_kind == "leaf":
+        module._register_exception(AltitudeLimitError, 3, module="telescope", callback=leaf)
+
+    for _ in range(3):
+        with pytest.raises(type(fault)) as raised:
+            await module.execute("abort", sender="tester")
+        assert raised.value is fault
+        await asyncio.sleep(0)
+
+    assert (exc.RemoteError, "telescope") not in module._remote_exception_log
+    broad.assert_not_awaited()
+    domain.assert_awaited_once_with(fault)
+    ancestor.assert_awaited_once_with(fault)
+    if fault_kind == "leaf":
+        leaf.assert_awaited_once_with(fault)
+
+
+@pytest.mark.asyncio
+async def test_local_pointing_faults_still_trigger_explicit_handlers():
+    fault = exc.PointingLimitError("below limit")
+    module = _AbortableModule(fault)
+    broad, domain = AsyncMock(), AsyncMock()
+    module._register_exception(exc.RemoteError, 3, callback=broad)
+    module._register_exception(exc.PointingLimitError, 3, callback=domain)
+    for _ in range(3):
+        with pytest.raises(exc.PointingLimitError):
+            await module.execute("abort", sender="tester")
+        await asyncio.sleep(0)
+    broad.assert_not_awaited()
+    domain.assert_awaited_once_with(fault)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "fault_type", [exc.RemoteTimeoutError, exc.GrabImageError, exc.MotionError, exc.UnclassifiedError]
+)
+async def test_expected_fault_does_not_advance_or_retrigger_remote_threshold(fault_type):
+    module = _AbortableModule(exc.FocusError("unused"))
+    callback = AsyncMock()
+    module._register_exception(exc.RemoteError, 3, timespan=600, module="telescope", callback=callback)
+    rejected = exc.PointingLimitError("below limit", remote_module="telescope")
+    failure = fault_type("failed", remote_module="telescope")
+    for count in range(1, 4):
+        module._record_exception(failure)
+        await asyncio.sleep(0)
+        assert len(module._remote_exception_log[(exc.RemoteError, "telescope")]) == count
+        assert callback.await_count == (1 if count == 3 else 0)
+        module._record_exception(rejected)
+        await asyncio.sleep(0)
+        assert len(module._remote_exception_log[(exc.RemoteError, "telescope")]) == count
+        assert callback.await_count == (1 if count == 3 else 0)
+    callback.assert_awaited_once_with(failure)
+
+
+@pytest.mark.asyncio
+async def test_remote_threshold_retains_timespan_and_counter_scoping(mocker):
+    clock = mocker.patch("pyobs.modules.module.time.time", return_value=1000.0)
+    module = _AbortableModule(exc.FocusError("unused"))
+    other = _AbortableModule(exc.FocusError("unused"))
+    callback, local, other_callback = AsyncMock(), AsyncMock(), AsyncMock()
+    module._register_exception(exc.RemoteError, 3, timespan=600, module="telescope", callback=callback)
+    module._register_exception(exc.RemoteError, 3, timespan=600, callback=local)
+    other._register_exception(exc.RemoteError, 3, timespan=600, module="telescope", callback=other_callback)
+    failure = exc.RemoteTimeoutError("failed", remote_module="telescope")
+    for _ in range(2):
+        module._record_exception(failure)
+    clock.return_value = 1601.0
+    module._record_exception(failure)
+    await asyncio.sleep(0)
+    callback.assert_not_awaited()
+    for _ in range(3):
+        module._record_exception(exc.GrabImageError("camera failed", remote_module="camera"))
+        module._record_exception(exc.PointingLimitError("rejected", remote_module="telescope"))
+    await asyncio.sleep(0)
+    callback.assert_not_awaited()
+    for _ in range(2):
+        module._record_exception(failure)
+        await asyncio.sleep(0)
+    callback.assert_awaited_once_with(failure)
+    local.assert_not_awaited()
+    other_callback.assert_not_awaited()
+    assert other._remote_exception_log == {}

@@ -65,7 +65,7 @@ from .IRunning import IRunning, RunningState
 from .IScriptRunner import IScriptRunner
 from .ISpectrograph import ISpectrograph
 from .IStartStop import IStartStop
-from .IStructuredConfig import ConfigAppliedState, ConfigFieldSchema, ConfigSchema, IStructuredConfig
+from .IStructuredConfig import ConfigAppliedState, ConfigChoice, ConfigFieldSchema, ConfigSchema, IStructuredConfig
 from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures, SensorReading, TemperaturesState
@@ -181,6 +181,7 @@ __all__ = [
     "ConfigAppliedState",
     "ConfigSchema",
     "ConfigFieldSchema",
+    "ConfigChoice",
     "ISyncTarget",
     "ITelescope",
     "ITemperatures",

@@ -3,13 +3,9 @@
 Status: implemented — pyobs-core landed `pyobs/interfaces/IStructuredConfig.py` and
 `pyobs/utils/config_schema.py` (commits `374fb358`/`a07fb3f0`, 2026-07-10; tests in
 `tests/utils/test_config_schema.py` and `tests/comm/local/test_istructuredconfig.py`), registered
-in `pyobs/interfaces/__init__.py`. The consumer that adopted it is pyobs-iagvt's **`FTS` module**
-(`pyobs_iagvt/modules/fts.py`, `class FTS(BaseSpectrograph, IAbortable, IStructuredConfig)`, driven
-by `pyobs_iagvt/widgets/ftswidget.py` and `scripts/ftsobservationscript.py`) — not the siderostat
-driver named below. Two evolutions vs. this doc, both additive: `config_schema.py` also gained
-`pydantic_to_schema()` (the FTS config is a pydantic model, not a dataclass — `FTS` uses
-`pydantic_to_schema(FTSConfig)` for its capabilities), and `IConfig`'s `ConfigValue` was left flat
-with the recursive alias living in `IStructuredConfig` (this doc's preferred option).
+in `pyobs/interfaces/__init__.py`. Both dataclass and Pydantic configuration models are
+supported through `dataclass_to_schema()` and `pydantic_to_schema()`. The recursive
+`ConfigValue` alias lives in `IStructuredConfig`; `IConfig` retains its flat alias.
 Originally its own standalone `IStructuredConfig-spec.md` before
 being folded into `DEVELOPMENT.md`; restored here as its own design doc. `IConfig` is
 unaffected and stays as the per-field config mechanism — the two are meant to coexist.
@@ -22,7 +18,7 @@ unaffected and stays as the per-field config mechanism — the two are meant to 
 readable/writable/has-options). That's the right model for flat,
 independently-tunable values.
 
-`pyobs-iagvt`'s siderostat driver needs something different: it holds one
+A module applying a whole structured configuration needs something different: it holds one
 config **dataclass** (potentially nested — sub-dataclasses for things like a
 pointing model) that gets pushed and applied as a unit, not field-by-field.
 `IStructuredConfig` is a new interface for that case. It is *not* a
@@ -206,9 +202,9 @@ Register it in `pyobs/interfaces/__init__.py` alongside the other interface
 imports (this is required for the existing `inspect.getmembers(pyobs.interfaces, ...)`
 resolution in `pyobs/comm/comm.py` and `pyobs/comm/xmpp/xmppcomm.py` to find it).
 
-### 4. Consumer side: `pyobs-iagvt`
+### 4. Consumer side: module implementation
 
-In the siderostat module (`siderostat.py`):
+In a module implementing structured configuration:
 
 1. Define `SiderostatConfig` (and any nested sub-dataclasses, e.g.
    `PointingModel`) as real dataclasses with proper typing (`Annotated[float, Unit.ARCSEC]`
@@ -246,3 +242,35 @@ In the siderostat module (`siderostat.py`):
 - No merge of `IConfig` into `IModule` — considered and rejected; `IConfig`
   stays a separate interface.
 
+
+### Typed choices and display labels (2026-10-15)
+
+`ConfigFieldSchema` now appends an optional `choices: list[ConfigChoice] | None`.
+Each `ConfigChoice` contains the original JSON scalar `value` and a display-only
+string `label`. Dataclass Enums and Pydantic Literals/Enums populate this field;
+Enum defaults are normalized to their scalar values. Numeric values stay numeric
+through capability serialization. The existing `options: list[str]` remains a
+string projection for legacy clients, including numeric enum domains.
+
+Providers can supply optional `x-pyobs-choices` metadata through Pydantic
+`Field(json_schema_extra=...)` or dataclass field metadata:
+
+```python
+{"x-pyobs-choices": [{"value": 16416, "label": "Detector A"}]}
+```
+
+The model's declared domain remains authoritative. Missing or malformed labels
+fall back to the raw value's display string; conflicting labels also fall back.
+Labels outside the domain add no options. This permits partial labels for bitmask
+combinations. Identity distinguishes strings and booleans from numbers; equal
+integer/float JSON numbers share an identity. Non-finite numbers and non-scalar
+choice values are unsupported.
+
+Consumers select and submit typed values, never display text. `choices=None`
+identifies legacy metadata; `choices=[]` is an explicitly empty domain. Old core
+receivers ignore the additive field, and old clients can use `options`. Mixed
+versions retain their legacy behavior: the numeric fix requires typed choices to
+reach a client that uses them. The GUI detects the new field without requiring an
+unreleased core dependency; a GUI with old core cannot recover erased types.
+Portal uses standard Pydantic JSON Schema enums/const plus the same optional label
+extension, so its numeric-value repair can deploy independently.

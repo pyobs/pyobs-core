@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import functools
+import math
 import types
 import typing
 from typing import Annotated, Any, get_args, get_origin, get_type_hints
@@ -25,6 +26,57 @@ def _coerce_level(value: Any) -> AccessLevel:
         return AccessLevel.BASIC
 
 
+ChoiceValue = str | int | float | bool
+
+
+@dataclasses.dataclass
+class ConfigChoice:
+    value: ChoiceValue
+    label: str
+
+
+def choice_values_equal(left: Any, right: Any) -> bool:
+    """Match JSON scalars without confusing booleans, numbers and strings."""
+    if type(left) in (int, float) and type(right) in (int, float):
+        return left == right
+    return type(left) is type(right) and left == right
+
+
+def _choice_value(value: Any) -> ChoiceValue:
+    if isinstance(value, enum.Enum):
+        value = value.value
+    if type(value) not in (str, int, float, bool) or (type(value) is float and not math.isfinite(value)):
+        raise TypeError(f"Unsupported configuration choice: {value!r}")
+    return value
+
+
+def _enum_schema(values: typing.Iterable[Any], default: Any) -> ConfigFieldSchema:
+    choices = [ConfigChoice(_choice_value(value), str(_choice_value(value))) for value in values]
+    if isinstance(default, enum.Enum):
+        default = _choice_value(default)
+    return ConfigFieldSchema(
+        type="enum", options=[str(choice.value) for choice in choices], default=default, choices=choices
+    )
+
+
+def _apply_choice_labels(schema: ConfigFieldSchema, metadata: Any) -> None:
+    if schema.choices is None or not isinstance(metadata, typing.Mapping):
+        return
+    records = metadata.get("x-pyobs-choices")
+    if not isinstance(records, list):
+        return
+    for choice in schema.choices:
+        labels = {
+            record["label"]
+            for record in records
+            if isinstance(record, dict)
+            and isinstance(record.get("label"), str)
+            and choice_values_equal(record.get("value"), choice.value)
+        }
+        if len(labels) == 1:
+            choice.label = labels.pop()
+
+
 @dataclasses.dataclass
 class ConfigFieldSchema:
     type: str
@@ -34,6 +86,7 @@ class ConfigFieldSchema:
     nested: dict[str, ConfigFieldSchema] | None = None
     level: AccessLevel = AccessLevel.BASIC
     description: str | None = None
+    choices: list[ConfigChoice] | None = None
 
 
 @dataclasses.dataclass
@@ -61,6 +114,7 @@ def dataclass_to_schema(cls: type) -> ConfigSchema:
         schema = _field_schema(hints[f.name], f.default)
         schema.level = _coerce_level(f.metadata.get("level", AccessLevel.BASIC))
         schema.description = f.metadata.get("description")
+        _apply_choice_labels(schema, f.metadata)
         fields[f.name] = schema
     return ConfigSchema(fields=fields)
 
@@ -77,11 +131,7 @@ def _field_schema(annotation: Any, default: Any) -> ConfigFieldSchema:
         return ConfigFieldSchema(type="object", nested=nested_schema.fields)
 
     if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
-        return ConfigFieldSchema(
-            type="enum",
-            options=[e.value for e in annotation],
-            default=default if default is not dataclasses.MISSING else None,
-        )
+        return _enum_schema(annotation, default if default is not dataclasses.MISSING else None)
 
     type_name = {str: "str", int: "int", float: "float", bool: "bool"}.get(annotation)
     if type_name is None:
@@ -117,6 +167,7 @@ def pydantic_to_schema(cls: type[BaseModel]) -> ConfigSchema:
         schema = _pydantic_field_schema(info.annotation, default)
         schema.level = _pydantic_field_level(info.json_schema_extra)
         schema.description = _pydantic_field_description(info)
+        _apply_choice_labels(schema, info.json_schema_extra)
         fields[name] = schema
     return ConfigSchema(fields=fields)
 
@@ -128,10 +179,7 @@ def _pydantic_field_level(json_schema_extra: Any) -> AccessLevel:
 
 
 def _pydantic_field_description(info: Any) -> str | None:
-    """FTSConfigMain (pyftscontrol) puts the description inside json_schema_extra alongside
-    level, rather than using Pydantic's own Field(description=...) -- prefer that convention
-    when present, but fall back to the native `description` for a model that uses it directly.
-    """
+    """Prefer description metadata when supplied; otherwise use Field(description=...)."""
     extra = info.json_schema_extra
     if isinstance(extra, dict) and isinstance(extra.get("description"), str):
         return extra["description"]
@@ -147,7 +195,10 @@ def _pydantic_field_schema(annotation: Any, default: Any) -> ConfigFieldSchema:
             return _pydantic_field_schema(args[0], default)
 
     if origin is typing.Literal:
-        return ConfigFieldSchema(type="enum", options=[str(v) for v in get_args(annotation)], default=default)
+        return _enum_schema(get_args(annotation), default)
+
+    if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+        return _enum_schema(annotation, default)
 
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
         return ConfigFieldSchema(type="object", nested=pydantic_to_schema(annotation).fields)
@@ -162,4 +213,11 @@ def _pydantic_field_schema(annotation: Any, default: Any) -> ConfigFieldSchema:
     return ConfigFieldSchema(type=type_name, default=default)
 
 
-__all__ = ["ConfigFieldSchema", "ConfigSchema", "dataclass_to_schema", "pydantic_to_schema"]
+__all__ = [
+    "ConfigChoice",
+    "ConfigFieldSchema",
+    "ConfigSchema",
+    "choice_values_equal",
+    "dataclass_to_schema",
+    "pydantic_to_schema",
+]

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries were converted from the former CHANGELOG.rst.
 
+## [2.18.0] - 2026-10-15
+
+### Added
+
+- Publish typed structured-configuration choices with optional display labels from
+  `x-pyobs-choices` metadata, retaining legacy string options for older clients (#996).
+
+### Fixed
+
+- Preserve numeric and boolean choice types through model conversion and capability
+  serialization; normalize Enum defaults to their scalar values (#996).
+
 ## [2.17.0] - 2026-10-14
 
 ### Added

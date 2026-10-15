@@ -1,6 +1,6 @@
 # Keep one local observing-night date across sunset and midnight
 
-Status: implemented; PR review, release and deployment pending (2026-10-15)
+Status: implemented, merged as PR #999 (`150c785e`); issue #995 closed; release and deployment pending (2026-10-15)
 Issue: [pyobs-core#995](https://github.com/pyobs/pyobs-core/issues/995)
 Date: 2026-10-15
 Repos: pyobs-core
@@ -123,7 +123,7 @@ historical data repair are separate work.
   records using available logs/backups. The fix prevents this cause of future
   collisions; it cannot recover overwritten exposures or guarantee global filename
   uniqueness. Track any recovery or archive hardening separately.
-- [ ] After merge, update this plan and its index with validation and release state;
+- [x] After merge, update this plan and its index with validation and release state;
   update fleet tracking if #995 is present, and distinguish release from deployment.
 
 

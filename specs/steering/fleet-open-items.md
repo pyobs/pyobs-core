@@ -5,6 +5,11 @@ Status: standing snapshot — GitHub issues/discussions and local fleet plan ent
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-15** (#995): merged core PR #999 (`150c785e`) after all required CI
+  passed and closed issue #995. Removed the issue and completed implementation plan
+  from open items; release/deployment and historical-data review remain in the plan.
+  Table 16 (down from 17); other repositories were not re-queried.
+
 - **2026-10-15** (post-release refresh): queried all 26 active GitHub repos again: 27 open
   issues, 17 unresolved items. Core #973 is implemented in merged PR #998 and is removed
   from the table (not yet released). GUI #211 is closed. Alpaca #54 and BROT #87 are closed
@@ -535,13 +540,12 @@ for pyobs-astrometry, pyobs-allsky-cloudcover, pyobs-dashboard-utils or pyobs.gi
 those clones are absent. Plan summaries use the plan body and local commits/tags when an index
 is stale; hardware/deployment status is taken from the docs, not a new live check.
 
-## Open issues (17, checked 2026-10-15)
+## Open issues (16, checked 2026-10-15)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#995](https://github.com/pyobs/pyobs-core/issues/995) | Time.night_obs gives one night two dates, so DAY-OBS and FRAMENUM restart at midnight and frame names repeat | **external** (MichaelJEvan); reporter measured one night receiving two dates in v2.16.1: sunset-to-midnight uses tomorrow's sunset, then the date moves backward at midnight; `FRAMENUM` restarts and filenames repeat, potentially replacing archive entries; reproduced locally 2026-10-15 with real UTC/New York/Los Angeles observers and the actual FITS-header/frame-cache pipeline: different nights generated identical `pyobs-20261015-0001.fits` names; archive source reuses rows by basename; fix should anchor sunset search at local noon and return its local date, preserving dawn calibration and explicit daytime behavior; implemented with real-observer date/DST/polar and persistent frame/observation-counter regressions; PR review, release and deployment pending; [plan](../plans/2026-10-15-night-obs-stable-local-date.md) |
 | pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
@@ -563,9 +567,6 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
-- [2026-10-15-night-obs-stable-local-date.md](../plans/2026-10-15-night-obs-stable-local-date.md) —
-  *implemented; PR review, release and deployment pending* (#995): stable local-noon observing dates, frame counters and filenames;
-  preserve dawn calibration, timezone/DST and polar fallback behavior.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
   (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot per the plan.

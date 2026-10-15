@@ -250,7 +250,8 @@ class Module(Object, IModule, IConfig):
         seconds). Call from __init__.
 
         Args:
-            exc_type: Exception type (or a shared ancestor, e.g. RemoteError) to watch for.
+            exc_type: Exception type (or a shared ancestor) to watch for. RemoteError also
+                counts remote domain faults, except expected PointingLimitError rejections.
             limit: Number of occurrences that triggers the callback.
             timespan: If given, only count occurrences within the last timespan seconds.
             module: If given, only count occurrences tagged as coming from this remote module
@@ -273,24 +274,26 @@ class Module(Object, IModule, IConfig):
                 asyncio.create_task(h.callback(exception))
 
     def _exception_matches(self, exception: Exception, exc_type: type[exc.PyobsError]) -> bool:
-        """Whether exception should count as an instance of exc_type for severity-handler matching:
-        true isinstance, or -- mirroring _store_exception's RemoteError special case below --
-        anything tagged with remote_module counts as a RemoteError even though its own type no
-        longer literally subclasses it now that faults raise as their real type instead of wrapped."""
+        """Match actual ancestors and eligible remote faults, consistently with severity storage."""
         if isinstance(exception, exc_type):
             return True
-        return exc_type is exc.RemoteError and getattr(exception, "remote_module", None) is not None
+        return exc_type is exc.RemoteError and self._counts_as_remote_error(exception)
+
+    @staticmethod
+    def _counts_as_remote_error(exception: Exception) -> bool:
+        """Classify remote domain failures for broad handlers, excluding expected pointing rejections.
+
+        Actual RemoteError inheritance and explicit domain handlers are handled separately.
+        """
+        return getattr(exception, "remote_module", None) is not None and not isinstance(
+            exception, exc.PointingLimitError
+        )
 
     def _store_exception(self, exception: exc.PyobsError, module: str | None) -> None:
-        # get all classes from mro -- plus RemoteError if this crossed an RPC boundary (module is
-        # not None, i.e. the exception carries a remote_module tag from rpc.py's fault
-        # reconstruction), even though a directly-reraised domain type (e.g. GrabImageError) no
-        # longer subclasses RemoteError itself now that faults raise as their real type instead of
-        # wrapped (see rpc.py, Assessment §A). Preserves
-        # _register_exception(exc.RemoteError, ..., module=X)-style "this module keeps failing
-        # remotely, regardless of the specific type" handlers (e.g. AutoFocusSeries).
+        # Preserve actual ancestors and classify eligible remote domain faults as RemoteError
+        # for broad severity handlers. Expected pointing rejections retain their domain buckets.
         classes: list[type] = list(type(exception).__mro__)
-        if module is not None and exc.RemoteError not in classes:
+        if self._counts_as_remote_error(exception) and exc.RemoteError not in classes:
             classes.append(exc.RemoteError)
 
         for e in classes:

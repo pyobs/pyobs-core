@@ -356,3 +356,8 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-10-15-basetelescope-radec-geometry-headers.md](2026-10-15-basetelescope-radec-geometry-headers.md) —
   derive telescope geometry FITS cards from RA/Dec, time and site independently of
   `IPointingAltAz`, retaining interface-gated state publication. **implemented; PR pending** (#973; Repos: pyobs-core).
+
+- [2026-10-15-night-obs-stable-local-date.md](2026-10-15-night-obs-stable-local-date.md) —
+  keep `Time.night_obs()` stable from local civil noon to noon and use the sunset's
+  local date, preventing mid-night `DAY-OBS`/cached-counter flips and repeated frame
+  names. **proposed; not implemented** (#995; Repos: pyobs-core).

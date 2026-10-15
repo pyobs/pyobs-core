@@ -787,16 +787,17 @@ class BaseTelescope(
         hdr: dict[str, FitsHeaderEntry] = {}
 
         # positions
+        position = self._position_radec
         coords_ra_dec = None
-        if isinstance(self, IPointingRaDec) and self._position_radec is not None:
-            ra, dec = self._position_radec
+        if position is not None:
+            ra, dec = position
             coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
         coords_alt_az = None
-        if isinstance(self, IPointingAltAz) and coords_ra_dec is not None and self._observer is not None:
+        if coords_ra_dec is not None and self._observer is not None:
             coords_alt_az = self.observer.altaz(Time.now(), coords_ra_dec)
 
         # set coordinate headers
-        if coords_ra_dec is not None:
+        if isinstance(self, IPointingRaDec) and coords_ra_dec is not None:
             hdr["TEL-RA"] = FitsHeaderEntry(float(coords_ra_dec.ra.degree), "Right ascension of telescope [degrees]")
             hdr["TEL-DEC"] = FitsHeaderEntry(float(coords_ra_dec.dec.degree), "Declination of telescope [degrees]")
         if coords_alt_az is not None:
@@ -811,7 +812,8 @@ class BaseTelescope(
         # unlike to_string() the manual formatters below raise on a non-finite value rather than
         # just warning, so skip them instead of emitting bogus headers
         if (
-            coords_ra_dec is not None
+            isinstance(self, IPointingRaDec)
+            and coords_ra_dec is not None
             and math.isfinite(coords_ra_dec.ra.degree)
             and math.isfinite(coords_ra_dec.dec.degree)
         ):
@@ -879,13 +881,14 @@ class BaseTelescope(
             return
 
         # get telescope alt/az
+        position = self._position_radec
         tel_altaz = None
-        if isinstance(self, IPointingAltAz) and self._position_radec is not None:
-            radec = SkyCoord(ra=self._position_radec[0] * u.deg, dec=self._position_radec[1] * u.deg, frame=ICRS)
+        if position is not None:
+            radec = SkyCoord(ra=position[0] * u.deg, dec=position[1] * u.deg, frame=ICRS)
             tel_altaz = self.observer.altaz(now, radec)
 
             # publish alt/az state
-            if self._comm is not None:
+            if isinstance(self, IPointingAltAz) and self._comm is not None:
                 await self.comm.set_state(
                     IPointingAltAz,
                     AltAzState(alt=float(tel_altaz.alt.degree), az=float(tel_altaz.az.degree)),

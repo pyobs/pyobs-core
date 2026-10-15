@@ -5,6 +5,15 @@ Status: standing snapshot — GitHub issues/discussions and local fleet plan ent
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-15** (latest fleet refresh): queried all 26 active GitHub repos directly: 27
+  GitHub-open issues, 16 unresolved items. Removed core #959 after PR #1000 merged to
+  `develop` (not released); #995 is already closed after PR #999 and stays absent. Added
+  Pipeline #24 (blue app icon/favicons) and the proposed portal #169 implementation plan.
+  Eleven GitHub-open issues remain excluded as implemented: core #959/#971/#973, portal
+  #173, BROT #83/#85, GUI #168/#182/#185/#186 and web-client #58. Existing user edits to
+  the plan index and the new portal plan were preserved. No GitHub issues were changed;
+  release/deployment verification was not performed. Table remains 16.
+
 - **2026-10-15** (#995): merged core PR #999 (`150c785e`) after all required CI
   passed and closed issue #995. Removed the issue and completed implementation plan
   from open items; release/deployment and historical-data review remain in the plan.
@@ -546,14 +555,14 @@ One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage; reporter runs a separate meridian-flip module and proposes Mastermind consume its advance/in-progress events to avoid starting exposures across a flip; event shape and integration remain undecided |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-archive | [#78](https://github.com/pyobs/pyobs-archive/issues/78) | Links into the archive with a time window find nothing when the viewer's computer is not on UTC | **external** (MichaelJEvan); reporter measured 10 matching frames via the UTC API window and zero after browser-local conversion in v2.1.4; URL `start`/`end` are parsed with `moment()` then submitted without timezone; proposes `moment.utc()` to match other date selectors; not investigated locally |
 | pyobs-archive | [#74](https://github.com/pyobs/pyobs-archive/issues/74) | Findings from running the archive on a MacBook M5 Pro (no Docker), 2.1.4 | **external** (MichaelJEvan); filed 2026-10-08; hardcoded `/usr/bin/fpack`, Frame row saved before fpack (no transaction), upside-down preview, wrong image name in `docker-compose.yaml`, white loading overlay |
-| pyobs-portal | [#169](https://github.com/pyobs/pyobs-portal/issues/169) | Findings from running the portal on a plain machine (no Docker), 2.5.5 | **external** (MichaelJEvan); filed 2026-10-08; `.env.example` vs `SQL_*` settings, no `[build-system]`, needs `pyobs-core[full]`, negative priorities, no UI to cancel pending observations; body has more items |
+| pyobs-portal | [#169](https://github.com/pyobs/pyobs-portal/issues/169) | Findings from running the portal on a plain machine (no Docker), 2.5.5 | **external** (MichaelJEvan); filed 2026-10-08; `.env.example` vs `SQL_*` settings, no `[build-system]`, needs `pyobs-core[full]`, negative priorities, no UI to cancel pending observations; proposed [implementation plan](../plans/2026-10-15-portal-issue-169.md) covers remaining setup, packaging, priority bounds/migration preflight and pending-observation cancellation against portal 2.7.0; not implemented |
+| pyobs-pipeline | [#24](https://github.com/pyobs/pyobs-pipeline/issues/24) | Use Pipeline blue for app icon and favicons instead of Archive purple | filed 2026-10-15; recolour the existing icon badge to Pipeline blue (`#0d6efd`), retain the white branching symbol and transparency, regenerate favicons and verify actual login/browser sizes on light/dark backgrounds; no implementation PR yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 | pyobs-gui | [#198](https://github.com/pyobs/pyobs-gui/issues/198) | Live view: zoom and pan with a server-side crop | filed 2026-10-04; follow-up to #182, the raw-stream crop (`x`/`y`/`w`/`h`) already exists in pyobs-core |
 | pyobs-gui | [#197](https://github.com/pyobs/pyobs-gui/issues/197) | Add a pyobs app icon (notifications still show the Python logo) | filed 2026-10-04; no logo file in the repository, needs a decision on the logo |
@@ -567,6 +576,10 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
+- [2026-10-15-portal-issue-169.md](../plans/2026-10-15-portal-issue-169.md) —
+  *proposed, not implemented* (portal #169): plain-machine setup/packaging, finite bounded
+  priorities with migration preflight and explicit pending-observation cancellation.
+  Implementation belongs in portal; core contract verification only.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
   (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot per the plan.

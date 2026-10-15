@@ -364,5 +364,10 @@ Implementation plans, checklist-style. Newest at the bottom.
 
 - [2026-10-15-expected-pointing-fault-escalation.md](2026-10-15-expected-pointing-fault-escalation.md) —
   exclude expected pointing-limit faults from broad remote-error escalation while
-  preserving explicit domain handlers and genuine failure thresholds. **implemented; PR #1000**
+  preserving explicit domain handlers and genuine failure thresholds. **implemented; merged PR #1000, not yet released**
   (#959; Repos: pyobs-core).
+
+- [2026-10-15-portal-issue-169.md](2026-10-15-portal-issue-169.md) —
+  complete plain-machine setup, packaging, bounded task/project priorities and
+  explicit pending-observation cancellation. **proposed; not implemented**
+  (pyobs-portal#169; Repos: pyobs-portal, pyobs-core contract verification).

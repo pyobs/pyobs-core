@@ -1,6 +1,6 @@
 # Keep one local observing-night date across sunset and midnight
 
-Status: proposed; not implemented
+Status: implemented; PR review, release and deployment pending (2026-10-15)
 Issue: [pyobs-core#995](https://github.com/pyobs/pyobs-core/issues/995)
 Date: 2026-10-15
 Repos: pyobs-core
@@ -69,28 +69,28 @@ historical data repair are separate work.
 
 ## Implementation checklist
 
-- [ ] Change only the noon anchor and sunset-date conversion in `pyobs/utils/time.py`;
+- [x] Change only the noon anchor and sunset-date conversion in `pyobs/utils/time.py`;
   document civil-noon interval membership and the polar exception. Reuse the
   existing masked-result check and error propagation.
-- [ ] Add real-observer regressions in `tests/utils/test_time.py`, with local offline
+- [x] Add real-observer regressions in `tests/utils/test_time.py`, with local offline
   IERS configuration. For the reported 41.2°/−76° site in UTC and America/New_York,
   check afternoon, before/after sunset, before/after both midnights, dawn and late
   morning all return the same expected date. Check one microsecond before noon,
   exactly noon and after noon advance once to the next night. Use explicit timezone
   conversions in fixtures and avoid brittle exact sunset timestamps.
-- [ ] Add America/Los_Angeles June 20, 2026 evening/overnight samples that expect
+- [x] Add America/Los_Angeles June 20, 2026 evening/overnight samples that expect
   June 20 despite the sunset's June 21 UTC date; include an eastern-longitude
   non-UTC site to guard the opposite conversion direction. Assert known expected
   dates rather than deriving expectations with the algorithm under test.
-- [ ] Cover both spring-forward and fall-back nights in America/New_York, including
+- [x] Cover both spring-forward and fall-back nights in America/New_York, including
   queries after the offset change but before noon. Add a narrow anchor assertion
   (a recording observer delegating to the real observer is sufficient) that the
   search uses the preceding date's actual local noon and `which="next"`; equal
   returned dates alone would miss an incorrectly offset anchor.
-- [ ] Retain the equinox morning-calibration regression. Cover polar day and polar
+- [x] Retain the equinox morning-calibration regression. Cover polar day and polar
   night, including pre-noon and midnight samples in a non-UTC zone; expect the
   query's local date for masked results. Capture only expected no-crossing warnings.
-- [ ] Extend `tests/mixins/test_fitsheader.py` with sequential images carrying real
+- [x] Extend `tests/mixins/test_fitsheader.py` with sequential images carrying real
   `DATE-OBS` values across the reported sunset/midnight sequence. Use a real observer,
   the actual header and frame-number methods, a temporary VFS-backed YAML cache,
   and `format_filename()` with the default pattern. Assert constant `DAY-OBS`,
@@ -99,11 +99,11 @@ historical data repair are separate work.
   at next local noon assert one new date and a reset to 1. Do not prefill `DAY-OBS`
   or mock `night_obs()` in this regression. Keep existing disabled-night, missing-
   observer, missing-`DATE-OBS`, cache-error and uncached-counter coverage passing.
-- [ ] Add focused caller checks for `Mastermind._next_obsnum()` across midnight
+- [x] Add focused caller checks for `Mastermind._next_obsnum()` across midnight
   with persistent cache and `DarkBiasScript._resolve_night()` at dawn with a real
   observer, retaining explicit-night precedence. Fix callers only if these reveal
   a separate necessary integration change; shared-helper correction should suffice.
-- [ ] Demonstrate the new ordinary-night and local-date tests fail on the original
+- [x] Demonstrate the new ordinary-night and local-date tests fail on the original
   implementation and pass with the fix. Run focused time, FITS, Mastermind and
   calibration tests, then the standalone suite (`uv run pytest tests`). Run CI's
   Ruff/pyrefly checks and Black on changed Python files. Record actual results and
@@ -111,7 +111,7 @@ historical data repair are separate work.
 
 ## Release and data handling
 
-- [ ] Add a changelog entry describing corrected `DAY-OBS`, frame naming and
+- [x] Add a changelog entry describing corrected `DAY-OBS`, frame naming and
   observation numbering; recommend a prompt patch release after validation.
 - [ ] Prefer deploying between observing runs. Correcting a previously wrong cached
   night during a run can itself reset the counter and reuse an existing corrected-
@@ -125,3 +125,20 @@ historical data repair are separate work.
   uniqueness. Track any recovery or archive hardening separately.
 - [ ] After merge, update this plan and its index with validation and release state;
   update fleet tracking if #995 is present, and distinguish release from deployment.
+
+
+## Validation (2026-10-15)
+
+- Before the helper fix, the expanded focused suite had 11 failures and 131 passes;
+  failures demonstrated the date flip, local-date error, incorrect DST anchor and
+  frame/observation counter resets. With the fix all 142 focused tests pass.
+- Full standalone suite via the existing environment's `python -m pytest tests -q`:
+  2506 passed, 26 skipped, 102 deselected, 1 xfailed; seven CLI tests failed because
+  that invocation searches for `pyobs` beside pytest's `__main__.py`. Rerunning
+  `tests/cli/test_pyobsd.py` with the environment's `pytest` console entry point finds
+  the installed executable and all seven pass. No remaining test failure identified.
+- `ruff check pyobs/` and Ruff/Black on changed Python files pass. `pyrefly check`
+  with `--python-interpreter-path` set to the existing project environment reports
+  zero errors. `git diff --check` passes.
+- Integration/XMPP services were not run. Release, deployment and historical data
+  review remain operational follow-ups; no cache or image migration is included.

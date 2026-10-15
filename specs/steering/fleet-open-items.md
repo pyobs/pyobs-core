@@ -5,6 +5,10 @@ Status: standing snapshot — GitHub issues/discussions and local fleet plan ent
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-15** (scope correction): keep this list limited to public repositories.
+  Removed out-of-scope project links and deployment notes; preserved public issue history.
+  Visibility check confirms 25 active public repositories; unresolved issue count remains 16.
+
 - **2026-10-15** (latest fleet refresh): queried all 26 active GitHub repos directly: 27
   GitHub-open issues, 16 unresolved items. Removed core #959 after PR #1000 merged to
   `develop` (not released); #995 is already closed after PR #999 and stays absent. Added
@@ -48,9 +52,9 @@ Status: standing snapshot — GitHub issues/discussions and local fleet plan ent
   and provider metadata verification below, not as unfinished application code. Core v2.18.0
   and GUI/portal v2.7.0 are released; provider/deployment rollout remains. The seven previously
   excluded released issues (BROT #83/#85, GUI #168/#182/#185/#186, web-client #58) remain excluded.
-  Reviewed listed plan headers and recent local spec commits, including typed choices and
-  pyftscontrol metadata. Driver namespace PRs Alpaca #55 and BROT #88 remain open. No GitHub
-  issues were changed; GitLab issue trackers and deployed hardware were not checked. Table 20.
+  Reviewed public plan headers and recent public spec commits. Driver namespace PRs
+  Alpaca #55 and BROT #88 remained open at this check. No GitHub issues or deployments
+  were changed. Table 20.
 
 - **2026-10-14** (#972 / v2.16.1): PR #975 merged to `develop` (`a9b4df9f`), CI pytest,
   Ruff and pyrefly passed. Removed #972 and its plan from open items. Patch release v2.16.1
@@ -227,27 +231,18 @@ Status: standing snapshot — GitHub issues/discussions and local fleet plan ent
   first release with `IResettable`), so the new `reset()`/`full_reset()` overrides raised
   `AttributeError` at runtime — missed locally (editable install of a newer local `pyobs-core`
   checkout masked it), caught by each repo's own CI resolving its committed lockfile fresh.
-  Bumped the `pyobs-core` floor to `>=2.11.0` in all 8 repos (including pyobs-monet/pyobs-iagvt on
-  GWDG GitLab) and cut a second patch release everywhere: pyobs-fli v2.0.3, pyobs-flipro v2.0.4,
-  pyobs-sbig v2.0.4, pyobs-asi v2.0.4, pyobs-aravis v2.0.4, pyobs-qhyccd v2.0.3, pyobs-monet
-  v2.0.7, pyobs-iagvt v2.3.10. All 6 GitHub repos' CI now green. Separately, fixed pyobs-iagvt's
-  GitLab CI, which had been failing on every pipeline for 19+ days (unrelated to this plan): its
-  CI job token wasn't allowlisted on two transitive git dependencies in the same GitLab group
-  (`iagvt/fts-pipe`, `iagvt/opus2py`) — added both via the job-token-scope API, verified pipeline
-  861870 now passes ruff/pyrefly/pytest. pyobs-monet still has no `.gitlab-ci.yml` at all (nothing
-  to fix there). Closed all 14 upstream issues (12 GitHub + the 2 GitLab work items, #33/#17) with
-  comments linking the fixing release, since they'd only been removed from this file's table
-  before, not actually closed.
-- **2026-09-28**: All 8 `IResettable` driver-override issues from `2026-09-27-data-pipeline-stack-reset.md`
+  Bumped the public drivers' `pyobs-core` floor to `>=2.11.0` and released pyobs-fli v2.0.3,
+  pyobs-flipro v2.0.4, pyobs-sbig v2.0.4, pyobs-asi v2.0.4, pyobs-aravis v2.0.4 and
+  pyobs-qhyccd v2.0.3. All six repositories' CI passed. Closed the 12 upstream GitHub
+  issues with comments linking the fixing releases.
+
+- **2026-09-28**: The public `IResettable` driver-override issues from `2026-09-27-data-pipeline-stack-reset.md`
   phase 8 implemented and landed on `develop`: pyobs-aravis (`f855158`), pyobs-asi (`5550ff8`),
   pyobs-fli (`49d8feb`), pyobs-flipro (`98d38cd`), pyobs-qhyccd (`31c5b75`), pyobs-sbig
-  (`e73dae3`), plus pyobs-monet (`01b03f3`) and pyobs-iagvt (`1f0587a`) on GWDG GitLab (not
-  tracked in the issues table below, which only covers GitHub). Per the maintenance rule, removed
-  all 12 GitHub rows (the 6 repos above each had two open issues — a generic "implement the
-  overrides" one plus a specific one, both closed out by the same commit) and the plan's "Open
-  plans" entry, even though none of the GitHub issues or GitLab work items have actually been
-  closed yet. Correction along the way: the pyobs-qhyccd issue's "needs a default policy" framing
-  was wrong — `open()` already hardcoded gain=10/offset=140 before reading them back, the phase-7
+  (`e73dae3`). Removed the 12 GitHub rows (two issues per public driver) and the completed
+  plan entry after the implementations landed. Correction along the way: the pyobs-qhyccd
+  issue's "needs a default policy" framing was wrong — `open()` already hardcoded
+  gain=10/offset=140 before reading them back; the phase-7
   survey missed those two lines, so it needed configurable defaults, not a new design decision.
 - **2026-09-27**: pyobs-core `2026-09-27-data-pipeline-stack-reset.md` plan landed (`41c82da3`; phases 1-7 for `BaseCamera`/`BaseVideo` + `IResettable`/`IDataPipeline`/`IDataStack` interfaces; released as v2.11.0) — phase 8 (driver issues) waits on Tim's release/go-ahead before merging downstream. Coordinated batch of 14 new driver issues opened on the same day (all 2026-09-27 16:30–17:45 UTC) targeting each camera module to implement the new interface overrides: pyobs-aravis #51/#52, pyobs-asi #42/#43, pyobs-fli #98/#99, pyobs-flipro #48/#49, pyobs-qhyccd #77/#78, pyobs-sbig #86/#87 (each pairing is "implement base override" + "add specialized behavior"). All added to the issues table below. Separate from this: pyobs-core #915 opened 2026-09-23 (`What does BaseTelescope want to know about meridian flips for the first-task logic?`), questioning whether the meridian-flip cutoff logic should move from `OnDemandScheduler` into `BaseTelescope`'s capabilities — waiting on Tim's decision on scope/approach. New: `2026-09-23-pushnotifier-payload-size-cap.md` (implemented 2026-09-23; 12 new tests; addresses MONET/S outage failure modes: cap log-event bodies to FCM's 4 KB limit, skip the notifier's own logs, prune dead tokens, set HTTP timeout). `2026-09-18-pushnotifier-per-user-preferences.md` had status "implemented, uncommitted" but commits now live on `develop` (released in v2.11.0 tag); web-client half also completed, so pyobs-web-client#57 (**closed** 2026-09-27 — both sides done, no web-client preference UI remaining).
 - **2026-09-18**: pyobs-core half of pyobs-web-client#57 implemented (plan
@@ -388,7 +383,7 @@ Status: standing snapshot — GitHub issues/discussions and local fleet plan ent
   `instrument-capability-estimate-duration-endpoint.md` — its own status line already says
   implemented/closed 2026-09-03, just stale in this doc. Added pyobs-core design doc
   `push-notification-module.md` (sketch stage — direction and v1 scope decided, not yet built;
-  written 2026-09-09, missed). pyobs-allsky-cloudcover/pyobs-astrometry/pyobs-dashboard-utils
+  written 2026-09-09, missed). pyobs-allsky-cloudcover/pyobs-astrometry
   confirmed 0 open issues each (no local checkout to check their plans). No other changes.
 - **2026-09-13**: pyobs-web-client #49 (reconnect on connection drop) and #48 (auth for embedding
   other pyobs apps) both real-device verified and closed — dropped from the issues table. #49's
@@ -540,14 +535,13 @@ a source of truth:
 and remove items outright once their fix has landed on `develop` (even if the GitHub issue stays
 open pending a release to `main`), never annotate them.** Only open items live here.
 
-Repos: the whole pyobs fleet.
+Repos: public pyobs projects only.
 
-Snapshot scope: issues from the 26 non-archived repos in the `pyobs` GitHub org, including
-the homepage; local plans from the 27 cloned fleet projects (including archived pyobs-polaris
-and the four IAG repos). GitLab issue trackers are not covered. Local plans could not be checked
-for pyobs-astrometry, pyobs-allsky-cloudcover, pyobs-dashboard-utils or pyobs.github.io because
-those clones are absent. Plan summaries use the plan body and local commits/tags when an index
-is stale; hardware/deployment status is taken from the docs, not a new live check.
+Snapshot scope: issues from the 25 verified public, non-archived repositories in the
+`pyobs` GitHub organization, including the homepage; plans and verification work documented
+in public repositories only. A local sibling checkout does not establish public visibility.
+Plan summaries use public plan bodies and public commits/tags when an index is stale;
+hardware/deployment status is taken from public docs, not a new live check.
 
 ## Open issues (16, checked 2026-10-15)
 
@@ -588,8 +582,7 @@ One row per issue — same layout for every repo.
   2026-09-29, released v2.13.0). Phase 3 (pyobs-aravis) and 3b (pyobs-asi v2.1.0, pyobs-qhyccd
   v2.1.0) code landed; 3b still needs a hardware check (QHY binned window offsets, stale frames
   after a live-mode restart, `readout_time` per sensor), so its boxes stay unticked. Phase 7 code landed for pyobs-tis
-  v2.1.0 and pyobs-v4l v2.1.0 (not hardware-tested). Downstream `AravisCamera` subclasses in
-  pyobs-iagvt released in v2.4.0. Open: driver/subclass hardware verification (3/3b/7), client
+  v2.1.0 and pyobs-v4l v2.1.0 (not hardware-tested). Open: driver/subclass hardware verification (3/3b/7), client
   verification (6: gui v2.6.0 and web-client v0.14.0 code released), shim removal (8).
 
 ### Design and rollout verification
@@ -598,8 +591,7 @@ One row per issue — same layout for every repo.
   merged in core [#996](https://github.com/pyobs/pyobs-core/pull/996), GUI
   [#218](https://github.com/pyobs/pyobs-gui/pull/218) and portal
   [#181](https://github.com/pyobs/pyobs-portal/pull/181); core v2.18.0 and GUI/portal v2.7.0 released.
-  Remaining: [pyftscontrol choice-label metadata](../../../pyftscontrol/specs/plans/2026-10-15-typed-config-choices.md)
-  release/deployment, coordinated producer/decoder/client upgrades, module restart/capability
+  Remaining: coordinated producer/decoder/client upgrades, module restart/capability
   republish and live verification. GUI #211 is closed; portal #173 remains GitHub-open,
   with its code merged and released. Local sibling plan headers still say release pending; remote PR/release state takes
   precedence for this snapshot.
@@ -647,38 +639,3 @@ One line per plan — same layout for every repo.
   *Phase 1 released* in v2.1.0; plan header/index and release checkbox are stale. Open: hardware
   acquisition-restart/read-back checks, timestamp/PTP investigation and optional device
   timestamps, long-running hardware verification.
-
-### IAG internal plans (local docs only)
-
-These entries describe remaining work recorded locally; GitLab issue and production state were
-not refreshed. Several indexes still say proposed or uncommitted although code is released.
-
-- **pyobs-iag50** — [2026-08-23-iag50-pyobs-core-2x-migration.md](../../../pyobs-iag50/specs/plans/2026-08-23-iag50-pyobs-core-2x-migration.md) —
-  *implemented*, pending manual smoke test on real hardware; the index's "code fixes not yet
-  done" summary is stale.
-- **pyobs-iag50** — [2026-09-13-per-science-exptime-darks.md](../../../pyobs-iag50/specs/plans/2026-09-13-per-science-exptime-darks.md) —
-  *implemented, pending deploy*: morning per-science-exposure darks through DIRECT SCRIPT tasks.
-- **pyobs-iag50** — [2026-09-18-iag50srv-host-firewall-hardening.md](../../../pyobs-iag50/specs/plans/2026-09-18-iag50srv-host-firewall-hardening.md) —
-  *planned, not implemented*: host firewall preparation for the proposed WireGuard tunnel.
-- **pyobs-iagvt** — [2026-09-02-fts-local-staging-imagewatcher.md](../../../pyobs-iagvt/specs/plans/2026-09-02-fts-local-staging-imagewatcher.md) —
-  *partially implemented*: local staging/relocation and scratch-path correction landed;
-  real-hardware dry run, outage/headroom checks and rollout remain.
-- **pyobs-iagvt** — [2026-09-04-fts-live-preview.md](../../../pyobs-iagvt/specs/plans/2026-09-04-fts-live-preview.md) —
-  *base feature released and hardware verified* in v2.3.5; follow-up preview configuration and
-  archive suppression have further verification recorded in the plan. Its index's unreleased
-  base-feature status is stale.
-- **pyobs-iagvt** — [2026-09-27-gregorycamera-idatastack-migration.md](../../../pyobs-iagvt/specs/plans/2026-09-27-gregorycamera-idatastack-migration.md) —
-  *proposed, not started*: on-demand stacks and flatfield/crop pipeline replacing continuous
-  Gregory averaging; coordinate with the frames migration.
-- **pyobs-iagvt** — [2026-09-29-aravis-frames-migration.md](../../../pyobs-iagvt/specs/plans/2026-09-29-aravis-frames-migration.md) —
-  *Phase 1 released* in v2.4.0 (`478b1ba`); the plan still says unreleased/waiting for Aravis.
-  Hardware restart/timestamp/read-back checks, deployed averaging-config check and long-running
-  verification remain.
-- **pyobs-iagvt** — [2026-09-29-suncamera-speedup.md](../../../pyobs-iagvt/specs/plans/2026-09-29-suncamera-speedup.md) —
-  *proposed, not started*: guiding-cycle measurement, cached/off-loop disk detection and
-  float32 output, plus threshold/fallback fixes.
-- **pyobs-iagvt** — [2026-09-29-suncamera-stacked-grabs.md](../../../pyobs-iagvt/specs/plans/2026-09-29-suncamera-stacked-grabs.md) —
-  *implementation released* in v2.5.0 (`92c724a`); plan/index still say uncommitted/not deployed.
-  On-sky verification and coordination with the speedup work remain; deployment not rechecked.
-- **pyobs-monet** — [2026-09-15-monetn-infra-migration.md](../../../pyobs-monet/specs/plans/2026-09-15-monetn-infra-migration.md) —
-  *in progress* per local plan: sections 1–6 done; web-admin deployment (section 7) next.

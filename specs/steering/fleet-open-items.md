@@ -1,9 +1,42 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — GitHub issues and discussions checked 2026-10-14; local fleet plans last reviewed 2026-10-13.
+Status: standing snapshot — GitHub issues/discussions and local fleet plan entries checked 2026-10-15.
 
 <details>
 <summary>Changelog (most recent first)</summary>
+
+- **2026-10-15** (post-release refresh): queried all 26 active GitHub repos again: 27 open
+  issues, 17 unresolved items. Core #973 is implemented in merged PR #998 and is removed
+  from the table (not yet released). GUI #211 is closed. Alpaca #54 and BROT #87 are closed
+  after v2.0.4/v2.4.1; #952 is closed after withdrawal. No new issue reports or comments
+  changed the remaining rows. Ten GitHub-open issues are intentionally excluded because
+  their code is merged/released: core #971/#973, portal #173, BROT #83/#85, GUI
+  #168/#182/#185/#186 and web-client #58. Provider/deployment verification remains below.
+  No GitHub issues or deployments were changed during this refresh. Table 17.
+
+- **2026-10-15** (driver FITS routing): merged Alpaca PR #55 and BROT PR #88 after pytest,
+  Ruff and pyrefly passed. Released Alpaca v2.0.4 (release PR #57) and BROT v2.4.1 (release
+  PR #90), with release CI passing. Removed Alpaca #54 and BROT #87 from open items; both
+  closed automatically on the release merges. Table 18; GitHub-open total now 28 relative
+  to the last snapshot. No live hardware verification was performed.
+
+- **2026-10-15** (#952): closed on GitHub after the reporter withdrew item 7; items 1–6
+  and 8 were released in v2.15.0. Already absent from the unresolved-items table, which remains 20.
+  GitHub-open total is now 30 (down from the refresh snapshot's 31).
+
+- **2026-10-15** (fleet refresh): queried all 26 active GitHub repos directly: 31 GitHub-open
+  issues, 20 listed unresolved items. Added core #995 (DAY-OBS/frame-number reset and repeated
+  filenames) and archive #78 (linked UTC windows interpreted in the browser's local timezone).
+  Removed core #952: the reporter withdrew item 7 after a logged v2.16.1 reproduction attempt;
+  its other items shipped in v2.15.0. Core #971 remains excluded: PR #977 implemented both
+  provider selection and telescope namespace filtering. Typed-choice issues GUI #211 / portal
+  #173 are implemented in merged PRs #218 / #181 (shared core #996); track remaining rollout
+  and provider metadata verification below, not as unfinished application code. Core v2.18.0
+  and GUI/portal v2.7.0 are released; provider/deployment rollout remains. The seven previously
+  excluded released issues (BROT #83/#85, GUI #168/#182/#185/#186, web-client #58) remain excluded.
+  Reviewed listed plan headers and recent local spec commits, including typed choices and
+  pyftscontrol metadata. Driver namespace PRs Alpaca #55 and BROT #88 remain open. No GitHub
+  issues were changed; GitLab issue trackers and deployed hardware were not checked. Table 20.
 
 - **2026-10-14** (#972 / v2.16.1): PR #975 merged to `develop` (`a9b4df9f`), CI pytest,
   Ruff and pyrefly passed. Removed #972 and its plan from open items. Patch release v2.16.1
@@ -502,21 +535,19 @@ for pyobs-astrometry, pyobs-allsky-cloudcover, pyobs-dashboard-utils or pyobs.gi
 those clones are absent. Plan summaries use the plan body and local commits/tags when an index
 is stale; hardware/deployment status is taken from the docs, not a new live check.
 
-## Open issues (19, checked 2026-10-14)
+## Open issues (17, checked 2026-10-15)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-alpaca | [#54](https://github.com/pyobs/pyobs-alpaca/issues/54) | Forward FITS namespace and sender metadata to BaseTelescope | [PR #55](https://github.com/pyobs/pyobs-alpaca/pull/55) open |
-| pyobs-brot | [#87](https://github.com/pyobs/pyobs-brot/issues/87) | Preserve FITS namespace metadata through telescope header overrides | [PR #88](https://github.com/pyobs/pyobs-brot/pull/88) open |
-| pyobs-core | [#973](https://github.com/pyobs/pyobs-core/issues/973) | BaseTelescope writes altitude, airmass and Moon/Sun distance only for IPointingAltAz telescopes | **external** (MichaelJEvan); filed 2026-10-13; reporter measured missing `TEL-ALT`, `TEL-AZ`, `TEL-ZD`, `AIRMASS`, `MOONDIST` and `SUNDIST` without `IPointingAltAz`, despite available RA/Dec and site; requests geometry cards for RA/Dec-only telescopes; not yet investigated locally |
+| pyobs-core | [#995](https://github.com/pyobs/pyobs-core/issues/995) | Time.night_obs gives one night two dates, so DAY-OBS and FRAMENUM restart at midnight and frame names repeat | **external** (MichaelJEvan); reporter measured one night receiving two dates in v2.16.1: sunset-to-midnight uses tomorrow's sunset, then the date moves backward at midnight; `FRAMENUM` restarts and filenames repeat, potentially replacing archive entries; reproduced locally 2026-10-15 with real UTC/New York/Los Angeles observers and the actual FITS-header/frame-cache pipeline: different nights generated identical `pyobs-20261015-0001.fits` names; archive source reuses rows by basename; fix should anchor sunset search at local noon and return its local date, preserving dawn calibration and explicit daytime behavior; implementation not started; proposed [plan](../plans/2026-10-15-night-obs-stable-local-date.md) |
 | pyobs-core | [#959](https://github.com/pyobs/pyobs-core/issues/959) | Expected remote faults (e.g. AltitudeLimitError) count towards RemoteError escalation in pointing and flat-field routines | filed 2026-10-12; *bug* — inferred from the code, not reproduced; `PointingLimitError` (on `develop`) gives a type to exclude |
-| pyobs-core | [#952](https://github.com/pyobs/pyobs-core/issues/952) | Findings from running the robotic chain on a second site, 2.14.2 | **external** (MichaelJEvan); filed 2026-10-08; items 1 to 6 and 8 released in v2.15.0; open: item 7 only (fresh state-node subscriber got the old process's item after a restart on ejabberd; waiting for the reporter's logs, asked 2026-10-12, plan `2026-10-12-state-subscriber-reads-old-item-after-restart.md`) |
 | pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage; reporter runs a separate meridian-flip module and proposes Mastermind consume its advance/in-progress events to avoid starting exposures across a flip; event shape and integration remain undecided |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
+| pyobs-archive | [#78](https://github.com/pyobs/pyobs-archive/issues/78) | Links into the archive with a time window find nothing when the viewer's computer is not on UTC | **external** (MichaelJEvan); reporter measured 10 matching frames via the UTC API window and zero after browser-local conversion in v2.1.4; URL `start`/`end` are parsed with `moment()` then submitted without timezone; proposes `moment.utc()` to match other date selectors; not investigated locally |
 | pyobs-archive | [#74](https://github.com/pyobs/pyobs-archive/issues/74) | Findings from running the archive on a MacBook M5 Pro (no Docker), 2.1.4 | **external** (MichaelJEvan); filed 2026-10-08; hardcoded `/usr/bin/fpack`, Frame row saved before fpack (no transaction), upside-down preview, wrong image name in `docker-compose.yaml`, white loading overlay |
 | pyobs-portal | [#169](https://github.com/pyobs/pyobs-portal/issues/169) | Findings from running the portal on a plain machine (no Docker), 2.5.5 | **external** (MichaelJEvan); filed 2026-10-08; `.env.example` vs `SQL_*` settings, no `[build-system]`, needs `pyobs-core[full]`, negative priorities, no UI to cancel pending observations; body has more items |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
@@ -532,11 +563,9 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
-
-
-- [2026-10-12-state-subscriber-reads-old-item-after-restart.md](../plans/2026-10-12-state-subscriber-reads-old-item-after-restart.md) —
-  *waiting for evidence* (#952 item 7). Logs requested 2026-10-12; no reporter reply as of
-  2026-10-14, no fix chosen.
+- [2026-10-15-night-obs-stable-local-date.md](../plans/2026-10-15-night-obs-stable-local-date.md) —
+  *proposed* (#995): stable local-noon observing dates, frame counters and filenames;
+  preserve dawn calibration, timezone/DST and polar fallback behavior.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
   (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot per the plan.
@@ -549,8 +578,17 @@ One row per issue — same layout for every repo.
   pyobs-iagvt released in v2.4.0. Open: driver/subclass hardware verification (3/3b/7), client
   verification (6: gui v2.6.0 and web-client v0.14.0 code released), shim removal (8).
 
-### Design docs with open work or verification
+### Design and rollout verification
 
+- [typed-config-choices.md](../plans/2026-10-14-typed-config-choices.md): application implementation
+  merged in core [#996](https://github.com/pyobs/pyobs-core/pull/996), GUI
+  [#218](https://github.com/pyobs/pyobs-gui/pull/218) and portal
+  [#181](https://github.com/pyobs/pyobs-portal/pull/181); core v2.18.0 and GUI/portal v2.7.0 released.
+  Remaining: [pyftscontrol choice-label metadata](../../../pyftscontrol/specs/plans/2026-10-15-typed-config-choices.md)
+  release/deployment, coordinated producer/decoder/client upgrades, module restart/capability
+  republish and live verification. GUI #211 is closed; portal #173 remains GitHub-open,
+  with its code merged and released. Local sibling plan headers still say release pending; remote PR/release state takes
+  precedence for this snapshot.
 - [basevideo-live-view.md](../design/basevideo-live-view.md): selectable live view of `BaseVideo`
   (MJPEG or raw). Server side in pyobs-core v2.13.0 (CORS in v2.14.0), gui mode choice released
   in v2.6.0, web-client modes and zoom/crop released in v0.14.0. Open: client verification

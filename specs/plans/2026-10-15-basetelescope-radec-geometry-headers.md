@@ -1,6 +1,6 @@
 # Geometry FITS headers for RA/Dec-only telescopes
 
-Status: implemented; PR pending (2026-10-15)
+Status: implemented; merged to develop in [PR #998](https://github.com/pyobs/pyobs-core/pull/998) on 2026-10-15; not yet released
 
 Repos: pyobs-core
 

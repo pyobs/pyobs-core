@@ -135,9 +135,10 @@ Base and dummy changes implemented; TEL-FOCU stays in the dummy. Focused core te
 provider selection and namespaces, including two camera/telescope pairs and config-factory
 construction. Local Alpaca/BROT inheritance shapes are valid with the shared mixin; retained
 explicit driver bases preserve compatibility with older core versions. Their header overrides
-need metadata forwarding fixes tracked in pyobs-alpaca #54 and pyobs-brot #87, implemented in
+received metadata forwarding fixes tracked in pyobs-alpaca #54 and pyobs-brot #87, implemented in
 [Alpaca PR #55](https://github.com/pyobs/pyobs-alpaca/pull/55) and
-[BROT PR #88](https://github.com/pyobs/pyobs-brot/pull/88). IAGVT SolarTelescope also calls the base without metadata and appends
+[BROT PR #88](https://github.com/pyobs/pyobs-brot/pull/88), merged and released in Alpaca v2.0.4
+and BROT v2.4.1 on 2026-10-15 (release PRs #57 and #90). IAGVT SolarTelescope also calls the base without metadata and appends
 cards without final filtering; configured ownership there needs a follow-up before enabling it.
 ASCOM is legacy synchronous code and was not migrated. No hardware or XMPP runtime test.
 

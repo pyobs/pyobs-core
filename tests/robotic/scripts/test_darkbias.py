@@ -6,6 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import astropy.units as u
 import pytest
+from astroplan import Observer
+from astropy.coordinates import EarthLocation
+from astropy.utils import iers
 
 from pyobs.robotic.instruments import BinningOption, CameraCapability, Instrument, InstrumentCapabilities
 from pyobs.robotic.scripts.calibration import darkbias
@@ -594,3 +597,14 @@ async def test_can_run_logs_recovery_after_archive_failure(caplog: pytest.LogCap
         "Could not determine night or query archive for science exptimes: <ArchiveError> archive unreachable",
         "Querying the archive for science exptimes succeeded again.",
     ]
+
+
+@pytest.mark.parametrize("override, expected", [(None, "2026-10-14"), ("2026-10-10", "2026-10-10")])
+def test_resolve_night_retains_real_previous_night_at_dawn(mocker, override, expected) -> None:
+    observer = Observer(location=EarthLocation.from_geodetic(-76, 41.2), timezone="America/New_York")
+    mocker.patch.object(Time, "now", return_value=Time("2026-10-15T11:30:00"))
+    script = DarkBiasScript.model_validate(
+        {"camera": "camera", "night": override}, context={"comm": MagicMock(), "observer": observer}
+    )
+    with iers.conf.set_temp("auto_download", False):
+        assert script._resolve_night() == expected

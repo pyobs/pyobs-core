@@ -14,7 +14,7 @@ Related [implementation plan](2026-10-16-brot-initialization-completion.md).
 | MONET/S, Sutherland | `BrotAltAzTelescope`; MQTT telescope name `MONETS`; [configuration](/home/husser/code/pyobs/pyobs-monet/config/south/monet/telescope.yaml:4) | `MONETS` application instantiates the same `MONETcommon.FB_MonetTelescopeControl`, with its own hardware/configuration | Same family of initialization work as MONET/N; different site targets/calibration and auxiliary configuration. Do not add IAG50's post-power go-home or focus-home sequence to this controller. | Separate site acceptance even when testing the same MONETcommon release; verify configured axes, covers, safety inputs, and home/calibration values. |
 | IAG50, Göttingen | `BrotRaDecTelescope`; MQTT telescope name `IAG50`; [configuration](/home/husser/code/pyobs/pyobs-iag50/config/iag50srv/telescope.yaml:4) | Site-local `FB_TelescopeControl IMPLEMENTS I_RaDecTelescope, I_Telescope`; **does not inherit** BROTLib's `FB_RaDecTelescopeControl` | Optional cover-opening phase; HA/Dec calibration and focus enable/calibration; `_PowerOn` sets powered and requests automatic go-home; sequential HA/Dec home; final assignment of focus-home target. Readiness can be 1 before home finishes, and the home terminal stage does not wait for the focus move. | Keep pending across power-to-home handoff, intermediate standstill and final focus movement; test optional-axis/device behavior against supported configurations and all interruption/failure paths. |
 
-The current three primary YAML files do not explicitly set `ra_in_hours`, `multi_field_commands`, `publish_dut1`, initialization deadlines, or a new calibration-state setting. Therefore local driver defaults apply when used with this checkout; that does not establish what an installed older driver does. MONET/S and IAG50 explicitly configure the pyobs weather module; MONET/N does not in its telescope YAML. These differences must not be erased by a common initialization change.
+The current three primary YAML files do not explicitly set `ra_in_hours`, `multi_field_commands`, or `publish_dut1`. No new YAML setting is needed to recognize READY_STATE 0.8. Therefore local driver defaults apply when used with this checkout; that does not establish what an installed older driver does. MONET/S and IAG50 explicitly configure the pyobs weather module; MONET/N does not in its telescope YAML. These differences must not be erased by a common initialization change.
 
 ## Controller evidence and site differences
 
@@ -99,7 +99,8 @@ No inspected source establishes an additional BROT telescope beyond these three.
 
 ## Consequences for issue 91
 
-- Implement one shared semantic contract with separate completion boundaries for the MONET family and IAG50 implementation.
+- Implement the corrected READY_STATE semantics in the PLC, with separate completion boundaries for the MONET family and IAG50 implementation.
+- Limit Python changes to the CALIBRATING enum/status mapping and focused initialization/readiness regression coverage. The existing init loop already waits for 1.0. Freshness, local deadlines and concurrency redesign remain separate hardening follow-ups, not prerequisites for this fix.
 - Exercise both `BrotAltAzTelescope` and `BrotRaDecTelescope` and all three site configurations. MONET/N and MONET/S remain separate release acceptance rows despite sharing controller code.
 - Do not change default driver compatibility based solely on an IAG50 firmware change. Account for controller support and migration at all three sites.
 - Resolve park/interruption semantics explicitly and test every startup entry point, including non-pyobs clients.

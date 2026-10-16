@@ -48,23 +48,21 @@ Resolve the inventory's IAG MQTT-name discrepancy and south configuration-link d
 
 Implementation tracking: BROTLib #68 defines the shared contract; MONETcommon #70 implements it for North and South; IAG50cm #104 implements the separate equatorial sequence. Broader controller inheritance migration is not required.
 
-## pybrotlib changes
+## Python changes: status mapping and regression coverage
 
-- Add `TelescopeStatus.CALIBRATING` and map raw 0.8 to it in `components/telescope.py`. Preserve all other documented mappings; unknown values remain unknown.
-- Keep the existing `power_on()` command and READY_STATE telemetry schema. No new topic, request ID, generation, or final-ready boolean is required.
-- Track validity/freshness of the selected telescope's READY_STATE. Missing/default values and retained snapshots alone are not proof of live readiness; unrelated telemetry must not refresh this field's age. Invalidate trust on disconnect/reconnect until fresh live readiness arrives.
-- Test the added status, full sequence, unknown values, missing/retained/stale telemetry, and reconnect behavior. Audit other consumers, including BROTgui, for explicit handling of the added enum member.
+The PLC fixes the early completion by delaying READY_STATE 1.0. Python continues using the existing field, command, and initialization loop.
 
-## pyobs-brot changes
+**pybrotlib:** add `TelescopeStatus.CALIBRATING` and map raw 0.8 to it in `components/telescope.py`. Preserve the other mappings and test the new value. Check explicit enum consumers, including BROTgui, for compatibility with the added status.
 
-- In `_update()`, map INITIALIZING and CALIBRATING to `MotionStatus.INITIALIZING` and `IReady=false`. Publish ready=true only for fresh ONLINE. Keep PLC health/error checks before success decisions.
-- `init()` retains weather checks and waits through both 0.7 and 0.8. For a healthy telescope already online, return without issuing a redundant power-on. For an already pending startup, wait rather than restarting it.
-- For a newly issued power-on from a non-online state, evaluate only live READY_STATE publications received after issuing the command; do not let the pre-command cache or retained online value satisfy completion. A fresh 1.0 can complete a fast startup without requiring the client to have sampled 0.7 or 0.8. Readiness publication alone is not a general command acknowledgement; test broker delivery/reconnect behavior and fail on loss of liveness rather than silently claiming success.
-- Use READY_STATE as the completion criterion, not mechanical motion samples. A healthy, live 1.0 now means the PLC has finished startup; Python must not add another guessed settle delay.
-- Preserve failure and interruption handling using the corrected readiness lifecycle, existing diagnostics, and local stop/park state. If an interruption has no distinct terminal readiness value, the client still must not return success; retain a bounded wait and report interruption where existing signals identify it. Do not invent a separate result protocol to resolve this.
-- Add a real configurable local deadline, including direct Python calls, and align RPC timeout metadata. The existing decorator attaches metadata rather than enforcing a direct-call deadline. Choose defaults from actual controller limits.
-- Raise initialization-appropriate errors for hardware failure, telemetry loss and timeout; propagate task cancellation. A waiter ending must not publish ready=true while hardware startup remains unresolved. Avoid unconditional late stop cleanup that could affect another operation.
-- Audit concurrent init and conflicting mount/focus/offset command admission, including inherited lock ordering. Pending startup must not overlap acquisition/movement; preserve available stop/park handling.
+**pyobs-brot:** map CALIBRATING alongside INITIALIZING to `MotionStatus.INITIALIZING` and `IReady=false` in `_update()`. The existing `init()` loop already stays pending for 0.7/0.8 and returns at 1.0; retain that behavior and the existing weather, error, telemetry-health, cancellation and RPC timeout handling. No new Python completion mechanism is needed.
+
+Add focused regression tests proving that 0.7 and 0.8 keep `init()` pending, 1.0 completes it, and CALIBRATING publishes initializing/not-ready. Include the existing failure and cancellation paths to ensure the small mapping change does not regress them. Controller tests, rather than Python heuristics, prove that 1.0 cannot occur before startup finishes.
+
+## Separate hardening follow-ups
+
+Per-field telemetry freshness/retained-message tracking, post-command observation barriers, configurable direct-call deadlines, command acknowledgement, concurrent-init joining, movement-admission/lock redesign, and additional abort cleanup are independent hardening topics. They are not implementation work or acceptance prerequisites for this PLC readiness fix. No new request IDs, generation counters, result envelopes, telemetry topics, capability handshake, or legacy opt-in mode is planned.
+
+The existing timeout decorator supplies RPC metadata rather than a direct-call deadline; this observation is retained for a separate follow-up, not a requirement to redesign `init()` here. Existing telemetry-health behavior remains in place; this change does not claim to fix every stale-cache or interruption-reporting limitation.
 
 ## Compatibility and rollout
 
@@ -72,7 +70,7 @@ Document that the corrected meaning of 1.0 requires updated controller behavior.
 
 Release pybrotlib's 0.8 mapping before controllers expose the new state to consumers that cannot handle it. Coordinate PLC and pyobs-brot updates for both controller families and all three sites; record tested application/library versions and per-site rollback steps. Keep existing 0.7-only controllers understood during staged rollout, while making clear whether their 1.0 semantics have been validated. No unrelated compatibility break or extra legacy opt-in mode is needed solely to introduce 0.8.
 
-## Regression and acceptance matrix
+## PLC and focused Python acceptance
 
 | Scenario | Required result |
 |---|---|
@@ -80,16 +78,13 @@ Release pybrotlib's 0.8 mapping before controllers expose the new state to consu
 | Calibration and automatic positioning | 0.8 remains pending through intermediate stops. |
 | IAG power-to-home handoff | No transient 1.0; home can progress using internal readiness. |
 | Mount finishes but startup-owned focus remains active | No 1.0 until required focus work finishes. |
-| Startup finishes successfully | PLC publishes 1.0; fresh state allows init to return and ready=true. |
+| Startup finishes successfully | PLC publishes 1.0; the existing init loop returns and readiness becomes true. |
 | Normal later slew/tracking | Remains online; separate motion telemetry describes movement. |
-| Already online or fast startup | No redundant restart and no requirement to sample a moving/pending edge. |
+| Python status mapping | Raw 0.8 maps to CALIBRATING and publishes initializing/not-ready. |
+| Python initialization loop | 0.7 and 0.8 remain pending; 1.0 completes; existing error/cancellation paths are preserved. |
 | Failure, stop/reset/interruption, pending-home expiry | No false 1.0; correct error/non-online handling and cleanup. |
 | Park request during each phase | Documented controller-specific policy; no premature online. |
 | MONET mode change during startup | No misleading fresh online while control is paused. |
-| Stale/retained state, disconnect, PLC offline/restart | Cannot satisfy completion from cached online; fail or remain bounded appropriately. |
-| Missing/unknown readiness, unrelated telemetry traffic | No inferred success or false freshness. |
-| Concurrent init and conflicting movement | No restarted startup or overlapping hardware commands. |
-| Direct call, timeout, cancellation | Bounded wait; correct exception/cancellation; no premature readiness. |
 | MONET/N, MONET/S, IAG50 | Separate configuration validation; correct family-specific completion boundary. |
 
 Run targeted pybrotlib/pyobs-brot tests and normal checks. Compile and test both controller implementations. Controlled hardware acceptance at all three sites should show 0.7/0.8 through startup, 1.0 only after completion, safe interruption, and movement immediately after a successful init without overlap. This plan does not itself authorize firmware deployment or hardware movement.

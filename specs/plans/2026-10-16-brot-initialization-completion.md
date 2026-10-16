@@ -1,140 +1,95 @@
-# Plan: wait for the complete BROT initialization operation
+# Plan: complete BROT initialization through READY_STATE
 
 Date: 2026-10-16
 
 Status: proposed; no implementation or deployment performed
 
-Issue: [pyobs/pyobs-brot#91 — init() should wait for calibration and automatic go-home completion](https://github.com/pyobs/pyobs-brot/issues/91)
+Consumer issue: [pyobs-brot #91](https://github.com/pyobs/pyobs-brot/issues/91).
+PLC issues: [BROTLib #68](https://github.com/BROTLib/BROTLib/issues/68), [MONETcommon #70](https://github.com/BROTLib/MONETcommon/issues/70), [IAG50cm #104](https://github.com/BROTLib/IAG50cm/issues/104).
 
-## Intended behavior
+## Agreed design
 
-**Scope: the entire BROT telescope fleet.** IAG50 is one deployment, not the target architecture or the complete acceptance scope. Inventory every telescope using pyobs-brot and its actual controller, firmware version, mount type, optional axes, and initialization sequence before choosing the implementation or release requirements. Do not assume that IAG50 and MONET exhaust that inventory. Local source examples establish possible failure modes, not the deployed fleet list.
+Use the existing `TELESCOPE.READY_STATE` as the authoritative public readiness state. Add `0.8` for **Calibrating** and publish `1.0` only after the entire startup sequence has completed successfully. This replaces the earlier proposal for a separate final-ready signal, request/result envelope, or initialization-generation protocol. Those additions are not prerequisites for this fix.
 
-The [repository-backed fleet inventory](2026-10-16-brot-fleet-inventory.md) identifies MONET/N, MONET/S, and IAG50, two concrete controller families, supporting libraries, duplicate development configs, and unresolved runtime/version checks. MONET/N and MONET/S require separate configuration acceptance despite sharing MONETcommon. It also records an IAG50 MQTT-prefix discrepancy and a south deployment-recipe mismatch that must be resolved against installed configuration before rollout.
-
-`BrotBaseTelescope.init()` succeeds only when the PLC has completed the initialization operation requested or joined by that call: required calibration, automatic mount home movement, and any focus movement started by that operation. Intermediate standstill, powered axes, and `READY_STATE == 1.0` are insufficient. A caller awaiting `init()` must then be able to start acquisition or movement without competing with unfinished initialization.
-
-The same completion definition must govern published `IReady` and initialization motion status. Failure, rejection, interruption, stale telemetry, lost connectivity, controller restart, and timeout must never become successful returns. Preserve task cancellation. Keep stop and park available while initialization is pending.
-
-This plan uses the issue description and local source inspection. It includes no deployment logs, operational history, or private deployment evidence.
-
-## Findings that determine the design
-
-| Source | Relevant behavior |
+| Value | Meaning |
 |---|---|
-| `pyobs-brot/pyobs_brot/brottelescope.py`, `init()` | Returns immediately for `TelescopeStatus.ONLINE`; after `power_on()`, returns for raw readiness 1 before checking telemetry health. |
-| Same file, `_update()` | Publishes ready=true whenever pybrotlib maps raw readiness to ONLINE, independently of an active `init()` call. |
-| `pyobs-brot/pyobs_brot/_settle.py` | Health checks raise `MoveError`; the generic condition waiter checks its condition before health. Neither is an initialization completion contract. |
-| `pyBROT/src/pybrotlib/components/telescope.py` | `status` maps readiness directly; `power_on()` publishes a trigger, without an operation acknowledgement or result. |
-| `pyBROT/src/pybrotlib/transport/{transport,mqtttransport}.py` | `telemetry_age()` measures the last incoming message, including unrelated traffic. Telemetry fields arrive separately. Receipt age alone does not establish a coherent, current initialization result. |
-| `IAG50cm/.../FB_TelescopeControl.TcPOU` | `_PowerOn` stage 100 clears `bPower`, sets `bIsPowered`, and requests `bGoHome`. Public readiness can become 1 during the automatic home operation. Home moves the mount axes sequentially, then its stage 100 assigns `focusHome` and clears `bGoHome` without waiting for focus arrival. Global stopped-motion excludes focus and can be true between mount movements. |
-| `MONETcommon/.../FB_MonetTelescopeControl.TcPOU` | Initialization has a different structure: `bPower` keeps public readiness at 0.7 through calibration and the mount/derotator home move. Audit completion at its own final stage rather than transplanting the IAG state machine. |
-| `pyobs-core/pyobs/modules/module.py`, `timeout()` | The decorator attaches RPC timeout metadata. It does not bound direct calls to `init()`. |
-| `pyobs-core/pyobs/modules/telescope/basetelescope.py` | Public move methods check motion status before acquiring their motion lock and may silently return during INITIALIZING. Those checks do not alone provide atomic command exclusion. |
+| `-1.0` | Error |
+| `0.0` | Parked |
+| `0.3` | Parking |
+| `0.7` | Initializing: startup preparation and other pending startup work |
+| `0.8` | Calibrating: calibration/homing and automatic startup positioning |
+| `1.0` | Online: startup complete and operational |
 
-## Decision: a PLC-owned operation result
+Keep `0.8` through automatic home/positioning and remaining initialization-owned focus movement, including intermediate standstill. A controller may use `0.7` for preparation and `0.8` for the subsequent calibration/positioning phase. Neither state is ready. `1.0` must never appear between startup phases. Normal slew/tracking after completed startup remains online; motion is reported separately by `TELESCOPE.MOTION_STATE`.
 
-Implement a versioned initialization contract across PLC, pybrotlib, and pyobs-brot. Do not fix this by adding a sleep, waiting for one stopped-motion sample, requiring a sampled moving-to-stopped edge, comparing against guessed home coordinates, or interpreting disappearance of a busy flag as success.
+Internal mechanical readiness remains distinct from this public state. Do not gate a home state machine on public `READY_STATE == 1.0` when that state machine must finish before publishing 1. Do not change `TELESCOPE.STATUS.GLOBAL`, which is a separate health/status field.
 
-### Request and result semantics
+## Fleet scope and evidence
 
-1. Introduce an initialization request carrying a unique client request ID in **one command message**. A proposed encoding is a new `initialize=<request-id>` command on the existing telescope SET channel; specify its grammar, length bound, and parser behavior before implementation. Do not send a token separately followed by the old `power=1` trigger: that permits mixed requests and depends on legacy multi-field parsing.
-2. The PLC creates a boot/session identity and a monotonically increasing operation generation. Every accepted initialization path, including existing local/legacy power-on entry points, must enter the same operation lifecycle. New request IDs identify acknowledgements/results; `(boot_id, generation)` identifies the physical operation.
-3. Lifecycle: `idle -> running -> succeeded | failed | interrupted`. A rejected request receives an explicit rejection associated with its request ID, without overwriting the outcome of an unrelated active operation. Include a bounded reason code; human-readable explanation is optional.
-4. Acceptance clears previous success before starting work. Success is latched until a later lifecycle transition; it is not a one-scan pulse. Failures and interruptions have explicit terminal results. Merely clearing `bPower`, `bGoHome`, or command flags never means success.
-5. A request while initialization is already running joins that operation; it must not restart calibration. A request while already fully initialized and currently operational receives an immediate successful acknowledgement for its own request ID without another power cycle or home move. The PLC, not cached Python readiness, decides this. Duplicate delivery of the same request ID is idempotent; a distinct request during an active operation must have an explicit join/busy response. Define bounded duplicate/result retention and never silently replay an old token as new work after eviction.
-6. Stop, park, reset, safety interruption, command preemption, and internal timeouts must terminate the relevant pending operation with a non-success result. Decide these outcomes before clearing the state machine flags. Reboot invalidates all prior operation identities and completion state.
-7. While an operation owns initialization, ordinary movement commands must not start or remain queued for surprise execution after completion. Reject them explicitly. Preserve safety and stop precedence. Define and implement park interruption explicitly: current MONET arbitration prioritizes power-on over park, while IAG's power branch clears pending park, so a uniform park-interrupt policy is a controller behavior change requiring tests. This protection belongs in the PLC as well as the client, because other clients can issue commands.
+The [fleet inventory](2026-10-16-brot-fleet-inventory.md) identifies MONET/N, MONET/S, and IAG50. MONET sites share MONETcommon but require separate configuration acceptance; IAG50 has its own controller and implements telescope interfaces directly rather than inheriting the BROTLib RaDec controller. HalfBROT is a hardware library, not another site.
 
-### Coherent, fresh publication
+Current IAG `_PowerOn` clears `bPower`, marks powered, and requests automatic home. Public readiness can become 1 before sequential HA/Dec home finishes. The home terminal stage assigns focus-home without waiting for unfinished focus movement. The inspected site has identical focus park/home targets, so a separate final focus move does not necessarily occur.
 
-Publish a complete initialization status envelope in a single MQTT message, rather than assembling a success decision from independently updated fields. Proposed dedicated topic: `{site}/Telemetry/initialization`, handled before generic Influx telemetry parsing. Use a bounded versioned payload; JSON is the preferred encoding if the PLC communication layer supports it without truncation. The wire-format implementation must include payload-size and escaping tests.
+MONET keeps `bPower` set through cover opening, calibration, and mount/derotator home movement. Audit its own final completion/cleanup rather than adding IAG-specific movements. Its focus calibration can restore a stored position or physically home; it does not request IAG's extra focus-home stage.
 
-Required envelope data: contract version, controller boot identity, publication sequence, operation generation, request acknowledgement/result identity, lifecycle state/reason, and current operational eligibility. Capture these together in one PLC scan after evaluating errors and interrupts. Keep historical operation success separate from current operational eligibility, so a successful previous init cannot make a now-parked or failed telescope ready. Joining clients must each receive a correlated acknowledgement, with the shared operation generation available for subsequent completion monitoring.
+Resolve the inventory's IAG MQTT-name discrepancy and south configuration-link discrepancy against installed configuration before rollout. Local source versions do not establish running firmware or resolved PLC libraries. Public issues should contain public source findings, not private deployment evidence.
 
-Publish on transitions and periodically at a documented cadence, including when stationary. Use a dedicated heartbeat cadence (proposed 1 s) and a configurable stale limit with comfortable jitter margin (proposed 5 s); do not reuse the existing stationary telemetry cadence of 5 s with a 5 s freshness limit. Define sequence handling for duplicates, out-of-order messages, reconnects, and rollover. Retained snapshots may populate diagnostics but cannot establish live completion. Track receive time only for validated envelopes from the selected site; unrelated telemetry must not refresh it. Invalidate live status on disconnect and require a new live snapshot after reconnect.
+## PLC changes
 
-Freshness is checked **before** acceptance of success, including the already-online path. Request correlation prevents queued or retained results from an earlier run satisfying a new call. A controller restart or loss of liveness while waiting fails the call rather than silently attaching it to another operation. Do not claim that broker PUBACK proves PLC acceptance.
+1. Document the state table and full-startup meaning of 1.0 in BROTLib interfaces/telemetry. Keep the existing MQTT field, numeric wire type, and startup commands.
+2. In each concrete controller, select public readiness from the complete startup lifecycle, not just powered axes or an instantaneous stopped condition. Set a pending state when initialization is accepted, before startup work can execute or telemetry can publish online.
+3. Publish 0.8 during calibration/homing and automatic startup positioning. Carry it without a 1.0 gap across IAG's power-to-home handoff and until any remaining initialization-owned focus work finishes. Validate completion flags against the current commands, including already-at-target cases.
+4. Preserve mechanical `bReady` for internal sequencing. Keep error reporting ahead of online selection. A stopped/failed/expired startup must not fall through to 1.0 merely because axes remain enabled or startup flags were cleared.
+5. On error, publish the existing error state; on park, use parking/parked. Define a truthful non-online state for an aborted, partially initialized telescope and the existing diagnostic/status information that lets clients fail rather than report success. Do not label partially initialized hardware parked unless it actually is parked. A new public interrupted value is not assumed by this plan.
+6. Check all startup entry points, including local controls and closed-cover power-on where supported. Repeated init must not unexpectedly restart a running startup; an already initialized telescope can remain online.
+7. Preserve safety and stop priority and coordinate physical abort cleanup with existing issues. Park currently waits behind MONET power-on and is cleared by IAG power-on: any changed park-during-startup policy must be explicit and tested. Do not expand this change into an unrelated arbitration rewrite.
+8. Handle IAG pending-home expiry without false online, and MONET mode changes that suspend conditional controller invocation without leaving a misleading public state.
+9. Publish READY_STATE on changes and periodically while stationary. Document cadence, retained behavior, disconnect/restart handling, and compatible stale limits. If publishing is conditional, ensure paused control does not keep replaying a misleading online state as fresh.
 
-### Controller-specific completion boundaries
+Implementation tracking: BROTLib #68 defines the shared contract; MONETcommon #70 implements it for North and South; IAG50cm #104 implements the separate equatorial sequence. Broader controller inheritance migration is not required.
 
-Define a shared semantic contract in BROTLib/pybrotlib and keep telescope-specific sequencing in the respective controller implementations. Audit `FB_BaseTelescopeControl`, `FB_AltAzTelescopeControl`, `FB_RaDecTelescopeControl`, derived implementations, and site-specific configuration. Calibration, automatic home, covers, focus, and derotator work count only where that telescope's initialization actually owns them; do not add IAG50 movements or axis requirements to other telescopes. The IAG and MONET notes below are initial case studies, not an exhaustive implementation list.
+## pybrotlib changes
 
-**IAG controller:** keep internal mechanical readiness available to the home state machine; simply withholding internal `bReady` would deadlock `_HomeTelescope` stage 0. Carry the initialization operation across `_PowerOn` stage 100 into the automatic `_HomeTelescope`. Add a final focus-completion stage after assigning `focusHome`, then latch initialization success only once the mount home sequence and required focus work have completed without error. Validate move-completion flags against the current command, not stale `MoveDone` values. A focus already at target may complete without a sampled moving state; otherwise use the focus block's actual completion/position contract and configured tolerance. Handle absent/optional focus according to the controller's supported configuration. Changing all manual home semantics is optional; proving the initialization-owned focus work complete is required.
+- Add `TelescopeStatus.CALIBRATING` and map raw 0.8 to it in `components/telescope.py`. Preserve all other documented mappings; unknown values remain unknown.
+- Keep the existing `power_on()` command and READY_STATE telemetry schema. No new topic, request ID, generation, or final-ready boolean is required.
+- Track validity/freshness of the selected telescope's READY_STATE. Missing/default values and retained snapshots alone are not proof of live readiness; unrelated telemetry must not refresh this field's age. Invalidate trust on disconnect/reconnect until fresh live readiness arrives.
+- Test the added status, full sequence, unknown values, missing/retained/stale telemetry, and reconnect behavior. Audit other consumers, including BROTgui, for explicit handling of the added enum member.
 
-**MONET controller:** attach the same operation lifecycle to its existing calibration and home sequence. Audit elevation, azimuth, derotator, and focus completion and cleanup at the terminal stage, including stale `MoveDone` flags and commands remaining asserted. Do not introduce an additional home move or an IAG-specific focus-home action where the controller does not request one.
+## pyobs-brot changes
 
-Cover mode changes that stop MONET's conditional automatic-mode controller invocation, and IAG's pending-home expiry that can clear the request without raising an error. Neither condition may silently become initialization success. IAG's actual `focusPark` and `focusHome` values coincide in the inspected configuration; final focus target assignment is not evidence that a separate motion always occurs.
+- In `_update()`, map INITIALIZING and CALIBRATING to `MotionStatus.INITIALIZING` and `IReady=false`. Publish ready=true only for fresh ONLINE. Keep PLC health/error checks before success decisions.
+- `init()` retains weather checks and waits through both 0.7 and 0.8. For a healthy telescope already online, return without issuing a redundant power-on. For an already pending startup, wait rather than restarting it.
+- For a newly issued power-on from a non-online state, evaluate only live READY_STATE publications received after issuing the command; do not let the pre-command cache or retained online value satisfy completion. A fresh 1.0 can complete a fast startup without requiring the client to have sampled 0.7 or 0.8. Readiness publication alone is not a general command acknowledgement; test broker delivery/reconnect behavior and fail on loss of liveness rather than silently claiming success.
+- Use READY_STATE as the completion criterion, not mechanical motion samples. A healthy, live 1.0 now means the PLC has finished startup; Python must not add another guessed settle delay.
+- Preserve failure and interruption handling using the corrected readiness lifecycle, existing diagnostics, and local stop/park state. If an interruption has no distinct terminal readiness value, the client still must not return success; retain a bounded wait and report interruption where existing signals identify it. Do not invent a separate result protocol to resolve this.
+- Add a real configurable local deadline, including direct Python calls, and align RPC timeout metadata. The existing decorator attaches metadata rather than enforcing a direct-call deadline. Choose defaults from actual controller limits.
+- Raise initialization-appropriate errors for hardware failure, telemetry loss and timeout; propagate task cancellation. A waiter ending must not publish ready=true while hardware startup remains unresolved. Avoid unconditional late stop cleanup that could affect another operation.
+- Audit concurrent init and conflicting mount/focus/offset command admission, including inherited lock ordering. Pending startup must not overlap acquisition/movement; preserve available stop/park handling.
 
-Audit common base interfaces, command dispatch, other derived telescope controllers, and all power entry points before advertising support. Each controller advertises the contract only after implementing and testing its terminal semantics. If public `READY_STATE` is also changed to stay at 0.7 through initialization, keep its error precedence and internal mechanical readiness separate; the versioned result remains authoritative.
+## Compatibility and rollout
 
-## Implementation work packages
+Document that the corrected meaning of 1.0 requires updated controller behavior. The numeric field already exists, so no new telemetry-capability handshake is required. Firmware that publishes 1.0 early cannot provide this guarantee; do not describe a Python-only update as fixing it.
 
-### 1. Specify and implement the controller protocol
-
-- Start with a fleet compatibility matrix: telescope/site, controller family and version, initialization entry points and owned devices, authoritative completion/failure/interruption signals, protocol support, and validation status. Mark unknown deployments explicitly; source-directory discovery alone does not establish coverage.
-- Document the request grammar, envelope schema, error/rejection codes, boot identity source, sequence rules, duplicate handling, joining behavior, and terminal-state rules in the controller/library repositories.
-- Extend command dispatch and the communication interface for atomic requests/results. Check message/string limits and exact site routing.
-- Add shared lifecycle support at the appropriate common layer, then implement and validate completion boundaries for every controller/configuration identified by the fleet inventory, including IAG and MONET. Publish state on every exit path. Keep hardware safety and command priority rules intact.
-- Add controller tests or an executable state-machine harness using the repositories' existing PLC test conventions. Compile the affected TwinCAT projects; static source assertions alone do not verify scan ordering or motion completion.
-
-### 2. Expose a typed pybrotlib API
-
-Files: `src/pybrotlib/telemetry.py`, `transport/transport.py`, `transport/mqtttransport.py`, `components/telescope.py`, and corresponding tests/documentation.
-
-- Add immutable typed initialization snapshots and request receipts with explicit unsupported/unknown states. Missing telemetry must not default to successful completion or idle.
-- Parse and validate the atomic envelope, preserve site and boot identity, reject malformed/unsupported versions, and track initialization-specific freshness. Do not combine a new status with an old generation.
-- Add `initialize(request_id)` and an accessor/wait interface for correlated acknowledgement and terminal outcome. Preserve existing `power_on()` for existing consumers; clearly document that publishing that trigger does not wait for initialization.
-- Expose the complete/operational predicate to clients without requiring private `_telemetry` access. Preserve raw readiness status semantics where compatibility requires them; use the new predicate explicitly in pyobs-brot.
-- Test same-run duplicates, stale/retained data, wrong site/request, reboot, joining, already-initialized acknowledgement, and completion before the first poll.
-
-### 3. Update pyobs-brot initialization and readiness
-
-Files: `pyobs_brot/brottelescope.py`, a small initialization helper if warranted, `tests/test_brottelescope.py` or a dedicated `tests/test_initialization.py`, `pyproject.toml`, and user documentation.
-
-- Retain the weather precondition and existing meaningful initialization errors. Check connection, PLC presence, supported contract, and snapshot freshness before deciding anything can succeed. An unknown last-will state may be acceptable with fresh valid operation telemetry; explicit offline is not.
-- Serialize/join concurrent local `init()` calls and set the local pending state plus ready=false before the first await that could expose the operation to another caller. Send one correlated request and wait for its acknowledged operation's terminal result. Remove both raw-readiness success exits.
-- Add a real monotonic overall deadline encompassing publication, acceptance, and completion, including direct Python calls. Make the duration configurable and align the RPC timeout metadata with it plus delivery margin. Choose the default using documented worst-case calibration, home, and focus limits; do not assume the current 120 s covers the expanded operation.
-- Raise `InitError` with a specific reason for rejection, PLC failure, stale/disconnected telemetry, restart, and deadline expiry. Use the established `AbortedError` convention for explicit interruption if compatible with callers; document and test it. Propagate `asyncio.CancelledError` unchanged. Do not leak the settling helper's `MoveError` as the initialization health error.
-- On cancellation or local timeout, keep readiness false while hardware activity is unresolved. Request a bounded, operation-scoped abort if supported and the operation is still current; never let cleanup issue an unscoped late stop against a replacement operation. Preserve the original exception if cleanup fails. A local waiter finishing does not by itself clear the PLC's initializing state.
-- `_update()` uses the same validated operation snapshot: pending locally or running in the PLC means INITIALIZING/ready=false; failed/unhealthy means ready=false with the appropriate error status; only a live operational snapshot after successful initialization may publish ready=true. This must also work after a pyobs restart or an initialization started by another client.
-- Add a shared command-admission guard for local initialization and conflicting telescope/focus/offset movement, and recheck immediately before publishing commands. Inspect inherited move methods and their lock ordering; do not assume their pre-lock status checks close the race. Reject concurrent movement clearly rather than silently treating it as a completed move. Stop and park remain usable and interrupt the pending init. Avoid changing general pyobs-core motion behavior unless a narrowly justified shared hook is necessary.
-
-### 4. Compatibility and release order
-
-- Missing completion telemetry is **unsupported**, not completed. There is no general safe legacy fallback using readiness plus a motion sample or a settle delay.
-- Proposed strict behavior requires the new completion contract for `init()` success and for ready=true, with an actionable unsupported-controller error before issuing a legacy power trigger. Keep a bounded initial capability/snapshot wait so module startup is distinguishable from an unsupported controller. This is a fleet-wide compatibility decision: do not ship it as the shared driver's default until the inventory and migration plan account for every operating BROT telescope. An IAG50-only firmware upgrade is not sufficient release coverage.
-- Upgrade controller support and publish a pybrotlib release first, then raise pyobs-brot's minimum dependency and release the driver change. Document the controller prerequisite prominently. If maintainers require a legacy opt-in mode, describe it as lacking this issue's guarantee and implement it separately; do not silently enable it.
-- Stage validation in simulation and a controlled hardware acceptance run for every operating controller family and materially different initialization configuration. Track staged rollout and rollback per telescope so a shared driver upgrade does not unexpectedly disable other BROT telescopes. The plan does not authorize a firmware deployment or hardware movement.
+Release pybrotlib's 0.8 mapping before controllers expose the new state to consumers that cannot handle it. Coordinate PLC and pyobs-brot updates for both controller families and all three sites; record tested application/library versions and per-site rollback steps. Keep existing 0.7-only controllers understood during staged rollout, while making clear whether their 1.0 semantics have been validated. No unrelated compatibility break or extra legacy opt-in mode is needed solely to introduce 0.8.
 
 ## Regression and acceptance matrix
 
-Use deterministic event-driven telemetry fixtures and a fake monotonic clock; avoid long real sleeps. Assert task completion, exception type, command count, and every emitted readiness state.
-
-| Scenario | Required assertion |
+| Scenario | Required result |
 |---|---|
-| Raw readiness reaches 1 while calibration/home remains active | `init()` stays pending; no ready=true. |
-| Mount stops between axis moves, or before automatic home begins | Still pending, even if stopped spans several publications. |
-| Mount home ends while initialization-owned focus is moving | Still pending until focus completion. |
-| Fast operation completes before the next client poll | Correlated terminal result succeeds without requiring a sampled running or moving edge. |
-| Already initialized, live operational controller | Correlated acknowledgement succeeds without power cycling or moving. |
-| Cached ONLINE/success, no live contract | No early success; unsupported/unhealthy handling applies. |
-| Rejection or failure during calibration, home, or focus | Error reaches caller; ready=false; no success log. |
-| Stop/park/reset/preemption during each phase | Explicit interrupted outcome; no later false success; a subsequent init can start cleanly. |
-| Broker disconnect, PLC offline, or initialization stream stalls | Fails even if cached readiness/result says success. Unrelated traffic cannot keep the wait alive. |
-| Retained, duplicate, reordered, malformed, wrong-site or old-request result | Cannot satisfy the current call or refresh valid freshness. |
-| PLC restart or reconnect while pending | Prior identity invalidated; no adoption of a different run as success. |
-| Two local init callers; an external initialization | One physical operation, defined join behavior, readiness consistent for all callers. |
-| New request delivered twice via QoS 1 | No repeated calibration/home and no reset of the operation deadline. |
-| Move/focus/offset request races with initialization admission | No conflicting hardware command before initialization completion. Stop/park still work. |
-| Local timeout, cancellation, or failed command publish | Bounded completion, correct error/cancellation propagation, no leaked lock/task, no premature ready=true. |
-| Direct `await telescope.init()` | Real timeout enforced without RPC machinery. |
-| Standalone home/park and every inventoried controller/configuration | Existing semantics preserved outside the explicitly changed initialization boundaries; no IAG50-specific movement assumptions leak into shared behavior. |
+| Startup accepted; preparation begins | Readiness leaves online before work starts; 0.7/0.8 are not ready. |
+| Calibration and automatic positioning | 0.8 remains pending through intermediate stops. |
+| IAG power-to-home handoff | No transient 1.0; home can progress using internal readiness. |
+| Mount finishes but startup-owned focus remains active | No 1.0 until required focus work finishes. |
+| Startup finishes successfully | PLC publishes 1.0; fresh state allows init to return and ready=true. |
+| Normal later slew/tracking | Remains online; separate motion telemetry describes movement. |
+| Already online or fast startup | No redundant restart and no requirement to sample a moving/pending edge. |
+| Failure, stop/reset/interruption, pending-home expiry | No false 1.0; correct error/non-online handling and cleanup. |
+| Park request during each phase | Documented controller-specific policy; no premature online. |
+| MONET mode change during startup | No misleading fresh online while control is paused. |
+| Stale/retained state, disconnect, PLC offline/restart | Cannot satisfy completion from cached online; fail or remain bounded appropriately. |
+| Missing/unknown readiness, unrelated telemetry traffic | No inferred success or false freshness. |
+| Concurrent init and conflicting movement | No restarted startup or overlapping hardware commands. |
+| Direct call, timeout, cancellation | Bounded wait; correct exception/cancellation; no premature readiness. |
+| MONET/N, MONET/S, IAG50 | Separate configuration validation; correct family-specific completion boundary. |
 
-Run the targeted pybrotlib and pyobs-brot tests, then their normal lint/type/test checks. Compile and run the controller tests. Hardware acceptance should record phase transitions and request/result identities, demonstrate a movement issued immediately after successful `init()`, and exercise interruption safely. Source review and Python mocks cannot substitute for that controller validation.
-
-## Completion criteria and decisions to close during implementation
-
-The issue is complete when both return behavior and published readiness obey the operation contract, tests cover the early-ready regression and all non-success paths, the fleet matrix accounts for every operating BROT telescope, applicable controller builds/configurations are validated, and compatibility prerequisites and migration paths are documented. IAG50 validation alone does not close the issue. A Python-only poll change is not sufficient with the current telemetry.
-
-Before coding the protocol, settle the exact bounded wire encoding, controller boot identity mechanism, multi-client acknowledgement retention, and operation-scoped abort representation. Before selecting timing defaults, confirm supported calibration/home/focus limits and publication jitter. Confirm the focus block's completion/tolerance contract and the exact supported controller/configuration list. These are implementation prerequisites, not reasons to weaken the success condition.
+Run targeted pybrotlib/pyobs-brot tests and normal checks. Compile and test both controller implementations. Controlled hardware acceptance at all three sites should show 0.7/0.8 through startup, 1.0 only after completion, safe interruption, and movement immediately after a successful init without overlap. This plan does not itself authorize firmware deployment or hardware movement.

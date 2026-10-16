@@ -1,6 +1,6 @@
 # Plan: typed configuration choices and shared display labels
 
-Status: implemented; release and deployment pending.
+Status: implemented; core v2.18.0 and GUI/portal v2.7.0 released; provider/deployment rollout pending (checked 2026-10-15).
 Repos: pyobs-core, pyobs-gui, pyobs-portal.
 Issue: [pyobs-gui#211](https://github.com/pyobs/pyobs-gui/issues/211).
 Companion plans: [GUI](../../../pyobs-gui/specs/2026-10-14-typed-config-choices.md),
@@ -133,7 +133,7 @@ to the explicit old-shape codec tests above. Do not ship a breaking in-place
 `options: list[scalar]` change as though it were backwards compatible.
 
 Completion requires both typed payloads and readable choice labels on the supported
-updated stack. Application code and automated checks are implemented. Release/deployment steps remain pending.
+updated stack. Application code and automated checks are implemented. Core v2.18.0 and GUI/portal v2.7.0 are released; provider/deployment rollout remains pending.
 
 Implementation note: no unreleased dependency floor is invented. The GUI can start with older
 core installations using legacy options; typed choices require updated producer and decoder code.
@@ -148,3 +148,12 @@ core installations using legacy options; typed choices require updated producer 
   hardware. Live module/XMPP deployment remains a release-environment check.
 - Changed Python sources pass Black. The repository-wide check reports existing
   differences confined to the ignored `.claude/scratch` tree.
+
+
+## Tracking update (2026-10-15)
+
+The implementation is merged in core PR #996, GUI PR #218 and portal PR #181.
+Core v2.18.0 and GUI/portal v2.7.0 GitHub releases are published. pyftscontrol's local metadata
+plan records implementation commit `75b84ee`, with release/deployment pending. The fleet
+view tracks this remaining rollout and verification separately from implemented issue code.
+No live module restart, capability republish or hardware deployment was checked here.

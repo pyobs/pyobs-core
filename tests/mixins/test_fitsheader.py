@@ -3,12 +3,15 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import date
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pytest
 import pytz
+from astroplan import Observer
 from astropy.coordinates import EarthLocation
+from astropy.utils import iers
 
 from pyobs.comm import Comm
 from pyobs.images import Image
@@ -16,6 +19,7 @@ from pyobs.interfaces import FitsHeaderEntry, IFitsHeaderAfter, IFitsHeaderBefor
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
+from pyobs.vfs import VirtualFileSystem
 from tests.helpers import make_proxy_cm
 
 
@@ -47,6 +51,7 @@ def make_observer(
 
 def make_module(location: EarthLocation | None = ..., observer: MagicMock | None = ..., **kwargs) -> FitsModule:
     comm = MagicMock(spec=Comm)
+    comm.name = "test-fits"
     if location is ...:
         location = DEFAULT_LOCATION
     if observer is ...:
@@ -773,3 +778,44 @@ async def test_two_cameras_route_telescope_headers_without_unrelated_requests():
         assert image.header["TEL-RA"] == (10 if camera_name == "camera1" else 200)
         assert image.header["TEL-FOCU"] == 50
         assert image.header["LOCAL"] == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("timezone", ["UTC", "America/New_York"])
+async def test_real_night_headers_keep_frame_cache_and_filenames_stable(tmp_path: Path, timezone: str) -> None:
+    observer = Observer(location=EarthLocation.from_geodetic(-76, 41.2), timezone=timezone)
+    vfs = VirtualFileSystem(roots={"pyobs": {"class": "pyobs.vfs.LocalFile", "root": str(tmp_path)}})
+
+    def camera():
+        return make_module(location=observer.location, observer=observer, vfs=vfs)
+
+    module = camera()
+    filenames = []
+    with iers.conf.set_temp("auto_download", False):
+        for index, timestamp in enumerate(
+            [
+                "2026-10-14T21:00:00",  # before sunset
+                "2026-10-14T22:30:00",  # after sunset
+                "2026-10-14T23:59:00",
+                "2026-10-15T00:01:00",  # UTC midnight
+                "2026-10-15T04:01:00",  # New York midnight
+                "2026-10-15T11:00:00",  # dawn calibration
+                "2026-10-15T16:00:00",  # next noon in both configured zones
+                "2026-10-15T23:59:00",
+                "2026-10-16T04:01:00",  # another night must not reuse an earlier name
+            ]
+        ):
+            if index == 3:
+                module = camera()  # restart reads the same on-disk cache
+            night = "2026-10-14" if index < 6 else "2026-10-15"
+            count = index + 1 if index < 6 else index - 5
+            image = make_image(**{"DATE-OBS": timestamp})
+            module._fitsheadermixin_add_fits_headers(image)
+            await module._fitsheadermixin_add_framenum(image)
+            assert image.header["DAY-OBS"] == night
+            assert image.header["FRAMENUM"] == count
+            assert await vfs.read_yaml(module._fitsheadermixin_cache) == {"night": night, "framenum": count}
+            filename = module.format_filename(image)
+            assert filename == f"/cache/pyobs-{night.replace('-', '')}-{count:04d}.fits"
+            filenames.append(filename)
+    assert len(set(filenames)) == len(filenames)

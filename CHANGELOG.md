@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries were converted from the former CHANGELOG.rst.
 
+## [Unreleased]
+
+### Fixed
+
+- Keep the observing-night date stable across sunset and midnight and use the
+  observatory's local sunset date. Prevents unintended `DAY-OBS`, cached `FRAMENUM`
+  and observation-number resets that could repeat frame names (#995). Deploy
+  between observing runs; reconcile affected counters with existing files before
+  resuming acquisition to avoid collisions when correcting a previously wrong date.
+
 ## [2.18.0] - 2026-10-15
 
 ### Added

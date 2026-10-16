@@ -162,7 +162,11 @@ pass through your methods, give its name with ``module=``:
 
 Handlers without ``module=`` only see errors raised locally, handlers with ``module=`` only see errors that
 came from that module over XMPP (they need ``remote_module``, see above). A handler for ``exc.RemoteError``
-with ``module=`` counts *every* error that came from that module, whatever its class.
+with ``module=`` counts remote failures regardless of their domain class, except
+``PointingLimitError`` and its subclasses: these expected destination rejections do not
+indicate a failing device. Explicit handlers for ``PointingLimitError`` or its ancestors
+still count them. Genuine transport errors and remote motion, exposure and unclassified
+failures continue to count towards broad ``RemoteError`` handlers.
 
 Every domain error that leaves a method of a module is logged by that module as a quiet INFO line
 (:class:`~pyobs.utils.exceptions.ForbiddenError` as WARNING). Errors that happen so often that even this is

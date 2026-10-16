@@ -1,8 +1,21 @@
 # A fresh state subscriber reads the old process's item after a module restart
 
-Status: waiting for evidence (2026-10-12); nothing implemented
+Status: withdrawn by reporter 2026-10-15; no code change required
 
 Repos: pyobs-core
+
+## Resolution (2026-10-15)
+
+The reporter [withdrew #952 item 7](https://github.com/pyobs/pyobs-core/issues/952#issuecomment-6180327382)
+in a comment posted 2026-10-14 22:57 UTC (October 15 in Europe/Berlin), after testing
+v2.16.1 with fresh subscribers and DEBUG stanza logs. Both IMotion and IPointingRaDec
+subscribers received the restarted process's latest item. Observed ages of 14.8 and 30.4
+seconds reflected time since that process's last publication; unchanged dummy states are
+published at startup and on change. The original measurement script is unavailable.
+
+No stale-delivery bug was reproduced and no candidate fix below is warranted by this
+report. Reopen the investigation only with a new occurrence and logs. The remaining text
+records the October 12 investigation and its then-unverified hypotheses.
 
 ## Context
 

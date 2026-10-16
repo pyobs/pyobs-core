@@ -318,9 +318,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   them; add a `<bases>` ancestor fallback to RPC faults, document it, then decide on the three
   errors it doesn't fix. **implemented** (step 3 as 3B) (2026-10-12; #952 item 8; Repos: pyobs-core)
 - [2026-10-12-state-subscriber-reads-old-item-after-restart.md](2026-10-12-state-subscriber-reads-old-item-after-restart.md):
-  a fresh state subscriber received the old process's item after a module restart; ranked
-  explanations from code reading, evidence requested on the issue, candidate fixes.
-  **waiting for evidence** (2026-10-12; #952 item 7; Repos: pyobs-core)
+  historical investigation of a reported stale state item after restart; logged v2.16.1
+  retest received the restarted process's latest item. **withdrawn by reporter, no code change**
+  (2026-10-15; #952 item 7; Repos: pyobs-core)
 - [2026-10-13-fits-header-constraints-and-priorities.md](2026-10-13-fits-header-constraints-and-priorities.md):
   the mastermind writes the task's constraints, task priority and project priority as
   `HIERARCH REQ ...` cards; each constraint class declares its own cards. **implemented**
@@ -351,5 +351,23 @@ Implementation plans, checklist-style. Newest at the bottom.
   optional camera `fits_header_modules` selection for before/after remote FITS providers;
   preserve broadcast by default and support an empty selection. **implemented; PR #977**
   (2026-10-14; #971; Repos: pyobs-core).
-- [2026-10-14-typed-config-choices.md](2026-10-14-typed-config-choices.md) — **implemented; release pending**. Typed structured-config choices, shared label metadata,
+- [2026-10-14-typed-config-choices.md](2026-10-14-typed-config-choices.md) — **implemented; core v2.18.0, GUI/portal v2.7.0 released; provider/deployment rollout pending**. Typed structured-config choices, shared label metadata,
   transport compatibility and coordinated core/GUI/portal rollout (pyobs-gui#211).
+- [2026-10-15-basetelescope-radec-geometry-headers.md](2026-10-15-basetelescope-radec-geometry-headers.md) —
+  derive telescope geometry FITS cards from RA/Dec, time and site independently of
+  `IPointingAltAz`, retaining interface-gated state publication. **implemented; merged PR #998, not yet released** (#973; Repos: pyobs-core).
+
+- [2026-10-15-night-obs-stable-local-date.md](2026-10-15-night-obs-stable-local-date.md) —
+  keep `Time.night_obs()` stable from local civil noon to noon and use the sunset's
+  local date, preventing mid-night `DAY-OBS`/cached-counter flips and repeated frame
+  names. **implemented, merged PR #999; issue #995 closed; release and deployment pending** (Repos: pyobs-core).
+
+- [2026-10-15-expected-pointing-fault-escalation.md](2026-10-15-expected-pointing-fault-escalation.md) —
+  exclude expected pointing-limit faults from broad remote-error escalation while
+  preserving explicit domain handlers and genuine failure thresholds. **implemented; merged PR #1000, not yet released**
+  (#959; Repos: pyobs-core).
+
+- [2026-10-15-portal-issue-169.md](2026-10-15-portal-issue-169.md) —
+  complete plain-machine setup, packaging, bounded task/project priorities and
+  explicit pending-observation cancellation. **proposed; not implemented**
+  (pyobs-portal#169; Repos: pyobs-portal, pyobs-core contract verification).

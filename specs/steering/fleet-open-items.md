@@ -5,6 +5,12 @@ Status: standing snapshot — GitHub issues/discussions and local fleet plan ent
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-16** (restore completed-item removals): corrected the scope-cleanup revert,
+  which accidentally restored Archive #74, Portal #169, Pipeline #24 and GUI #197.
+  Archive #74 is closed; the other implementations merged in Portal PR #183,
+  Pipeline PR #25 and GUI PR #221. Removed the completed portal plan entry and
+  GUI icon follow-up again. Windows verification #192 remains open. Table 12.
+
 - **2026-10-15** (scope correction): keep this list limited to public repositories.
   Removed out-of-scope project links and deployment notes; preserved public issue history.
   Visibility check confirms 25 active public repositories; unresolved issue count remains 16.
@@ -543,7 +549,7 @@ in public repositories only. A local sibling checkout does not establish public 
 Plan summaries use public plan bodies and public commits/tags when an index is stale;
 hardware/deployment status is taken from public docs, not a new live check.
 
-## Open issues (16, checked 2026-10-15)
+## Open issues (12, checked 2026-10-16)
 
 One row per issue — same layout for every repo.
 
@@ -554,12 +560,8 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage; reporter runs a separate meridian-flip module and proposes Mastermind consume its advance/in-progress events to avoid starting exposures across a flip; event shape and integration remain undecided |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
 | pyobs-archive | [#78](https://github.com/pyobs/pyobs-archive/issues/78) | Links into the archive with a time window find nothing when the viewer's computer is not on UTC | **external** (MichaelJEvan); reporter measured 10 matching frames via the UTC API window and zero after browser-local conversion in v2.1.4; URL `start`/`end` are parsed with `moment()` then submitted without timezone; proposes `moment.utc()` to match other date selectors; not investigated locally |
-| pyobs-archive | [#74](https://github.com/pyobs/pyobs-archive/issues/74) | Findings from running the archive on a MacBook M5 Pro (no Docker), 2.1.4 | **external** (MichaelJEvan); filed 2026-10-08; hardcoded `/usr/bin/fpack`, Frame row saved before fpack (no transaction), upside-down preview, wrong image name in `docker-compose.yaml`, white loading overlay |
-| pyobs-portal | [#169](https://github.com/pyobs/pyobs-portal/issues/169) | Findings from running the portal on a plain machine (no Docker), 2.5.5 | **external** (MichaelJEvan); filed 2026-10-08; `.env.example` vs `SQL_*` settings, no `[build-system]`, needs `pyobs-core[full]`, negative priorities, no UI to cancel pending observations; proposed [implementation plan](../plans/2026-10-15-portal-issue-169.md) covers remaining setup, packaging, priority bounds/migration preflight and pending-observation cancellation against portal 2.7.0; not implemented |
-| pyobs-pipeline | [#24](https://github.com/pyobs/pyobs-pipeline/issues/24) | Use Pipeline blue for app icon and favicons instead of Archive purple | filed 2026-10-15; recolour the existing icon badge to Pipeline blue (`#0d6efd`), retain the white branching symbol and transparency, regenerate favicons and verify actual login/browser sizes on light/dark backgrounds; no implementation PR yet |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 | pyobs-gui | [#198](https://github.com/pyobs/pyobs-gui/issues/198) | Live view: zoom and pan with a server-side crop | filed 2026-10-04; follow-up to #182, the raw-stream crop (`x`/`y`/`w`/`h`) already exists in pyobs-core |
-| pyobs-gui | [#197](https://github.com/pyobs/pyobs-gui/issues/197) | Add a pyobs app icon (notifications still show the Python logo) | filed 2026-10-04; no logo file in the repository, needs a decision on the logo |
 | pyobs-gui | [#196](https://github.com/pyobs/pyobs-gui/issues/196) | Traceback at shutdown after SIGTERM (hideEvent without running loop, event filter recursion) | filed 2026-10-04; not yet checked whether it is older than the notification work |
 | pyobs-gui | [#195](https://github.com/pyobs/pyobs-gui/issues/195) | Live check of the startup summary for modules already in ERROR | filed 2026-10-04; only unit tested so far |
 | pyobs-gui | [#194](https://github.com/pyobs/pyobs-gui/issues/194) | GNOME: live check of desktop notifications | filed 2026-10-04; needs a GNOME session; done on KDE |
@@ -570,10 +572,6 @@ One row per issue — same layout for every repo.
 
 ### pyobs-core `specs/plans/`
 
-- [2026-10-15-portal-issue-169.md](../plans/2026-10-15-portal-issue-169.md) —
-  *proposed, not implemented* (portal #169): plain-machine setup/packaging, finite bounded
-  priorities with migration preflight and explicit pending-observation cancellation.
-  Implementation belongs in portal; core contract verification only.
 - [2026-07-29-gui-telescopewidget-layout.md](../plans/2026-07-29-gui-telescopewidget-layout.md) —
   *partially implemented* (pyobs-gui `2ef4b55`). `TelescopeWidget` width-floor fixes #1
   (`MoveStack`) and #3 (`WrapLongRows`) landed; #4 (breakpoint reflow) likely moot per the plan.
@@ -625,7 +623,7 @@ One line per plan — same layout for every repo.
 - **pyobs-gui**: [2026-10-04-desktop-notifications.md](../../../pyobs-gui/specs/plans/2026-10-04-desktop-notifications.md):
   desktop notifications for module `ERROR` and log `ERROR`/`CRITICAL` (*implemented, released* in v2.6.0,
   checked on KDE; open: Windows shortcut #192, macOS #193, GNOME #194, startup summary #195,
-  shutdown traceback #196, app icon #197)
+  shutdown traceback #196)
 - **pyobs-gui**: [2026-10-04-settings-dialog.md](../../../pyobs-gui/specs/plans/2026-10-04-settings-dialog.md):
   settings schema, YAML config and standalone settings dialog (*implemented, released* in v2.6.0, steps 1
   to 5; the plan and the index still say "proposed", open: dedicated unknown-root exception in

@@ -72,7 +72,9 @@ The existing timeout decorator supplies RPC metadata rather than a direct-call d
 - Measure real startup duration per site against the 120 s `@timeout` on `init()`; IAG now also waits for the focus move inside it.
 - Confirm on hardware that MONET reaches 1.0 only after covers, calibration and home, and that `-2.0` after a transient interlock recovers to 1.0 without repeating calibration (as designed in `FB_StartupReadiness`).
 - Park-during-startup policy is unchanged (hidden behind init on MONET, cancelled by init on IAG); decide whether that stays.
-- Controller tests were not run for this review; run `FB_StartupReadiness_Tests` and `tools/test-startup-readiness.py`.
+- `tools/test-startup-readiness.py` passes (41 assertions, 11 scenarios) when the freshly built IronPLC compiler (`~/code/ironplc/compiler/target/debug`) is first in `PATH`; the installed `ironplcc` fails with a container-version error. It covers only `FB_StartupReadiness`, not the NC-backed controllers, which still need TwinCAT compile and hardware acceptance.
+- pybrotlib `CALIBRATING` (`620c2e5`) is merged but unreleased (PyPI has 1.7.0 without it). Release it, pin it in pyobs-brot, then drop the raw `== 0.8` special case in `_update()`.
+- Released: pyobs-brot 2.4.3 and pyobs-core 2.19.1 (on PyPI).
 
 ## Compatibility and rollout
 

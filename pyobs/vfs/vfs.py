@@ -19,6 +19,22 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
+class UnknownRootError(ValueError):
+    """Raised if a path uses a root that is not configured in the VFS.
+
+    Attributes:
+        root: Name of the root that could not be found.
+        path: Full path as it was passed to the VFS.
+    """
+
+    __module__ = "pyobs.vfs"
+
+    def __init__(self, root: str, path: str):
+        super().__init__(f"Could not find root {root} for file {path}.")
+        self.root = root
+        self.path = path
+
+
 class VirtualFileSystem:
     """Base for a virtual file system."""
 
@@ -79,6 +95,24 @@ class VirtualFileSystem:
         # return it
         return root, filename
 
+    def _resolve_root(self, path: str) -> tuple[str, dict[str, Any]]:
+        """Split the root from the path and look up its configuration.
+
+        Reads the roots only once, so a concurrent `set_roots` cannot change them between check and use.
+
+        Returns:
+            Tuple (filename within the root, configuration of the root).
+
+        Raises:
+            ValueError: If path has no root.
+            UnknownRootError: If the root is not configured.
+        """
+        root, filename = VirtualFileSystem.split_root(path)
+        config = self._roots.get(root)
+        if config is None:
+            raise UnknownRootError(root, path)
+        return filename, config
+
     def open_file(self, filename: str, mode: str) -> VFSFile:
         """Open a file. The handling class is chosen depending on the rootse in the filename.
 
@@ -88,18 +122,18 @@ class VirtualFileSystem:
 
         Returns:
             (IOBase) File like object for given file.
-        """
-        # split root
-        root, filename = VirtualFileSystem.split_root(filename)
 
-        # does root exist?
-        if root not in self._roots:
-            raise ValueError(f"Could not find root {root} for file.")
+        Raises:
+            ValueError: If filename has no root.
+            UnknownRootError: If the root of filename is not configured.
+        """
+        # resolve root
+        filename, config = self._resolve_root(filename)
 
         # create file object
         from pyobs.object import get_object
 
-        fd = get_object(self._roots[root], object_class=VFSFile, name=filename, mode=mode)
+        fd = get_object(config, object_class=VFSFile, name=filename, mode=mode)
 
         # return it
         return cast(VFSFile, fd)
@@ -271,56 +305,63 @@ class VirtualFileSystem:
             Local path.
 
         Raises:
-            ValueError: If path does not lead to a LocalFile.
+            ValueError: If path has no root or does not lead to a LocalFile.
+            UnknownRootError: If the root of path is not configured.
         """
         from .localfile import LocalFile
 
         # get class
-        klass, root, path = self._get_class(path)
+        klass, path, config = self._get_class(path)
 
         # local file?
         if not issubclass(klass, LocalFile):
             raise ValueError(f"Given path {path} is not a local path.")
 
         # get local path
-        return await klass.local_path(path, **self._roots[root])
+        return await klass.local_path(path, **config)
 
-    def _get_class(self, path: str) -> tuple[type[VFSFile], str, str]:
+    def _get_class(self, path: str) -> tuple[type[VFSFile], str, dict[str, Any]]:
         from pyobs.object import get_class_from_string
 
-        # split root
-        root, path = VirtualFileSystem.split_root(path)
+        # resolve root
+        path, config = self._resolve_root(path)
 
         # get root class
-        return get_class_from_string(self._roots[root]["class"]), root, path
+        return get_class_from_string(config["class"]), path, config
 
     @overload
     def _get_method(
         self, path: str, method: Literal["find"]
-    ) -> tuple[Callable[..., Awaitable[list[str]]], str, str]: ...
+    ) -> tuple[Callable[..., Awaitable[list[str]]], str, dict[str, Any]]: ...
 
     @overload
     def _get_method(
         self, path: str, method: Literal["listdir"]
-    ) -> tuple[Callable[..., Awaitable[list[str]]], str, str]: ...
+    ) -> tuple[Callable[..., Awaitable[list[str]]], str, dict[str, Any]]: ...
 
     @overload
-    def _get_method(self, path: str, method: Literal["exists"]) -> tuple[Callable[..., Awaitable[bool]], str, str]: ...
+    def _get_method(
+        self, path: str, method: Literal["exists"]
+    ) -> tuple[Callable[..., Awaitable[bool]], str, dict[str, Any]]: ...
 
     @overload
-    def _get_method(self, path: str, method: Literal["remove"]) -> tuple[Callable[..., Awaitable[bool]], str, str]: ...
+    def _get_method(
+        self, path: str, method: Literal["remove"]
+    ) -> tuple[Callable[..., Awaitable[bool]], str, dict[str, Any]]: ...
 
     @overload
-    def _get_method(self, path: str, method: Literal["rmdir"]) -> tuple[Callable[..., Awaitable[bool]], str, str]: ...
+    def _get_method(
+        self, path: str, method: Literal["rmdir"]
+    ) -> tuple[Callable[..., Awaitable[bool]], str, dict[str, Any]]: ...
 
     def _get_method(
         self, path: str, method: Literal["find", "listdir", "exists", "remove", "rmdir"]
-    ) -> tuple[Callable[..., Any], str, str]:
+    ) -> tuple[Callable[..., Any], str, dict[str, Any]]:
         # split root
-        klass, root, path = self._get_class(path)
+        klass, path, config = self._get_class(path)
 
         # get find method
-        return getattr(klass, method), root, path
+        return getattr(klass, method), path, config
 
     async def find(self, path: str, pattern: str) -> list[str]:
         """Find a file in the given path.
@@ -331,13 +372,17 @@ class VirtualFileSystem:
 
         Returns:
             List of found files.
+
+        Raises:
+            ValueError: If path has no root.
+            UnknownRootError: If the root of path is not configured.
         """
 
         # get method
-        find, root, path = self._get_method(path, "find")
+        find, path, config = self._get_method(path, "find")
 
         # and call it
-        return await find(path, pattern, **self._roots[root])
+        return await find(path, pattern, **config)
 
     async def listdir(self, path: str) -> list[str]:
         """Find a file in the given path.
@@ -348,13 +393,17 @@ class VirtualFileSystem:
 
         Returns:
             List of found files.
+
+        Raises:
+            ValueError: If path has no root.
+            UnknownRootError: If the root of path is not configured.
         """
 
         # get method
-        listdir, root, path = self._get_method(path, "listdir")
+        listdir, path, config = self._get_method(path, "listdir")
 
         # and call it
-        return await listdir(path, **self._roots[root])
+        return await listdir(path, **config)
 
     async def exists(self, path: str) -> bool:
         """Checks, whether a given path or file exists.
@@ -364,13 +413,17 @@ class VirtualFileSystem:
 
         Returns:
             Whether it exists or not
+
+        Raises:
+            ValueError: If path has no root.
+            UnknownRootError: If the root of path is not configured.
         """
 
         # get method
-        exists, root, path = self._get_method(path, "exists")
+        exists, path, config = self._get_method(path, "exists")
 
         # and call it
-        return await exists(path, **self._roots[root])
+        return await exists(path, **config)
 
     async def remove(self, path: str) -> bool:
         """Removes file with given path.
@@ -380,13 +433,17 @@ class VirtualFileSystem:
 
         Returns:
             Success of deletion.
+
+        Raises:
+            ValueError: If path has no root.
+            UnknownRootError: If the root of path is not configured.
         """
 
         # get method
-        remove, root, path = self._get_method(path, "remove")
+        remove, path, config = self._get_method(path, "remove")
 
         # and call it
-        return await remove(path, **self._roots[root])
+        return await remove(path, **config)
 
     async def rmdir(self, path: str) -> bool:
         """Removes the (empty) directory with given path.
@@ -396,13 +453,17 @@ class VirtualFileSystem:
 
         Returns:
             Success of deletion.
+
+        Raises:
+            ValueError: If path has no root.
+            UnknownRootError: If the root of path is not configured.
         """
 
         # get method
-        rmdir, root, path = self._get_method(path, "rmdir")
+        rmdir, path, config = self._get_method(path, "rmdir")
 
         # and call it
-        return await rmdir(path, **self._roots[root])
+        return await rmdir(path, **config)
 
 
-__all__ = ["VirtualFileSystem", "VFSFile"]
+__all__ = ["VirtualFileSystem", "VFSFile", "UnknownRootError"]

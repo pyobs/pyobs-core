@@ -73,8 +73,8 @@ The existing timeout decorator supplies RPC metadata rather than a direct-call d
 - Confirm on hardware that MONET reaches 1.0 only after covers, calibration and home, and that `-2.0` after a transient interlock recovers to 1.0 without repeating calibration (as designed in `FB_StartupReadiness`).
 - Park-during-startup policy is unchanged (hidden behind init on MONET, cancelled by init on IAG); decide whether that stays.
 - `tools/test-startup-readiness.py` passes (41 assertions, 11 scenarios) when the freshly built IronPLC compiler (`~/code/ironplc/compiler/target/debug`) is first in `PATH`; the installed `ironplcc` fails with a container-version error. It covers only `FB_StartupReadiness`, not the NC-backed controllers, which still need TwinCAT compile and hardware acceptance.
-- pybrotlib `CALIBRATING` is released in 1.7.1 (PyPI). pyobs-brot pins `pybrotlib>=1.7.1` and maps `CALIBRATING` alongside `INITIALIZING`; the raw `== 0.8` special case in `_update()` is removed (in the working tree, release of pyobs-brot pending).
-- Released: pyobs-brot 2.4.3 and pyobs-core 2.19.1 (on PyPI).
+- pybrotlib `CALIBRATING` is released in 1.7.1 (PyPI). pyobs-brot pins `pybrotlib>=1.7.1` and maps `CALIBRATING` alongside `INITIALIZING`; the raw `== 0.8` special case in `_update()` is removed (pyobs-brot 2.4.4).
+- Released on PyPI: pybrotlib 1.7.1, pyobs-brot 2.4.4 (2.4.3 had the `init()` fix) and pyobs-core 2.19.1.
 
 ## Compatibility and rollout
 

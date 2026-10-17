@@ -5,6 +5,22 @@ Status: standing snapshot: GitHub issues and local fleet plan entries checked 20
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-17** (later, skill run): re-queried all 26 live GitHub repos (25 public plus the
+  private `pyobs-dashboard-utils`, out of scope) and `develop` commits since 2026-10-16 in the local
+  checkouts. Removed core #941: `UnknownRootError` landed in PR #1002 (`4ef39c19`) and is released
+  in v2.19.0 (ancestor of `main`), so the issue is closed with a comment naming both. The pyobs-gui
+  switch from the message match to the type is open as PR #223 (not merged, needs core v2.19.0
+  as floor), tracked in the settings-dialog line below. Filed pyobs-gui #224 for that follow-up,
+  then closed it as not planned within minutes: my check for existing issues missed that #223 is a
+  PR. Dropped `basevideo-live-view.md` from the design list: its status now says implemented
+  (`c011f93b`); the remaining zoom and crop work is #198 and the web-client plan. Updated the
+  pyobs-aravis line: the plan header, index and changelog were corrected (aravis `a4b7b0c`, pushed),
+  and the plan now records that settings changes no longer restart acquisition (v2.1.2). No other
+  issue was added, changed or fixed; portal #173 stays excluded as in the entry below. Stale plan
+  statuses: the three found were fixed afterwards (core plan index entry for
+  `2026-10-17-vfs-unknown-root-error.md`, `guiding-raw-stream.md` released in v2.13.0). The pyobs-gui
+  settings-dialog plan, design and index say implemented only in uncommitted edits in the local
+  pyobs-gui checkout (together with the PR #223 work), so on `develop` they still say proposed. Not re-checked: sibling plan checklists against code, hardware and deployment state. Table 11.
 - **2026-10-17** (fleet refresh): queried all 25 public, non-archived repos directly (the
   private `pyobs-dashboard-utils` is out of scope; tiers cross-check shows no missing repo) and
   commits on `develop` since 2026-10-16. Removed archive #78: closed, fix `8194b1a`
@@ -572,13 +588,12 @@ in public repositories only. A local sibling checkout does not establish public 
 Plan summaries use public plan bodies and public commits/tags when an index is stale;
 hardware/deployment status is taken from public docs, not a new live check.
 
-## Open issues (12, checked 2026-10-17, see changelog)
+## Open issues (11, checked 2026-10-17, see changelog)
 
 One row per issue — same layout for every repo.
 
 | Repo | # | Title | Notes |
 |---|---|---|---|
-| pyobs-core | [#941](https://github.com/pyobs/pyobs-core/issues/941) | VirtualFileSystem: raise a dedicated exception for an unknown root | filed 2026-10-04; follow-up to PR #939, lets pyobs-gui drop its message match |
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage; reporter runs a separate meridian-flip module and proposes Mastermind consume its advance/in-progress events to avoid starting exposures across a flip; event shape and integration remain undecided |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
@@ -622,10 +637,6 @@ One row per issue — same layout for every repo.
   republish and live verification. GUI #211 is closed; portal #173 remains GitHub-open,
   with its code merged and released. Local sibling plan headers still say release pending; remote PR/release state takes
   precedence for this snapshot.
-- [basevideo-live-view.md](../design/basevideo-live-view.md): selectable live view of `BaseVideo`
-  (MJPEG or raw). Server side in pyobs-core v2.13.0 (CORS in v2.14.0), gui mode choice released
-  in v2.6.0, web-client modes and zoom/crop released in v0.14.0. Open: client verification
-  listed below, zoom plus server-side crop in the gui (#198).
 - [guiding-raw-stream.md](../design/guiding-raw-stream.md): guiding from the `BaseVideo` raw
   stream. *Implemented* in pyobs-core v2.13.0, not yet tried on a real camera; re-centring the
   crop is #927.
@@ -658,14 +669,15 @@ One line per plan — same layout for every repo.
   shutdown traceback #196)
 - **pyobs-gui**: [2026-10-04-settings-dialog.md](../../../pyobs-gui/specs/plans/2026-10-04-settings-dialog.md):
   settings schema, YAML config and standalone settings dialog (*implemented, released* in v2.6.0, steps 1
-  to 5; the plan and the index still say "proposed", open: dedicated unknown-root exception in
-  pyobs-core, #941)
+  to 5; the plan and the index on `develop` still say "proposed"; open: switch to core's `UnknownRootError`
+  (released in core v2.19.0) in PR [#223](https://github.com/pyobs/pyobs-gui/pull/223), not merged)
 
 - **pyobs-web-client** — [2026-10-04-video-live-view-modes.md](../../../pyobs-web-client/specs/plans/2026-10-04-video-live-view-modes.md) —
   *implementation released* in v0.14.0; the plan header/index still say planned. Open: run the
   committed MJPEG/raw E2E tests, measure 2048×2048 Canvas cost, check multi-camera connection
   limits and Android WebView streaming; colour-camera support remains separate work.
 - **pyobs-aravis** — [2026-09-29-frames-migration.md](../../../pyobs-aravis/specs/plans/2026-09-29-frames-migration.md) —
-  *Phase 1 released* in v2.1.0; plan header/index and release checkbox are stale. Open: hardware
-  acquisition-restart/read-back checks, timestamp/PTP investigation and optional device
-  timestamps, long-running hardware verification.
+  *implemented, released* in v2.1.0, refined in v2.1.2 (settings are applied while streaming,
+  restart only as fallback). Open: hardware read-back and PTP/timestamp checks, optional device
+  timestamps, long-running hardware verification. A frame exposing during a settings change can
+  still carry the new generation.

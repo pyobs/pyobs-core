@@ -9,6 +9,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.19.0] - 2026-10-17
+
 ### Added
 
 - `pyobs.vfs.UnknownRootError`, a `ValueError` subclass with `root` and `path`, raised by every

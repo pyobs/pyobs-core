@@ -22,7 +22,8 @@ The available roots in the *pyobs* VFS are usually defined in the configuration 
 
 With this configuration, all filenames that start with ``/root1/`` (e.g. ``/root1/path/filename.ext``) are handled
 by ``VfsClass1``, while all filenames starting with ``/root2/`` use ``VfsClass2``. Both defined classes can have
-additional parameters, which should also be given in the configuration.
+additional parameters, which should also be given in the configuration. A path with a root that is not configured
+raises :class:`~pyobs.vfs.UnknownRootError`, a subclass of :class:`ValueError`.
 
 With this example, one can easily see the advantages of using a VFS:
 
@@ -64,10 +65,11 @@ from .file import VFSFile
 from .localfile import LocalFile
 from .memfile import MemoryFile
 from .tempfile import TempFile
-from .vfs import VirtualFileSystem  # noqa: I001
+from .vfs import UnknownRootError, VirtualFileSystem  # noqa: I001
 
 __all__ = [
     "VirtualFileSystem",
+    "UnknownRootError",
     "VFSFile",
     "LocalFile",
     "HttpFile",

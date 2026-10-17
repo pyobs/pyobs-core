@@ -1,9 +1,32 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot — GitHub issues/discussions and local fleet plan entries checked 2026-10-15.
+Status: standing snapshot: GitHub issues and local fleet plan entries checked 2026-10-17.
 
 <details>
 <summary>Changelog (most recent first)</summary>
+
+- **2026-10-17** (fleet refresh): queried all 25 public, non-archived repos directly (the
+  private `pyobs-dashboard-utils` is out of scope; tiers cross-check shows no missing repo) and
+  commits on `develop` since 2026-10-16. Removed archive #78: closed, fix `8194b1a`
+  released in v2.1.5; the follow-up tests and changelog entry are in archive PR #81 (open, not
+  merged). Added pyobs-brot #91 (filed 2026-10-16): the Python status mapping landed in PR #92
+  (`2814b08`, `938f8e3`, brot v2.4.2) and the BROTLib contract in PR #69, but the early-online
+  behaviour is fixed in the PLC controllers, whose implementation issues are still open, so the row
+  stays. Closed 13 issues that were GitHub-open only pending release, each with a comment naming
+  the commit and tag (all tags are ancestors of `main`): core #959 (`8d2883c8`, v2.18.1), #971
+  (`28ea2853`, v2.18.0), #973 (`ad4d7344`, v2.18.1); GUI #168 (`327f849`), #182 (`767c8a0`), #185
+  (`19b45ac`), #186 (`327f849`), all v2.6.0, and #197 (`80e669e`, v2.7.1); brot #83 (`65e439d`,
+  v2.3.0), #85 (`bbb4474`, v2.4.0); portal #169 (`1e62ce2`, v2.7.1; all six findings checked
+  against the v2.7.1 tree); pipeline #24 (`b29fd86`, v2.2.6; PR #25 chose red instead of the
+  proposed blue); web-client #58 (`d723040`, v0.14.0). Kept portal #173 open: only the choice-label
+  part is clearly covered by PR #181, the string-versus-number and capitalisation points were not
+  verified. Added the BROT initialization plan (core) and the brot client validation plan.
+  Stale plan statuses, not edited here: the portal #169 plan still says proposed (released in
+  portal v2.7.1); the #998, #999 and #1000 plans say not yet released (all in core v2.18.1); the BROT
+  initialization plan header says no implementation although the Python part is released. Not
+  re-checked: PLC controller source and firmware (only issue and PR state of the BROTLib
+  repos), hardware and deployment state, discussions, sibling plan checklists against code
+  (their repos only gained version bumps since 2026-10-16). Table 12.
 
 - **2026-10-16** (restore completed-item removals): corrected the scope-cleanup revert,
   which accidentally restored Archive #74, Portal #169, Pipeline #24 and GUI #197.
@@ -549,7 +572,7 @@ in public repositories only. A local sibling checkout does not establish public 
 Plan summaries use public plan bodies and public commits/tags when an index is stale;
 hardware/deployment status is taken from public docs, not a new live check.
 
-## Open issues (12, checked 2026-10-16)
+## Open issues (12, checked 2026-10-17, see changelog)
 
 One row per issue — same layout for every repo.
 
@@ -559,7 +582,7 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage; reporter runs a separate meridian-flip module and proposes Mastermind consume its advance/in-progress events to avoid starting exposures across a flip; event shape and integration remain undecided |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
-| pyobs-archive | [#78](https://github.com/pyobs/pyobs-archive/issues/78) | Links into the archive with a time window find nothing when the viewer's computer is not on UTC | **external** (MichaelJEvan); reporter measured 10 matching frames via the UTC API window and zero after browser-local conversion in v2.1.4; URL `start`/`end` are parsed with `moment()` then submitted without timezone; proposes `moment.utc()` to match other date selectors; not investigated locally |
+| pyobs-brot | [#91](https://github.com/pyobs/pyobs-brot/issues/91) | init() should wait for calibration and automatic go-home completion | filed 2026-10-16; *bug*: the calibrating-state mapping is released (brot v2.4.2, PR #92) and the BROTLib contract is merged, but 1.0 is only trustworthy once the PLC controllers publish it after complete startup; their implementation issues are open |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
 | pyobs-gui | [#198](https://github.com/pyobs/pyobs-gui/issues/198) | Live view: zoom and pan with a server-side crop | filed 2026-10-04; follow-up to #182, the raw-stream crop (`x`/`y`/`w`/`h`) already exists in pyobs-core |
 | pyobs-gui | [#196](https://github.com/pyobs/pyobs-gui/issues/196) | Traceback at shutdown after SIGTERM (hideEvent without running loop, event filter recursion) | filed 2026-10-04; not yet checked whether it is older than the notification work |
@@ -582,6 +605,12 @@ One row per issue — same layout for every repo.
   after a live-mode restart, `readout_time` per sensor), so its boxes stay unticked. Phase 7 code landed for pyobs-tis
   v2.1.0 and pyobs-v4l v2.1.0 (not hardware-tested). Open: driver/subclass hardware verification (3/3b/7), client
   verification (6: gui v2.6.0 and web-client v0.14.0 code released), shim removal (8).
+
+- [2026-10-16-brot-initialization-completion.md](../plans/2026-10-16-brot-initialization-completion.md):
+  *in progress* (#91; plan header still says proposed). `READY_STATE` 0.8 (calibrating) stays
+  not-ready and 1.0 is reserved for completed startup. Released: Python mapping in pyobs-brot v2.4.2
+  (PR #92), pyBROT status (PR #48), BROTLib contract (PR #69). Open: the two concrete PLC controller
+  implementations, per-site acceptance and the rollout order (library mapping before controllers).
 
 ### Design and rollout verification
 
@@ -608,6 +637,9 @@ One row per issue — same layout for every repo.
 
 One line per plan — same layout for every repo.
 
+- **pyobs-brot**: client validation plan (see its `specs/plans/index.md`): *proposed*;
+  validate the telescope classes against a live BROT telescope (offsets, preemption, state mapping,
+  error and power handling, DUT1 and multi-field commands). Nothing implemented.
 - **pyobs-web-client** — [2026-09-06-mobile-first-redesign.md](../../../pyobs-web-client/specs/plans/2026-09-06-mobile-first-redesign.md) —
   mobile-first app shell + per-view redesign, breakpoint-adaptive (*in progress* — Phases 1-3 done
   and real-device verified; only Phase 4, iOS, remains, blocked on Mac access)

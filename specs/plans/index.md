@@ -375,4 +375,15 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-10-17-vfs-unknown-root-error.md](2026-10-17-vfs-unknown-root-error.md):
   `UnknownRootError(ValueError)` with `root`/`path` from every `VirtualFileSystem` entry point,
   replacing the message-only `ValueError` and the bare `KeyError`; pyobs-gui switches to the type
-  after release. **proposed; not implemented** (#941; Repos: pyobs-core, pyobs-gui).
+  after release. **implemented in core** (v2.19.0, #941; pyobs-gui switch open in pyobs-gui#223;
+  Repos: pyobs-core, pyobs-gui).
+
+- [2026-10-16-brot-fleet-inventory.md](2026-10-16-brot-fleet-inventory.md) — repository-backed
+  inventory of the three BROT telescope deployments (MONET/N, MONET/S, IAG50) and their
+  controllers, input to the initialization-completion plan. **reference** (Repos: pyobs-core,
+  pyobs-brot, BROTLib, MONETcommon, IAG50cm)
+- [2026-10-16-brot-initialization-completion.md](2026-10-16-brot-initialization-completion.md) —
+  BROT `READY_STATE` 1.0 only after full startup (new 0.8 calibrating state, `-2.0` for aborted
+  startup); PLC implemented, pyobs-brot hardened, hardware acceptance open. **implemented, not
+  deployed** (pyobs-brot#91, BROTLib#68, MONETcommon#70, IAG50cm#104; Repos: pyobs-core,
+  pyobs-brot, pybrotlib, BROTLib, MONETcommon, IAG50cm)

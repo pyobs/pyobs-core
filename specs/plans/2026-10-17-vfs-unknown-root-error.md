@@ -1,6 +1,6 @@
 # Dedicated exception for an unknown VFS root
 
-Status: implemented in pyobs-core (2026-10-17); pyobs-gui follow-up open
+Status: implemented; released in pyobs-core 2.19.0 and pyobs-gui 2.8.0 (2026-10-17)
 Issue: [pyobs-core#941](https://github.com/pyobs/pyobs-core/issues/941)
 Date: 2026-10-17
 Repos: pyobs-core, pyobs-gui (follow-up only, pyobs-gui#185)
@@ -111,7 +111,7 @@ reading `self._roots` once.
   - Changed: `local_path`, `find`, `listdir`, `exists`, `remove`, `rmdir` raise
     `UnknownRootError` instead of `KeyError` for an unconfigured root; code catching `KeyError`
     there must catch `ValueError` or `UnknownRootError`.
-- [ ] Minor release (new public API), via `do-python-release`, only when Tim asks.
+- [x] Minor release (new public API), via `do-python-release`: 2.19.0.
 
 ## Validation
 
@@ -120,12 +120,12 @@ reading `self._roots` once.
 
 ## Cross-repo follow-up (pyobs-gui, separate change)
 
-- [ ] After the core release: raise pyobs-gui's `pyobs-core` lower bound (currently `>=2.18.1`)
+- [x] After the core release: raise pyobs-gui's `pyobs-core` lower bound (currently `>=2.18.1`)
       to the release that contains this.
-- [ ] `pyobs_gui/base.py` `missing_root_message()`: `isinstance(exception, UnknownRootError)`,
+- [x] `pyobs_gui/base.py` `missing_root_message()`: `isinstance(exception, UnknownRootError)`,
       use `exception.root` instead of re-splitting the path, drop the prefix match and update the
       docstring. Callers in `videowidget.py` and `datadisplaywidget.py` stay as they are.
-- [ ] `tests/test_missing_vfs_root.py`: build `UnknownRootError` instead of a prefixed
+- [x] `tests/test_missing_vfs_root.py`: build `UnknownRootError` instead of a prefixed
       `ValueError`; keep the "other `ValueError` returns None" case.
-- [ ] Tick the open item in pyobs-gui `specs/plans/2026-10-04-settings-dialog.md` step 2 and
+- [x] Tick the open item in pyobs-gui `specs/plans/2026-10-04-settings-dialog.md` step 2 and
       close pyobs-core#941 once both are released.

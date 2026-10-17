@@ -1,7 +1,8 @@
 # `BaseVideo`: selectable live view, MJPEG for slow links, raw with client-side stretch for fast
 
-Status: server side implemented in pyobs-core (PR #926, merged to `develop` 2026-09-29, not yet
-released); pyobs-gui (#182) and pyobs-web-client (#58) not started. Server side depends on
+Status: implemented. Server side in pyobs-core (PR #926, released in v2.13.0; opt-in CORS
+`cors_origins` in v2.14.0, #942); pyobs-gui (#182) and pyobs-web-client (#58, v0.14.0) issues are
+closed. Server side depends on
 [`basevideo-frame-source.md`](basevideo-frame-source.md) for frame metadata.
 
 Repos: pyobs-core (this doc, `BaseVideo` endpoints), pyobs-gui (`VideoWidget`),

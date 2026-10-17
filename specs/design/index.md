@@ -13,7 +13,7 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   page for `BaseVideo`'s HTTP endpoints. *implemented* (Repos: pyobs-core, pyobs-gui)
 - [basevideo-live-view.md](basevideo-live-view.md): user-selectable live view, MJPEG with
   server-side stretch for slow links, raw with client-side stretch/cuts for fast ones; raw-stream
-  crop/metadata extensions. *server side implemented (PR #926), clients open* (2026-09-29; #924; Repos: pyobs-core, pyobs-gui,
+  crop/metadata extensions. *implemented* (2026-09-29; #924; Repos: pyobs-core, pyobs-gui,
   pyobs-web-client)
 - [basevideo-raw-frame-streaming.md](basevideo-raw-frame-streaming.md) — `BaseVideo` raw-frame
   streaming endpoint alongside the existing MJPEG live view. *implemented*

@@ -9,6 +9,17 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Added
+
+- `pyobs.vfs.UnknownRootError`, a `ValueError` subclass with `root` and `path`, raised by every
+  `VirtualFileSystem` entry point for an unconfigured root (#941).
+
+### Changed
+
+- `local_path`, `find`, `listdir`, `exists`, `remove` and `rmdir` raise `UnknownRootError` instead
+  of `KeyError` for an unconfigured root. Code catching `KeyError` there must catch `ValueError` or
+  `UnknownRootError` (#941).
+
 ### Fixed
 
 - Keep the observing-night date stable across sunset and midnight and use the

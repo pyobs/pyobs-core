@@ -65,6 +65,10 @@ Inside any :class:`~pyobs.object.Object` or :class:`~pyobs.modules.Module`, the 
 
     image = await self.vfs.read_image("/cache/image_001.fits")
 
+If the root of a path is not configured, every VFS method raises :class:`~pyobs.vfs.UnknownRootError`. It is a
+:class:`ValueError` and carries the missing root in ``root`` and the full path in ``path``, so callers can catch it by
+type instead of matching the message. A path without any root raises a plain :class:`ValueError`.
+
 
 File access classes
 ^^^^^^^^^^^^^^^^^^^
@@ -100,6 +104,9 @@ API reference
 ^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.vfs.VirtualFileSystem
+   :members:
+
+.. autoexception:: pyobs.vfs.UnknownRootError
    :members:
 
 .. autoclass:: pyobs.vfs.VFSFile

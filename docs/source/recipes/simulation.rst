@@ -111,7 +111,7 @@ Virtual file system
 
 Now, while most buttons should work nicely, when taking an image you will get an error message like this::
 
-    ValueError: Could not find root cache for file.
+    UnknownRootError: Could not find root cache for file /cache/image.fits.
 
 This happens, because *pyobs* does not now where to store your images.
 

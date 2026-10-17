@@ -371,3 +371,8 @@ Implementation plans, checklist-style. Newest at the bottom.
   complete plain-machine setup, packaging, bounded task/project priorities and
   explicit pending-observation cancellation. **proposed; not implemented**
   (pyobs-portal#169; Repos: pyobs-portal, pyobs-core contract verification).
+
+- [2026-10-17-vfs-unknown-root-error.md](2026-10-17-vfs-unknown-root-error.md):
+  `UnknownRootError(ValueError)` with `root`/`path` from every `VirtualFileSystem` entry point,
+  replacing the message-only `ValueError` and the bare `KeyError`; pyobs-gui switches to the type
+  after release. **proposed; not implemented** (#941; Repos: pyobs-core, pyobs-gui).

@@ -1,10 +1,23 @@
 # Fleet open items: open issues and plans across the pyobs fleet
 
-Status: standing snapshot: GitHub issues and local fleet plan entries checked 2026-10-17.
+Status: standing snapshot: GitHub issues and local fleet plan entries checked 2026-10-17 (third run).
 
 <details>
 <summary>Changelog (most recent first)</summary>
 
+- **2026-10-17** (third skill run): re-queried all 26 live GitHub repos and `develop` commits since
+  2026-10-17 in the local checkouts. Removed pyobs-brot #91: Python side released in brot v2.4.3
+  (`b1f24f1`, `init()` joins a running startup and fails on an aborted one; on `main`, v2.4.2 had
+  the status mapping), and the PLC side is merged to `develop` in BROTLib (PR #69), MONETcommon
+  (PR #71) and IAG50cm (PR #105). The issue stays GitHub-open; deployment and hardware acceptance
+  are tracked in the plan line below. Added pyobs-gui #226, #227 and #228 (filed today, the
+  consolidated desktop-notification checks): they overlap #192 to #196, which are still open, so
+  the table lists both sets until Tim closes one. pyobs-gui PR #223 merged (`11dd5a0`), released in
+  v2.8.0 (`main`), so the settings-dialog line lost its open item; v2.8.1 is the latest tag. The
+  web-client live-view plan (`0185962`) and the aravis frames plan (`a4b7b0c`) now say implemented
+  on `develop`, lines adjusted. Portal #173 stays excluded as before; no portal commits since. No
+  issues closed or filed. Not re-checked: sibling plan checklists against code, hardware and
+  deployment state, BROTLib release tags. Table 13.
 - **2026-10-17** (later, skill run): re-queried all 26 live GitHub repos (25 public plus the
   private `pyobs-dashboard-utils`, out of scope) and `develop` commits since 2026-10-16 in the local
   checkouts. Removed core #941: `UnknownRootError` landed in PR #1002 (`4ef39c19`) and is released
@@ -588,7 +601,7 @@ in public repositories only. A local sibling checkout does not establish public 
 Plan summaries use public plan bodies and public commits/tags when an index is stale;
 hardware/deployment status is taken from public docs, not a new live check.
 
-## Open issues (11, checked 2026-10-17, see changelog)
+## Open issues (13, checked 2026-10-17, see changelog)
 
 One row per issue — same layout for every repo.
 
@@ -597,8 +610,10 @@ One row per issue — same layout for every repo.
 | pyobs-core | [#927](https://github.com/pyobs/pyobs-core/issues/927) | Stream guiding: re-centre the crop when the guide star drifts | filed 2026-09-29; follow-up to PR #926 |
 | pyobs-core | [#915](https://github.com/pyobs/pyobs-core/issues/915) | Does BaseTelescope want to know about meridian flips? | **external** (MichaelJEvan); filed 2026-09-23; design-stage; reporter runs a separate meridian-flip module and proposes Mastermind consume its advance/in-progress events to avoid starting exposures across a flip; event shape and integration remain undecided |
 | pyobs-core | [#819](https://github.com/pyobs/pyobs-core/issues/819) | Proposal: additive interface versioning (`IDome`, `IDomeV2`, ...) | *design* — design doc landed 2026-08-28 and sanity-checked against `develop`; no plan yet |
-| pyobs-brot | [#91](https://github.com/pyobs/pyobs-brot/issues/91) | init() should wait for calibration and automatic go-home completion | filed 2026-10-16; *bug*: the calibrating-state mapping is released (brot v2.4.2, PR #92) and the BROTLib contract is merged, but 1.0 is only trustworthy once the PLC controllers publish it after complete startup; their implementation issues are open |
 | pyobs-brot | [#71](https://github.com/pyobs/pyobs-brot/issues/71) | Investigate root cause of settle timeouts on MONET South (was #61) | *bug* — split from #61 after its mitigation (staleness detection) shipped but was confirmed via the real PLC source not to explain the original symptom; needs mount-side telemetry/drive-fault investigation for the 2026-08-24 incident |
+| pyobs-gui | [#228](https://github.com/pyobs/pyobs-gui/issues/228) | Desktop notifications: remaining live checks (GNOME, startup summary, SIGTERM traceback) | filed 2026-10-17; overlaps #194, #195 and #196 |
+| pyobs-gui | [#227](https://github.com/pyobs/pyobs-gui/issues/227) | Desktop notifications: check Windows Start Menu shortcut (create_link_com) | filed 2026-10-17; overlaps #192 |
+| pyobs-gui | [#226](https://github.com/pyobs/pyobs-gui/issues/226) | Desktop notifications: check on macOS | filed 2026-10-17; overlaps #193 |
 | pyobs-gui | [#198](https://github.com/pyobs/pyobs-gui/issues/198) | Live view: zoom and pan with a server-side crop | filed 2026-10-04; follow-up to #182, the raw-stream crop (`x`/`y`/`w`/`h`) already exists in pyobs-core |
 | pyobs-gui | [#196](https://github.com/pyobs/pyobs-gui/issues/196) | Traceback at shutdown after SIGTERM (hideEvent without running loop, event filter recursion) | filed 2026-10-04; not yet checked whether it is older than the notification work |
 | pyobs-gui | [#195](https://github.com/pyobs/pyobs-gui/issues/195) | Live check of the startup summary for modules already in ERROR | filed 2026-10-04; only unit tested so far |
@@ -622,10 +637,11 @@ One row per issue — same layout for every repo.
   verification (6: gui v2.6.0 and web-client v0.14.0 code released), shim removal (8).
 
 - [2026-10-16-brot-initialization-completion.md](../plans/2026-10-16-brot-initialization-completion.md):
-  *in progress* (#91; plan header still says proposed). `READY_STATE` 0.8 (calibrating) stays
-  not-ready and 1.0 is reserved for completed startup. Released: Python mapping in pyobs-brot v2.4.2
-  (PR #92), pyBROT status (PR #48), BROTLib contract (PR #69). Open: the two concrete PLC controller
-  implementations, per-site acceptance and the rollout order (library mapping before controllers).
+  *implemented on `develop`, not deployed* (#91). `READY_STATE` 0.8 (calibrating) stays not-ready and
+  1.0 is reserved for completed startup. Released: Python in pyobs-brot v2.4.3, pyBROT status
+  (PR #48). Merged to `develop`: BROTLib PR #69, MONETcommon PR #71, IAG50cm PR #105 (PLC issues still
+  open). Open: PLC deployment, per-site hardware acceptance, rollout order (library mapping before
+  controllers).
 
 ### Design and rollout verification
 
@@ -661,23 +677,22 @@ One line per plan — same layout for every repo.
   Capacitor app shell, Android first (*in progress*; push, secure storage and offline screen done,
   iOS blocked on Mac access)
 - **pyobs-gui**: [2026-09-29-live-view-mjpeg-raw.md](../../../pyobs-gui/specs/2026-09-29-live-view-mjpeg-raw.md):
-  live view mode, MJPEG or raw (*implementation released* in v2.6.0; open: manual test with
+  live view mode, MJPEG or raw (*implementation released* in v2.6.0; spec marked implemented; open: manual test with
   `test/video.yaml`, zoom and crop follow-up #198)
 - **pyobs-gui**: [2026-10-04-desktop-notifications.md](../../../pyobs-gui/specs/plans/2026-10-04-desktop-notifications.md):
   desktop notifications for module `ERROR` and log `ERROR`/`CRITICAL` (*implemented, released* in v2.6.0,
-  checked on KDE; open: Windows shortcut #192, macOS #193, GNOME #194, startup summary #195,
-  shutdown traceback #196)
+  checked on KDE; open: Windows shortcut #192/#227, macOS #193/#226, GNOME #194, startup summary
+  #195, shutdown traceback #196, consolidated in #228)
 - **pyobs-gui**: [2026-10-04-settings-dialog.md](../../../pyobs-gui/specs/plans/2026-10-04-settings-dialog.md):
-  settings schema, YAML config and standalone settings dialog (*implemented, released* in v2.6.0, steps 1
-  to 5; the plan and the index on `develop` still say "proposed"; open: switch to core's `UnknownRootError`
-  (released in core v2.19.0) in PR [#223](https://github.com/pyobs/pyobs-gui/pull/223), not merged)
+  settings schema, YAML config and standalone settings dialog (*implemented, released* in v2.6.0,
+  steps 1 to 5; the unknown-root message detects core's `UnknownRootError`, PR #223, released in v2.8.0; nothing open)
 
 - **pyobs-web-client** — [2026-10-04-video-live-view-modes.md](../../../pyobs-web-client/specs/plans/2026-10-04-video-live-view-modes.md) —
-  *implementation released* in v0.14.0; the plan header/index still say planned. Open: run the
+  *implemented* (v0.14.0; plan marked implemented in `0185962`). Open: run the
   committed MJPEG/raw E2E tests, measure 2048×2048 Canvas cost, check multi-camera connection
   limits and Android WebView streaming; colour-camera support remains separate work.
 - **pyobs-aravis** — [2026-09-29-frames-migration.md](../../../pyobs-aravis/specs/plans/2026-09-29-frames-migration.md) —
-  *implemented, released* in v2.1.0, refined in v2.1.2 (settings are applied while streaming,
+  *implemented, released* in v2.1.0, refined in v2.1.2 (plan marked implemented in `a4b7b0c`) (settings are applied while streaming,
   restart only as fallback). Open: hardware read-back and PTP/timestamp checks, optional device
   timestamps, long-running hardware verification. A frame exposing during a settings change can
   still carry the new generation.

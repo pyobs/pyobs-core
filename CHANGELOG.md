@@ -9,6 +9,11 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Added
+
+- `pyobs.events.FileWrittenEvent`, sent by `ImageWriter` and `ImageWatcher` (one per destination) after a
+  file has been written.
+
 ## [2.19.0] - 2026-10-17
 
 ### Added

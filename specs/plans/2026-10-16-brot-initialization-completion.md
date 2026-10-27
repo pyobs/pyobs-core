@@ -57,7 +57,7 @@ The PLC fixes the early completion by delaying READY_STATE 1.0. Python continues
 
 **pybrotlib:** add `TelescopeStatus.CALIBRATING` and map raw 0.8 to it in `components/telescope.py`. Preserve the other mappings and test the new value. Check explicit enum consumers, including BROTgui, for compatibility with the added status.
 
-**pyobs-brot:** map CALIBRATING alongside INITIALIZING to `MotionStatus.INITIALIZING` and `IReady=false` in `_update()`. The `init()` loop stays pending for 0.7/0.8 and returns at 1.0; retain the existing weather, error, telemetry-health, cancellation and RPC timeout handling. Two small additions (done): `init()` joins a startup that is already 0.7/0.8 instead of calling `power_on()` again (the IAG PLC ignores a repeat `Init()`, but Python should not rely on that), and once a pending state was seen, 0.0/0.3/-2.0 raises `InitError` ("interrupted") instead of spinning until the timeout. Before a pending state is seen those values are treated as stale and ignored. The raw 0.8 special case in `_update()` stays until the minimum pybrotlib version with `CALIBRATING` is pinned.
+**pyobs-brot:** map CALIBRATING alongside INITIALIZING to `MotionStatus.INITIALIZING` and `IReady=false` in `_update()`. The `init()` loop stays pending for 0.7/0.8 and returns at 1.0; retain the existing weather, error, telemetry-health, cancellation and RPC timeout handling. Two small additions (done): `init()` joins a startup that is already 0.7/0.8 instead of calling `power_on()` again (the IAG PLC ignores a repeat `Init()`, but Python should not rely on that), and once a pending state was seen, 0.0/0.3/-2.0 raises `InitError` ("interrupted") instead of spinning until the timeout. Before a pending state is seen those values are treated as stale and ignored. The raw 0.8 special case in `_update()` was removed once pybrotlib 1.7.1 (first release with `CALIBRATING`) was pinned.
 
 Add focused regression tests proving that 0.7 and 0.8 keep `init()` pending, 1.0 completes it, CALIBRATING publishes initializing/not-ready, a running startup is joined without a second `power_on()`, aborted startup (-2.0, 0.0, 0.3) fails init, and a stale -2.0 before startup is not an abort. Include the existing failure and cancellation paths to ensure the small mapping change does not regress them. Controller tests, rather than Python heuristics, prove that 1.0 cannot occur before startup finishes.
 
@@ -72,7 +72,9 @@ The existing timeout decorator supplies RPC metadata rather than a direct-call d
 - Measure real startup duration per site against the 120 s `@timeout` on `init()`; IAG now also waits for the focus move inside it.
 - Confirm on hardware that MONET reaches 1.0 only after covers, calibration and home, and that `-2.0` after a transient interlock recovers to 1.0 without repeating calibration (as designed in `FB_StartupReadiness`).
 - Park-during-startup policy is unchanged (hidden behind init on MONET, cancelled by init on IAG); decide whether that stays.
-- Controller tests were not run for this review; run `FB_StartupReadiness_Tests` and `tools/test-startup-readiness.py`.
+- `tools/test-startup-readiness.py` passes (41 assertions, 11 scenarios) when the freshly built IronPLC compiler (`~/code/ironplc/compiler/target/debug`) is first in `PATH`; the installed `ironplcc` fails with a container-version error. It covers only `FB_StartupReadiness`, not the NC-backed controllers, which still need TwinCAT compile and hardware acceptance.
+- pybrotlib `CALIBRATING` is released in 1.7.1 (PyPI). pyobs-brot pins `pybrotlib>=1.7.1` and maps `CALIBRATING` alongside `INITIALIZING`; the raw `== 0.8` special case in `_update()` is removed (pyobs-brot 2.4.4).
+- Released on PyPI: pybrotlib 1.7.1, pyobs-brot 2.4.4 (2.4.3 had the `init()` fix) and pyobs-core 2.19.1.
 
 ## Compatibility and rollout
 

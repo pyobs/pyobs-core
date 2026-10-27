@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from pyobs.comm.dummy import DummyComm
-from pyobs.events import NewImageEvent
+from pyobs.events import FileWrittenEvent, NewImageEvent
 from pyobs.modules.image.imagewriter import ImageWriter
 from pyobs.utils.enums import ImageType
 from pyobs.vfs import VirtualFileSystem
@@ -137,3 +137,85 @@ async def test_worker_skips_on_bad_filename_format(caplog) -> None:
         pass
 
     writer._vfs.write_image.assert_not_called()
+
+
+# ── FileWrittenEvent ──────────────────────────────────────────────────────────
+
+
+async def run_worker(writer: ImageWriter) -> None:
+    task = asyncio.create_task(writer._worker())
+    await asyncio.sleep(0.05)
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+
+def prepare_writer() -> ImageWriter:
+    writer = make_writer(filename="/archive/{FNAME}")
+    img = MagicMock()
+    img.header = {"FNAME": "test.fits"}
+    writer._vfs.read_image = AsyncMock(return_value=img)
+    writer._vfs.write_image = AsyncMock()
+    writer._comm.send_event = AsyncMock()  # type: ignore[union-attr]
+    return writer
+
+
+@pytest.mark.asyncio
+async def test_worker_sends_file_written_event() -> None:
+    writer = prepare_writer()
+    writer._queue.put_nowait("/tmp/test.fits")
+    await run_worker(writer)
+
+    writer._comm.send_event.assert_called_once()  # type: ignore[union-attr]
+    event = writer._comm.send_event.call_args.args[0]  # type: ignore[union-attr]
+    assert isinstance(event, FileWrittenEvent)
+    assert event.filename == "/archive/test.fits"
+
+
+@pytest.mark.asyncio
+async def test_worker_no_event_on_write_failure() -> None:
+    writer = prepare_writer()
+    writer._vfs.write_image = AsyncMock(side_effect=OSError("disk full"))
+    writer._queue.put_nowait("/tmp/test.fits")
+    await run_worker(writer)
+
+    writer._comm.send_event.assert_not_called()  # type: ignore[union-attr]
+
+
+@pytest.mark.asyncio
+async def test_worker_send_failure_is_logged_not_fatal(caplog) -> None:
+    import logging
+
+    writer = prepare_writer()
+    writer._comm.send_event = AsyncMock(side_effect=RuntimeError("pubsub down"))  # type: ignore[union-attr]
+    writer._queue.put_nowait("/tmp/a.fits")
+    writer._queue.put_nowait("/tmp/b.fits")
+
+    with caplog.at_level(logging.WARNING):
+        await run_worker(writer)
+
+    assert writer._vfs.write_image.call_count == 2
+    assert "Could not send FileWrittenEvent" in caplog.text
+    assert "Could not store image." not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_worker_without_comm_still_writes() -> None:
+    writer = prepare_writer()
+    writer._comm = None
+    writer._queue.put_nowait("/tmp/test.fits")
+    await run_worker(writer)
+
+    writer._vfs.write_image.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_open_registers_file_written_event() -> None:
+    writer = make_writer()
+    writer._comm.register_event = AsyncMock()  # type: ignore[union-attr]
+
+    await writer.open()
+
+    writer._comm.register_event.assert_any_call(FileWrittenEvent)  # type: ignore[union-attr]

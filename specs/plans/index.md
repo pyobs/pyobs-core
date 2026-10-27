@@ -387,3 +387,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   startup); PLC implemented, pyobs-brot hardened, hardware acceptance open. **implemented, not
   deployed** (pyobs-brot#91, BROTLib#68, MONETcommon#70, IAG50cm#104; Repos: pyobs-core,
   pyobs-brot, pybrotlib, BROTLib, MONETcommon, IAG50cm)
+- [2026-10-27-filewritten-event.md](2026-10-27-filewritten-event.md): new `FileWrittenEvent`
+  (VFS filename only) sent by `ImageWriter` after a successful write and by `ImageWatcher` once
+  per destination; send errors only logged. **implemented** (Repos: pyobs-core)

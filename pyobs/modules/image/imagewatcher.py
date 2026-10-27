@@ -10,6 +10,7 @@ from typing import Any
 
 from astropy.io import fits
 
+from pyobs.events import FileWrittenEvent
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 
@@ -59,6 +60,11 @@ class ImageWatcher(Module):
     A file that fails to process is retried with exponentially growing backoff, up to ``backoff_cap``, unless the
     failure is unrecoverable (see ``_handle_failure``), in which case it's left in place and never retried. See
     the ``error_after``/``backoff_cap`` constructor args for details.
+
+    After each successful write to a destination, a :class:`~pyobs.events.FileWrittenEvent` with the destination
+    filename is sent, i.e. one event per destination. If a later destination (or ``process_extra``) fails and the
+    file is retried, the earlier destinations are written again and their events are sent again, so receivers
+    should handle getting the same filename twice.
     """
 
     __module__ = "pyobs.modules.image"
@@ -201,6 +207,10 @@ class ImageWatcher(Module):
         """Open image watcher."""
         await Module.open(self)
 
+        # register event for written files
+        if self._comm is not None:
+            await self.comm.register_event(FileWrittenEvent)
+
         # add all files from directory to queue (recursive, so subdirectories are picked up too;
         # unfiltered by pattern here -- add_file is the single point of pattern filtering, same as
         # inotify mode)
@@ -301,6 +311,7 @@ class ImageWatcher(Module):
             self.current_file.out_filename = out_filename
             async with self.vfs.open_file(out_filename, "wb") as fd:
                 await fd.write(data)
+            await self._send_file_written(out_filename)
 
             # do extra processing
             if not await self.process_extra(filename):
@@ -321,6 +332,20 @@ class ImageWatcher(Module):
             await self.cleanup_extra(filename)
         except Exception:
             log.error("cleanup_extra failed for %s (file already transferred, not retrying).", filename)
+
+    async def _send_file_written(self, filename: str) -> None:
+        """Send a FileWrittenEvent. A failure is only logged: raising here would make ``_handle_failure`` re-queue
+        the file and write every destination again.
+
+        Args:
+            filename: Name of the written file.
+        """
+        if self._comm is None:
+            return
+        try:
+            await self.comm.send_event(FileWrittenEvent(filename))
+        except Exception as e:
+            log.warning("Could not send FileWrittenEvent for %s: %s", filename, e)
 
     def _handle_failure(self, filename: str, exc: Exception) -> None:
         """Handle a failure from ``_process_file``: re-queue transient failures with backoff, give

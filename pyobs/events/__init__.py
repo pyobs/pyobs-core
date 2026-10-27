@@ -7,6 +7,7 @@ __title__ = "Events"
 from .badweather import BadWeatherEvent
 from .event import Event, EventFactory, get_registered_event, registered_events
 from .exposurestatuschanged import ExposureStatusChangedEvent
+from .filewritten import FileWrittenEvent
 from .filterchanged import FilterChangedEvent
 from .focusfound import FocusFoundEvent
 from .goodweather import GoodWeatherEvent
@@ -34,6 +35,7 @@ __all__ = [
     "EventFactory",
     "get_registered_event",
     "registered_events",
+    "FileWrittenEvent",
     "FilterChangedEvent",
     "FocusFoundEvent",
     "GoodWeatherEvent",

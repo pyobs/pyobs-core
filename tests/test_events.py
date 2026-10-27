@@ -10,6 +10,7 @@ from pyobs.events import (
     Event,
     EventFactory,
     ExposureStatusChangedEvent,
+    FileWrittenEvent,
     FilterChangedEvent,
     FocusFoundEvent,
     GoodWeatherEvent,
@@ -355,6 +356,27 @@ def test_new_image_invalid_filename() -> None:
         NewImageEvent.from_dict({"filename": 123})
 
 
+# ── FileWrittenEvent ──────────────────────────────────────────────────────────
+
+
+def test_file_written_properties() -> None:
+    assert FileWrittenEvent(filename="/archive/x.fits").filename == "/archive/x.fits"
+
+
+def test_file_written_roundtrip() -> None:
+    e = FileWrittenEvent(filename="/archive/x.fits")
+    result = EventFactory.from_dict(e.to_json())
+    assert isinstance(result, FileWrittenEvent)
+    assert result.filename == "/archive/x.fits"
+
+
+def test_file_written_invalid_filename() -> None:
+    with pytest.raises(ValueError):
+        FileWrittenEvent.from_dict({"filename": 123})
+    with pytest.raises(ValueError):
+        FileWrittenEvent.from_dict({})
+
+
 # ── NewSpectrumEvent ──────────────────────────────────────────────────────────
 
 
@@ -531,6 +553,7 @@ def test_plugin_event_is_registered() -> None:
     assert registered_events()["_PluginEvent"] is _PluginEvent
     assert get_registered_event("Event") is Event
     assert get_registered_event("NewImageEvent") is NewImageEvent
+    assert get_registered_event("FileWrittenEvent") is FileWrittenEvent
     assert get_registered_event("DoesNotExist") is None
 
 

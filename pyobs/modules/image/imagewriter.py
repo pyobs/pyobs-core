@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import Any
 
-from pyobs.events import Event, NewImageEvent
+from pyobs.events import Event, FileWrittenEvent, NewImageEvent
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 
@@ -12,7 +12,10 @@ log = logging.getLogger(__name__)
 
 
 class ImageWriter(Module):
-    """Writes new images to disk."""
+    """Writes new images to disk.
+
+    After an image has been written, a :class:`~pyobs.events.FileWrittenEvent` with the output filename is sent.
+    """
 
     __module__ = "pyobs.modules.image"
 
@@ -41,6 +44,7 @@ class ImageWriter(Module):
         if self._comm is not None:
             log.info("Subscribing to new image events...")
             await self.comm.register_event(NewImageEvent, self.process_new_image_event)
+            await self.comm.register_event(FileWrittenEvent)
 
     async def process_new_image_event(self, event: Event, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
@@ -93,6 +97,21 @@ class ImageWriter(Module):
                 await self.vfs.write_image(output, img)
             except Exception:
                 log.error("Could not store image.")
+            else:
+                await self._send_file_written(output)
+
+    async def _send_file_written(self, filename: str) -> None:
+        """Send a FileWrittenEvent. A failure is only logged, the file has been written anyway.
+
+        Args:
+            filename: Name of the written file.
+        """
+        if self._comm is None:
+            return
+        try:
+            await self.comm.send_event(FileWrittenEvent(filename))
+        except Exception as e:
+            log.warning("Could not send FileWrittenEvent for %s: %s", filename, e)
 
 
 __all__ = ["ImageWriter"]

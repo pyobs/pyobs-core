@@ -12,6 +12,7 @@ import pytest
 from astropy.io import fits
 
 from pyobs.comm.dummy import DummyComm
+from pyobs.events import FileWrittenEvent
 from pyobs.modules.image import imagewatcher as imagewatcher_module
 from pyobs.modules.image.imagewatcher import ImageWatcher
 from pyobs.vfs import VirtualFileSystem
@@ -950,3 +951,144 @@ async def test_watch_inotify_loses_race_on_rename_into_freshly_created_deep_dir(
         pass
 
     assert added == ["/watch/2026/09/02/result.fits"]
+
+
+# ── FileWrittenEvent ──────────────────────────────────────────────────────────
+
+
+async def run_worker(watcher: ImageWatcher, seconds: float = 0.1) -> None:
+    task = asyncio.create_task(watcher._worker())
+    await asyncio.sleep(seconds)
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+
+def sent_filenames(watcher: ImageWatcher) -> list[str]:
+    return [c.args[0].filename for c in watcher._comm.send_event.call_args_list]  # type: ignore[union-attr]
+
+
+@pytest.mark.asyncio
+async def test_worker_sends_file_written_event() -> None:
+    watcher = make_watcher(destinations=["/dest"])
+    read_ctx, write_ctx = make_read_write_ctx(b"raw data")
+    watcher._vfs.open_file = MagicMock(side_effect=lambda f, mode: read_ctx if mode == "rb" else write_ctx)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+    watcher._comm.send_event = AsyncMock()  # type: ignore[union-attr]
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    await run_worker(watcher)
+
+    watcher._comm.send_event.assert_called_once()  # type: ignore[union-attr]
+    event = watcher._comm.send_event.call_args.args[0]  # type: ignore[union-attr]
+    assert isinstance(event, FileWrittenEvent)
+    assert event.filename == "/dest/test.fits"
+
+
+@pytest.mark.asyncio
+async def test_worker_sends_one_event_per_destination() -> None:
+    watcher = make_watcher(destinations=["/a", "/b"])
+    read_ctx, write_ctx = make_read_write_ctx(b"raw data")
+    watcher._vfs.open_file = MagicMock(side_effect=lambda f, mode: read_ctx if mode == "rb" else write_ctx)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+    watcher._comm.send_event = AsyncMock()  # type: ignore[union-attr]
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    await run_worker(watcher)
+
+    assert sent_filenames(watcher) == ["/a/test.fits", "/b/test.fits"]
+
+
+@pytest.mark.asyncio
+async def test_worker_event_sent_before_process_extra() -> None:
+    watcher = make_watcher(destinations=["/dest"])
+    read_ctx, write_ctx = make_read_write_ctx(b"raw data")
+    watcher._vfs.open_file = MagicMock(side_effect=lambda f, mode: read_ctx if mode == "rb" else write_ctx)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+
+    order: list[str] = []
+    watcher._comm.send_event = AsyncMock(side_effect=lambda e: order.append("event"))  # type: ignore[union-attr]
+
+    async def process_extra(filename: str) -> bool:
+        order.append("process_extra")
+        return True
+
+    watcher.process_extra = process_extra  # type: ignore[method-assign]
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    await run_worker(watcher)
+
+    assert order == ["event", "process_extra"]
+
+
+@pytest.mark.asyncio
+async def test_worker_retry_resends_earlier_destination() -> None:
+    """Documents the known duplicate: a failing later destination re-queues the file, so the
+    earlier destination is written (and announced) again."""
+    watcher = make_watcher(destinations=["/a", "/b"], wait_time=0)
+    read_ctx, write_ctx = make_read_write_ctx(b"raw data")
+    failed = [False]
+
+    def open_side_effect(filename, mode):
+        if mode == "rb":
+            return read_ctx
+        if filename.startswith("/b") and not failed[0]:
+            failed[0] = True
+            raise OSError("destination down")
+        return write_ctx
+
+    watcher._vfs.open_file = MagicMock(side_effect=open_side_effect)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+    watcher._comm.send_event = AsyncMock()  # type: ignore[union-attr]
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    await run_worker(watcher)
+
+    assert sent_filenames(watcher) == ["/a/test.fits", "/a/test.fits", "/b/test.fits"]
+
+
+@pytest.mark.asyncio
+async def test_worker_send_failure_does_not_requeue(caplog) -> None:
+    watcher = make_watcher(destinations=["/dest"])
+    read_ctx, write_ctx = make_read_write_ctx(b"raw data")
+    watcher._vfs.open_file = MagicMock(side_effect=lambda f, mode: read_ctx if mode == "rb" else write_ctx)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+    watcher._comm.send_event = AsyncMock(side_effect=RuntimeError("pubsub down"))  # type: ignore[union-attr]
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    with caplog.at_level(logging.WARNING):
+        await run_worker(watcher)
+
+    watcher._comm.send_event.assert_called_once()  # type: ignore[union-attr]
+    watcher._vfs.remove.assert_called_once_with("/watch/test.fits")
+    assert watcher._retry == {}
+    assert watcher._queue.empty()
+    assert "Could not send FileWrittenEvent" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_worker_without_comm_still_copies() -> None:
+    watcher = make_watcher(destinations=["/dest"])
+    watcher._comm = None
+    read_ctx, write_ctx = make_read_write_ctx(b"raw data")
+    watcher._vfs.open_file = MagicMock(side_effect=lambda f, mode: read_ctx if mode == "rb" else write_ctx)
+    watcher._vfs.remove = AsyncMock(return_value=True)
+
+    watcher._queue.put_nowait(("/watch/test.fits", 0.0))
+    await run_worker(watcher)
+
+    watcher._vfs.remove.assert_called_once_with("/watch/test.fits")
+    assert watcher._retry == {}
+
+
+@pytest.mark.asyncio
+async def test_open_registers_file_written_event() -> None:
+    watcher = make_watcher()
+    watcher._vfs.find = AsyncMock(return_value=[])
+    watcher._comm.register_event = AsyncMock()  # type: ignore[union-attr]
+
+    await watcher.open()
+
+    watcher._comm.register_event.assert_any_call(FileWrittenEvent)  # type: ignore[union-attr]

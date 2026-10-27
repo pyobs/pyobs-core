@@ -18,6 +18,11 @@ ExposureStatusChangedEvent
 
 .. autoclass:: pyobs.events.ExposureStatusChangedEvent
 
+FileWrittenEvent
+^^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.events.FileWrittenEvent
+
 FilterChangedEvent
 ^^^^^^^^^^^^^^^^^^
 

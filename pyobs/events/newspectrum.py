@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any
 
 from pyobs.events.event import Event
+from pyobs.events.newdata import DataType, NewDataEvent
 
 
-class DataType(TypedDict):
-    filename: str
-
-
-class NewSpectrumEvent(Event):
-    """Event to be sent on a new image."""
+class NewSpectrumEvent(NewDataEvent):
+    """Event to be sent on a new spectrum."""
 
     __module__ = "pyobs.events"
 
@@ -18,9 +15,9 @@ class NewSpectrumEvent(Event):
         """Initializes new NewSpectrumEvent.
 
         Args:
-            filename: Name of new image file.
+            filename: Name of new spectrum file.
         """
-        Event.__init__(self)
+        NewDataEvent.__init__(self, filename)
         self.data: DataType = {"filename": filename}
 
     @classmethod
@@ -32,10 +29,6 @@ class NewSpectrumEvent(Event):
 
         # return object
         return NewSpectrumEvent(filename)
-
-    @property
-    def filename(self) -> str:
-        return self.data["filename"]
 
 
 __all__ = ["NewSpectrumEvent"]

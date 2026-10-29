@@ -13,6 +13,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 - `pyobs.events.FileWrittenEvent`, sent by `ImageWriter` and `ImageWatcher` (one per destination) after a
   file has been written.
+- `pyobs.events.NewDataEvent` for data that is neither image nor spectrum. `NewImageEvent` and
+  `NewSpectrumEvent` now derive from it (payload unchanged), so a `NewDataEvent` handler receives all three.
 
 ### Fixed
 

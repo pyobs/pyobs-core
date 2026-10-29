@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from pyobs.events import (
+    NewDataEvent,
     BadWeatherEvent,
     Event,
     EventFactory,
@@ -583,3 +584,50 @@ def test_event_redefinition_in_same_module_replaces() -> None:
     second = type("_ReloadedEvent", (Event,), {"__module__": "some.module"})
     assert get_registered_event("_ReloadedEvent") is second
     assert second is not first
+
+
+# ── NewDataEvent ──────────────────────────────────────────────────────────────
+
+
+def test_new_data_properties() -> None:
+    assert NewDataEvent(filename="/data/x.dat").filename == "/data/x.dat"
+
+
+def test_new_data_roundtrip() -> None:
+    result = EventFactory.from_dict(NewDataEvent(filename="/data/x.dat").to_json())
+    assert type(result) is NewDataEvent
+    assert result.filename == "/data/x.dat"  # type: ignore[attr-defined]
+
+
+def test_new_data_invalid_filename() -> None:
+    with pytest.raises(ValueError):
+        NewDataEvent.from_dict({"filename": 123})
+    with pytest.raises(ValueError):
+        NewDataEvent.from_dict({})
+
+
+def test_new_data_registered() -> None:
+    assert get_registered_event("NewDataEvent") is NewDataEvent
+
+
+def test_new_image_and_spectrum_are_new_data() -> None:
+    assert isinstance(NewImageEvent("img.fits"), NewDataEvent)
+    assert isinstance(NewSpectrumEvent("spec.fits"), NewDataEvent)
+
+
+def test_new_image_payload_unchanged() -> None:
+    """Subclassing NewDataEvent must not change the wire format, including key order."""
+    e = NewImageEvent("img.fits", ImageType.OBJECT, "raw.fits")
+    assert list(e.data.keys()) == ["filename", "image_type", "raw"]
+    assert e.data == {"filename": "img.fits", "image_type": ImageType.OBJECT, "raw": "raw.fits"}
+    assert list(NewImageEvent("img.fits").data.items()) == [("filename", "img.fits"), ("image_type", None), ("raw", None)]
+    assert json.loads(json.dumps(NewImageEvent("img.fits").to_json()))["data"] == {
+        "filename": "img.fits",
+        "image_type": None,
+        "raw": None,
+    }
+
+
+def test_new_spectrum_payload_unchanged() -> None:
+    e = NewSpectrumEvent("spec.fits")
+    assert list(e.data.items()) == [("filename", "spec.fits")]

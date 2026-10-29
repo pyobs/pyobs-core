@@ -14,7 +14,8 @@ class NewDataEvent(Event):
 
     ``filename`` is a VFS path. :class:`NewImageEvent` and :class:`NewSpectrumEvent` derive from this class, so a
     handler registered for ``NewDataEvent`` also receives those; use ``type(event) is NewDataEvent`` to select only
-    generic data. Likewise, registering ``NewDataEvent`` without a handler declares the derived events as sent, too.
+    generic data.
+    Registering ``NewDataEvent`` without a handler declares only this class as sent, not the derived events.
     """
 
     __module__ = "pyobs.events"

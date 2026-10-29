@@ -312,6 +312,36 @@ async def test_handler_for_new_data_covers_image_and_spectrum() -> None:
 
 
 @pytest.mark.asyncio
+async def test_register_event_without_handler_declares_only_exact_class() -> None:
+    """A sender declares exactly what it sends, not the derived events (NewDataEvent vs. NewImageEvent)."""
+    comm = _bare_comm()
+
+    await comm.register_event(NewDataEvent)
+
+    assert comm._events_sent == {NewDataEvent}
+
+
+@pytest.mark.asyncio
+async def test_register_event_without_handler_does_not_declare_plugin_subclass() -> None:
+    comm = _bare_comm()
+
+    await comm.register_event(NewImageEvent)
+
+    assert comm._events_sent == {NewImageEvent}
+    assert _PluginImage not in comm._events_sent
+
+
+@pytest.mark.asyncio
+async def test_sender_registers_each_related_event() -> None:
+    comm = _bare_comm()
+
+    await comm.register_event(NewDataEvent)
+    await comm.register_event(NewImageEvent)
+
+    assert comm._events_sent == {NewDataEvent, NewImageEvent}
+
+
+@pytest.mark.asyncio
 async def test_register_event_without_handler_declares_plugin_event_as_sent() -> None:
     comm = _bare_comm()
     await comm.register_event(_CommPluginEvent)

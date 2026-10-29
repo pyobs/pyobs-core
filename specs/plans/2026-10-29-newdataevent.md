@@ -1,6 +1,6 @@
 # Plan: generic `NewDataEvent`
 
-Status: step (a) implemented (pyobs-core#1025); step (c) proposed; step (b) undecided. Decisions of 2026-10-29
+Status: steps (a) (pyobs-core#1025) and (c) implemented; step (b) undecided. Decisions of 2026-10-29
 are in "Decisions"; remaining open items at the end.
 Repos: pyobs-core, pyobs-gui, pyobs-iagvt
 

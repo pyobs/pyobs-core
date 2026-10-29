@@ -33,7 +33,21 @@ modules that send `NewDataEvent` directly are the case for it, see below.
 - `Comm.register_event()` (`pyobs/comm/comm.py:424`) expands to `_get_derived_events()` (`:413`), i.e.
   all classes in `registered_events()` that are `issubclass` of the given one. Handlers are stored per
   concrete class; duplicate handlers are skipped.
-- Dispatch is exact class match: `event.__class__ in self._event_handlers` (`comm.py:693`). Together with
+- The expansion applies to the sender side too: without a handler, `register_event()` puts the whole
+  expanded list into `_events_sent` (`comm.py:450`) and passes it to `_register_events()` (`:454`).
+  There is no non-expanding variant today. In `XmppComm._register_events()` (`xmppcomm.py:988`) every
+  class in that list gets a disco feature `urn:pyobs:event:{name}:{version}` (`:995`) and, for a module,
+  a pre-created pubsub node (`:1016`, each `_create_node` can take up to ~90s against an unresponsive
+  pubsub service, per the comment there). disco#info then lists each one with `role="send"`
+  (`xmppcomm.py:1306-1311`, `_event_role` at `:40`), and peers subscribe to every advertised event they
+  have a handler for (`_got_online`, `xmppcomm.py:835-842`). So a module that declares
+  `register_event(NewDataEvent)` without handler also advertises `NewImageEvent` and `NewSpectrumEvent`
+  as sent: no wrong data is delivered, but peers (GUI, dashboards) subscribe to two empty nodes and
+  pyobs-web-client shows the module as an image/spectrum producer. Existing sender registrations are not
+  affected by a2: `NewImageEvent`/`NewSpectrumEvent` get no new subclasses, and nobody registers
+  `NewDataEvent` as sender in step (a). Existing test of the sender path:
+  `tests/comm/test_events.py:291` (`test_register_event_without_handler_declares_plugin_event_as_sent`).
+- Dispatch is exact class match: `event.__class__ in self._event_handlers` (`comm.py:699`). Together with
   the expansion above, a handler registered for `NewDataEvent` receives `NewImageEvent` and
   `NewSpectrumEvent`, as long as those are imported at registration time. They are, since
   `pyobs/events/__init__.py` imports both. Old subscribers to `NewImageEvent` see no difference.
@@ -98,14 +112,30 @@ Three separate commits, in this order.
   - `from_dict(cls, d)`: validate `filename` is str, return `cls(filename=...)` (use `cls`).
   - Property `filename`.
   - Docstring: subscribing to `NewDataEvent` also delivers `NewImageEvent` and `NewSpectrumEvent`;
-    use `type(event) is NewDataEvent` to select only generic data.
+    use `type(event) is NewDataEvent` to select only generic data. Also note the sender side: a
+    handler-less `register_event(NewDataEvent)` advertises the subclasses as sent, too (see Verified
+    facts and open item 3).
+  - Module-level `class DataType(TypedDict): filename: str` and `self.data: DataType = {"filename": ...}`,
+    same convention as the other event modules.
 - `pyobs/events/newimage.py`: `class NewImageEvent(NewDataEvent)`; keep
   `__init__(filename, image_type=None, raw=None, **kwargs)` unchanged, call
-  `NewDataEvent.__init__(self, filename)` and extend `self.data` with `image_type`, `raw`. Drop the
-  inherited `filename` property. Payload is byte-identical to today. `from_dict` untouched here (a4).
-- `pyobs/events/newspectrum.py`: same pattern; fix docstrings ("new image").
-- The module-level TypedDicts called `DataType` in `newimage.py`/`newspectrum.py` need no rename now
-  (no enum).
+  `NewDataEvent.__init__(self, filename)`, then assign the complete dict as a literal in today's key
+  order (`filename`, `image_type`, `raw`) rather than `.update()`-ing the base dict, so key order and
+  type stay explicit. Drop the inherited `filename` property. Payload is byte-identical to today.
+  `from_dict` untouched here (a3).
+- `pyobs/events/newspectrum.py`: same pattern (payload stays `{"filename": ...}`); fix docstrings
+  ("new image").
+- Typing of `data`: `Event.data` is `Any` (`event.py:42`) and every event module redeclares
+  `self.data: DataType` with its own module-level TypedDict. `newimage.py:9` (`filename`, `image_type`,
+  `raw`) and `newspectrum.py:8` (`filename`) both define one called `DataType`; no rename needed (no
+  enum, and nothing imports them). After subclassing, `filename` would be declared in three TypedDicts.
+  Let the subclass TypedDicts inherit from the one in `newdata.py`
+  (`from pyobs.events.newdata import DataType as NewDataType`, `class DataType(NewDataType)` adding
+  `image_type`/`raw`; `newspectrum.py` can alias it or subclass without new keys), so `filename: str` is
+  declared once and the subclass `data` type is a structural subtype of the base one. Run `pyrefly` on
+  `pyobs/events/`: if it reports the redeclared `self.data` as an incompatible attribute override,
+  annotate `data` once on `NewDataEvent` as a class-level declaration and use `cast`/narrowing
+  properties in the subclasses instead. Payload is unaffected either way.
 - `pyobs/events/__init__.py`: import `NewDataEvent` and add to `__all__`.
 - `docs/source/api/events.rst`: add a `NewDataEvent` section before `NewImageEvent`.
 - Optional: `docs/source/api/comm.rst:66` mention subscribing to `NewDataEvent` for "any data".
@@ -117,7 +147,7 @@ Three separate commits, in this order.
 the hard-coded class. Change to `cls(...)` so plugin subclasses deserialize as themselves. Add a test with
 a plugin subclass. `CHANGELOG.md` Fixed entry.
 
-### a4. (Optional, outside core) Use it in subscribers
+### Follow-up (optional, outside core, not a step of this plan): use it in subscribers
 
 Nothing in core needs it now. Candidate outside core: `pyobs-gui/pyobs_gui/datadisplaywidget.py:86-87,200`
 could register one `NewDataEvent` handler instead of two and use `isinstance(event, NewDataEvent)`. That is
@@ -158,7 +188,9 @@ class BaseData(Module, FitsHeaderMixin, IData, metaclass=ABCMeta):
     async def open(self) -> None:
         await Module.open(self)
         if self._comm:
-            await self.comm.register_event(self._data_event)
+            # declare only the class actually sent: without derived=False, a module sending a bare
+            # NewDataEvent would also advertise NewImageEvent/NewSpectrumEvent (open item 3)
+            await self.comm.register_event(self._data_event, derived=False)
 
     async def _broadcast_data(self, event: NewDataEvent, broadcast: bool) -> None:
         if broadcast and self._comm:
@@ -167,6 +199,19 @@ class BaseData(Module, FitsHeaderMixin, IData, metaclass=ABCMeta):
 
 Even this mostly moves 3 lines and adds a class. A free function or a small mixin would give the same
 without touching the MRO of `Module`.
+
+`derived=False` does not exist yet (see Verified facts). Whatever form (b) takes, and also for a
+generic-data sender written without `BaseData`, the first module that sends a bare `NewDataEvent` needs
+either that small Comm change or an accepted and documented over-advertisement. Recommendation (open
+item 3): add a keyword `derived: bool = True` to `Comm.register_event()` that, when False, uses
+`[event_class]` instead of `_get_derived_events(event_class)`; `unregister_event()` gets the same
+keyword so it mirrors exactly what was registered. Default unchanged, so no existing caller changes
+behaviour. Changing the sender-side default to "exact class only" instead was considered and not
+recommended: a plugin camera that sends a subclass of `NewImageEvent` today is advertised only through
+`BaseCamera`'s expanded `register_event(NewImageEvent)`, and would silently stop being subscribed to.
+Separate commit with its own test (handler-less `register_event(NewDataEvent, derived=False)` leaves
+`NewImageEvent`/`NewSpectrumEvent` out of `_events_sent`), done together with the first generic-data
+sender, not in step (a).
 
 ## Compatibility and risks (external repos)
 
@@ -214,6 +259,14 @@ Risks for step (a):
   by a new module is unknown to old peers; `EventFactory.from_dict` returns None there (`event.py`,
   `get_registered_event`), i.e. dropped. Nobody sends it in step (a); it matters once the first generic
   data module ships, so peers (GUI, dashboards) must be upgraded first.
+- Release notes: the `CHANGELOG.md` Added entry for a2 (and the release announcement) states that
+  every peer that should see generic data (pyobs-gui, pyobs-dashboard-utils, other subscribers) must run
+  a pyobs-core with `NewDataEvent` before the first module sends a bare `NewDataEvent`; old peers drop
+  it silently, without an error. The pyobs-gui `DataDisplayWidget` follow-up additionally needs that
+  pyobs-gui release.
+- Sender-side expansion: a handler-less `register_event(NewDataEvent)` advertises `NewImageEvent` and
+  `NewSpectrumEvent` as sent (see Verified facts). Not triggered in step (a); handled by open item 3
+  before the first generic-data sender.
 - A `NewDataEvent` handler also receives image/spectrum events. Handlers meant for generic data only must
   check `type(event) is NewDataEvent`.
 - Subscribing to `NewDataEvent` only covers subclasses imported before `register_event()` (documented
@@ -225,7 +278,15 @@ Risks for step (a):
 Add:
 - `tests/test_events.py`: `NewDataEvent` round trip via `to_json`/`EventFactory.from_dict`; invalid
   `filename` raises `ValueError`; `isinstance(NewImageEvent(...), NewDataEvent)` and same for spectrum;
-  `NewImageEvent(...).data` unchanged from today; registry contains `NewDataEvent`.
+  registry contains `NewDataEvent`.
+- `tests/test_events.py` (a2, payload pinning): `NewImageEvent(filename="a.fits",
+  image_type=ImageType.OBJECT, raw="r.fits").data` equals
+  `{"filename": "a.fits", "image_type": ImageType.OBJECT, "raw": "r.fits"}` and
+  `list(...data) == ["filename", "image_type", "raw"]` (dict `==` ignores order, so check keys
+  explicitly); same for the defaults (`image_type`/`raw` None); `to_json()["data"]` and
+  `json.dumps(to_json()["data"])` identical to the pre-a2 string. Likewise `NewSpectrumEvent(...).data
+  == {"filename": ...}` with keys `["filename"]`. Write these before a2 so they pass both before and
+  after.
 - `tests/comm/test_events.py`: next to `test_handler_for_core_event_also_covers_plugin_subclass`, a test
   that `register_event(NewDataEvent, handler)` puts `NewImageEvent` and `NewSpectrumEvent` in
   `_event_handlers` and dispatches both to the handler.
@@ -248,3 +309,8 @@ unchanged.
    modules only (without touching camera/video/spectrograph)? Decide after (a).
 2. Do subscribers ever need to tell two generic data kinds apart? If so, an optional
    `data_type: str | None = None` can be added later (additive, no version bump needed).
+3. Sender-side expansion of `register_event()`: add `derived: bool = True` to
+   `Comm.register_event()`/`unregister_event()` so a generic-data sender can declare exactly
+   `NewDataEvent` (recommended, see step (b)), or accept and document that such a module also advertises
+   `NewImageEvent`/`NewSpectrumEvent` (empty nodes, extra peer subscriptions, misleading `role="send"`).
+   Needed before the first module sends a bare `NewDataEvent`, not for step (a).

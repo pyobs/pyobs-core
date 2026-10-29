@@ -15,6 +15,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   file has been written.
 - `pyobs.events.NewDataEvent` for data that is neither image nor spectrum. `NewImageEvent` and
   `NewSpectrumEvent` now derive from it (payload unchanged), so a `NewDataEvent` handler receives all three.
+- `pyobs.modules.camera.BaseData`, base class for modules that grab data that is neither image nor spectrum:
+  general FITS header handling, grab sequences, and a `NewDataEvent` on new data.
 
 ### Changed
 

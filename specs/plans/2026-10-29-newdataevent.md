@@ -1,6 +1,7 @@
 # Plan: generic `NewDataEvent`
 
-Status: proposed. Decisions of 2026-10-29 are in "Decisions"; remaining open items at the end.
+Status: steps (a) (pyobs-core#1025) and (c) implemented; step (b) undecided. Decisions of 2026-10-29
+are in "Decisions"; remaining open items at the end.
 Repos: pyobs-core, pyobs-gui, pyobs-iagvt
 
 ## Summary
@@ -27,13 +28,17 @@ modules that send `NewDataEvent` directly are the case for it, see below.
 - After release, as separate follow-ups: remove the pyobs-iagvt `fts.py:155-158` workaround and switch
   pyobs-gui `DataDisplayWidget` to one `NewDataEvent` handler.
 - Step (b) is decided after (a).
+- Sender-side registration is exact-class only (decided later on 2026-10-29): a handler-less
+  `register_event(X)` declares only `X`, not its subclasses, so a module that sends both `NewDataEvent` and
+  `NewImageEvent` registers both. No `derived` keyword. Registration with a handler keeps expanding to
+  derived events (the point of the hierarchy, and covered by existing tests). See step (c).
 
 ## Verified facts
 
 - `Comm.register_event()` (`pyobs/comm/comm.py:424`) expands to `_get_derived_events()` (`:413`), i.e.
   all classes in `registered_events()` that are `issubclass` of the given one. Handlers are stored per
   concrete class; duplicate handlers are skipped.
-- The expansion applies to the sender side too: without a handler, `register_event()` puts the whole
+- The expansion applies to the sender side too (current behaviour, removed by step (c)): without a handler, `register_event()` puts the whole
   expanded list into `_events_sent` (`comm.py:450`) and passes it to `_register_events()` (`:454`).
   There is no non-expanding variant today. In `XmppComm._register_events()` (`xmppcomm.py:988`) every
   class in that list gets a disco feature `urn:pyobs:event:{name}:{version}` (`:995`) and, for a module,
@@ -113,8 +118,8 @@ Three separate commits, in this order.
   - Property `filename`.
   - Docstring: subscribing to `NewDataEvent` also delivers `NewImageEvent` and `NewSpectrumEvent`;
     use `type(event) is NewDataEvent` to select only generic data. Also note the sender side: a
-    handler-less `register_event(NewDataEvent)` advertises the subclasses as sent, too (see Verified
-    facts and open item 3).
+    handler-less `register_event(NewDataEvent)` advertises the subclasses as sent, too (as implemented in
+    a2; step (c) removes this behaviour and that sentence).
   - Module-level `class DataType(TypedDict): filename: str` and `self.data: DataType = {"filename": ...}`,
     same convention as the other event modules.
 - `pyobs/events/newimage.py`: `class NewImageEvent(NewDataEvent)`; keep
@@ -153,7 +158,34 @@ Nothing in core needs it now. Candidate outside core: `pyobs-gui/pyobs_gui/datad
 could register one `NewDataEvent` handler instead of two and use `isinstance(event, NewDataEvent)`. That is
 a pyobs-gui change and needs a pyobs-core release first. Not part of this plan.
 
-## Step (b): `BaseData` base class. Decided after step (a)
+## Step (c): exact-class sender registration
+
+Decided 2026-10-29 instead of a `derived: bool` keyword (rejected: an opt-in flag would keep the
+surprising default forever, and exact-class is what a sender should mean anyway).
+
+- `Comm.register_event()` (`pyobs/comm/comm.py:424`): without a handler, register exactly
+  `[event_class]` (`_events_sent` and `_register_events()`); with a handler, keep
+  `_get_derived_events()`. `unregister_event()` is unchanged (it only deals with handlers).
+- Why it is safe in core: every handler-less sender registration names the concrete class it sends
+  (`BaseCamera`/`BaseVideo`/`ImageWriter` etc. register `NewImageEvent`, telescopes register
+  `MoveRaDecEvent`/`MoveAltAzEvent`/`OffsetsRaDecEvent`/`OffsetsAltAzEvent`; nobody registers `MoveEvent`
+  or `OffsetsEvent`). The only core hierarchy with a sendable base is `NewDataEvent`.
+- Risk outside core, not verifiable from this repo: a plugin that sends a subclass of `NewImageEvent`
+  and relied on `BaseCamera`'s `register_event(NewImageEvent)` expansion to advertise it. After this change
+  it must call `register_event(MyImageEvent)` itself, otherwise peers stop subscribing to it silently.
+  Grep sibling repos for subclasses of `NewImageEvent`, `NewSpectrumEvent` and other core events before
+  release; mention it under `CHANGELOG.md` Changed.
+- Tests: handler-less `register_event(NewDataEvent)` leaves `NewImageEvent`/`NewSpectrumEvent` out of
+  `_events_sent`; handler-less `register_event(NewImageEvent)` no longer adds a plugin subclass;
+  registration with a handler still expands (existing `test_handler_for_core_event_also_covers_plugin_subclass`
+  and `test_register_event_still_covers_core_subclasses`); update
+  `test_register_event_without_handler_declares_plugin_event_as_sent` if it relies on expansion; local and
+  XMPP schema/role tests that assert the advertised set.
+- Docstring of `register_event()` and of `NewDataEvent` updated (the NewDataEvent docstring currently says a
+  handler-less registration advertises the subclasses: remove that sentence).
+- Order: before or together with the first generic-data sender; independent of (b).
+
+## Step (b): `BaseData` base class. Parked (decided 2026-10-29, after step (a))
 
 Not part of (a). Reasoning for the earlier no-go still holds for camera/video/spectrograph:
 
@@ -177,7 +209,17 @@ What changed: Tim plans further data modules (FTS-like) that send `NewDataEvent`
 fourth data-producing class, which was the stated trigger for revisiting. The case for `BaseData` is then
 for those new modules (and possibly FTS), not for refactoring camera/video. A `BaseData` used only by new
 modules avoids the external breakage; making camera/video/spectrograph inherit from it is the costly part
-and can be skipped. To be settled once (a) is in and the first such module exists.
+and can be skipped.
+
+Decision: parked. The first module that will send a bare `NewDataEvent` is a sibling-repo module that
+already derives from `BaseSpectrograph`, so it gets its exposure, header and storage machinery from there
+and would not use a new `BaseData`. Core already provides what it needs after steps (a) and (c): it
+registers `NewDataEvent` itself and sends it from its own storage path. `BaseData` would only move about
+three lines and add a class to the `Module` MRO. Revisit when a second data module appears that does not
+derive from `BaseSpectrograph`/`BaseCamera`/`BaseVideo`. Note for that sender: `BaseSpectrograph.open()`
+registers `NewSpectrumEvent` (a1), so a subclass that sends only `NewDataEvent` also advertises a spectrum
+event it never sends (empty node, harmless); letting the subclass choose the event would be a core change,
+not worth building before it is seen to matter.
 
 If done, the least invasive form is a non-abstract helper, not a template method:
 
@@ -188,9 +230,8 @@ class BaseData(Module, FitsHeaderMixin, IData, metaclass=ABCMeta):
     async def open(self) -> None:
         await Module.open(self)
         if self._comm:
-            # declare only the class actually sent: without derived=False, a module sending a bare
-            # NewDataEvent would also advertise NewImageEvent/NewSpectrumEvent (open item 3)
-            await self.comm.register_event(self._data_event, derived=False)
+            # exact-class sender registration (step c): only the class actually sent is advertised
+            await self.comm.register_event(self._data_event)
 
     async def _broadcast_data(self, event: NewDataEvent, broadcast: bool) -> None:
         if broadcast and self._comm:
@@ -200,18 +241,9 @@ class BaseData(Module, FitsHeaderMixin, IData, metaclass=ABCMeta):
 Even this mostly moves 3 lines and adds a class. A free function or a small mixin would give the same
 without touching the MRO of `Module`.
 
-`derived=False` does not exist yet (see Verified facts). Whatever form (b) takes, and also for a
-generic-data sender written without `BaseData`, the first module that sends a bare `NewDataEvent` needs
-either that small Comm change or an accepted and documented over-advertisement. Recommendation (open
-item 3): add a keyword `derived: bool = True` to `Comm.register_event()` that, when False, uses
-`[event_class]` instead of `_get_derived_events(event_class)`; `unregister_event()` gets the same
-keyword so it mirrors exactly what was registered. Default unchanged, so no existing caller changes
-behaviour. Changing the sender-side default to "exact class only" instead was considered and not
-recommended: a plugin camera that sends a subclass of `NewImageEvent` today is advertised only through
-`BaseCamera`'s expanded `register_event(NewImageEvent)`, and would silently stop being subscribed to.
-Separate commit with its own test (handler-less `register_event(NewDataEvent, derived=False)` leaves
-`NewImageEvent`/`NewSpectrumEvent` out of `_events_sent`), done together with the first generic-data
-sender, not in step (a).
+Whatever form (b) takes, and also for a generic-data sender written without `BaseData`, the first module
+that sends a bare `NewDataEvent` needs step (c) first, otherwise it also advertises `NewImageEvent` and
+`NewSpectrumEvent`.
 
 ## Compatibility and risks (external repos)
 
@@ -264,9 +296,9 @@ Risks for step (a):
   a pyobs-core with `NewDataEvent` before the first module sends a bare `NewDataEvent`; old peers drop
   it silently, without an error. The pyobs-gui `DataDisplayWidget` follow-up additionally needs that
   pyobs-gui release.
-- Sender-side expansion: a handler-less `register_event(NewDataEvent)` advertises `NewImageEvent` and
-  `NewSpectrumEvent` as sent (see Verified facts). Not triggered in step (a); handled by open item 3
-  before the first generic-data sender.
+- Sender-side expansion: today a handler-less `register_event(NewDataEvent)` advertises `NewImageEvent` and
+  `NewSpectrumEvent` as sent (see Verified facts). Not triggered in step (a); removed by step (c) before
+  the first generic-data sender.
 - A `NewDataEvent` handler also receives image/spectrum events. Handlers meant for generic data only must
   check `type(event) is NewDataEvent`.
 - Subscribing to `NewDataEvent` only covers subclasses imported before `register_event()` (documented
@@ -305,12 +337,10 @@ unchanged.
 
 ## Open items
 
-1. Step (b): which module is the first generic-data sender (FTS?), and does it justify `BaseData` for new
-   modules only (without touching camera/video/spectrograph)? Decide after (a).
+1. Resolved: step (b) is parked, see there. The first generic-data sender derives from `BaseSpectrograph`
+   and needs no `BaseData`.
 2. Do subscribers ever need to tell two generic data kinds apart? If so, an optional
    `data_type: str | None = None` can be added later (additive, no version bump needed).
-3. Sender-side expansion of `register_event()`: add `derived: bool = True` to
-   `Comm.register_event()`/`unregister_event()` so a generic-data sender can declare exactly
-   `NewDataEvent` (recommended, see step (b)), or accept and document that such a module also advertises
-   `NewImageEvent`/`NewSpectrumEvent` (empty nodes, extra peer subscriptions, misleading `role="send"`).
-   Needed before the first module sends a bare `NewDataEvent`, not for step (a).
+3. Resolved: sender-side expansion of `register_event()` is removed (step (c)), no `derived` keyword.
+   Remaining question: are there plugin subclasses outside core that depend on the expansion? Check the
+   sibling repos before releasing (c).

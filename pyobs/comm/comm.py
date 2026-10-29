@@ -423,16 +423,19 @@ class Comm:
 
     async def register_event(self, event_class: type[Event], handler: EventHandler | None = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
-        send them. Event classes derived from the given one are registered, too, but only those that have been
-        imported (and therefore registered) by now.
+        send them.
+
+        With a handler, event classes derived from the given one are subscribed, too, but only those that have
+        been imported (and therefore registered) by now. Without a handler, only the given class itself is
+        declared as sent: a module that sends several related events registers each of them.
 
         Args:
             event_class: Class of event to register.
             handler: Event handler method.
         """
 
-        # we also want to register all events derived from the given one
-        event_classes = self._get_derived_events(event_class)
+        # a handler also covers derived events, but we only declare to send exactly the given class
+        event_classes = self._get_derived_events(event_class) if handler else [event_class]
 
         # do we have a handler? then we subscribe, otherwise we just declare that we send it
         if handler:

@@ -6,6 +6,7 @@ TODO: write doc
 __title__ = "Cameras"
 
 from .basecamera import BaseCamera
+from .basedata import BaseData
 from .basespectrograph import BaseSpectrograph
 from .basevideo import BaseVideo
 from .dummycamera import DummyCamera
@@ -15,6 +16,7 @@ from .videoframes import Frame, FrameRecord, StartSource
 
 __all__ = [
     "BaseCamera",
+    "BaseData",
     "BaseVideo",
     "BaseSpectrograph",
     "DummyCamera",

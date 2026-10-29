@@ -65,6 +65,11 @@ class BaseSpectrograph(
         """Open module."""
         await Module.open(self)
 
+        # declare the events we send
+        if self._comm:
+            await self.comm.register_event(NewSpectrumEvent)
+            await self.comm.register_event(ExposureStatusChangedEvent)
+
         # publish initial state
         await self.comm.set_state(
             IExposure, ExposureState(status=self._spectrograph_status, progress=0.0, exposure_time_left=0.0)

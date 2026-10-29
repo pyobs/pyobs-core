@@ -6,7 +6,14 @@ import pytest
 
 from pyobs.comm.local.localcomm import LocalComm
 from pyobs.comm.local.localnetwork import LocalNetwork
-from pyobs.events import BadWeatherEvent, GoodWeatherEvent, ModuleOpenedEvent, NewImageEvent
+from pyobs.events import (
+    BadWeatherEvent,
+    GoodWeatherEvent,
+    ModuleOpenedEvent,
+    NewDataEvent,
+    NewImageEvent,
+    NewSpectrumEvent,
+)
 from pyobs.interfaces import IExposureTime
 
 
@@ -150,6 +157,22 @@ async def test_send_event_dispatches_plugin_subclass(reset_network) -> None:
 
     handler.assert_called_once()
     assert handler.call_args[0][0] is event
+
+
+@pytest.mark.asyncio
+async def test_new_data_subscriber_receives_derived_events(reset_network) -> None:
+    c1 = make_comm("sender")
+    c2 = make_comm("receiver")
+
+    handler = AsyncMock(return_value=True)
+    await c2.register_event(NewDataEvent, handler)
+
+    spectrum = NewSpectrumEvent(filename="s.fits")
+    data = NewDataEvent(filename="d.dat")
+    await c1.send_event(spectrum)
+    await c1.send_event(data)
+
+    assert [c[0][0] for c in handler.call_args_list] == [spectrum, data]
 
 
 @pytest.mark.asyncio

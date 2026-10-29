@@ -185,7 +185,7 @@ surprising default forever, and exact-class is what a sender should mean anyway)
   handler-less registration advertises the subclasses: remove that sentence).
 - Order: before or together with the first generic-data sender; independent of (b).
 
-## Step (b): `BaseData` base class. Decided after step (a)
+## Step (b): `BaseData` base class. Parked (decided 2026-10-29, after step (a))
 
 Not part of (a). Reasoning for the earlier no-go still holds for camera/video/spectrograph:
 
@@ -209,7 +209,17 @@ What changed: Tim plans further data modules (FTS-like) that send `NewDataEvent`
 fourth data-producing class, which was the stated trigger for revisiting. The case for `BaseData` is then
 for those new modules (and possibly FTS), not for refactoring camera/video. A `BaseData` used only by new
 modules avoids the external breakage; making camera/video/spectrograph inherit from it is the costly part
-and can be skipped. To be settled once (a) is in and the first such module exists.
+and can be skipped.
+
+Decision: parked. The first module that will send a bare `NewDataEvent` is a sibling-repo module that
+already derives from `BaseSpectrograph`, so it gets its exposure, header and storage machinery from there
+and would not use a new `BaseData`. Core already provides what it needs after steps (a) and (c): it
+registers `NewDataEvent` itself and sends it from its own storage path. `BaseData` would only move about
+three lines and add a class to the `Module` MRO. Revisit when a second data module appears that does not
+derive from `BaseSpectrograph`/`BaseCamera`/`BaseVideo`. Note for that sender: `BaseSpectrograph.open()`
+registers `NewSpectrumEvent` (a1), so a subclass that sends only `NewDataEvent` also advertises a spectrum
+event it never sends (empty node, harmless); letting the subclass choose the event would be a core change,
+not worth building before it is seen to matter.
 
 If done, the least invasive form is a non-abstract helper, not a template method:
 
@@ -327,8 +337,8 @@ unchanged.
 
 ## Open items
 
-1. Step (b): which module is the first generic-data sender (FTS?), and does it justify `BaseData` for new
-   modules only (without touching camera/video/spectrograph)? Decide after (a).
+1. Resolved: step (b) is parked, see there. The first generic-data sender derives from `BaseSpectrograph`
+   and needs no `BaseData`.
 2. Do subscribers ever need to tell two generic data kinds apart? If so, an optional
    `data_type: str | None = None` can be added later (additive, no version bump needed).
 3. Resolved: sender-side expansion of `register_event()` is removed (step (c)), no `derived` keyword.

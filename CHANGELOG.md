@@ -20,6 +20,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 - `BaseSpectrograph.open()` now registers `NewSpectrumEvent` and `ExposureStatusChangedEvent`, so peers
   subscribe to the events it sends.
+- `NewImageEvent.from_dict()` and `NewSpectrumEvent.from_dict()` now return `cls`, so plugin subclasses
+  deserialize as themselves.
 
 ## [2.19.0] - 2026-10-17
 

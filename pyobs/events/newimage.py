@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from pyobs.events.event import Event
-from pyobs.events.newdata import DataType as NewDataType, NewDataEvent
+from pyobs.events.newdata import DataType as NewDataType
+from pyobs.events.newdata import NewDataEvent
 from pyobs.utils.enums import ImageType
 
 
@@ -50,7 +51,7 @@ class NewImageEvent(NewDataEvent):
             raw = d["raw"]
 
         # return object
-        return NewImageEvent(filename, image_type, raw)
+        return cls(filename, image_type, raw)
 
     @property
     def image_type(self) -> ImageType | None:

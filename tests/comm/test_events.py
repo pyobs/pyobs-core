@@ -17,7 +17,17 @@ from unittest.mock import AsyncMock
 import pytest
 
 from pyobs.comm.comm import Comm
-from pyobs.events import Event, LogEvent, ModuleOpenedEvent, MoveAltAzEvent, MoveEvent, MoveRaDecEvent, NewDataEvent, NewImageEvent, NewSpectrumEvent
+from pyobs.events import (
+    Event,
+    LogEvent,
+    ModuleOpenedEvent,
+    MoveAltAzEvent,
+    MoveEvent,
+    MoveRaDecEvent,
+    NewDataEvent,
+    NewImageEvent,
+    NewSpectrumEvent,
+)
 
 
 def _bare_comm() -> Comm:

@@ -28,7 +28,7 @@ class NewSpectrumEvent(NewDataEvent):
         filename: str = d["filename"]
 
         # return object
-        return NewSpectrumEvent(filename)
+        return cls(filename)
 
 
 __all__ = ["NewSpectrumEvent"]

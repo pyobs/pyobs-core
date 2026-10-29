@@ -6,7 +6,6 @@ from typing import Any
 import pytest
 
 from pyobs.events import (
-    NewDataEvent,
     BadWeatherEvent,
     Event,
     EventFactory,
@@ -22,6 +21,7 @@ from pyobs.events import (
     MotionStatusChangedEvent,
     MoveAltAzEvent,
     MoveRaDecEvent,
+    NewDataEvent,
     NewImageEvent,
     NewSpectrumEvent,
     OffsetsAltAzEvent,
@@ -620,7 +620,11 @@ def test_new_image_payload_unchanged() -> None:
     e = NewImageEvent("img.fits", ImageType.OBJECT, "raw.fits")
     assert list(e.data.keys()) == ["filename", "image_type", "raw"]
     assert e.data == {"filename": "img.fits", "image_type": ImageType.OBJECT, "raw": "raw.fits"}
-    assert list(NewImageEvent("img.fits").data.items()) == [("filename", "img.fits"), ("image_type", None), ("raw", None)]
+    assert list(NewImageEvent("img.fits").data.items()) == [
+        ("filename", "img.fits"),
+        ("image_type", None),
+        ("raw", None),
+    ]
     assert json.loads(json.dumps(NewImageEvent("img.fits").to_json()))["data"] == {
         "filename": "img.fits",
         "image_type": None,
@@ -631,3 +635,19 @@ def test_new_image_payload_unchanged() -> None:
 def test_new_spectrum_payload_unchanged() -> None:
     e = NewSpectrumEvent("spec.fits")
     assert list(e.data.items()) == [("filename", "spec.fits")]
+
+
+class _PluginNewImage(NewImageEvent):
+    __module__ = __name__
+
+
+class _PluginNewSpectrum(NewSpectrumEvent):
+    __module__ = __name__
+
+
+def test_plugin_subclass_from_dict_keeps_class() -> None:
+    image = EventFactory.from_dict(_PluginNewImage("i.fits", ImageType.BIAS).to_json())
+    assert type(image) is _PluginNewImage
+    assert image.image_type == ImageType.BIAS  # type: ignore[attr-defined]
+    spectrum = EventFactory.from_dict(_PluginNewSpectrum("s.fits").to_json())
+    assert type(spectrum) is _PluginNewSpectrum

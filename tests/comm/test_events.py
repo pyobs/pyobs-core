@@ -17,7 +17,17 @@ from unittest.mock import AsyncMock
 import pytest
 
 from pyobs.comm.comm import Comm
-from pyobs.events import Event, LogEvent, ModuleOpenedEvent, MoveAltAzEvent, MoveEvent, MoveRaDecEvent, NewImageEvent
+from pyobs.events import (
+    Event,
+    LogEvent,
+    ModuleOpenedEvent,
+    MoveAltAzEvent,
+    MoveEvent,
+    MoveRaDecEvent,
+    NewDataEvent,
+    NewImageEvent,
+    NewSpectrumEvent,
+)
 
 
 def _bare_comm() -> Comm:
@@ -285,6 +295,20 @@ async def test_handler_for_core_event_also_covers_plugin_subclass() -> None:
     await asyncio.sleep(0)
     handler.assert_called_once()
     assert handler.call_args[0][0] is event
+
+
+@pytest.mark.asyncio
+async def test_handler_for_new_data_covers_image_and_spectrum() -> None:
+    comm = _bare_comm()
+    handler = AsyncMock(return_value=True)
+
+    await comm.register_event(NewDataEvent, handler)
+
+    assert {NewDataEvent, NewImageEvent, NewSpectrumEvent} <= set(comm._event_handlers)
+    for event in (NewDataEvent("d.dat"), NewImageEvent("i.fits"), NewSpectrumEvent("s.fits")):
+        comm._send_event_to_module(event, "x")
+    await asyncio.sleep(0)
+    assert handler.call_count == 3
 
 
 @pytest.mark.asyncio

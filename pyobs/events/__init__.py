@@ -17,6 +17,7 @@ from .moduleclosed import ModuleClosedEvent
 from .moduleopened import ModuleOpenedEvent
 from .motionstatuschanged import MotionStatusChangedEvent
 from .move import MoveAltAzEvent, MoveEvent, MoveRaDecEvent
+from .newdata import NewDataEvent
 from .newimage import NewImageEvent
 from .newspectrum import NewSpectrumEvent
 from .offsets import OffsetsAltAzEvent, OffsetsEvent, OffsetsRaDecEvent
@@ -47,6 +48,7 @@ __all__ = [
     "MoveEvent",
     "MoveRaDecEvent",
     "MoveAltAzEvent",
+    "NewDataEvent",
     "NewImageEvent",
     "NewSpectrumEvent",
     "RoofClosingEvent",

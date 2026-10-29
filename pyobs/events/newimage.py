@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any
 
 from pyobs.events.event import Event
+from pyobs.events.newdata import DataType as NewDataType
+from pyobs.events.newdata import NewDataEvent
 from pyobs.utils.enums import ImageType
 
 
-class DataType(TypedDict):
-    filename: str
+class DataType(NewDataType):
     image_type: str | None
     raw: str | None
 
 
-class NewImageEvent(Event):
+class NewImageEvent(NewDataEvent):
     """Event to be sent on a new image."""
 
     __module__ = "pyobs.events"
@@ -25,7 +26,7 @@ class NewImageEvent(Event):
             image_type: Type of image.
             raw: Only for reduced images, references raw frame.
         """
-        Event.__init__(self)
+        NewDataEvent.__init__(self, filename)
         self.data: DataType = {
             "filename": filename,
             "image_type": image_type if image_type is not None else None,
@@ -50,11 +51,7 @@ class NewImageEvent(Event):
             raw = d["raw"]
 
         # return object
-        return NewImageEvent(filename, image_type, raw)
-
-    @property
-    def filename(self) -> str:
-        return self.data["filename"]
+        return cls(filename, image_type, raw)
 
     @property
     def image_type(self) -> ImageType | None:

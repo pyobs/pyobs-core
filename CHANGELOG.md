@@ -13,6 +13,15 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 - `pyobs.events.FileWrittenEvent`, sent by `ImageWriter` and `ImageWatcher` (one per destination) after a
   file has been written.
+- `pyobs.events.NewDataEvent` for data that is neither image nor spectrum. `NewImageEvent` and
+  `NewSpectrumEvent` now derive from it (payload unchanged), so a `NewDataEvent` handler receives all three.
+
+### Fixed
+
+- `BaseSpectrograph.open()` now registers `NewSpectrumEvent` and `ExposureStatusChangedEvent`, so peers
+  subscribe to the events it sends.
+- `NewImageEvent.from_dict()` and `NewSpectrumEvent.from_dict()` now return `cls`, so plugin subclasses
+  deserialize as themselves.
 
 ## [2.19.0] - 2026-10-17
 

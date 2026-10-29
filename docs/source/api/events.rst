@@ -78,6 +78,11 @@ MoveRaDecEvent
 
 .. autoclass:: pyobs.events.MoveRaDecEvent
 
+NewDataEvent
+^^^^^^^^^^^^
+
+.. autoclass:: pyobs.events.NewDataEvent
+
 NewImageEvent
 ^^^^^^^^^^^^^
 

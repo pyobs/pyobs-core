@@ -390,3 +390,6 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-10-27-filewritten-event.md](2026-10-27-filewritten-event.md): new `FileWrittenEvent`
   (VFS filename only) sent by `ImageWriter` after a successful write and by `ImageWatcher` once
   per destination; send errors only logged. **implemented** (Repos: pyobs-core)
+- [2026-10-29-newdataevent.md](2026-10-29-newdataevent.md): generic `NewDataEvent` as base of
+  `NewImageEvent`/`NewSpectrumEvent` (no `data_type`), plus `BaseSpectrograph` event registration
+  fix; `BaseData` base class decided after step (a). **proposed** (Repos: pyobs-core, pyobs-gui, pyobs-iagvt)

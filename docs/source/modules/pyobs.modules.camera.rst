@@ -10,6 +10,13 @@ BaseCamera
    :members:
    :show-inheritance:
 
+BaseData
+^^^^^^^^
+
+.. autoclass:: pyobs.modules.camera.BaseData
+   :members:
+   :show-inheritance:
+
 BaseSpectrograph
 ^^^^^^^^^^^^^^^^
 

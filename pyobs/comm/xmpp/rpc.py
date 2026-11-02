@@ -135,17 +135,38 @@ def fault_to_xml(exception: Exception) -> ET.Element:
     return fault
 
 
+def _pyobs_fault(fault_elem: ET.Element) -> ET.Element | None:
+    """Return the <pyobs:fault> element inside a <fault><value>, or None."""
+    value_elem = fault_elem.find(f"{{{_NS}}}value")
+    if value_elem is None:
+        return None
+    return value_elem.find(f"{{{_PYOBS_NS}}}fault")
+
+
+def _fault_child(parent: ET.Element, name: str) -> ET.Element | None:
+    """Find a child of a fault element, with or without the pyobs namespace.
+
+    Depending on the sender's slixmpp version, the children of <pyobs:fault> go over the wire either with
+    an explicit xmlns="" (slixmpp >= 1.17, parsed without namespace) or without it, in which case they
+    inherit urn:pyobs:rpc:1 from their parent when parsed (slixmpp <= 1.16). Both forms must be accepted (#1030).
+    """
+    child = parent.find(f"{{{_PYOBS_NS}}}{name}")
+    return child if child is not None else parent.find(name)
+
+
 def xml_to_fault(fault_elem: ET.Element) -> tuple[str, str]:
     """Parse <fault> and return (exception_qualified_name, message)."""
     _fallback_name = f"{exc.RemoteError.__module__}.{exc.RemoteError.__qualname__}"
-    value_elem = fault_elem.find(f"{{{_NS}}}value")
-    if value_elem is None:
+    if fault_elem.find(f"{{{_NS}}}value") is None:
         return _fallback_name, "Unknown error"
-    pyobs_fault = value_elem.find(f"{{{_PYOBS_NS}}}fault")
+    pyobs_fault = _pyobs_fault(fault_elem)
     if pyobs_fault is None:
         return _fallback_name, "Unknown error"
-    exc_el = pyobs_fault.find("exception")
-    msg_el = pyobs_fault.find("message")
+    exc_el = _fault_child(pyobs_fault, "exception")
+    msg_el = _fault_child(pyobs_fault, "message")
+    if exc_el is None:
+        # would otherwise silently become an empty RemoteError, which is how #1030 stayed hidden
+        log.warning("Received fault without exception element: %s", ET.tostring(fault_elem, encoding="unicode"))
     exc_name = (exc_el.text if exc_el is not None else None) or _fallback_name
     msg = (msg_el.text if msg_el is not None else None) or ""
     return exc_name, msg
@@ -156,13 +177,13 @@ def xml_to_fault_bases(fault_elem: ET.Element) -> list[str]:
 
     Empty if the fault has none, e.g. when it comes from a peer that does not send them.
     """
-    value_elem = fault_elem.find(f"{{{_NS}}}value")
-    if value_elem is None:
-        return []
-    pyobs_fault = value_elem.find(f"{{{_PYOBS_NS}}}fault")
+    pyobs_fault = _pyobs_fault(fault_elem)
     if pyobs_fault is None:
         return []
-    return [b.text for b in pyobs_fault.iterfind("bases/base") if b.text]
+    bases_elem = _fault_child(pyobs_fault, "bases")
+    if bases_elem is None:
+        return []
+    return [b.text for b in bases_elem if b.tag.split("}")[-1] == "base" and b.text]
 
 
 def reconstruct_fault(name: str, message: str, bases: list[str], remote_module: str) -> exc.PyobsError:

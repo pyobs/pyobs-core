@@ -103,7 +103,7 @@ async def add_requested_fits_headers(
 
         try:
             headers = future.result()
-        except exc.RemoteError as e:
+        except exc.PyobsError as e:
             log.warning("Could not fetch FITS headers from %s: %s.", client, str(e))
             continue
         except Exception as e:

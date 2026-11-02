@@ -138,6 +138,18 @@ class InitAbortedError(PyobsError):
     pass
 
 
+class InitRefusedError(PyobsError):
+    """Initialization was not started because a precondition is not met, e.g. the weather is bad or another
+    motion is in progress. Nothing was attempted and the device is fine, so this is an expected outcome, not a
+    fault: don't alert, and call init() again only once the precondition holds. Deliberately neither a
+    MotionError nor an InitError, so that it never counts towards a module's repeated-motion-failure
+    escalation. Distinct from InitAbortedError, which means an init that was already running was cut short.
+    Remote rejections also do not count towards broad RemoteError severity handlers; explicit handlers for this
+    class or its ancestors still apply."""
+
+    pass
+
+
 class GrabImageError(PyobsError):
     pass
 

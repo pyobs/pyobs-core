@@ -402,3 +402,6 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-11-02-init-aborted-error.md](2026-11-02-init-aborted-error.md): `InitAbortedError` so a deliberately
   aborted `init()` no longer counts towards `MotionError` escalation (#1031). **implemented in core**
   (Repos: pyobs-core, pyobs-brot)
+- [2026-11-02-init-refused-error.md](2026-11-02-init-refused-error.md): `InitRefusedError` so an `init()` refused on a
+  precondition (e.g. bad weather) no longer counts towards `MotionError` escalation (#1034). **implemented in
+  core** (Repos: pyobs-core, pyobs-brot)

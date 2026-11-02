@@ -363,3 +363,23 @@ class TestInitAbortedErrorOverTheWire:
             exc.PyobsError._registry[name] = saved
         assert type(e) is exc.UnclassifiedError
         assert e.original_type == name  # type: ignore[attr-defined]
+
+
+class TestInitRefusedErrorOverTheWire:
+    def test_round_trip_without_bases(self) -> None:
+        elem = ET.fromstring(ET.tostring(fault_to_xml(exc.InitRefusedError("refused"))))
+        name, msg = xml_to_fault(elem)
+        assert xml_to_fault_bases(elem) == []  # direct PyobsError child: nothing to send
+        e = reconstruct_fault(name, msg, [], "telescope")
+        assert type(e) is exc.InitRefusedError
+        assert e.message == "refused"
+
+    def test_old_core_receives_unclassified_error(self) -> None:
+        name = "pyobs.utils.exceptions.InitRefusedError"
+        saved = exc.PyobsError._registry.pop(name)
+        try:
+            e = reconstruct_fault(name, "refused", [], "telescope")
+        finally:
+            exc.PyobsError._registry[name] = saved
+        assert type(e) is exc.UnclassifiedError
+        assert e.original_type == name  # type: ignore[attr-defined]

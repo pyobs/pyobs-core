@@ -52,7 +52,9 @@ def test_night_obs_falls_back_to_local_date_during_polar_day() -> None:
 
 @pytest.fixture(autouse=True)
 def offline_iers():
-    with iers.conf.set_temp("auto_download", False):
+    # auto_max_age=None: the offline table ages with the wall clock and would otherwise make these
+    # tests start failing 30 days after the bundled IERS data was released
+    with iers.conf.set_temp("auto_download", False), iers.conf.set_temp("auto_max_age", None):
         yield
 
 

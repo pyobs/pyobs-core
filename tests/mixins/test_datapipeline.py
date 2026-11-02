@@ -301,7 +301,12 @@ async def test_dummyvideo_pipeline_runs_after_finish_image_override_headers() ->
             return await super()._finish_image(image, broadcast, image_type)
 
     video = _HeaderTaggingVideo(
-        fps=1000, image_size=(4, 4), pipelines={"tag": [TagStep("CUSTOM")]}, default_pipeline="tag"
+        fps=1000,
+        image_size=(4, 4),
+        frame_number=False,
+        filenames=_TEST_VIDEO_FILENAMES,
+        pipelines={"tag": [TagStep("CUSTOM")]},
+        default_pipeline="tag",
     )
     video.comm.set_state = AsyncMock()
     video.comm.set_capabilities = AsyncMock()
@@ -330,7 +335,12 @@ async def test_dummyvideo_meta_fallback_when_create_image_bypasses_base() -> Non
             return await self._finish_image(image, next_image.broadcast, next_image.image_type)
 
     video = _BypassingVideo(
-        fps=1000, image_size=(4, 4), pipelines={"double": [DoubleStep()]}, default_pipeline="double"
+        fps=1000,
+        image_size=(4, 4),
+        frame_number=False,
+        filenames=_TEST_VIDEO_FILENAMES,
+        pipelines={"double": [DoubleStep()]},
+        default_pipeline="double",
     )
     video.comm.set_state = AsyncMock()
     video.comm.set_capabilities = AsyncMock()

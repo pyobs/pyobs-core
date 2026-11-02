@@ -11,6 +11,15 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Added
 
+- `InitRefusedError` for an `init()` that was not started because a precondition is not met (e.g. bad weather).
+  Like `InitAbortedError` it is not a `MotionError`, so refusals no longer count towards the escalation to ERROR
+  of telescope and dome modules, and it is excluded from broad `RemoteError` handlers. Callers on older cores
+  receive it as `UnclassifiedError` (#1034).
+
+## [2.22.0] - 2026-11-02
+
+### Added
+
 - `InitAbortedError` for an `init()` that was cut short on purpose (e.g. a weather-protection park during
   startup). It is not a `MotionError`, so aborted inits no longer count towards the telescope module's
   escalation to ERROR, and it is excluded from broad `RemoteError` handlers like `PointingLimitError`. Callers

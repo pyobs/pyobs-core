@@ -28,12 +28,18 @@ Everything derives from :class:`~pyobs.utils.exceptions.PyobsError`. There are t
   through, e.g. :class:`~pyobs.utils.exceptions.RemoteTimeoutError` or
   :class:`~pyobs.utils.exceptions.ForbiddenError` (the ACL of the other module rejected you).
 
+A failure that happened in the other module's code never arrives as a plain ``RemoteError``. It arrives as its
+own class (see below), so catch :class:`~pyobs.utils.exceptions.PyobsError` or the specific domain class, not
+``RemoteError``, to handle it. ``RemoteError`` is for the transport only.
+
 A few classes describe what the caller should do, not where the error came from:
 :class:`~pyobs.utils.exceptions.DeviceBusyError` and :class:`~pyobs.utils.exceptions.ModuleStartingError`
 mean "try again later", :class:`~pyobs.utils.exceptions.NotSupportedError` and
 :class:`~pyobs.utils.exceptions.InvalidArgumentError` mean "do not retry this request".
 :class:`~pyobs.utils.exceptions.InitAbortedError` means "expected interruption, not a failure": an
 initialization was cut short on purpose, e.g. by a weather-protection park.
+:class:`~pyobs.utils.exceptions.InitRefusedError` is the same for an initialization that was not started because
+a precondition is not met, e.g. bad weather.
 
 Catch the most specific class that you really handle differently, and nothing broader:
 
@@ -82,6 +88,13 @@ Over XMPP, whatever is raised carries a few attributes that help with debugging:
   class you got, so read it with ``getattr(e, "original_type", None)`` unless you caught
   ``UnclassifiedError``.
 * ``message``: the raw message. ``str(e)`` adds the class name in front, e.g. ``<MotionError> timeout``.
+
+.. note::
+
+   If the module that raised the error runs on slixmpp 1.16 or older, a caller on 2.21 or older cannot read the
+   fault: every domain error arrives there as a ``RemoteError`` with an empty message and without
+   ``original_type``. Callers after 2.21 read these faults correctly. Upgrade the callers, or the slixmpp of
+   the raising module to 1.17 or newer.
 
 With ``LocalComm`` (all modules in one process) nothing is sent: the caller gets the very exception object
 that was raised, without ``remote_module``.
@@ -165,7 +178,7 @@ pass through your methods, give its name with ``module=``:
 Handlers without ``module=`` only see errors raised locally, handlers with ``module=`` only see errors that
 came from that module over XMPP (they need ``remote_module``, see above). A handler for ``exc.RemoteError``
 with ``module=`` counts remote failures regardless of their domain class, except
-``PointingLimitError`` and its subclasses and ``InitAbortedError``: these expected
+``PointingLimitError`` and its subclasses, ``InitAbortedError`` and ``InitRefusedError``: these expected
 rejections do not indicate a failing device. Explicit handlers for these classes or their
 ancestors still count them. Genuine transport errors and remote motion, exposure and unclassified
 failures continue to count towards broad ``RemoteError`` handlers.

@@ -1,4 +1,4 @@
-"""#1031: an init() that was aborted on purpose must not escalate the telescope module to ERROR."""
+"""#1031/#1034: an init() that was aborted or refused on purpose must not escalate the telescope module to ERROR."""
 
 from __future__ import annotations
 
@@ -25,10 +25,14 @@ def _make_failing(error: exc.PyobsError) -> Any:
 
 
 @pytest.mark.asyncio
-async def test_aborted_init_does_not_escalate() -> None:
-    tel = _make_failing(exc.InitAbortedError("Startup of telescope was interrupted."))
+@pytest.mark.parametrize(
+    "error_type",
+    [exc.InitAbortedError, exc.InitRefusedError],
+)
+async def test_expected_init_rejection_does_not_escalate(error_type: type[exc.PyobsError]) -> None:
+    tel = _make_failing(error_type("Startup of telescope was interrupted."))
     for _ in range(4):
-        with pytest.raises(exc.InitAbortedError):
+        with pytest.raises(error_type):
             await tel.execute("init", sender="t")
         await asyncio.sleep(0.01)
     assert tel._state == ModuleState.READY
@@ -46,14 +50,15 @@ async def test_failed_init_still_escalates() -> None:
         await tel.execute("init", sender="t")
 
 
-def test_hierarchy() -> None:
-    assert not issubclass(exc.InitAbortedError, exc.MotionError)
-    assert not issubclass(exc.InitAbortedError, exc.InitError)
-    assert not issubclass(exc.InitAbortedError, exc.AbortedError)
+@pytest.mark.parametrize("error_type", [exc.InitAbortedError, exc.InitRefusedError])
+def test_hierarchy(error_type: type[exc.PyobsError]) -> None:
+    assert not issubclass(error_type, exc.MotionError)
+    assert not issubclass(error_type, exc.InitError)
+    assert not issubclass(error_type, exc.AbortedError)
 
 
 @pytest.mark.asyncio
-async def test_remote_aborted_init_only_triggers_explicit_handlers() -> None:
-    fault = exc.InitAbortedError("interrupted", remote_module="telescope")
-    assert not Module._counts_as_remote_error(fault)
+async def test_remote_expected_init_rejection_only_triggers_explicit_handlers() -> None:
+    for error_type in (exc.InitAbortedError, exc.InitRefusedError):
+        assert not Module._counts_as_remote_error(error_type("rejected", remote_module="telescope"))
     assert Module._counts_as_remote_error(exc.InitError("x", remote_module="telescope"))

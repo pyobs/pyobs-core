@@ -38,6 +38,8 @@ class IMotion(IReady, metaclass=ABCMeta):
             InitError: If device could not be initialized.
             InitAbortedError: If initialization was interrupted on purpose (e.g. by park() or stop_motion()); not a
                 device fault.
+            InitRefusedError: If initialization was not started because a precondition is not met (e.g. bad
+                weather); not a device fault.
         """
         ...
 

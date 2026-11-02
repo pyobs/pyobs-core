@@ -94,6 +94,13 @@ InitError
    :members:
    :undoc-members:
 
+InitRefusedError
+^^^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.InitRefusedError
+   :members:
+   :undoc-members:
+
 InvalidArgumentError
 ^^^^^^^^^^^^^^^^^^^^
 

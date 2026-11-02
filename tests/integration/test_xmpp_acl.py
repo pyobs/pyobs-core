@@ -33,7 +33,7 @@ async def test_acl_deny_forbids_call(make_xmpp_comm, make_camera_comm) -> None:
     """A caller on the "deny" list gets exc.ForbiddenError, with a call_id, via a normal fault."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm, acl={"deny": ["observer"]})
+        camera = DummyCamera(comm=make_camera_comm, acl={"deny": ["observer"]})
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
@@ -56,7 +56,7 @@ async def test_acl_allow_interface_name_sugar(make_xmpp_comm, make_camera_comm) 
     """Naming an interface under "allow" permits all of its methods, but nothing outside it."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm, acl={"allow": {"observer": ["ICooling"]}})
+        camera = DummyCamera(comm=make_camera_comm, acl={"allow": {"observer": ["ICooling"]}})
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
@@ -85,7 +85,7 @@ async def test_acl_deny_allows_other_callers(make_xmpp_comm, make_camera_comm) -
     """A module not on the "deny" list is unaffected."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm, acl={"deny": ["legacy_gui"]})
+        camera = DummyCamera(comm=make_camera_comm, acl={"deny": ["legacy_gui"]})
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
@@ -106,7 +106,7 @@ async def test_acl_allow_permits_listed_method(make_xmpp_comm, make_camera_comm)
     """A caller granted "*" access under "allow" can still call normally."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm, acl={"allow": {"observer": "*"}})
+        camera = DummyCamera(comm=make_camera_comm, acl={"allow": {"observer": "*"}})
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
@@ -127,7 +127,7 @@ async def test_acl_allow_denies_unlisted_caller(make_xmpp_comm, make_camera_comm
     """A caller not present in the "allow" map is denied by default."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm, acl={"allow": {"mastermind": "*"}})
+        camera = DummyCamera(comm=make_camera_comm, acl={"allow": {"mastermind": "*"}})
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")

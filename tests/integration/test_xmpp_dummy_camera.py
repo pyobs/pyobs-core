@@ -30,7 +30,7 @@ async def test_dummy_camera_publishes_cooling_state(make_xmpp_comm, make_camera_
     """
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
 
@@ -64,7 +64,7 @@ async def test_dummy_camera_cooling_state_reflects_set_cooling(make_xmpp_comm, m
     """
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
 
@@ -100,7 +100,7 @@ async def test_dummy_camera_publishes_iwindow_capabilities(make_xmpp_comm, make_
     """DummyCamera.open() must publish IWindow.Capabilities with the SimCamera full frame."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
 
@@ -127,7 +127,7 @@ async def test_dummy_camera_publishes_imodule_capabilities(make_xmpp_comm, make_
     """DummyCamera.open() must publish IModule.Capabilities with version and label."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
 
@@ -154,7 +154,7 @@ async def test_dummy_camera_no_capabilities_for_unconfigured_interface(make_xmpp
     async def _run():
         from pyobs.interfaces import IFocuser
 
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
 

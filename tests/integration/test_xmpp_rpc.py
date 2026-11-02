@@ -36,7 +36,7 @@ async def test_rpc_void_return_bool_float_params(make_xmpp_comm, make_camera_com
     """set_cooling(bool, float) -> None: void return with bool + float params."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
@@ -57,7 +57,7 @@ async def test_rpc_float_return(make_xmpp_comm, make_camera_comm) -> None:
     """set_gain(float) -> None and verify via IGain state: float param, state readback."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
@@ -81,7 +81,7 @@ async def test_rpc_float_param_float_return(make_xmpp_comm, make_camera_comm) ->
     """set_gain(float) then verify via IGain state: float param round-trip."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
@@ -110,7 +110,7 @@ async def test_rpc_int_params_void_return(make_xmpp_comm, make_camera_comm) -> N
     """set_binning(int, int) -> None: multiple int params, void return."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
@@ -131,7 +131,7 @@ async def test_rpc_exception_fault(make_xmpp_comm, make_camera_comm) -> None:
     """Calling a method that raises on the remote side propagates the exception."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")
@@ -156,7 +156,7 @@ async def test_rpc_bool_float_roundtrip(make_xmpp_comm, make_camera_comm) -> Non
     """set_cooling(bool, float) then verify via state: full encode/decode cycle."""
 
     async def _run():
-        camera = DummyCamera(name="camera", comm=make_camera_comm)
+        camera = DummyCamera(comm=make_camera_comm)
         try:
             await camera.startup()
             observer_comm = await make_xmpp_comm("observer")

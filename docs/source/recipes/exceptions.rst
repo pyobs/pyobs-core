@@ -32,6 +32,8 @@ A few classes describe what the caller should do, not where the error came from:
 :class:`~pyobs.utils.exceptions.DeviceBusyError` and :class:`~pyobs.utils.exceptions.ModuleStartingError`
 mean "try again later", :class:`~pyobs.utils.exceptions.NotSupportedError` and
 :class:`~pyobs.utils.exceptions.InvalidArgumentError` mean "do not retry this request".
+:class:`~pyobs.utils.exceptions.InitAbortedError` means "expected interruption, not a failure": an
+initialization was cut short on purpose, e.g. by a weather-protection park.
 
 Catch the most specific class that you really handle differently, and nothing broader:
 
@@ -163,9 +165,9 @@ pass through your methods, give its name with ``module=``:
 Handlers without ``module=`` only see errors raised locally, handlers with ``module=`` only see errors that
 came from that module over XMPP (they need ``remote_module``, see above). A handler for ``exc.RemoteError``
 with ``module=`` counts remote failures regardless of their domain class, except
-``PointingLimitError`` and its subclasses: these expected destination rejections do not
-indicate a failing device. Explicit handlers for ``PointingLimitError`` or its ancestors
-still count them. Genuine transport errors and remote motion, exposure and unclassified
+``PointingLimitError`` and its subclasses and ``InitAbortedError``: these expected
+rejections do not indicate a failing device. Explicit handlers for these classes or their
+ancestors still count them. Genuine transport errors and remote motion, exposure and unclassified
 failures continue to count towards broad ``RemoteError`` handlers.
 
 Every domain error that leaves a method of a module is logged by that module as a quiet INFO line

@@ -126,6 +126,18 @@ class PointingLimitError(PyobsError):
     pass
 
 
+class InitAbortedError(PyobsError):
+    """Initialization was cut short on purpose before it completed, e.g. a park() or stop_motion() (such as a
+    weather-protection park) interrupted a startup that was still running. The device is fine and did what it
+    was told, so this is an expected outcome, not a fault: don't alert, and call init() again only once the
+    reason for the interruption is gone. Deliberately neither a MotionError nor an InitError, so that it never
+    counts towards a module's repeated-motion-failure escalation. Distinct from AbortedError, which means the
+    caller cancelled its own operation via abort(). Remote rejections also do not count towards broad
+    RemoteError severity handlers; explicit handlers for this class or its ancestors still apply."""
+
+    pass
+
+
 class GrabImageError(PyobsError):
     pass
 

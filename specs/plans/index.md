@@ -396,3 +396,6 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-11-02-basetelescope-altitude-watch.md](2026-11-02-basetelescope-altitude-watch.md): enforce
   `min_altitude` while tracking via a `BaseTelescope` background watch and `altitude_action`
   (stop/park/none). **implemented** (Repos: pyobs-core)
+- [2026-11-02-init-aborted-error.md](2026-11-02-init-aborted-error.md): `InitAbortedError` so a deliberately
+  aborted `init()` no longer counts towards `MotionError` escalation (#1031). **implemented in core**
+  (Repos: pyobs-core, pyobs-brot)

@@ -61,3 +61,20 @@ settings preserves the existing broadcast/pass-through behavior.
 The dummy telescope keeps ``TEL-FOCU`` and filters it after adding it. Driver
 subclasses that append cards after calling the base must forward ``namespaces``
 and sender metadata and apply final namespace filtering to their own additions.
+
+
+Altitude limit
+^^^^^^^^^^^^^^
+
+``min_altitude`` is checked on every move, and also every 5 seconds while the telescope is tracking.
+If the telescope is below the limit and still sinking (a rising target is left alone), the action given by
+``altitude_action`` is run once and an error is logged:
+
+* ``stop`` (default): stop the motion, switch tracking off and forget any tracked body.
+* ``park``: park the telescope.
+* ``none``: only log the error.
+
+The watch is skipped while slewing, parking, parked, initializing, aborting or in error. It needs the
+driver to provide its position (``_position_radec``); otherwise a warning is logged at startup and only
+moves are checked. Set ``altitude_action: none`` or lower ``min_altitude`` for setups that need to track
+below the default limit of 10 degrees. This is a software backstop, not a replacement for hardware limits.

@@ -295,7 +295,8 @@ observation when its time comes. Save as ``mastermind.yaml``::
 
 ``allowed_late_start`` is how many seconds past a scheduled start time the mastermind will still
 attempt to run a task. ``allowed_overrun`` is how far past the scheduled end time a running task
-is allowed to continue before being aborted.
+is allowed to continue before being aborted (the task is cancelled, the observation is marked as aborted and a
+``TaskFailedEvent`` is sent). Set it to ``null`` to never abort a task.
 
 
 Step 5 — Run the system

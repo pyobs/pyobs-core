@@ -393,6 +393,9 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-10-29-newdataevent.md](2026-10-29-newdataevent.md): generic `NewDataEvent` as base of
   `NewImageEvent`/`NewSpectrumEvent` (no `data_type`), plus `BaseSpectrograph` event registration
   fix; `BaseData` base class decided after step (a). **proposed** (Repos: pyobs-core, pyobs-gui, pyobs-iagvt)
+- [2026-11-02-mastermind-allowed-overrun.md](2026-11-02-mastermind-allowed-overrun.md): abort tasks running more
+  than `allowed_overrun` past their window again (#1022); `ABORTED` state, `None` disables. **implemented**
+  (Repos: pyobs-core)
 - [2026-11-02-basetelescope-altitude-watch.md](2026-11-02-basetelescope-altitude-watch.md): enforce
   `min_altitude` while tracking via a `BaseTelescope` background watch and `altitude_action`
   (stop/park/none). **implemented** (Repos: pyobs-core)

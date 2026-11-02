@@ -11,7 +11,7 @@ from astropy.coordinates import EarthLocation
 from astropy.utils import iers
 
 from pyobs.comm import Comm
-from pyobs.events import TaskSkippedEvent
+from pyobs.events import TaskFailedEvent, TaskFinishedEvent, TaskSkippedEvent
 from pyobs.interfaces import FitsHeaderEntry
 from pyobs.modules.robotic.mastermind import Mastermind
 from pyobs.robotic import Observation, ObservationArchive, ObservationState
@@ -410,6 +410,80 @@ async def test_run_thread_does_not_skip_when_task_may_start_late(mocker) -> None
     await _run_briefly(mm, mocker, iterations=6)
 
     assert _skipped_events(mm) == []
+
+
+# ── allowed_overrun ──────────────────────────────────────────────────────────
+
+
+def _overrun_mastermind(mocker, run_task, allowed_overrun: int | None) -> tuple[Mastermind, Observation]:
+    mm = make_mastermind(allowed_overrun=allowed_overrun)
+    mm._vfs = MagicMock()
+    mm._vfs.read_yaml = AsyncMock(return_value=None)
+    mm._vfs.write_yaml = AsyncMock()
+    # window ended 10 s ago, so the deadline has passed (or not, depending on allowed_overrun)
+    obs = make_observation(
+        LateStartTask(id=1, name="flats", duration=60.0), start=Time.now() - 70.0 * u.second, duration=60.0
+    )
+    _prepare(mm, [obs])
+    mm._task_runner.run_task = AsyncMock(side_effect=run_task)
+    # hand out the observation once, then nothing, so a finished/failed task is not picked up again
+    mm._observation_archive.get_next_observation = AsyncMock(side_effect=[obs, None, None, None, None, None, None])
+    return mm, obs
+
+
+def _sent(mm: Mastermind, cls: type) -> list:
+    return [c.args[0] for c in mm._comm.send_event.await_args_list if isinstance(c.args[0], cls)]
+
+
+@pytest.mark.asyncio
+async def test_run_thread_aborts_task_exceeding_overrun(mocker) -> None:
+    cancelled = False
+
+    async def hang(*args, **kwargs) -> None:
+        nonlocal cancelled
+        try:
+            await asyncio.Event().wait()  # not asyncio.sleep, which _run_briefly patches
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+
+    mm, obs = _overrun_mastermind(mocker, hang, allowed_overrun=0)
+    await _run_briefly(mm, mocker, iterations=3)
+
+    assert cancelled
+    assert obs.state == ObservationState.ABORTED
+    assert len(_sent(mm, TaskFailedEvent)) == 1
+    assert _sent(mm, TaskFinishedEvent) == []
+    assert mm._task is None
+
+
+@pytest.mark.asyncio
+async def test_run_thread_overrun_none_disables_abort(mocker) -> None:
+    mm, obs = _overrun_mastermind(mocker, None, allowed_overrun=None)
+    await _run_briefly(mm, mocker, iterations=3)
+
+    assert obs.state == ObservationState.COMPLETED
+    assert len(_sent(mm, TaskFinishedEvent)) >= 1
+
+
+@pytest.mark.asyncio
+async def test_run_thread_task_within_overrun_completes(mocker) -> None:
+    mm, obs = _overrun_mastermind(mocker, None, allowed_overrun=300)
+    await _run_briefly(mm, mocker, iterations=3)
+
+    assert obs.state == ObservationState.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_run_thread_task_own_timeout_is_failed_not_aborted(mocker) -> None:
+    async def own_timeout(*args, **kwargs) -> None:
+        raise TimeoutError("rpc timed out")
+
+    mm, obs = _overrun_mastermind(mocker, own_timeout, allowed_overrun=300)
+    await _run_briefly(mm, mocker, iterations=3)
+
+    assert obs.state == ObservationState.FAILED
+    assert len(_sent(mm, TaskFailedEvent)) == 1
 
 
 @pytest.mark.asyncio

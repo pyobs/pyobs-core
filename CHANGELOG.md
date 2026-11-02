@@ -32,6 +32,11 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Fixed
 
+- `Mastermind` aborts a task again when it runs more than `allowed_overrun` seconds past the end of its window
+  (lost in the asyncio rewrite). The task is cancelled, the observation gets state `ABORTED` and a
+  `TaskFailedEvent` is sent. `allowed_overrun=None` disables the check. Scripts do not clean up on cancellation
+  yet (guiding and tracking stay on) (#1022).
+- `Mastermind.open()` now registers `TaskFailedEvent`.
 - `BaseSpectrograph.open()` now registers `NewSpectrumEvent` and `ExposureStatusChangedEvent`, so peers
   subscribe to the events it sends.
 - `NewImageEvent.from_dict()` and `NewSpectrumEvent.from_dict()` now return `cls`, so plugin subclasses

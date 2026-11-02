@@ -9,6 +9,13 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Added
+
+- `InitRefusedError` for an `init()` that was not started because a precondition is not met (e.g. bad weather).
+  Like `InitAbortedError` it is not a `MotionError`, so refusals no longer count towards the escalation to ERROR
+  of telescope and dome modules, and it is excluded from broad `RemoteError` handlers. Callers on older cores
+  receive it as `UnclassifiedError` (#1034).
+
 ## [2.22.0] - 2026-11-02
 
 ### Added
@@ -17,10 +24,6 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   startup). It is not a `MotionError`, so aborted inits no longer count towards the telescope module's
   escalation to ERROR, and it is excluded from broad `RemoteError` handlers like `PointingLimitError`. Callers
   on older cores receive it as `UnclassifiedError` (#1031).
-- `InitRefusedError` for an `init()` that was not started because a precondition is not met (e.g. bad weather).
-  Like `InitAbortedError` it is not a `MotionError`, so refusals no longer count towards the escalation to ERROR
-  of telescope and dome modules, and it is excluded from broad `RemoteError` handlers. Callers on older cores
-  receive it as `UnclassifiedError` (#1034).
 - `BaseTelescope` now checks `min_altitude` every 5 seconds while tracking (#1023). New parameter
   `altitude_action` (`stop`, `park` or `none`) sets what happens when the telescope is below the limit and
   still sinking. Drivers that do not override `_position_radec` log a warning and are not covered.

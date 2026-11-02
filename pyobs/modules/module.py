@@ -251,8 +251,8 @@ class Module(Object, IModule, IConfig):
 
         Args:
             exc_type: Exception type (or a shared ancestor) to watch for. RemoteError also
-                counts remote domain faults, except expected PointingLimitError and
-                InitAbortedError rejections.
+                counts remote domain faults, except expected PointingLimitError,
+                InitAbortedError and InitRefusedError rejections.
             limit: Number of occurrences that triggers the callback.
             timespan: If given, only count occurrences within the last timespan seconds.
             module: If given, only count occurrences tagged as coming from this remote module
@@ -284,17 +284,18 @@ class Module(Object, IModule, IConfig):
     def _counts_as_remote_error(exception: Exception) -> bool:
         """Classify remote domain failures for broad handlers, excluding expected rejections.
 
-        Expected rejections are PointingLimitError and InitAbortedError.
+        Expected rejections are PointingLimitError, InitAbortedError and InitRefusedError.
 
         Actual RemoteError inheritance and explicit domain handlers are handled separately.
         """
         return getattr(exception, "remote_module", None) is not None and not isinstance(
-            exception, exc.PointingLimitError | exc.InitAbortedError
+            exception, exc.PointingLimitError | exc.InitAbortedError | exc.InitRefusedError
         )
 
     def _store_exception(self, exception: exc.PyobsError, module: str | None) -> None:
         # Preserve actual ancestors and classify eligible remote domain faults as RemoteError
-        # for broad severity handlers. Expected rejections (pointing limits, aborted init) retain their domain buckets.
+        # for broad severity handlers. Expected rejections (pointing limits, aborted or refused init) retain their
+        # domain buckets.
         classes: list[type] = list(type(exception).__mro__)
         if self._counts_as_remote_error(exception) and exc.RemoteError not in classes:
             classes.append(exc.RemoteError)

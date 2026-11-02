@@ -38,6 +38,8 @@ mean "try again later", :class:`~pyobs.utils.exceptions.NotSupportedError` and
 :class:`~pyobs.utils.exceptions.InvalidArgumentError` mean "do not retry this request".
 :class:`~pyobs.utils.exceptions.InitAbortedError` means "expected interruption, not a failure": an
 initialization was cut short on purpose, e.g. by a weather-protection park.
+:class:`~pyobs.utils.exceptions.InitRefusedError` is the same for an initialization that was not started because
+a precondition is not met, e.g. bad weather.
 
 Catch the most specific class that you really handle differently, and nothing broader:
 
@@ -176,7 +178,7 @@ pass through your methods, give its name with ``module=``:
 Handlers without ``module=`` only see errors raised locally, handlers with ``module=`` only see errors that
 came from that module over XMPP (they need ``remote_module``, see above). A handler for ``exc.RemoteError``
 with ``module=`` counts remote failures regardless of their domain class, except
-``PointingLimitError`` and its subclasses and ``InitAbortedError``: these expected
+``PointingLimitError`` and its subclasses, ``InitAbortedError`` and ``InitRefusedError``: these expected
 rejections do not indicate a failing device. Explicit handlers for these classes or their
 ancestors still count them. Genuine transport errors and remote motion, exposure and unclassified
 failures continue to count towards broad ``RemoteError`` handlers.

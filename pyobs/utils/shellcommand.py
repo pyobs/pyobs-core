@@ -134,7 +134,7 @@ class ShellCommand:
                 response = await proxy.execute(self.command, *self.params)
             except ValueError as e:
                 return self.__err(f"Invalid parameter: {str(e)}")
-            except exc.RemoteError as e:
+            except exc.PyobsError as e:
                 call_id = getattr(e, "call_id", None)
                 suffix = f" (call_id={call_id})" if call_id else ""
                 return self.__err(f"Exception raised: {str(e)}{suffix}")

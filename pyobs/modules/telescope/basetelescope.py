@@ -4,7 +4,7 @@ import asyncio
 import logging
 import math
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Any, Literal
 
 import astropy.units as u
 from astropy.coordinates import ICRS, HeliocentricMeanEcliptic, SkyCoord, get_body
@@ -35,6 +35,17 @@ from pyobs.utils.time import Time
 from pyobs.utils.versions import version_fits_headers
 
 log = logging.getLogger(__name__)
+
+_ALTITUDE_WATCH_INTERVAL_SECONDS = 5.0
+_ALTITUDE_REARM_HYSTERESIS_DEG = 0.5
+_ALTITUDE_WATCH_SKIP_STATES = (
+    MotionStatus.ERROR,
+    MotionStatus.PARKED,
+    MotionStatus.PARKING,
+    MotionStatus.INITIALIZING,
+    MotionStatus.ABORTING,
+    MotionStatus.SLEWING,
+)
 
 
 def _format_ra(ra_deg: float) -> str:
@@ -264,6 +275,7 @@ class BaseTelescope(
         self,
         fits_headers: dict[str, Any] | None = None,
         min_altitude: float = 10,
+        altitude_action: Literal["stop", "park", "none"] = "stop",
         wait_for_dome: str | None = None,
         **kwargs: Any,
     ):
@@ -272,12 +284,17 @@ class BaseTelescope(
         Args:
             fits_headers: Additional FITS headers to send.
             min_altitude: Minimal altitude for telescope.
+            altitude_action: What to do if the telescope is below min_altitude and still sinking while
+                not slewing: "stop" (stop motion and tracking), "park" or "none" (only log an error).
             wait_for_dome: Name of dome module to wait for.
         """
         # wait_for_dome is BaseTelescope's own param, but WaitForMotionMixin (further down the
         # cooperative chain) needs it translated into its own wait_for_modules/wait_for_timeout/
         # wait_for_states shape -- computed here and threaded through the single super() call,
         # since WaitForMotionMixin has no way to see wait_for_dome itself.
+        if altitude_action not in ("stop", "park", "none"):
+            raise ValueError(f"Invalid altitude_action {altitude_action!r}, must be 'stop', 'park' or 'none'.")
+
         super().__init__(
             wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
             wait_for_timeout=60000,
@@ -288,6 +305,12 @@ class BaseTelescope(
         # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
         self._min_altitude = min_altitude
+
+        # altitude watch while tracking
+        self._altitude_action = altitude_action
+        self._altitude_action_fired = False
+        self._altitude_prev: float | None = None
+        self._altitude_failure_logged = False
 
         # some multi-threading stuff
         self._lock_moving = asyncio.Lock()
@@ -306,6 +329,7 @@ class BaseTelescope(
         # add thread func
         self.add_background_task(self._celestial, True)
         self.add_background_task(self._track_refresh, True)
+        self.add_background_task(self._altitude_watch, True)
 
         # register exception
         self._register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
@@ -322,6 +346,8 @@ class BaseTelescope(
         # open mixins
         await WeatherAwareMixin.open(self)
         await MotionStatusMixin.open(self)
+
+        self._warn_if_unprotected()
 
         # register events
         await self.comm.register_event(MoveRaDecEvent)
@@ -408,8 +434,9 @@ class BaseTelescope(
             # body/orbital-element tracking and reset to native sidereal tracking, so a mount
             # left in e.g. lunar/custom-rate mode from a previous target doesn't silently keep
             # applying a stale rate to this new, unrelated sidereal target
-            self._tracked_body = None
-            self._tracked_elements = None
+            self._clear_body_tracking()
+            self._altitude_action_fired = False
+            self._altitude_prev = None
             if isinstance(self, ITrackingMode):
                 await self.set_tracking_mode(TrackingMode.SIDEREAL)
 
@@ -485,8 +512,9 @@ class BaseTelescope(
 
             # holding a fixed alt/az is incompatible with continued body/orbital-element
             # tracking or sidereal/lunar/solar motion -- stop both, same reasoning as move_radec
-            self._tracked_body = None
-            self._tracked_elements = None
+            self._clear_body_tracking()
+            self._altitude_action_fired = False
+            self._altitude_prev = None
             if isinstance(self, ITrackingMode):
                 await self.set_tracking_mode(TrackingMode.OFF)
 
@@ -770,6 +798,89 @@ class BaseTelescope(
 
             await self._track_refresh_tick()
             await asyncio.sleep(self._tracking_refresh_interval())
+
+    def _warn_if_unprotected(self) -> None:
+        """Warn if this driver doesn't provide its position, so the altitude watch can't work."""
+        if self._altitude_action != "none" and type(self)._position_radec is BaseTelescope._position_radec:
+            log.warning(
+                "This telescope does not provide its position (_position_radec), so min_altitude is only "
+                "checked on moves, not while tracking."
+            )
+
+    def _clear_body_tracking(self) -> None:
+        """Forget any tracked body/orbital elements, so _track_refresh stops driving the mount."""
+        self._tracked_body = None
+        self._tracked_elements = None
+        self._last_position_nudge = None
+
+    async def _altitude_watch(self) -> None:
+        """Background task: enforces min_altitude while tracking."""
+        while True:
+            try:
+                await self._altitude_watch_tick()
+            except Exception:
+                log.exception("Error in altitude watch.")
+            await asyncio.sleep(_ALTITUDE_WATCH_INTERVAL_SECONDS)
+
+    async def _altitude_watch_tick(self, now: Time | None = None) -> None:
+        """Single altitude check. Fires the configured action if the telescope is below min_altitude
+        and still sinking (so a rising target, e.g. right after a manual slew, is left alone)."""
+        position = self._position_radec
+        if (
+            self._observer is None
+            or position is None
+            or not all(math.isfinite(p) for p in position)
+            or self.motion_status() in _ALTITUDE_WATCH_SKIP_STATES
+            or self._lock_moving.locked()
+        ):
+            # blind or slewing: a later sample must not be compared against one from before
+            self._altitude_prev = None
+            return
+
+        now = Time.now() if now is None else now
+        altaz = self.observer.altaz(now, SkyCoord(ra=position[0] * u.deg, dec=position[1] * u.deg, frame=ICRS))
+        alt, az = float(altaz.alt.degree), float(altaz.az.degree)
+        prev, self._altitude_prev = self._altitude_prev, alt
+
+        if alt >= self._min_altitude + _ALTITUDE_REARM_HYSTERESIS_DEG:
+            self._altitude_action_fired = False
+            self._altitude_failure_logged = False
+        elif alt < self._min_altitude and not self._altitude_action_fired and prev is not None and alt < prev:
+            await self._fire_altitude_action(alt, az, position)
+
+    async def _fire_altitude_action(self, alt: float, az: float, position: tuple[float, float]) -> None:
+        """Log and run the configured altitude action. Must not hold _lock_moving, since
+        stop_motion and park take it themselves."""
+        action = self._altitude_action
+        if not self._altitude_failure_logged:
+            log.error(
+                "Telescope is below altitude limit and sinking: alt=%.2f° az=%.2f° (min=%.2f°) at "
+                "ra=%.5f° dec=%.5f°, action=%s.",
+                alt,
+                az,
+                self._min_altitude,
+                position[0],
+                position[1],
+                action,
+            )
+        try:
+            if action == "stop":
+                self._clear_body_tracking()
+                await self.stop_motion()
+                if isinstance(self, ITrackingMode):
+                    try:
+                        await self.set_tracking_mode(TrackingMode.OFF)
+                    except Exception:
+                        log.warning("Could not switch tracking off after altitude stop.", exc_info=True)
+            elif action == "park":
+                self._clear_body_tracking()
+                await self.park()
+        except Exception:
+            if not self._altitude_failure_logged:
+                log.exception("Altitude action %s failed, will retry.", action)
+                self._altitude_failure_logged = True
+            return
+        self._altitude_action_fired = True
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any

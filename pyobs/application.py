@@ -65,14 +65,30 @@ def _warm_iers_cache() -> None:
     conversion needs it -- update_leap_seconds() (not the lower-level LeapSeconds.auto_open())
     is the call that also installs the result into erfa so real usage later doesn't re-fetch.
 
+    If the refresh fails, auto-download is disabled for the process and the error re-raised.
+
     Meant to run inside an executor thread (see Application._main) -- calling this directly
     on the event loop would defeat the point.
     """
+    from astropy.time import Time
     from astropy.time.core import update_leap_seconds
     from astropy.utils.iers import IERS_Auto
 
-    IERS_Auto.open()
-    update_leap_seconds()
+    try:
+        table = IERS_Auto.open()
+        # open() alone does not refresh a stale table: that only happens on the first lookup
+        # for an actual time (IERS_Auto._interpolate -> _refresh_table_as_needed), which would
+        # otherwise be the first alt/az on the event loop. Do that lookup here, covering both
+        # UT1-UTC and polar motion.
+        now = Time.now()
+        table.ut1_utc(now)
+        table.pm_xy(now)
+        update_leap_seconds()
+    except Exception:
+        # refresh failed (e.g. offline): astropy would otherwise raise (or retry the download)
+        # on every later alt/az, so fall back to the bundled table for this process
+        _disable_iers_auto_download()
+        raise
 
 
 class InfluxLogConfig(TypedDict):

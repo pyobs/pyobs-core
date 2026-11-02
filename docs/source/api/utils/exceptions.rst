@@ -80,6 +80,13 @@ ImageError
    :members:
    :undoc-members:
 
+InitAbortedError
+^^^^^^^^^^^^^^^^
+
+.. autoexception:: pyobs.utils.exceptions.InitAbortedError
+   :members:
+   :undoc-members:
+
 InitError
 ^^^^^^^^^
 

@@ -43,7 +43,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
         runner: TaskRunner | dict[str, Any],
         tasks: TaskArchive | dict[str, Any] | None = None,
         allowed_late_start: int = 300,
-        allowed_overrun: int = 300,
+        allowed_overrun: int | None = 300,
         after_task_sleep: int = 0,
         **kwargs: Any,
     ):
@@ -52,7 +52,8 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
         Args:
             schedule: Object that can return schedule.
             allowed_late_start: Allowed seconds to start late.
-            allowed_overrun: Allowed time for a task to exceed it's window in seconds
+            allowed_overrun: Allowed time for a task to exceed its window in seconds, after which it is aborted.
+                None disables the check.
         """
         Module.__init__(self, **kwargs)
 
@@ -119,6 +120,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
         # subscribe to events
         if self._comm:
             await self.comm.register_event(TaskStartedEvent)
+            await self.comm.register_event(TaskFailedEvent)
             await self.comm.register_event(TaskFinishedEvent)
             await self.comm.register_event(TaskSkippedEvent)
 
@@ -139,6 +141,17 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
         log.info("Stopping robotic system...")
         self._running = False
         await self.comm.set_state(IRunning, RunningState(running=self._running))
+        await self._publish_robotic_state()
+
+    async def _clear_current_task(self) -> None:
+        """Forget the current task and publish the state."""
+        self._task = None
+        self._project_priority = None
+        self._observation = None
+        self._task_target = None
+        self._obsnum = None
+        self._task_start = None
+        self._task_eta = None
         await self._publish_robotic_state()
 
     async def _publish_robotic_state(self) -> None:
@@ -268,6 +281,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
             # ETA
             now = Time.now()
             eta = now + self._task.duration * u.second
+            window_end = observation.end  # scheduled end, observation.end is overwritten below
             self._task_start = now
             self._task_eta = eta
 
@@ -282,31 +296,37 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
             await self._observation_archive.update_observation(observation)
             await self._publish_robotic_state()
 
-            # run task in thread
+            # run task, abort if it exceeds its window by more than allowed_overrun
             log.info("Running task %s...", self._task.name)
+            deadline: float | None = None
+            if self._allowed_overrun is not None:
+                deadline = (window_end + self._allowed_overrun * u.second - Time.now()).to_value("second")
             try:
-                await self._task_runner.run_task(self._task, self._task_target)
+                async with asyncio.timeout(deadline) as timeout:
+                    await self._task_runner.run_task(self._task, self._task_target)
             except Exception as e:
+                if isinstance(e, TimeoutError) and timeout.expired():
+                    log.warning(
+                        "Task %s exceeded its window by more than %d s, aborted.",
+                        self._task.name,
+                        self._allowed_overrun,
+                    )
+                    state = ObservationState.ABORTED
                 # a PyobsError is an expected/domain failure (e.g. acquisition out of tolerance) --
                 # quiet INFO line, no traceback. Anything else is unexpected and needs a full
                 # traceback to debug. e.log() also skips re-logging if some deeper layer (e.g. the
                 # module's own execute()) already logged this same exception.
-                if isinstance(e, exc.PyobsError):
-                    e.log(log, "INFO", f"Task {self._task.name} failed: {e}")
                 else:
-                    log.exception("Task %s failed.", self._task.name)
+                    if isinstance(e, exc.PyobsError):
+                        e.log(log, "INFO", f"Task {self._task.name} failed: {e}")
+                    else:
+                        log.exception("Task %s failed.", self._task.name)
+                    state = ObservationState.FAILED
                 observation.end = Time.now()
-                observation.state = ObservationState.FAILED
+                observation.state = state
                 await self._observation_archive.update_observation(observation)
                 await self.comm.send_event(TaskFailedEvent(name=self._task.name, id=self._task.id, obsnum=self._obsnum))
-                self._task = None
-                self._project_priority = None
-                self._observation = None
-                self._task_target = None
-                self._obsnum = None
-                self._task_start = None
-                self._task_eta = None
-                await self._publish_robotic_state()
+                await self._clear_current_task()
                 continue
 
             # send event and change state
@@ -317,14 +337,7 @@ class Mastermind(Module, IAutonomous, IRobotic, IFitsHeaderBefore):
 
             # finish
             log.info("Finished task %s.", self._task.name)
-            self._task = None
-            self._project_priority = None
-            self._observation = None
-            self._task_target = None
-            self._obsnum = None
-            self._task_start = None
-            self._task_eta = None
-            await self._publish_robotic_state()
+            await self._clear_current_task()
 
             # sleep?
             await asyncio.sleep(self._after_task_sleep)

@@ -173,7 +173,7 @@ class FollowMixin:
                     continue
                 other_coords = build_skycoord(xy_coords, this.__follow_mode)
                 connected = True
-            except (ValueError, exc.RemoteError):
+            except (ValueError, exc.PyobsError):
                 if connected:
                     log.warning("Could not fetch coordinates.")
                 connected = False

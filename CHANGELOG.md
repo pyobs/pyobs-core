@@ -9,6 +9,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.22.0] - 2026-11-02
+
 ### Added
 
 - `InitAbortedError` for an `init()` that was cut short on purpose (e.g. a weather-protection park during

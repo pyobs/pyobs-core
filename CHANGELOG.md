@@ -17,9 +17,15 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   `NewSpectrumEvent` now derive from it (payload unchanged), so a `NewDataEvent` handler receives all three.
 - `pyobs.modules.camera.BaseData`, base class for modules that grab data that is neither image nor spectrum:
   general FITS header handling, grab sequences, and a `NewDataEvent` on new data.
+- `BaseTelescope` now checks `min_altitude` every 5 seconds while tracking (#1023). New parameter
+  `altitude_action` (`stop`, `park` or `none`) sets what happens when the telescope is below the limit and
+  still sinking. Drivers that do not override `_position_radec` log a warning and are not covered.
 
 ### Changed
 
+- Telescopes now stop (and switch tracking off) when they sink below `min_altitude` (default 10°) while
+  tracking, where they used to follow the target indefinitely. Configurations that rely on tracking below
+  the limit must set `altitude_action: none` or lower `min_altitude`.
 - `Comm.register_event()` without a handler now declares only the given event class as sent, no longer its
   subclasses. A module that sends a subclass of a registered event (e.g. a plugin `NewImageEvent` subclass)
   must register that class itself. Registration with a handler still covers derived events.

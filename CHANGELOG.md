@@ -11,12 +11,6 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Added
 
-- `pyobs.events.FileWrittenEvent`, sent by `ImageWriter` and `ImageWatcher` (one per destination) after a
-  file has been written.
-- `pyobs.events.NewDataEvent` for data that is neither image nor spectrum. `NewImageEvent` and
-  `NewSpectrumEvent` now derive from it (payload unchanged), so a `NewDataEvent` handler receives all three.
-- `pyobs.modules.camera.BaseData`, base class for modules that grab data that is neither image nor spectrum:
-  general FITS header handling, grab sequences, and a `NewDataEvent` on new data.
 - `BaseTelescope` now checks `min_altitude` every 5 seconds while tracking (#1023). New parameter
   `altitude_action` (`stop`, `park` or `none`) sets what happens when the telescope is below the limit and
   still sinking. Drivers that do not override `_position_radec` log a warning and are not covered.
@@ -26,9 +20,9 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 - Telescopes now stop (and switch tracking off) when they sink below `min_altitude` (default 10°) while
   tracking, where they used to follow the target indefinitely. Configurations that rely on tracking below
   the limit must set `altitude_action: none` or lower `min_altitude`.
-- `Comm.register_event()` without a handler now declares only the given event class as sent, no longer its
-  subclasses. A module that sends a subclass of a registered event (e.g. a plugin `NewImageEvent` subclass)
-  must register that class itself. Registration with a handler still covers derived events.
+- `shellcommand`, pointing, follow and `fitsheader` now catch `PyobsError` instead of `RemoteError` around remote
+  calls, since real exception types reach them now. A remote `PointingLimitError` therefore no longer counts
+  in broad `RemoteError` handlers; `RemoteError` means transport failure only (#1030).
 
 ### Fixed
 
@@ -37,10 +31,48 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   `TaskFailedEvent` is sent. `allowed_overrun=None` disables the check. Scripts do not clean up on cancellation
   yet (guiding and tracking stay on) (#1022).
 - `Mastermind.open()` now registers `TaskFailedEvent`.
+- Remote faults from senders on slixmpp <= 1.16 arrived at the caller as `RemoteError` with an empty message
+  and without type or bases, because their `<exception>`, `<message>` and `<bases>` elements lacked an
+  `xmlns=""`. They are now read with or without the namespace, so the real exception type reaches the caller (#1030).
+  A client on 2.21 or older talking to a server on slixmpp <= 1.16 stays affected until the client is upgraded.
+- The startup warm-up now refreshes a stale IERS table in the warm-up executor and falls back to the bundled
+  table if that fails (e.g. offline). Before, the first alt/az calculation on the event loop stalled it for
+  3-4 seconds (#1006).
+
+## [2.21.0] - 2026-10-29
+
+### Added
+
+- `pyobs.events.NewDataEvent` for data that is neither image nor spectrum. `NewImageEvent` and
+  `NewSpectrumEvent` now derive from it (payload unchanged), so a `NewDataEvent` handler receives all three.
+- `pyobs.modules.camera.BaseData`, base class for modules that grab data that is neither image nor spectrum:
+  general FITS header handling, grab sequences, and a `NewDataEvent` on new data.
+
+### Changed
+
+- `Comm.register_event()` without a handler now declares only the given event class as sent, no longer its
+  subclasses. A module that sends a subclass of a registered event (e.g. a plugin `NewImageEvent` subclass)
+  must register that class itself. Registration with a handler still covers derived events.
+
+### Fixed
+
 - `BaseSpectrograph.open()` now registers `NewSpectrumEvent` and `ExposureStatusChangedEvent`, so peers
   subscribe to the events it sends.
 - `NewImageEvent.from_dict()` and `NewSpectrumEvent.from_dict()` now return `cls`, so plugin subclasses
   deserialize as themselves.
+
+## [2.20.0] - 2026-10-27
+
+### Added
+
+- `pyobs.events.FileWrittenEvent`, sent by `ImageWriter` and `ImageWatcher` (one per destination) after a
+  file has been written.
+
+## [2.19.1] - 2026-10-17
+
+### Changed
+
+- Documentation only.
 
 ## [2.19.0] - 2026-10-17
 

@@ -277,3 +277,69 @@ class TestCoreModuleErrors:
         assert type(e) is expected
         assert e.original_type == qualified_name
         assert e.message == "boom"
+
+
+_WIRE_NS = (
+    '<fault xmlns="jabber:iq:rpc"><value><fault xmlns="urn:pyobs:rpc:1">'
+    "<exception>pyobs.utils.exceptions.InitError</exception>"
+    "<message>Startup of telescope was interrupted.</message>"
+    "<bases><base>pyobs.utils.exceptions.MotionError</base></bases>"
+    "</fault></value></fault>"
+)
+# slixmpp >= 1.17 writes xmlns="" on the children, so they carry no namespace when parsed
+_WIRE_EMPTY_XMLNS = (
+    '<fault xmlns="jabber:iq:rpc"><value><fault xmlns="urn:pyobs:rpc:1">'
+    '<exception xmlns="">pyobs.utils.exceptions.InitError</exception>'
+    '<message xmlns="">Startup of telescope was interrupted.</message>'
+    '<bases xmlns=""><base>pyobs.utils.exceptions.MotionError</base></bases>'
+    "</fault></value></fault>"
+)
+_WIRE_PREFIXED = (
+    '<fault xmlns="jabber:iq:rpc"><value><p:fault xmlns:p="urn:pyobs:rpc:1">'
+    "<p:exception>pyobs.utils.exceptions.InitError</p:exception>"
+    "<p:message>Startup of telescope was interrupted.</p:message>"
+    "<p:bases><p:base>pyobs.utils.exceptions.MotionError</p:base></p:bases>"
+    "</p:fault></value></fault>"
+)
+
+
+class TestFaultParsedFromWireText:
+    """#1030: faults must be read from parsed stanza text, whichever form the sender's slixmpp wrote.
+
+    (slixmpp.xmlstream.ET is xml.etree.ElementTree, so one parser covers both.) Tests that start from the
+    in-memory tree of fault_to_xml() cannot catch this, since there the children have no namespace.
+    """
+
+    @pytest.mark.parametrize(
+        "wire", [_WIRE_NS, _WIRE_EMPTY_XMLNS, _WIRE_PREFIXED], ids=["ns", "empty-xmlns", "prefixed"]
+    )
+    def test_parse_and_reconstruct(self, wire: str) -> None:
+        elem = ET.fromstring(wire)
+        name, msg = xml_to_fault(elem)
+        assert name == "pyobs.utils.exceptions.InitError"
+        assert msg == "Startup of telescope was interrupted."
+        bases = xml_to_fault_bases(elem)
+        assert bases == ["pyobs.utils.exceptions.MotionError"]
+        e = reconstruct_fault(name, msg, bases, "telescope")
+        assert type(e) is exc.InitError
+        assert e.message == msg
+
+    def test_without_bases(self) -> None:
+        elem = ET.fromstring(_WIRE_NS.replace("<bases><base>pyobs.utils.exceptions.MotionError</base></bases>", ""))
+        assert xml_to_fault(elem)[0] == "pyobs.utils.exceptions.InitError"
+        assert xml_to_fault_bases(elem) == []
+
+    def test_bases_used_for_unregistered_type(self) -> None:
+        elem = ET.fromstring(_WIRE_NS.replace("pyobs.utils.exceptions.InitError", "plugin.X"))
+        name, msg = xml_to_fault(elem)
+        e = reconstruct_fault(name, msg, xml_to_fault_bases(elem), "telescope")
+        assert type(e) is exc.MotionError
+        assert e.original_type == "plugin.X"  # type: ignore[attr-defined]
+
+    def test_real_slixmpp_serialization(self) -> None:
+        from slixmpp.xmlstream.tostring import tostring
+
+        elem = ET.fromstring(tostring(fault_to_xml(exc.InitError("boom"))))
+        name, msg = xml_to_fault(elem)
+        assert (name, msg) == ("pyobs.utils.exceptions.InitError", "boom")
+        assert xml_to_fault_bases(elem) == ["pyobs.utils.exceptions.MotionError"]

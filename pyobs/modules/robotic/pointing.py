@@ -122,7 +122,7 @@ class PointingSeries(Module, IAutonomous):
 
             return True
 
-        except (ValueError, exc.RemoteError):
+        except (ValueError, exc.PyobsError):
             log.info("Could not acquire position.")
             return False
 

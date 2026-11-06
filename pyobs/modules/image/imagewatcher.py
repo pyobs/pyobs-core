@@ -147,6 +147,8 @@ class ImageWatcher(Module):
         # ready. A repeated event (e.g. a writer closing the file twice) moves the deadline instead
         # of queueing the file again.
         self._pending: dict[str, float] = {}
+        # files the worker is processing right now
+        self._active: set[str] = set()
         self._poll = poll
         self._poll_interval = poll_interval
         self._wait_time = wait_time
@@ -178,15 +180,51 @@ class ImageWatcher(Module):
         # than falling back to the module's outer background-task restart-with-backoff.
         while True:
             try:
-                watcher = RecursiveWatcher(Path(local), Mask.CLOSE_WRITE)
+                # CLOSE_WRITE for files written in place, MOVED_TO for files renamed into the tree
+                # (a rename produces no CLOSE_WRITE). CREATE is only there to see new directories:
+                # asyncinotify adds the watches for them, but anything written into them before that
+                # happened is never reported, so they're scanned below.
+                watcher = RecursiveWatcher(Path(local), Mask.CLOSE_WRITE | Mask.MOVED_TO | Mask.CREATE)
                 async for event in watcher.watch_recursive():
+                    log.debug("Inotify event: mask=%s path=%s", event.mask, event.path)
+
                     # get filename by replacing local with watchpath
                     filename = str(event.path).replace(local, self._watchpath)
+
+                    # new or moved-in directory: the watches exist by now, so scanning it finds
+                    # everything written earlier, inotify reports everything written later
+                    if Mask.ISDIR in event.mask:
+                        if Mask.CREATE in event.mask or Mask.MOVED_TO in event.mask:
+                            await self._scan_directory(filename)
+                        continue
+
+                    # a file that was only created isn't finished yet, wait for its CLOSE_WRITE
+                    if not event.mask & (Mask.CLOSE_WRITE | Mask.MOVED_TO):
+                        continue
 
                     # add file
                     await self.add_file(filename)
             except OSError as e:
                 log.warning("Inotify watch error (directory likely vanished mid-scan), restarting watch: %s", e)
+
+    async def _scan_directory(self, dirname: str) -> None:
+        """Add all files already in a directory that just appeared in the watch tree.
+
+        Files that are being processed right now are skipped, so a scan can't queue a file the worker
+        is just about to remove.
+
+        Args:
+            dirname: Directory to scan (recursively), as a path below the watch path.
+        """
+        try:
+            found = await self.vfs.find(dirname, "*")
+        except Exception as e:
+            log.warning("Could not scan new directory %s: %s", dirname, e)
+            return
+        for f in found:
+            filename = os.path.join(dirname, f)
+            if filename not in self._active:
+                await self.add_file(filename)
 
     async def _watch_poll(self) -> None:
         # init list (recursive, so subdirectories are picked up too; unfiltered by pattern here --
@@ -272,12 +310,15 @@ class ImageWatcher(Module):
             self._pending.pop(filename, None)
             log.info("Working on file %s...", filename)
 
+            self._active.add(filename)
             try:
                 await self._process_file(filename)
             except Exception as e:
                 self._handle_failure(filename, e)
             else:
                 self._retry.pop(filename, None)
+            finally:
+                self._active.discard(filename)
 
     async def _process_file(self, filename: str) -> None:
         """Read, archive and clean up a single file. Raises on any failure short of cleanup.

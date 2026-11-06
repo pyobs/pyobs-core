@@ -894,12 +894,97 @@ async def test_watch_inotify_survives_rename_into_watched_tree(tmp_path: Path) -
 
 
 @pytest.mark.asyncio
+async def test_watch_inotify_picks_up_file_renamed_into_watched_dir(tmp_path: Path) -> None:
+    watch = tmp_path / "watch"
+    watch.mkdir()
+    incoming = tmp_path / "incoming"
+    incoming.mkdir()
+    watcher = make_watcher()
+    watcher._watchpath = "/watch"
+    watcher.vfs.local_path = AsyncMock(return_value=str(watch))  # type: ignore[method-assign]
+    added: list[str] = []
+
+    async def fake_add(filename: str) -> None:
+        added.append(filename)
+
+    watcher.add_file = fake_add  # type: ignore[method-assign]
+    task = asyncio.create_task(watcher._watch_inotify())
+    try:
+        await asyncio.sleep(0.2)
+        (incoming / "a.slc").write_bytes(b"x")
+        (incoming / "a.slc").rename(watch / "a.slc")
+        (incoming / "d").mkdir()
+        (incoming / "d").rename(watch / "d")  # directory moves must not be added as files
+        await asyncio.sleep(0.3)
+    finally:
+        task.cancel()
+    assert added == ["/watch/a.slc"]
+
+
+@pytest.mark.asyncio
+async def test_watch_inotify_scans_directory_renamed_in_with_files(tmp_path: Path) -> None:
+    """Files already inside a directory when it's renamed into the tree never produce an event
+    of their own, so the moved-in directory has to be scanned."""
+    watch = tmp_path / "watch"
+    watch.mkdir()
+    scratch = tmp_path / "scratch" / "obs"
+    (scratch / "sub").mkdir(parents=True)
+    (scratch / "a.slc").write_bytes(b"x")
+    (scratch / "sub" / "b.slc").write_bytes(b"x")
+    watcher = make_watcher()
+    watcher._watchpath = "/watch"
+    watcher._vfs.find = AsyncMock(side_effect=lambda path, pattern: ["a.slc", "sub/b.slc"])  # type: ignore[method-assign]
+    watcher._vfs.local_path = AsyncMock(return_value=str(watch))  # type: ignore[method-assign]
+    added: list[str] = []
+
+    async def fake_add(filename: str) -> None:
+        added.append(filename)
+
+    watcher.add_file = fake_add  # type: ignore[method-assign]
+    task = asyncio.create_task(watcher._watch_inotify())
+    try:
+        await asyncio.sleep(0.2)
+        scratch.rename(watch / "obs")
+        await asyncio.sleep(0.3)
+    finally:
+        task.cancel()
+    watcher._vfs.find.assert_called_with("/watch/obs", "*")
+    assert sorted(added) == ["/watch/obs/a.slc", "/watch/obs/sub/b.slc"]
+
+
+@pytest.mark.asyncio
+async def test_scan_directory_skips_files_being_processed() -> None:
+    watcher = make_watcher()
+    watcher._vfs.find = AsyncMock(return_value=["a.slc", "b.slc"])  # type: ignore[method-assign]
+    watcher._active.add("/watch/obs/a.slc")
+    await watcher._scan_directory("/watch/obs")
+    assert list(watcher._pending) == ["/watch/obs/b.slc"]
+
+
+@pytest.mark.asyncio
+async def test_worker_marks_file_active_while_processing() -> None:
+    watcher = make_watcher()
+    seen: list[bool] = []
+
+    async def fake_process(filename: str) -> None:
+        seen.append(filename in watcher._active)
+
+    watcher._process_file = fake_process  # type: ignore[method-assign]
+    await watcher.add_file("/watch/test.fits")
+    await run_worker(watcher)
+    assert seen == [True]
+    assert not watcher._active
+
+
+@pytest.mark.asyncio
 async def test_watch_inotify_restarts_on_oserror(monkeypatch) -> None:
     """Regression for a review finding: asyncinotify's own add_watch/rm_watch (inside
     watch_recursive()) can raise OSError if a directory vanishes between an event being received
     and the library acting on it -- real under directory churn, not hypothetical. Confirm
     _watch_inotify catches it and restarts with a fresh RecursiveWatcher instead of letting the
     whole background task die."""
+    from asyncinotify import Mask
+
     watcher = make_watcher()
     watcher._vfs.local_path = AsyncMock(return_value="/some/local/path")
 
@@ -913,6 +998,7 @@ async def test_watch_inotify_restarts_on_oserror(monkeypatch) -> None:
     class FakeEvent:
         def __init__(self, path: Path) -> None:
             self.path = path
+            self.mask = Mask.CLOSE_WRITE
 
     attempts = 0
 

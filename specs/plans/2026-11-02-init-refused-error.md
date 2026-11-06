@@ -2,7 +2,7 @@
 
 Date: 2026-11-02
 
-Status: implemented in pyobs-core (PR pending); pyobs-brot change not started; not released
+Status: implemented in pyobs-core (2.23.0) and pyobs-brot (PR #101 merged); brot not released yet
 
 Repos: pyobs-core, pyobs-brot
 
@@ -32,9 +32,11 @@ class, and callers on older cores see it as `UnclassifiedError` (cosmetic), as w
   and recipe docs, changelog.
 - [x] pyobs-core tests: refusals leave telescope and dome READY while `InitError` still escalates; remote
   classification; RPC round trip.
-- [ ] pyobs-brot: raise `InitRefusedError` for the precondition refusals in telescope, roof and dome, raise the
-  core pin to the release that ships the class.
-- [ ] Release core, then brot, then deploy both together.
+- [x] pyobs-core released as 2.23.0.
+- [x] pyobs-brot ([#101](https://github.com/pyobs/pyobs-brot/pull/101)): raise `InitRefusedError` for the weather
+  refusal in telescope, roof and dome (the error-state and powerup failures stay `InitError`: they are device
+  faults), core pin raised to `>=2.23.0`.
+- [ ] Release brot, then deploy it together with core 2.23.0.
 
 ## Notes
 

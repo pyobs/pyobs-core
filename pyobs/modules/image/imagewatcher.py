@@ -143,6 +143,10 @@ class ImageWatcher(Module):
         self._watchpath = watchpath
         self._notifier: Any | None = None
         self._queue = asyncio.Queue[tuple[str, float]]()
+        # files queued by add_file and not yet picked up by the worker, mapped to the time they're
+        # ready. A repeated event (e.g. a writer closing the file twice) moves the deadline instead
+        # of queueing the file again.
+        self._pending: dict[str, float] = {}
         self._poll = poll
         self._poll_interval = poll_interval
         self._wait_time = wait_time
@@ -237,9 +241,18 @@ class ImageWatcher(Module):
         if not fnmatch.fnmatch(filename, self._pattern):
             return
 
+        ready_at = time.time() + self._wait_time
+
+        # already queued: just restart its timer, the worker reads the file when it's processed
+        if filename in self._pending:
+            log.info("File %s changed again, restarting wait time...", filename)
+            self._pending[filename] = ready_at
+            return
+
         # log and add file
         log.info("Adding new file %s...", filename)
-        self._queue.put_nowait((filename, time.time() + self._wait_time))
+        self._pending[filename] = ready_at
+        self._queue.put_nowait((filename, ready_at))
 
     async def _worker(self) -> None:
         """Worker thread."""
@@ -248,9 +261,15 @@ class ImageWatcher(Module):
         while True:
             # get next filename and wait some time
             filename, ready_at = await self._queue.get()
-            wait = ready_at - time.time()
-            if wait > 0:
+
+            # wait until ready, the deadline may be pushed back by add_file in the meantime
+            while True:
+                ready_at = self._pending.get(filename, ready_at)
+                wait = ready_at - time.time()
+                if wait <= 0:
+                    break
                 await asyncio.sleep(wait)
+            self._pending.pop(filename, None)
             log.info("Working on file %s...", filename)
 
             try:

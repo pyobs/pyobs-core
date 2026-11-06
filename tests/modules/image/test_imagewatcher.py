@@ -88,6 +88,50 @@ async def test_add_file_stores_ready_at_time() -> None:
 
 
 @pytest.mark.asyncio
+async def test_add_file_twice_queues_once_and_restarts_timer() -> None:
+    watcher = make_watcher(wait_time=5)
+    await watcher.add_file("/watch/test.fits")
+    first = watcher._pending["/watch/test.fits"]
+    await asyncio.sleep(0.01)
+    await watcher.add_file("/watch/test.fits")
+    assert watcher._queue.qsize() == 1
+    assert watcher._pending["/watch/test.fits"] > first
+
+
+@pytest.mark.asyncio
+async def test_worker_waits_for_pushed_back_deadline() -> None:
+    watcher = make_watcher(wait_time=0.2)
+    watcher._process_file = AsyncMock()  # type: ignore[method-assign]
+    await watcher.add_file("/watch/test.fits")
+    await asyncio.sleep(0.1)
+    await watcher.add_file("/watch/test.fits")  # restarts timer
+    task = asyncio.create_task(watcher._worker())
+    try:
+        await asyncio.sleep(0.15)  # past first deadline, before second
+        watcher._process_file.assert_not_called()
+        await asyncio.sleep(0.2)
+        watcher._process_file.assert_called_once_with("/watch/test.fits")
+    finally:
+        task.cancel()
+
+
+@pytest.mark.asyncio
+async def test_add_file_after_pickup_queues_again() -> None:
+    watcher = make_watcher()
+    await watcher.add_file("/watch/test.fits")
+    watcher._process_file = AsyncMock()  # type: ignore[method-assign]
+    task = asyncio.create_task(watcher._worker())
+    try:
+        await asyncio.sleep(0.05)
+        assert "/watch/test.fits" not in watcher._pending
+        await watcher.add_file("/watch/test.fits")
+        await asyncio.sleep(0.05)
+        assert watcher._process_file.call_count == 2
+    finally:
+        task.cancel()
+
+
+@pytest.mark.asyncio
 async def test_add_file_respects_pattern() -> None:
     watcher = make_watcher(pattern="*.fits")
     await watcher.add_file("/watch/test.fits")

@@ -894,12 +894,42 @@ async def test_watch_inotify_survives_rename_into_watched_tree(tmp_path: Path) -
 
 
 @pytest.mark.asyncio
+async def test_watch_inotify_picks_up_file_renamed_into_watched_dir(tmp_path: Path) -> None:
+    watch = tmp_path / "watch"
+    watch.mkdir()
+    incoming = tmp_path / "incoming"
+    incoming.mkdir()
+    watcher = make_watcher()
+    watcher._watchpath = "/watch"
+    watcher.vfs.local_path = AsyncMock(return_value=str(watch))  # type: ignore[method-assign]
+    added: list[str] = []
+
+    async def fake_add(filename: str) -> None:
+        added.append(filename)
+
+    watcher.add_file = fake_add  # type: ignore[method-assign]
+    task = asyncio.create_task(watcher._watch_inotify())
+    try:
+        await asyncio.sleep(0.2)
+        (incoming / "a.slc").write_bytes(b"x")
+        (incoming / "a.slc").rename(watch / "a.slc")
+        (incoming / "d").mkdir()
+        (incoming / "d").rename(watch / "d")  # directory moves must not be added as files
+        await asyncio.sleep(0.3)
+    finally:
+        task.cancel()
+    assert added == ["/watch/a.slc"]
+
+
+@pytest.mark.asyncio
 async def test_watch_inotify_restarts_on_oserror(monkeypatch) -> None:
     """Regression for a review finding: asyncinotify's own add_watch/rm_watch (inside
     watch_recursive()) can raise OSError if a directory vanishes between an event being received
     and the library acting on it -- real under directory churn, not hypothetical. Confirm
     _watch_inotify catches it and restarts with a fresh RecursiveWatcher instead of letting the
     whole background task die."""
+    from asyncinotify import Mask
+
     watcher = make_watcher()
     watcher._vfs.local_path = AsyncMock(return_value="/some/local/path")
 
@@ -913,6 +943,7 @@ async def test_watch_inotify_restarts_on_oserror(monkeypatch) -> None:
     class FakeEvent:
         def __init__(self, path: Path) -> None:
             self.path = path
+            self.mask = Mask.CLOSE_WRITE
 
     attempts = 0
 

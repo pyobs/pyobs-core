@@ -178,8 +178,17 @@ class ImageWatcher(Module):
         # than falling back to the module's outer background-task restart-with-backoff.
         while True:
             try:
-                watcher = RecursiveWatcher(Path(local), Mask.CLOSE_WRITE)
+                # CLOSE_WRITE for files written in place, MOVED_TO for files renamed into the tree
+                # (a rename produces no CLOSE_WRITE)
+                watcher = RecursiveWatcher(Path(local), Mask.CLOSE_WRITE | Mask.MOVED_TO)
                 async for event in watcher.watch_recursive():
+                    log.debug("Inotify event: mask=%s path=%s", event.mask, event.path)
+
+                    # moved-in directories are handled by the watcher itself (new watches), they're
+                    # not files to archive
+                    if Mask.ISDIR in event.mask:
+                        continue
+
                     # get filename by replacing local with watchpath
                     filename = str(event.path).replace(local, self._watchpath)
 

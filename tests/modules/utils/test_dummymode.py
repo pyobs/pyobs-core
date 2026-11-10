@@ -46,6 +46,43 @@ def test_init_default_modes() -> None:
     assert dm._modes == {"Size": "M", "Speed": "Normal", "Movement": "Linear"}
 
 
+def test_init_custom_modes_start_with_first_option() -> None:
+    dm = make_dummymode(modes={"Iodine": ["Off", "On"], "FP": ["Off", "On"]})
+    assert dm._mode_options == {"Iodine": ["Off", "On"], "FP": ["Off", "On"]}
+    assert dm._modes == {"Iodine": "Off", "FP": "Off"}
+
+
+def test_init_custom_modes_with_initial_modes() -> None:
+    dm = make_dummymode(modes={"Iodine": ["Off", "On"], "FP": ["Off", "On"]}, initial_modes={"FP": "On"})
+    assert dm._modes == {"Iodine": "Off", "FP": "On"}
+
+
+def test_init_initial_modes_override_default_groups() -> None:
+    dm = make_dummymode(initial_modes={"Speed": "Fast"})
+    assert dm._modes == {"Size": "M", "Speed": "Fast", "Movement": "Linear"}
+
+
+def test_init_does_not_share_caller_lists() -> None:
+    options = ["Off", "On"]
+    dm = make_dummymode(modes={"Iodine": options})
+    options.append("Other")
+    assert dm._mode_options["Iodine"] == ["Off", "On"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"modes": {}},
+        {"modes": {"Iodine": []}},
+        {"modes": {"Iodine": ["Off", "On"]}, "initial_modes": {"FP": "On"}},
+        {"modes": {"Iodine": ["Off", "On"]}, "initial_modes": {"Iodine": "Dim"}},
+    ],
+)
+def test_init_rejects_invalid_config(kwargs) -> None:
+    with pytest.raises(ValueError):
+        make_dummymode(**kwargs)
+
+
 # ── open ────────────────────────────────────────────────────────────────────
 
 

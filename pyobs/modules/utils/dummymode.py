@@ -19,17 +19,45 @@ class DummyMode(Module, MotionStatusMixin, IMode, IMotion):
 
     __module__ = "pyobs.modules.utils"
 
-    def __init__(self, **kwargs: Any):
-        """Initialize a new dummy module."""
+    def __init__(
+        self,
+        modes: dict[str, list[str]] | None = None,
+        initial_modes: dict[str, str] | None = None,
+        **kwargs: Any,
+    ):
+        """Initialize a new dummy module.
+
+        Args:
+            modes: Mode groups and their options, e.g. {"Iodine": ["Off", "On"]}. Defaults to the groups
+                Size, Speed and Movement.
+            initial_modes: Initial mode per group. Groups not listed start with the first option of the group,
+                or, with the default groups, with their default (M, Normal, Linear).
+
+        Raises:
+            ValueError: If modes is empty, or initial_modes contains an unknown group or option.
+        """
         super().__init__(**kwargs)
 
         # modes
-        self._mode_options = {
-            "Size": ["XS", "S", "M", "L", "XL", "XXL"],
-            "Speed": ["Slow", "Normal", "Fast"],
-            "Movement": ["Rotation", "Linear"],
-        }
-        self._modes = {"Size": "M", "Speed": "Normal", "Movement": "Linear"}
+        if modes is None:
+            self._mode_options = {
+                "Size": ["XS", "S", "M", "L", "XL", "XXL"],
+                "Speed": ["Slow", "Normal", "Fast"],
+                "Movement": ["Rotation", "Linear"],
+            }
+            self._modes = {"Size": "M", "Speed": "Normal", "Movement": "Linear"}
+        else:
+            if not modes or any(not options for options in modes.values()):
+                raise ValueError("modes must contain at least one group, each with at least one option.")
+            self._mode_options = {group: list(options) for group, options in modes.items()}
+            self._modes = {group: options[0] for group, options in self._mode_options.items()}
+
+        for group, mode in (initial_modes or {}).items():
+            if group not in self._mode_options:
+                raise ValueError(f"Unknown group in initial_modes: {group}")
+            if mode not in self._mode_options[group]:
+                raise ValueError(f"Invalid initial mode {mode!r} for group {group}.")
+            self._modes[group] = mode
 
     async def open(self) -> None:
         """Open module."""

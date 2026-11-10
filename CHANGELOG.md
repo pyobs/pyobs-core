@@ -11,6 +11,10 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Added
 
+- `DummyMode` accepts `modes` (groups and their options) and `initial_modes`, so it can stand in for any `IMode`
+  module, e.g. when running scripts against mock hardware. Without them it keeps its Size/Speed/Movement groups.
+- GUI camera widgets `GainOffsetWidget` (gain and offset spinboxes) and `CoolingWidget` (cooler on/off, target
+  temperature, temperature and power readout) in `pyobs.utils.gui.camera`.
 - `InitRefusedError` for an `init()` that was not started because a precondition is not met (e.g. bad weather).
   Like `InitAbortedError` it is not a `MotionError`, so refusals no longer count towards the escalation to ERROR
   of telescope and dome modules, and it is excluded from broad `RemoteError` handlers. Callers on older cores

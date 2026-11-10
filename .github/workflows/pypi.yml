@@ -27,3 +27,16 @@ jobs:
         env:
           PYPI_TOKEN: ${{ secrets.pypi_password }}
         run: uv publish --token $PYPI_TOKEN
+
+  notify-portal:
+    name: Tell pyobs-portal about the new release
+    needs: build-n-publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch to pyobs-portal
+        env:
+          GH_TOKEN: ${{ secrets.PORTAL_DISPATCH_TOKEN }}
+        run: |
+          gh api repos/pyobs/pyobs-portal/dispatches \
+            -f event_type=pyobs-core-release \
+            -f "client_payload[version]=${GITHUB_REF_NAME#v}"

@@ -14,6 +14,10 @@ class CoolingState:
     setpoint: Annotated[float, Unit.CELSIUS] | None
     power: Annotated[int, Unit.PERCENT] | None
     enabled: bool
+    # Final setpoint requested, while ``setpoint`` is the value currently commanded on the hardware.
+    target: Annotated[float, Unit.CELSIUS] | None = None
+    # True while the setpoint is being ramped towards ``target``.
+    ramping: bool = False
     time: Time = field(default_factory=Time.now)
 
 

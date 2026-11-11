@@ -405,3 +405,8 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-11-02-init-refused-error.md](2026-11-02-init-refused-error.md): `InitRefusedError` so an `init()` refused on a
   precondition (e.g. bad weather) no longer counts towards `MotionError` escalation (#1034). **implemented in
   core** (Repos: pyobs-core, pyobs-brot)
+- [2026-11-11-shared-cooling-ramp.md](2026-11-11-shared-cooling-ramp.md): shared `CoolingRamp` planner and
+  `CoolingRampMixin` that ramp the cooling setpoint at a configurable degC/min (warm-up priority),
+  `CoolingState.target`/`ramping`, adoption by asi/sbig/fli/flipro/qhyccd and local camera GUIs (#1066).
+  **core implemented**, drivers and GUIs proposed (Repos: pyobs-core, pyobs-asi, pyobs-sbig, pyobs-fli,
+  pyobs-flipro, pyobs-qhyccd, pyobs-gui)

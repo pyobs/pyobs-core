@@ -161,3 +161,22 @@ class TestStateNamespaceAndNode:
         node = XmppComm._state_node("my-camera_01", ICooling)
         assert "my-camera_01" in node
         assert "ICooling" in node
+
+
+class TestCoolingStateRampFields:
+    """target/ramping were added after the first release, old senders do not send them."""
+
+    def test_roundtrip_with_ramp_fields(self) -> None:
+        state = CoolingState(setpoint=-10.0, power=50, enabled=True, target=-20.0, ramping=True)
+        result = _xml_to_dataclass(_dataclass_to_xml(state, NS), CoolingState)
+        assert result.target == pytest.approx(-20.0)
+        assert result.ramping is True
+
+    def test_payload_without_ramp_fields_uses_defaults(self) -> None:
+        xml = _dataclass_to_xml(CoolingState(setpoint=-10.0, power=50, enabled=True), NS)
+        for name in ("target", "ramping"):
+            for child in xml.findall(f"{{{NS}}}{name}") + xml.findall(name):
+                xml.remove(child)
+        result = _xml_to_dataclass(xml, CoolingState)
+        assert result.target is None
+        assert result.ramping is False

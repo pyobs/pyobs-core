@@ -20,7 +20,6 @@ from pyobs.interfaces import (
     Binning,
     BinningCapabilities,
     BinningState,
-    CoolingState,
     GainState,
     IBinning,
     ICooling,
@@ -39,6 +38,7 @@ from pyobs.interfaces import (
     WindowCapabilities,
     WindowState,
 )
+from pyobs.mixins import CoolingRampMixin
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus, ImageFormat, ImageType, MotionStatus
@@ -54,7 +54,7 @@ class CoolingStatus(NamedTuple):
     temperatures: dict[str, float] = {"CCD": 0.0, "Back": 3.14}
 
 
-class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
+class DummyCamera(CoolingRampMixin, BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
     """A dummy camera for testing."""
 
     __module__ = "pyobs.modules.camera"
@@ -76,6 +76,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         seeing: float = 3.0,
         telescope: str | None = None,
         roof: str | None = None,
+        cooling_rate_warm: float | None = None,
+        cooling_rate_cool: float | None = None,
         **kwargs: Any,
     ):
         """Creates a new dummy camera.
@@ -93,8 +95,14 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
                 flux and stars) is only simulated while the roof is not parked -- frames come
                 back dark otherwise. Fails closed: until the roof's state has been received, the
                 roof is assumed closed.
+            cooling_rate_warm: Cooling ramp rate in degC/min when warming up. None (default) changes the
+                setpoint in one step.
+            cooling_rate_cool: Cooling ramp rate in degC/min when cooling down. None (default) changes the
+                setpoint in one step.
         """
-        BaseCamera.__init__(self, **kwargs)
+        CoolingRampMixin.__init__(
+            self, cooling_rate_warm=cooling_rate_warm, cooling_rate_cool=cooling_rate_cool, **kwargs
+        )
         self.add_background_task(self._cooling_thread, True)
 
         self._readout_time = readout_time
@@ -175,8 +183,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
 
         # publish initial states
         await self.comm.set_state(
-            ICooling,
-            CoolingState(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled),
+            ICooling, self._cooling_state(self._cooling.power, self._cooling.enabled, self._cooling.set_point)
         )
         await self.comm.set_state(
             ITemperatures,
@@ -202,8 +209,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
                 temperatures=temps,
             )
             await self.comm.set_state(
-                ICooling,
-                CoolingState(setpoint=self._cooling.set_point, power=int(power), enabled=self._cooling.enabled),
+                ICooling, self._cooling_state(int(power), self._cooling.enabled, self._cooling.set_point)
             )
             await self.comm.set_state(
                 ITemperatures,
@@ -377,21 +383,22 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         self._binning = (x, y)
         await self.comm.set_state(IBinning, BinningState(*self._binning))
 
-    async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
-        if enabled:
-            log.info("Enabling cooling with a setpoint of %.2f°C.", setpoint)
-        else:
-            log.info("Disabling cooling.")
+    async def _set_cooling_hardware(self, enabled: bool, setpoint: float | None) -> None:
         self._cooling = CoolingStatus(
             enabled=enabled,
-            set_point=setpoint,
+            set_point=setpoint if setpoint is not None else self._cooling.set_point,
             power=self._cooling.power,
             temperatures=self._cooling.temperatures,
         )
         await self.comm.set_state(
-            ICooling,
-            CoolingState(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled),
+            ICooling, self._cooling_state(self._cooling.power, self._cooling.enabled, self._cooling.set_point)
         )
+
+    async def _get_cooling_hardware(self) -> tuple[bool, float | None, int | None]:
+        return self._cooling.enabled, self._cooling.set_point, self._cooling.power
+
+    async def _get_sensor_temperature(self) -> float | None:
+        return self._cooling.temperatures["CCD"]
 
     async def set_gain(self, gain: float, **kwargs: Any) -> None:
         log.info("Setting gain to %.2f...", gain)

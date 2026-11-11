@@ -11,6 +11,11 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Added
 
+- `CoolingRamp` (`pyobs.utils.coolingramp`) plans cooling setpoint ramps at a limited rate in degC/min, with a
+  separate warm-up rate. `CoolingRampMixin` uses it to implement `ICooling.set_cooling` for modules: the call
+  returns at once and a background task steps the setpoint. `CoolingState` gets `target` and `ramping`.
+  `DummyCamera` uses the mixin (accepts `cooling_rate_warm`/`cooling_rate_cool`, default one step, so
+  behaviour is unchanged). Drivers and local camera GUIs adopt it separately (#1066).
 - `DummyMode` accepts `modes` (groups and their options) and `initial_modes`, so it can stand in for any `IMode`
   module, e.g. when running scripts against mock hardware. Without them it keeps its Size/Speed/Movement groups.
 - GUI camera widgets `GainOffsetWidget` (gain and offset spinboxes) and `CoolingWidget` (cooler on/off, target

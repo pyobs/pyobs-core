@@ -222,8 +222,12 @@ class CoolingRampMixin:
 
         commanded = self._cooling_commanded
         assert commanded is not None
-        sensor = None if enabled else await self._get_sensor_temperature()
-        step = self._cooling_ramp.next_step(commanded, enabled, setpoint, sensor)
+        sensor = None
+        power = None
+        if not enabled:
+            sensor = await self._get_sensor_temperature()
+            _, _, power = await self._get_cooling_hardware()
+        step = self._cooling_ramp.next_step(commanded, enabled, setpoint, sensor, power)
         if step.write:
             await self._set_cooling_hardware(step.enabled, step.setpoint)
             self._cooling_commanded = step.setpoint

@@ -12,7 +12,7 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 ### Changed
 
 - `CoolingRampMixin` warms up and switches cooling off when the module closes (`cooling_warmup_on_close` now
-  defaults to true). The warm-up is limited by `cooling_close_timeout` (60 s by default), so a deeply cooled
+  defaults to true). The warm-up is limited by `cooling_close_timeout` (300 s by default), so a deeply cooled
   camera is usually only partly warmed up when the timeout hits: raise the timeout, or set
   `cooling_warmup_on_close: false` to restore the old behaviour.
 
@@ -23,6 +23,9 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Added
 
+- `CoolingRamp.off_setpoint()` gives the setpoint for "off" on cameras without a real off switch: the off
+  temperature, or just above the sensor temperature if ambient is warmer, so the cooler does not keep cooling
+  below ambient.
 - `CoolingRamp` (`pyobs.utils.coolingramp`) plans cooling setpoint ramps at a limited rate in degC/min, with a
   separate warm-up rate. `CoolingRampMixin` uses it to implement `ICooling.set_cooling` for modules: the call
   returns at once and a background task steps the setpoint. `CoolingState` gets `target` and `ramping`.

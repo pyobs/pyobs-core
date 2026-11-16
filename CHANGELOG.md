@@ -18,6 +18,9 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Fixed
 
+- `CoolingRampMixin` warms up from the sensor temperature when cooling is switched off while the cooler is on but
+  the camera cannot report its setpoint (e.g. right after the module restarted). Before, it assumed that the cooler
+  was already off.
 - `CoolingRampMixin` no longer claims to leave the cooler as it is when closing. Many camera SDKs switch the cooler
   off on close, so the log messages now say that the camera may do so.
 

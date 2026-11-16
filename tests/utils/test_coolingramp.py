@@ -86,3 +86,25 @@ def test_enable_requires_setpoint() -> None:
 def test_invalid_config(kwargs: dict[str, float]) -> None:
     with pytest.raises(ValueError):
         CoolingRamp(**kwargs)
+
+
+def test_off_setpoint_is_off_temperature_when_sensor_is_cooler() -> None:
+    ramp = CoolingRamp(off_temperature=20.0)
+    assert ramp.off_setpoint(None) == 20.0
+    assert ramp.off_setpoint(5.0) == 20.0
+    assert ramp.off_setpoint(19.0) == 20.0
+
+
+def test_off_setpoint_stays_above_a_warmer_sensor() -> None:
+    ramp = CoolingRamp(off_temperature=20.0)
+    assert ramp.off_setpoint(24.5) == 25.5
+
+
+def test_off_setpoint_rounds_up_to_resolution() -> None:
+    ramp = CoolingRamp(off_temperature=20.0, resolution=1.0)
+    assert ramp.off_setpoint(24.2) == 26.0
+
+
+def test_off_setpoint_is_limited() -> None:
+    ramp = CoolingRamp(off_temperature=20.0)
+    assert ramp.off_setpoint(50.0) == 30.0

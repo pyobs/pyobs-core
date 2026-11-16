@@ -99,7 +99,7 @@ call does to the cooler (decides whether `cooling_warmup_on_close` should defaul
 | `cooling_ramp_step` | 1.0 | degC per write (interval follows from the rate) |
 | `cooling_off_temperature` | 20.0 | warm-up end point before switching off |
 | `cooling_warmup_on_close` | True | best-effort warm-up in `close()`, bounded by the timeout below |
-| `cooling_close_timeout` | 60.0 | seconds allowed for that warm-up |
+| `cooling_close_timeout` | 300.0 | seconds allowed for that warm-up |
 
 The 1 degC/min default matches qhyccd today (1.0/60 s). characterize.py uses 1 degC/30 s.
 

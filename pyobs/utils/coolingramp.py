@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 # While the setpoint is at least this much above the sensor temperature, the cooler is idle and the
 # sensor no longer follows the setpoint, so a warm-up can stop and the cooler be switched off.
 IDLE_MARGIN = 1.0
+
+# A camera without a real off switch is "switched off" by writing a setpoint above the sensor temperature. This is
+# how far above the off temperature that setpoint may go, so that a sensor at a much higher temperature than
+# expected cannot lead to a setpoint the camera rejects.
+MAX_OFF_ABOVE = 10.0
 
 
 @dataclass(frozen=True)
@@ -79,6 +85,26 @@ class CoolingRamp:
             return self.round(target)
         return self.off_temperature
 
+    def off_setpoint(self, sensor: float | None) -> float:
+        """Setpoint to write for "off" on a camera that has no real off switch.
+
+        This is the off temperature, or, if the sensor is warmer than that (ambient above the off temperature), a
+        setpoint just above the sensor temperature, so that the cooler stays idle instead of cooling below ambient.
+        Raising the setpoint above the sensor does not heat the sensor, so this needs no ramp.
+
+        Args:
+            sensor: Current sensor temperature. May be None.
+
+        Returns:
+            The setpoint, rounded up to the camera's resolution.
+        """
+        if sensor is None or sensor + IDLE_MARGIN <= self.off_temperature:
+            return self.off_temperature
+        wanted = min(sensor + IDLE_MARGIN, self.off_temperature + MAX_OFF_ABOVE)
+        if self.resolution:
+            wanted = math.ceil(wanted / self.resolution) * self.resolution
+        return wanted
+
     def next_step(self, commanded: float, enabled: bool, target: float | None, sensor: float | None) -> RampStep:
         """Plans the next step.
 
@@ -113,4 +139,4 @@ class CoolingRamp:
         return RampStep(write=True, enabled=True, setpoint=new, done=done, delay=delay)
 
 
-__all__ = ["CoolingRamp", "RampStep", "IDLE_MARGIN"]
+__all__ = ["CoolingRamp", "RampStep", "IDLE_MARGIN", "MAX_OFF_ABOVE"]

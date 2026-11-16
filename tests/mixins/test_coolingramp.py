@@ -81,10 +81,19 @@ async def test_disable_ramps_up_then_switches_off() -> None:
 @pytest.mark.asyncio
 async def test_disable_stops_early_when_sensor_stops_following() -> None:
     camera = make_camera(cooling_rate_cool=2.0, cooling_rate_warm=1.0)
-    camera._cooling = camera._cooling._replace(temperatures={"CCD": -8.0, "Back": 3.0})  # setpoint -10
+    camera._cooling = camera._cooling._replace(temperatures={"CCD": -8.0, "Back": 3.0}, power=0)  # setpoint -10
     await camera.set_cooling(False, 0.0)
-    # sensor stays at -8, so the cooler is idle once the setpoint reaches -7 (sensor + 1)
+    # sensor stays at -8 and the cooler gives no power, so it is idle once the setpoint reaches -7 (sensor + 1)
     assert await run_ticks(camera) == [-9.0, -8.0, -7.0, None]
+
+
+@pytest.mark.asyncio
+async def test_disable_does_not_stop_early_while_the_cooler_works() -> None:
+    camera = make_camera(cooling_rate_cool=2.0, cooling_rate_warm=1.0, cooling_off_temperature=-6.0)
+    camera._cooling = camera._cooling._replace(temperatures={"CCD": -8.0, "Back": 3.0}, power=40)  # setpoint -10
+    await camera.set_cooling(False, 0.0)
+    # same lagging sensor as above, but the cooler still works: warm up to the end point
+    assert await run_ticks(camera) == [-9.0, -8.0, -7.0, -6.0, None]
 
 
 @pytest.mark.asyncio

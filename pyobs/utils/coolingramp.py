@@ -3,8 +3,10 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-# While the setpoint is at least this much above the sensor temperature, the cooler is idle and the
-# sensor no longer follows the setpoint, so a warm-up can stop and the cooler be switched off.
+# While the setpoint is at least this much above the sensor temperature and the cooler gives no power, the cooler is
+# idle and the sensor no longer follows the setpoint, so a warm-up can stop and the cooler be switched off. The
+# sensor alone is not enough: right after a setpoint step it lags behind for a while although the cooler is still
+# working, and switching off then lets the sensor warm up several degrees per minute.
 IDLE_MARGIN = 1.0
 
 # A camera without a real off switch is "switched off" by writing a setpoint above the sensor temperature. This is
@@ -105,7 +107,14 @@ class CoolingRamp:
             wanted = math.ceil(wanted / self.resolution) * self.resolution
         return wanted
 
-    def next_step(self, commanded: float, enabled: bool, target: float | None, sensor: float | None) -> RampStep:
+    def next_step(
+        self,
+        commanded: float,
+        enabled: bool,
+        target: float | None,
+        sensor: float | None,
+        power: int | None = None,
+    ) -> RampStep:
         """Plans the next step.
 
         Args:
@@ -113,6 +122,8 @@ class CoolingRamp:
             enabled: Whether the target state is cooling on (True) or off (False).
             target: Target setpoint if enabled.
             sensor: Current sensor temperature, used to stop a warm-up early. May be None.
+            power: Current cooler power in percent, used to stop a warm-up early. May be None if the camera does not
+                report it, then the sensor temperature alone decides.
 
         Returns:
             The next step.
@@ -120,7 +131,7 @@ class CoolingRamp:
         goal = self.goal(enabled, target)
 
         if not enabled:
-            idle = sensor is not None and commanded >= sensor + IDLE_MARGIN
+            idle = sensor is not None and commanded >= sensor + IDLE_MARGIN and (power is None or power == 0)
             if idle or commanded >= goal or self.rate_warm is None:
                 return RampStep(write=True, enabled=False, setpoint=None, done=True, delay=0.0)
         elif commanded == goal:

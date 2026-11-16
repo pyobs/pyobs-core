@@ -202,6 +202,14 @@ class CoolingRampMixin:
             hw_enabled, hw_setpoint, _ = await self._get_cooling_hardware()
             if hw_enabled and hw_setpoint is not None:
                 self._cooling_commanded = hw_setpoint
+            elif hw_enabled and not enabled:
+                # cooler is on, but the camera cannot report its setpoint (e.g. after a restart of the module):
+                # the sensor follows the setpoint, so warm up from the sensor temperature
+                sensor = await self._get_sensor_temperature()
+                if sensor is None:
+                    self._finish(target)
+                    return None
+                self._cooling_commanded = self._cooling_ramp.round(sensor)
             elif not enabled:
                 # already off, nothing to warm up
                 self._finish(target)

@@ -175,3 +175,30 @@ async def test_close_with_warmup_times_out() -> None:
 
 def test_warmup_on_close_is_on_by_default() -> None:
     assert make_camera()._cooling_warmup_on_close is True
+
+
+@pytest.mark.asyncio
+async def test_warmup_after_restart_starts_from_sensor_when_setpoint_unknown() -> None:
+    """Camera cooled before the module (re)started: cooler on, but the setpoint cannot be read back."""
+    camera = make_camera(cooling_rate_cool=2.0, cooling_rate_warm=1.0, cooling_off_temperature=-15.0)
+    camera._get_cooling_hardware = AsyncMock(return_value=(True, None, 50))  # type: ignore[method-assign]
+    camera._get_sensor_temperature = AsyncMock(return_value=-20.0)  # type: ignore[method-assign]
+    camera._set_cooling_hardware = AsyncMock()  # type: ignore[method-assign]
+
+    await camera.set_cooling(False, 0.0)
+    delay = await camera._cooling_tick()
+
+    camera._set_cooling_hardware.assert_awaited_once_with(True, -19.0)
+    assert delay and camera.cooling_ramping
+
+
+@pytest.mark.asyncio
+async def test_disable_with_unknown_setpoint_and_no_sensor_finishes() -> None:
+    camera = make_camera(cooling_rate_cool=2.0, cooling_rate_warm=1.0)
+    camera._get_cooling_hardware = AsyncMock(return_value=(True, None, 50))  # type: ignore[method-assign]
+    camera._get_sensor_temperature = AsyncMock(return_value=None)  # type: ignore[method-assign]
+    camera._set_cooling_hardware = AsyncMock()  # type: ignore[method-assign]
+
+    await camera.set_cooling(False, 0.0)
+    assert await camera._cooling_tick() is None
+    camera._set_cooling_hardware.assert_not_awaited()

@@ -51,7 +51,8 @@ class CoolingRampMixin:
             cooling_rate_cool: Maximum rate in degC/min when lowering the setpoint. None for a single step.
             cooling_ramp_step: Setpoint change per hardware write in degC. The interval follows from the rate.
             cooling_off_temperature: Temperature the setpoint is ramped to before cooling is switched off.
-            cooling_warmup_on_close: Warm up to cooling_off_temperature and switch cooling off when closing.
+            cooling_warmup_on_close: Warm up to cooling_off_temperature and switch cooling off when closing. Many
+                SDKs switch the cooler off when the camera is closed, which warms the sensor abruptly.
             cooling_close_timeout: Maximum time in seconds that warm-up on close may take.
         """
         super().__init__(**kwargs)
@@ -137,13 +138,15 @@ class CoolingRampMixin:
                 await asyncio.wait_for(self._cooling_run_to_end(), self._cooling_close_timeout)
             except TimeoutError:
                 log.warning(
-                    "Warm-up on close did not finish within %.0fs, leaving setpoint at %s.",
+                    "Warm-up on close did not finish within %.0fs (setpoint at %s). "
+                    "Closing anyway, the camera may switch the cooler off abruptly.",
                     self._cooling_close_timeout,
                     self._cooling_commanded,
                 )
         elif self._cooling_target is not None:
             log.info(
-                "Closing with cooling setpoint at %s (target %s), leaving cooler as it is.",
+                "Closing while a cooling ramp is still running (setpoint at %s, target %s). "
+                "The ramp is stopped, and the camera may switch the cooler off when it is closed.",
                 self._cooling_commanded,
                 self._cooling_target,
             )

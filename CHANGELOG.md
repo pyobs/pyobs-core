@@ -9,6 +9,11 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Fixed
+
+- `CoolingRampMixin` no longer claims to leave the cooler as it is when closing. Many camera SDKs switch the cooler
+  off on close, so the log messages now say that the camera may do so.
+
 ### Added
 
 - `CoolingRamp` (`pyobs.utils.coolingramp`) plans cooling setpoint ramps at a limited rate in degC/min, with a

@@ -39,7 +39,7 @@ class CoolingRampMixin:
         cooling_rate_cool: float | None = 2.0,
         cooling_ramp_step: float = 1.0,
         cooling_off_temperature: float = 20.0,
-        cooling_warmup_on_close: bool = False,
+        cooling_warmup_on_close: bool = True,
         cooling_close_timeout: float = 60.0,
         **kwargs: Any,
     ):

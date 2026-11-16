@@ -138,7 +138,7 @@ async def test_tick_error_propagates_to_loop_and_keeps_target() -> None:
 
 @pytest.mark.asyncio
 async def test_close_without_warmup_leaves_setpoint() -> None:
-    camera = make_camera(cooling_rate_cool=2.0, cooling_rate_warm=1.0)
+    camera = make_camera(cooling_rate_cool=2.0, cooling_rate_warm=1.0, cooling_warmup_on_close=False)
     await camera.set_cooling(True, -20.0, ramp=False)
     await camera.close()
     assert camera._cooling.enabled is True
@@ -171,3 +171,7 @@ async def test_close_with_warmup_times_out() -> None:
     track_setpoint(camera)
     await camera.close()
     assert camera._cooling.enabled is True  # not finished, cooler left on at an intermediate setpoint
+
+
+def test_warmup_on_close_is_on_by_default() -> None:
+    assert make_camera()._cooling_warmup_on_close is True

@@ -12,12 +12,16 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 ### Changed
 
 - `CoolingRampMixin` warms up and switches cooling off when the module closes (`cooling_warmup_on_close` now
-  defaults to true). The warm-up is limited by `cooling_close_timeout` (300 s by default), so a deeply cooled
-  camera is usually only partly warmed up when the timeout hits: raise the timeout, or set
-  `cooling_warmup_on_close: false` to restore the old behaviour.
+  defaults to true). The warm-up is limited by `cooling_close_timeout`. By default (None) that is estimated from
+  the current setpoint (or the sensor temperature, if the camera cannot report its setpoint) and
+  `cooling_rate_warm`, plus 20% and 60 s, so closing a deeply cooled camera can take as long as the warm-up
+  (40 min from -20 degC at 1 degC/min). Set `cooling_close_timeout` to limit it, or `cooling_warmup_on_close: false`
+  to restore the old behaviour.
 
 ### Fixed
 
+- `CoolingRampMixin` still closes the camera when a hardware call fails during warm-up on close. Before, the error
+  ended `close()` and the camera was left open.
 - `CoolingRampMixin` warms up from the sensor temperature when cooling is switched off while the cooler is on but
   the camera cannot report its setpoint (e.g. right after the module restarted). Before, it assumed that the cooler
   was already off.

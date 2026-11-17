@@ -12,6 +12,11 @@ log = logging.getLogger(__name__)
 _MAX_QUIET_FAILURES = 5
 _RETRY_DELAY = 5.0
 
+# warm-up on close: the estimated time gets this factor and this many seconds on top
+_CLOSE_MARGIN_FACTOR = 1.2
+_CLOSE_MARGIN_SECONDS = 60.0
+_CLOSE_FALLBACK_TIMEOUT = 300.0
+
 
 class CoolingRampMixin:
     """Mixin for ICooling modules that moves the cooling setpoint in steps instead of one jump.
@@ -40,7 +45,7 @@ class CoolingRampMixin:
         cooling_ramp_step: float = 1.0,
         cooling_off_temperature: float = 20.0,
         cooling_warmup_on_close: bool = True,
-        cooling_close_timeout: float = 300.0,
+        cooling_close_timeout: float | None = None,
         **kwargs: Any,
     ):
         """Creates the mixin.
@@ -53,7 +58,9 @@ class CoolingRampMixin:
             cooling_off_temperature: Temperature the setpoint is ramped to before cooling is switched off.
             cooling_warmup_on_close: Warm up to cooling_off_temperature and switch cooling off when closing. Many
                 SDKs switch the cooler off when the camera is closed, which warms the sensor abruptly.
-            cooling_close_timeout: Maximum time in seconds that warm-up on close may take.
+            cooling_close_timeout: Maximum time in seconds that warm-up on close may take. None (default): the
+                time needed from the current setpoint (or sensor temperature, if the camera cannot report its
+                setpoint) at cooling_rate_warm, plus a margin. 300 s if that cannot be determined.
         """
         super().__init__(**kwargs)
 
@@ -133,16 +140,22 @@ class CoolingRampMixin:
         """Stops the ramp. Optionally warms up and switches cooling off first, within a time limit."""
         self._cooling_task.stop()
         if self._cooling_warmup_on_close:
+            timeout = self._cooling_close_timeout
+            if timeout is None:
+                timeout = await self._cooling_estimated_close_timeout()
             self._cooling_target = (False, None)
             try:
-                await asyncio.wait_for(self._cooling_run_to_end(), self._cooling_close_timeout)
+                await asyncio.wait_for(self._cooling_run_to_end(), timeout)
             except TimeoutError:
                 log.warning(
                     "Warm-up on close did not finish within %.0fs (setpoint at %s). "
                     "Closing anyway, the camera may switch the cooler off abruptly.",
-                    self._cooling_close_timeout,
+                    timeout,
                     self._cooling_commanded,
                 )
+            except Exception as e:
+                # a failing SDK call must not keep the camera open
+                log.error("Warm-up on close failed (setpoint at %s), closing anyway: %s", self._cooling_commanded, e)
         elif self._cooling_target is not None:
             log.info(
                 "Closing while a cooling ramp is still running (setpoint at %s, target %s). "
@@ -151,6 +164,24 @@ class CoolingRampMixin:
                 self._cooling_target,
             )
         await super().close()  # type: ignore[misc]
+
+    async def _cooling_estimated_close_timeout(self) -> float:
+        """Time in seconds that warming up to the off temperature takes from where the cooler is now, plus a margin."""
+        rate = self._cooling_ramp.rate_warm
+        if rate is None:
+            return _CLOSE_FALLBACK_TIMEOUT
+        try:
+            enabled, setpoint, _ = await self._get_cooling_hardware()
+            if not enabled:
+                return _CLOSE_FALLBACK_TIMEOUT
+            start = setpoint if setpoint is not None else await self._get_sensor_temperature()
+        except Exception as e:
+            log.warning("Could not read the cooler, using a close timeout of %.0fs: %s", _CLOSE_FALLBACK_TIMEOUT, e)
+            return _CLOSE_FALLBACK_TIMEOUT
+        if start is None:
+            return _CLOSE_FALLBACK_TIMEOUT
+        minutes = max(0.0, self._cooling_ramp.off_temperature - start) / rate
+        return minutes * 60.0 * _CLOSE_MARGIN_FACTOR + _CLOSE_MARGIN_SECONDS
 
     # ramp -------------------------------------------------------------------------------------------------------
 

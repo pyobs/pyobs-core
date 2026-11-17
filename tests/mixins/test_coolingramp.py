@@ -182,6 +182,67 @@ async def test_close_with_warmup_times_out() -> None:
     assert camera._cooling.enabled is True  # not finished, cooler left on at an intermediate setpoint
 
 
+@pytest.mark.asyncio
+async def test_close_with_warmup_still_closes_when_the_hardware_fails() -> None:
+    camera = make_camera(cooling_rate_cool=2.0, cooling_rate_warm=0.5, cooling_warmup_on_close=True)
+    track_setpoint(camera)
+    camera._set_cooling_hardware = AsyncMock(side_effect=RuntimeError("SDK error"))  # type: ignore[method-assign]
+    await camera.close()  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_close_timeout_follows_the_setpoint() -> None:
+    camera = make_camera(cooling_rate_warm=2.0, cooling_off_temperature=15.0)
+    camera._get_cooling_hardware = AsyncMock(return_value=(True, -20.0, 80))  # type: ignore[method-assign]
+    # -20 -> 15 degC at 2 degC/min = 1050 s, plus 20% and 60 s
+    assert await camera._cooling_estimated_close_timeout() == pytest.approx(1050 * 1.2 + 60)
+
+
+@pytest.mark.asyncio
+async def test_close_timeout_uses_the_sensor_when_the_setpoint_is_unknown() -> None:
+    camera = make_camera(cooling_rate_warm=2.0, cooling_off_temperature=15.0)
+    camera._get_cooling_hardware = AsyncMock(return_value=(True, None, 80))  # type: ignore[method-assign]
+    camera._get_sensor_temperature = AsyncMock(return_value=0.0)  # type: ignore[method-assign]
+    assert await camera._cooling_estimated_close_timeout() == pytest.approx(450 * 1.2 + 60)
+
+
+@pytest.mark.asyncio
+async def test_close_timeout_falls_back_when_it_cannot_be_estimated() -> None:
+    camera = make_camera(cooling_rate_warm=2.0)
+    camera._get_cooling_hardware = AsyncMock(return_value=(False, 8.0, 0))  # type: ignore[method-assign]
+    assert await camera._cooling_estimated_close_timeout() == 300.0
+
+    camera._get_cooling_hardware = AsyncMock(side_effect=ValueError("No driver."))  # type: ignore[method-assign]
+    assert await camera._cooling_estimated_close_timeout() == 300.0
+
+    camera._get_cooling_hardware = AsyncMock(return_value=(True, None, 80))  # type: ignore[method-assign]
+    camera._get_sensor_temperature = AsyncMock(return_value=None)  # type: ignore[method-assign]
+    assert await camera._cooling_estimated_close_timeout() == 300.0
+
+    assert await make_camera(cooling_rate_warm=None)._cooling_estimated_close_timeout() == 300.0
+
+
+@pytest.mark.asyncio
+async def test_close_estimates_the_timeout_when_none_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
+    camera = make_camera(cooling_rate_warm=600.0, cooling_off_temperature=-8.0)
+    track_setpoint(camera)
+    estimate = AsyncMock(return_value=30.0)
+    monkeypatch.setattr(camera, "_cooling_estimated_close_timeout", estimate)
+    await camera.close()
+    estimate.assert_awaited_once()
+    assert camera._cooling.enabled is False
+
+
+@pytest.mark.asyncio
+async def test_close_keeps_a_given_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    camera = make_camera(cooling_rate_warm=600.0, cooling_close_timeout=30.0, cooling_off_temperature=-8.0)
+    track_setpoint(camera)
+    estimate = AsyncMock()
+    monkeypatch.setattr(camera, "_cooling_estimated_close_timeout", estimate)
+    await camera.close()
+    estimate.assert_not_awaited()
+
+
 def test_warmup_on_close_is_on_by_default() -> None:
     assert make_camera()._cooling_warmup_on_close is True
 

@@ -21,7 +21,6 @@ import io
 import logging
 import statistics
 import time
-from typing import Any
 
 import numpy as np
 
@@ -52,10 +51,8 @@ async def client(url: str, runs: int, width: int, height: int) -> None:
     )
 
     # synthetic uint16 frame like a camera delivers it, noise around a bias level
-    # (Image is annotated for float data only, but cameras pass integer data as well)
     rng = np.random.default_rng(1)
-    data: Any = rng.normal(500, 6, (height, width)).astype(np.uint16)
-    img = Image(data)
+    img = Image(rng.normal(500, 6, (height, width)).astype(np.uint16))
     with io.BytesIO() as bio:
         img.writeto(bio)
         raw = bio.getvalue()

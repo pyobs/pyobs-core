@@ -52,7 +52,7 @@ class ProjectionFocusSeries(FocusSeries):
         # clean data
         if image.safe_data is None:
             return
-        data = self._clean(image.data)
+        data = self._clean(image.data.astype(float))
 
         # get projections
         xproj = np.mean(data, axis=0)

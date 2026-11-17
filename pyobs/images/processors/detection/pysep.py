@@ -217,7 +217,7 @@ class SepSourceDetection(SourceDetection):
 
     @staticmethod
     def remove_background(
-        data: npt.NDArray[np.floating[Any]],
+        data: npt.NDArray[np.number[Any]],
         mask: npt.NDArray[np.floating[Any]] | None = None,
     ) -> tuple[npt.NDArray[np.floating[Any]], Background]:
         """Remove background from image in data.

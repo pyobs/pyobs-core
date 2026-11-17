@@ -142,12 +142,12 @@ class Image:
 
     def __init__(
         self,
-        data: npt.NDArray[np.floating[Any]] | None = None,
+        data: npt.NDArray[np.number[Any]] | None = None,
         header: fits.Header | None = None,
         mask: npt.NDArray[np.floating[Any]] | None = None,
         uncertainty: npt.NDArray[np.floating[Any]] | None = None,
         catalog: Table | None = None,
-        raw: npt.NDArray[np.floating[Any]] | None = None,
+        raw: npt.NDArray[np.number[Any]] | None = None,
         meta: dict[Any, Any] | None = None,
         frames: Table | None = None,
         *args: Any,
@@ -167,12 +167,12 @@ class Image:
         """
 
         # store
-        self._data: npt.NDArray[np.floating[Any]] | None = data
+        self._data: npt.NDArray[np.number[Any]] | None = data
         self._header = fits.Header() if header is None else header.copy()
         self._mask: npt.NDArray[np.floating[Any]] | None = None if mask is None else mask.copy()
         self._uncertainty: npt.NDArray[np.floating[Any]] | None = None if uncertainty is None else uncertainty.copy()
         self._catalog = None if catalog is None else catalog.copy()
-        self._raw: npt.NDArray[np.floating[Any]] | None = None if raw is None else raw.copy()
+        self._raw: npt.NDArray[np.number[Any]] | None = None if raw is None else raw.copy()
         self._meta = {} if meta is None else copy.deepcopy(meta)
         self._frames = None if frames is None else frames.copy()
 
@@ -583,17 +583,17 @@ class Image:
             return default
 
     @property
-    def safe_data(self) -> npt.NDArray[np.floating[Any]] | None:
+    def safe_data(self) -> npt.NDArray[np.number[Any]] | None:
         return self._data
 
     @property
-    def data(self) -> npt.NDArray[np.floating[Any]]:
+    def data(self) -> npt.NDArray[np.number[Any]]:
         if self._data is None:
             raise exc.ImageError("No data found in image.")
         return self._data
 
     @data.setter
-    def data(self, val: npt.NDArray[np.floating[Any]] | None) -> None:
+    def data(self, val: npt.NDArray[np.number[Any]] | None) -> None:
         self._data = val
 
     @property
@@ -668,17 +668,17 @@ class Image:
         self._frames = val
 
     @property
-    def safe_raw(self) -> npt.NDArray[np.floating[Any]] | None:
+    def safe_raw(self) -> npt.NDArray[np.number[Any]] | None:
         return self._raw
 
     @property
-    def raw(self) -> npt.NDArray[np.floating[Any]]:
+    def raw(self) -> npt.NDArray[np.number[Any]]:
         if self._raw is None:
             raise exc.ImageError("No raw data found in image.")
         return self._raw
 
     @raw.setter
-    def raw(self, val: npt.NDArray[np.floating[Any]] | None) -> None:
+    def raw(self, val: npt.NDArray[np.number[Any]] | None) -> None:
         self._raw = val
 
     @property

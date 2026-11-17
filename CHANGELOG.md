@@ -9,10 +9,53 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.28.0] - 2026-11-17
+
+### Added
+
+- `pyobs.utils.frameheader` with `FrameSettings` and `make_frame_header`: the header cards every camera frame gets
+  (`DATE-OBS`, `EXPTIME`, `INSTRUME`, binning, window origin, `DET-PIXL`, `GAIN`, `OFFSET`, `DET-GAIN`, `DET-TEMP`,
+  `DET-TBAS`, `DET-COOL`, `DET-TSET`, `DATAMIN`, `DATAMAX`, `DATAMEAN`). Camera modules and the local camera GUIs of
+  the drivers use it, so the key names and comments are the same everywhere. It does not import Qt.
+
 ### Changed
 
 - `DummyCamera` writes the frame header with `make_frame_header`. The black-level offset is now in `OFFSET`
   (it was `GAINOFST`), like in the other camera modules.
+
+### Fixed
+
+- `CoolingRampMixin` still closes the camera when a hardware call fails during warm-up on close. Before, the error
+  ended `close()` and the camera was left open.
+
+## [2.27.1] - 2026-11-16
+
+### Fixed
+
+- `CoolingRampMixin` stops a warm-up early only when the cooler gives no power. Before, the sensor lagging behind the
+  setpoint after a step could switch the cooler off after the first step, and the sensor then warmed up by several degC
+  per minute (#1077).
+
+## [2.27.0] - 2026-11-16
+
+### Fixed
+
+- `CoolingRampMixin` warms up from the sensor temperature when cooling is switched off while the cooler is on but
+  the camera cannot report its setpoint (e.g. right after the module restarted). Before, it assumed that the cooler
+  was already off.
+
+## [2.26.0] - 2026-11-16
+
+### Added
+
+- `CoolingRamp.off_setpoint()` gives the setpoint for "off" on cameras without a real off switch: the off
+  temperature, or just above the sensor temperature if ambient is warmer, so the cooler does not keep cooling
+  below ambient.
+
+## [2.25.0] - 2026-11-16
+
+### Changed
+
 - `CoolingRampMixin` warms up and switches cooling off when the module closes (`cooling_warmup_on_close` now
   defaults to true). The warm-up is limited by `cooling_close_timeout`. By default (None) that is estimated from
   the current setpoint (or the sensor temperature, if the camera cannot report its setpoint) and
@@ -22,32 +65,56 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Fixed
 
-- `CoolingRampMixin` still closes the camera when a hardware call fails during warm-up on close. Before, the error
-  ended `close()` and the camera was left open.
-- `CoolingRampMixin` warms up from the sensor temperature when cooling is switched off while the cooler is on but
-  the camera cannot report its setpoint (e.g. right after the module restarted). Before, it assumed that the cooler
-  was already off.
 - `CoolingRampMixin` no longer claims to leave the cooler as it is when closing. Many camera SDKs switch the cooler
   off on close, so the log messages now say that the camera may do so.
 
+## [2.24.0] - 2026-11-11
+
 ### Added
 
-- `pyobs.utils.frameheader` with `FrameSettings` and `make_frame_header`: the header cards every camera frame gets
-  (`DATE-OBS`, `EXPTIME`, `INSTRUME`, binning, window origin, `DET-PIXL`, `GAIN`, `OFFSET`, `DET-GAIN`, `DET-TEMP`,
-  `DET-TBAS`, `DET-COOL`, `DET-TSET`, `DATAMIN`, `DATAMAX`, `DATAMEAN`). Camera modules and the local camera GUIs of
-  the drivers use it, so the key names and comments are the same everywhere. It does not import Qt.
-- `CoolingRamp.off_setpoint()` gives the setpoint for "off" on cameras without a real off switch: the off
-  temperature, or just above the sensor temperature if ambient is warmer, so the cooler does not keep cooling
-  below ambient.
 - `CoolingRamp` (`pyobs.utils.coolingramp`) plans cooling setpoint ramps at a limited rate in degC/min, with a
   separate warm-up rate. `CoolingRampMixin` uses it to implement `ICooling.set_cooling` for modules: the call
   returns at once and a background task steps the setpoint. `CoolingState` gets `target` and `ramping`.
   `DummyCamera` uses the mixin (accepts `cooling_rate_warm`/`cooling_rate_cool`, default one step, so
   behaviour is unchanged). Drivers and local camera GUIs adopt it separately (#1066).
+
+## [2.23.4] - 2026-11-10
+
+### Added
+
 - `DummyMode` accepts `modes` (groups and their options) and `initial_modes`, so it can stand in for any `IMode`
   module, e.g. when running scripts against mock hardware. Without them it keeps its Size/Speed/Movement groups.
 - GUI camera widgets `GainOffsetWidget` (gain and offset spinboxes) and `CoolingWidget` (cooler on/off, target
   temperature, temperature and power readout) in `pyobs.utils.gui.camera`.
+
+## [2.23.3] - 2026-11-10
+
+### Changed
+
+- CI runs the checks on pull requests and notifies pyobs-portal after a PyPI release.
+- Dependency updates.
+
+## [2.23.2] - 2026-11-06
+
+### Fixed
+
+- `ImageWatcher` also picks up files written to a new directory before the watch started, skips files that are still
+  being written, also watches files moved into the directory (`MOVED_TO`) and ignores directory events.
+
+## [2.23.1] - 2026-11-06
+
+### Changed
+
+- Dependency updates.
+
+### Fixed
+
+- `ImageWatcher` ignores repeated events for the same file and restarts its wait timer.
+
+## [2.23.0] - 2026-11-02
+
+### Added
+
 - `InitRefusedError` for an `init()` that was not started because a precondition is not met (e.g. bad weather).
   Like `InitAbortedError` it is not a `MotionError`, so refusals no longer count towards the escalation to ERROR
   of telescope and dome modules, and it is excluded from broad `RemoteError` handlers. Callers on older cores

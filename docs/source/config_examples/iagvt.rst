@@ -119,11 +119,10 @@ Module used for distributing images among the other modules
   :linenos:
 
   class: pyobs.modules.utils.HttpFileCache
-  hostname: iagvtsrv
   port: 37075
 
 * :class:`~pyobs.modules.utils.HttpFileCache` provides a HTTP server that can be used for distributing files (line 1).
-* It needs a host and port to run on (line 3).
+* It needs a port to run on (line 2). The server listens on all network interfaces.
 
 
 filewatcher

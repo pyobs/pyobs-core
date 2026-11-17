@@ -157,6 +157,7 @@ Guides
    recipes/xmpp-diagnostics
    recipes/exceptions
    recipes/full-observatory-stack
+   recipes/httpfilecache
    config_examples/iag50cm
    config_examples/iagvt
 

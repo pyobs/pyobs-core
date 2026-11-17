@@ -42,6 +42,7 @@ from pyobs.mixins import CoolingRampMixin
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus, ImageFormat, ImageType, MotionStatus
+from pyobs.utils.frameheader import FrameSettings, make_frame_header
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -258,17 +259,19 @@ class DummyCamera(CoolingRampMixin, BaseCamera, IWindow, IBinning, ICooling, IGa
         hdr = fits.Header()
         hdr["NAXIS1"] = data.shape[1]
         hdr["NAXIS2"] = data.shape[0]
-        hdr["DATE-OBS"] = (time.isot, "Date and time of start of exposure")
-        hdr["EXPTIME"] = (exp_time, "Exposure time [s]")
-        hdr["XBINNING"] = hdr["DET-BIN1"] = (int(self._binning[0]), "Binning factor used on X axis")
-        hdr["YBINNING"] = hdr["DET-BIN2"] = (int(self._binning[1]), "Binning factor used on Y axis")
-        hdr["XORGSUBF"] = (int(self._window[0]), "Subframe origin on X axis")
-        hdr["YORGSUBF"] = (int(self._window[1]), "Subframe origin on Y axis")
+        hdr.update(
+            make_frame_header(
+                FrameSettings(
+                    date_obs=time.isot,
+                    exposure_time=exp_time,
+                    binning=(int(self._binning[0]), int(self._binning[1])),
+                    window=(int(self._window[0]), int(self._window[1]), int(self._window[2]), int(self._window[3])),
+                    pixel_size=self._pixel_size,
+                    data=data,
+                )
+            )
+        )
         hdr["TEL-FOCL"] = (self._focal_length, "Focal length [mm]")
-        hdr["DET-PIXL"] = (self._pixel_size, "Size of detector pixels (square) [mm]")
-        hdr["DATAMIN"] = float(np.min(data))
-        hdr["DATAMAX"] = float(np.max(data))
-        hdr["DATAMEAN"] = float(np.mean(data))
         return hdr
 
     def _get_catalog(self, fov: float) -> Table:
@@ -357,14 +360,18 @@ class DummyCamera(CoolingRampMixin, BaseCamera, IWindow, IBinning, ICooling, IGa
         await asyncio.sleep(self._readout_time)
 
         image = await hdu_future
-        image.header["EXPTIME"] = exposure_time
-        image.header["DATE-OBS"] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        image.header["XBINNING"] = image.header["DET-BIN1"] = (self._binning[0], "Binning factor used on X axis")
-        image.header["YBINNING"] = image.header["DET-BIN2"] = (self._binning[1], "Binning factor used on Y axis")
-        image.header["XORGSUBF"] = (self._window[0], "Subframe origin on X axis")
-        image.header["YORGSUBF"] = (self._window[1], "Subframe origin on Y axis")
-        image.header["GAIN"] = (self._gain, "Gain used for exposure")
-        image.header["GAINOFST"] = (self._gain_offset, "Gain offset used for exposure")
+        image.header.update(
+            make_frame_header(
+                FrameSettings(
+                    date_obs=date_obs,
+                    exposure_time=exposure_time,
+                    binning=(int(self._binning[0]), int(self._binning[1])),
+                    window=(int(self._window[0]), int(self._window[1]), int(self._window[2]), int(self._window[3])),
+                    gain=self._gain,
+                    offset=self._gain_offset,
+                )
+            )
+        )
         self.set_biassec_trimsec(image.header, *self._full_frame)
 
         log.info("Exposure finished.")

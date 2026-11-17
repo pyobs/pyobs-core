@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 class Ring:
     def __init__(
         self,
-        full_image_data: npt.NDArray[np.floating[Any]],
+        full_image_data: npt.NDArray[np.number[Any]],
         fibre_position: tuple[float, float],
         inner_radius: float,
         outer_radius: float,
@@ -307,7 +307,7 @@ class SpilledLightGuiding(Offsets):
         self._fibre_position = (self._fibre_position[0] / binning, self._fibre_position[1] / binning)
         self._inner_radius /= binning
 
-    async def _get_trimmed_image(self, image_data: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.floating[Any]]:
+    async def _get_trimmed_image(self, image_data: npt.NDArray[np.number[Any]]) -> npt.NDArray[np.number[Any]]:
         xmin, xmax, ymin, ymax = await self._get_trim_limits()
         return image_data[xmin:xmax, ymin:ymax]
 

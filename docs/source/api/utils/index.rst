@@ -12,6 +12,7 @@ Utilities (pyobs.utils)
    exceptions
    fits
    focusseries
+   frameheader
    grids
    http
    offsets

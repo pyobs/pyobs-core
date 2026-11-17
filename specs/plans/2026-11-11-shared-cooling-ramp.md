@@ -25,11 +25,21 @@ ramp is running, otherwise the camera stays at an intermediate setpoint.
 Decided defaults: `cooling_rate_warm=1.0`, `cooling_rate_cool=2.0` degC/min (2 is what `characterize.py`
 used), `ramp=False` kwarg on `set_cooling` for an immediate change, no `DET-TTGT`, rate limits in config
 only. `cooling_off_temperature` is a configurable fixed end point (default 20), with the early stop on
-setpoint >= sensor + 1 degC. Warm ambient above the end point (summer dome) is not covered: set it per camera.
+setpoint >= sensor + 1 degC and zero cooler power (see the update of 2026-11-17). Warm ambient above the end point
+(summer dome) is not covered: set it per camera.
 
 Status: pyobs-core part (planner, mixin, `CoolingState.target`/`ramping`, dummycamera) implemented in
 the PR for #1066. Drivers and GUIs follow after the core release. Still open: what each vendor SDK's close
 call does to the cooler (decides whether `cooling_warmup_on_close` should default to on per driver).
+
+## Update 2026-11-17: early stop needs zero cooler power
+
+On an ASI2600MM Pro the warm-up stopped after its first step: right after a setpoint step the sensor lags behind by a
+degree or more while the cooler is still working, so "setpoint >= sensor + 1 degC" was already true. With the cooler
+off the sensor then warmed by about 14 degC/min. Fixed in pyobs-core#1077 (released in 2.27.1): the warm-up only
+stops early if, in addition, the cooler power is 0. `next_step` takes the power as an optional argument; if a camera
+does not report it (None), the sensor rule alone decides, as before. Checked on the camera afterwards: a close from
+0 degC took 450 s, the sensor followed the 1 degC steps within 1 degC, and the power fell from 36% to 0%.
 
 ## Design
 
@@ -46,7 +56,7 @@ call does to the cooler (decides whether `cooling_warmup_on_close` should defaul
   - `_get_cooling_hardware() -> tuple[bool, float | None, int | None]`: enabled, hardware setpoint
     (None if the SDK cannot read it back), power in percent.
   - `_get_sensor_temperature() -> float | None`: CCD temperature, used as the ramp start when the
-    cooler is off and for the early stop during warm-up.
+    cooler is off and, together with the power from `_get_cooling_hardware`, for the early stop during warm-up.
 - Optional class attribute `_cooling_setpoint_resolution: float | None = None`. Commanded values
   are rounded to it (ASI: 1.0, since `ASI_TARGET_TEMP` is an int).
 - Helper `_cooling_state(power, enabled=None, setpoint=None) -> CoolingState` for driver poll loops.
@@ -66,7 +76,9 @@ call does to the cooler (decides whether `cooling_warmup_on_close` should defaul
   If the rate for a direction is `None`, the loop writes the target in one step.
 - Enable from off: write `enabled=True` at the start point, then ramp down.
 - Disable: ramp up towards `cooling_off_temperature`. Stop early once the setpoint is at least
-  `sensor + 1 degC` (the cooler is idle and the sensor no longer follows). Then call
+  `sensor + 1 degC` and the cooler power is 0 (the cooler is idle and the sensor no longer follows). The
+  sensor alone is not enough, since it lags behind the setpoint after each step while the cooler still works.
+  If the camera reports no power, the sensor rule alone decides. Then call
   `_set_cooling_hardware(False, None)`. fli/flipro have no off switch: their hook writes 20 degC,
   as they do now.
 - Cancellation: any new `set_cooling` replaces the target, and the ramp carries on from the current
@@ -146,7 +158,8 @@ The 1 degC/min default matches qhyccd today (1.0/60 s). characterize.py uses 1 d
 - pyobs-core `tests/mixins/test_coolingramp.py`, with a fake module that has recording hooks and a
   short interval (patched sleep or rate 600 degC/min):
   warm and cool step sizes and direction; `None` rate gives one step; retarget mid-ramp continues
-  from the commanded value; disable ramps then switches off; early stop on the sensor rule;
+  from the commanded value; disable ramps then switches off; early stop on the sensor rule with zero power,
+  no early stop while the power is above 0, sensor rule alone without a power reading;
   start point from the hardware setpoint, from the sensor, and from the last commanded value;
   resolution rounding; hook errors do not kill the loop; close default and warm-up-on-close with
   timeout; published `target`/`ramping`.
@@ -181,6 +194,7 @@ The 1 degC/min default matches qhyccd today (1.0/60 s). characterize.py uses 1 d
 - Does closing the SDK switch the cooler off (ASICloseCamera, SBIG close, FLIClose, FPROCam_Close,
   CloseQHYCCD)? If so, should `close()` warm up by default, or leave the camera open-loop?
 - Should `set_cooling` accept `ramp=False` in kwargs for an immediate change (expert or GUI)?
-- Is `cooling_off_temperature=20` and the "setpoint >= sensor + 1 degC" early stop acceptable?
+- Is `cooling_off_temperature=20` and the "setpoint >= sensor + 1 degC" early stop acceptable? (Answered
+  2026-11-17: the early stop also needs zero cooler power, see the update above.)
 - Add `DET-TTGT` to FITS headers?
 - Per-camera rate limits: config only, or also a class-level maximum rate per driver?

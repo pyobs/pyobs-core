@@ -11,6 +11,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Changed
 
+- `DummyCamera` writes the frame header with `make_frame_header`. The black-level offset is now in `OFFSET`
+  (it was `GAINOFST`), like in the other camera modules.
 - `CoolingRampMixin` warms up and switches cooling off when the module closes (`cooling_warmup_on_close` now
   defaults to true). The warm-up is limited by `cooling_close_timeout`. By default (None) that is estimated from
   the current setpoint (or the sensor temperature, if the camera cannot report its setpoint) and
@@ -30,6 +32,10 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ### Added
 
+- `pyobs.utils.frameheader` with `FrameSettings` and `make_frame_header`: the header cards every camera frame gets
+  (`DATE-OBS`, `EXPTIME`, `INSTRUME`, binning, window origin, `DET-PIXL`, `GAIN`, `OFFSET`, `DET-GAIN`, `DET-TEMP`,
+  `DET-TBAS`, `DET-COOL`, `DET-TSET`, `DATAMIN`, `DATAMAX`, `DATAMEAN`). Camera modules and the local camera GUIs of
+  the drivers use it, so the key names and comments are the same everywhere. It does not import Qt.
 - `CoolingRamp.off_setpoint()` gives the setpoint for "off" on cameras without a real off switch: the off
   temperature, or just above the sensor temperature if ambient is warmer, so the cooler does not keep cooling
   below ambient.

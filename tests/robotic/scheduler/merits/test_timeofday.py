@@ -9,7 +9,7 @@ from astropy.coordinates import EarthLocation
 
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler.dataprovider import DataProvider
-from pyobs.robotic.scheduler.merits.timeofday import TimeOfDayMerit
+from pyobs.robotic.scheduler.merits.timeofday import TimeOfDayMerit, TimeOfDayWindow
 from pyobs.utils.time import Time
 
 
@@ -23,7 +23,7 @@ def _setup() -> tuple[DataProvider, Task]:
 @pytest.mark.asyncio
 async def test_timeofday_merit() -> None:
     data, task = _setup()
-    merit = TimeOfDayMerit(start=dtime(5, 0), end=dtime(6, 0))
+    merit = TimeOfDayMerit(windows=[TimeOfDayWindow(start=dtime(5, 0), end=dtime(6, 0))])
 
     # same time of day on different dates
     assert await merit(Time("2026-11-18T05:00:00"), task, data) == 1.0
@@ -35,11 +35,25 @@ async def test_timeofday_merit() -> None:
 @pytest.mark.asyncio
 async def test_timeofday_merit_wrap_and_inverse() -> None:
     data, task = _setup()
-    merit = TimeOfDayMerit(start=dtime(22, 0), end=dtime(2, 0))
+    merit = TimeOfDayMerit(windows=[TimeOfDayWindow(start=dtime(22, 0), end=dtime(2, 0))])
     assert await merit(Time("2026-11-18T23:00:00"), task, data) == 1.0
     assert await merit(Time("2026-11-18T01:00:00"), task, data) == 1.0
     assert await merit(Time("2026-11-18T12:00:00"), task, data) == 0.0
 
-    merit = TimeOfDayMerit(start=dtime(5, 0), end=dtime(6, 0), inverse=True)
+    merit = TimeOfDayMerit(windows=[TimeOfDayWindow(start=dtime(5, 0), end=dtime(6, 0))], inverse=True)
     assert await merit(Time("2026-11-18T05:30:00"), task, data) == 0.0
     assert await merit(Time("2026-11-18T12:00:00"), task, data) == 1.0
+
+
+@pytest.mark.asyncio
+async def test_timeofday_merit_multiple_windows() -> None:
+    data, task = _setup()
+    merit = TimeOfDayMerit(
+        windows=[
+            TimeOfDayWindow(start=dtime(5, 0), end=dtime(6, 0)),
+            TimeOfDayWindow(start=dtime(17, 0), end=dtime(18, 0)),
+        ]
+    )
+    assert await merit(Time("2026-11-18T05:30:00"), task, data) == 1.0
+    assert await merit(Time("2026-11-18T17:30:00"), task, data) == 1.0
+    assert await merit(Time("2026-11-18T12:00:00"), task, data) == 0.0

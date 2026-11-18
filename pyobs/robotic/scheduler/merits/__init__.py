@@ -6,7 +6,6 @@ from .interval import IntervalMerit
 from .merit import Merit
 from .pernight import PerNightMerit
 from .random import RandomMerit
-from .timeofday import TimeOfDayMerit
 from .timewindow import TimeWindowMerit
 from .transit import TransitMerit
 
@@ -19,7 +18,6 @@ __all__ = [
     "FollowMerit",
     "PerNightMerit",
     "RandomMerit",
-    "TimeOfDayMerit",
     "TimeWindowMerit",
     "TransitMerit",
 ]

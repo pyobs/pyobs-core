@@ -4,6 +4,7 @@ from .moonilluminationconstraint import MoonIlluminationConstraint
 from .moonseparationconstraint import MoonSeparationConstraint
 from .solarelevationconstraint import SolarElevationConstraint
 from .timeconstraint import TimeConstraint
+from .timeofdayconstraint import TimeOfDayConstraint
 
 __all__ = [
     "Constraint",
@@ -12,4 +13,5 @@ __all__ = [
     "MoonSeparationConstraint",
     "SolarElevationConstraint",
     "TimeConstraint",
+    "TimeOfDayConstraint",
 ]

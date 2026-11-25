@@ -139,24 +139,46 @@ with a timeout estimated from the current setpoint (`pyobs/mixins/coolingramp.py
 of them kills a camera in the middle of its warm-up. This affects asi, fli, flipro, qhyccd and dummycamera,
 and needs fixing in the old mode too.
 
-New helper in pyobs-core, e.g. `pyobs.utils.shutdown.extend_stop_timeout(seconds)`, called regularly by
-`CoolingRampMixin.close()` while it ramps (and by any other module with a long shutdown):
+New helper in pyobs-core, e.g. `pyobs.utils.shutdown.extend_stop_timeout(seconds)`, called by
+`CoolingRampMixin.close()` (and by any other module with a long shutdown). One call is enough: `close()`
+computes the full warm-up timeout before it starts waiting (`pyobs/mixins/coolingramp.py:143-148`), so it
+calls `extend_stop_timeout(timeout + margin)` once, right before `asyncio.wait_for`.
 
 - **systemd mode** (`$NOTIFY_SOCKET` set): sends `EXTEND_TIMEOUT_USEC=<seconds * 1e6>`. Per `sd_notify(3)`
-  (since systemd 236) the value is the window within which the next message has to arrive. The first one
-  must arrive before `TimeoutStopSec` runs out. Plain AF_UNIX datagram socket, a leading `@` means abstract
-  namespace, so no libsystemd dependency is needed.
-- **old mode** (`--pid-file` given): writes the deadline (epoch seconds) to `<pid_file>.stopping`.
-  pyobsd and web-admin wait while the process is alive and the deadline has not passed, and only send
-  SIGKILL after that. Without the file they keep a short default (made configurable, e.g. `stop_timeout`
-  in the pyobsd config, default 30 s).
+  (since systemd 236) the value is the window within which the next message has to arrive, so a single
+  message with the full timeout covers the whole warm-up. The first one must arrive before
+  `TimeoutStopSec` (30 s) runs out after SIGTERM. **Check:** that nothing else in a module's shutdown runs
+  before the mixin's `close()` and takes longer than that. Plain AF_UNIX datagram socket, a leading `@`
+  means abstract namespace, so no libsystemd dependency is needed.
+- **old mode** (`--pid-file` given): writes the deadline to `<pid_file>.stopping`, as wall-clock epoch
+  seconds (not `time.monotonic()`, since another process reads it). pyobsd and web-admin wait while the
+  process is alive and the deadline has not passed, and only send SIGKILL after that. Without the file
+  they keep a short default (made configurable, e.g. `stop_timeout` in the pyobsd config, default 30 s).
 - Neither set (foreground run, tests): no-op.
+
+How the helper gets the PID file path: `PyobsCLI` passes its whole config, `pid_file` included, into
+`Application(**kwargs)` (`pyobs/cli/pyobs.py:80`). `Application` hands it to a module-level setting in the
+helper, so the mixin calls the helper without knowing about `Application`. In systemd mode the helper only
+needs `$NOTIFY_SOCKET` from the environment.
+
+Cleanup: `Application.run()` removes `<pid_file>.stopping` at the end of its shutdown, and pyobsd removes it
+together with the PID file once the process is gone. A file left behind by a crashed module is ignored once
+its deadline has passed (and a crashed module is not alive, so nothing waits for it anyway).
+
+**`pyobsd restart` in old mode blocks** for the whole stop, so on a camera up to the full warm-up. That is
+fine for the CLI, as long as pyobsd prints how long it will wait (e.g. "camera is shutting down, waiting up
+to 48 min") instead of hanging silently.
 
 **web-admin stop must not block.** A stop can take close to an hour, which a gunicorn worker cannot wait
 for. In both modes web-admin sends the stop (`systemctl --user stop --no-block`, or SIGTERM), returns
 immediately, and shows the module as `stopping` until it is gone (systemd: `ActiveState=deactivating`;
 old mode: process alive and `.stopping` file present). The SIGKILL after the deadline then happens on the
 next status poll in old mode.
+
+**web-admin restart must not block either**, and it cannot simply return early, since the start has to
+wait for the stop. In systemd mode `systemctl --user restart --no-block` does that. In old mode web-admin
+runs the restart as a background job, the same way package updates already run (detached process, lock
+file, status: `update_package_start` in `modules/services.py`).
 
 **Reboots:** the user manager itself is stopped with `user@.service`'s `TimeoutStopUSec`, 2 min on ms.
 A reboot therefore still cuts the warm-up after 2 min, unless each host gets a root drop-in for
@@ -225,18 +247,19 @@ labcourse has no pyobs.
 - [ ] pyobs-core: systemd backend for start/stop/restart/status, extended `status --json`.
 - [ ] pyobs-core: skip the stderr `StreamHandler` when `syslog` and `JOURNAL_STREAM` are set.
 - [ ] pyobs-core: `sd_notify` helper (no libsystemd), `READY=1` after open, `extend_stop_timeout()` for
-      both modes, called from `CoolingRampMixin.close()` during warm-up.
+      both modes (PID file path passed in by `Application`), called once from `CoolingRampMixin.close()`
+      before the warm-up, `.stopping` removed at the end of `Application.run()`.
 - [ ] pyobs-core, old mode: honor `<pid_file>.stopping` in pyobsd `stop`, configurable `stop_timeout`
-      instead of the fixed 5 s, `--no-wait` for `stop`.
-- [ ] pyobs-core tests: unit rendering, sync (tmp dirs, mocked `systemctl`), status JSON parsing, PID-file
-      mode unchanged (`tests/cli/test_pyobsd.py` has only 4 tests today, so add tests for the old mode
-      before refactoring).
+      instead of the fixed 5 s, `--no-wait` for `stop`, `restart` prints how long it waits. Adapt
+      `test_stop_kills_after_timeout` in `tests/cli/test_pyobsd_pidmode.py`.
+- [x] pyobs-core tests for the PID-file mode before refactoring (`tests/cli/test_pyobsd_pidmode.py`, e9a0084a).
+- [ ] pyobs-core tests: unit rendering, sync (tmp dirs, mocked `systemctl`), status JSON parsing.
 - [ ] pyobs-core docs: `cli.rst`, `installing.rst` (linger, switching a host), CHANGELOG.
 - [ ] Check on one host: systemd version, comm reconnect at boot, journal without duplicates, reboot
       starts enabled modules only.
 - [ ] Release pyobs-core.
 - [ ] pyobs-web-admin, old mode: non-blocking stop, `stopping` state, SIGKILL only after the
-      `.stopping` deadline or `stop_timeout`.
+      `.stopping` deadline or `stop_timeout`, restart as a background job.
 - [ ] pyobs-web-admin: `PYOBSD_EXEC`, systemd-mode branch in `services.py`, deploy unit env, tests.
 - [ ] Release pyobs-web-admin, switch hosts one by one.
 

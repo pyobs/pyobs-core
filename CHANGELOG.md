@@ -9,6 +9,12 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Changed
+
+- The warm-up progress line on close shows the sensor temperature and power the last step was planned with,
+  instead of reading them again after the step. The done line says why the warm-up ended (setpoint reached, or
+  cooler idle, with the readings). `RampStep` has a new field `idle`.
+
 ## [2.29.1] - 2026-11-25
 
 ### Changed

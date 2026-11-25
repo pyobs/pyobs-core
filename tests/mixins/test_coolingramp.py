@@ -313,8 +313,10 @@ async def test_close_with_warmup_logs_start_progress_and_end(
         await camera.close()
     lines = [r.getMessage() for r in caplog.records if r.name == "pyobs.mixins.coolingramp"]
     assert lines[0] == "Warming up from -9.0 °C towards -8.0 °C before closing, may take up to 30 s."
-    assert lines[1] == "Warming up: setpoint -8.0 °C, sensor -8.5 °C, power 80 %, up to 30 s left."
-    assert lines[-1].startswith("Warm-up done after ") and lines[-1].endswith("cooling is off.")
+    # sensor and power are the ones the step was planned with, read before the setpoint went to -8
+    assert lines[1] == "Warming up: setpoint -8.0 °C, sensor -9.5 °C, power 80 %, up to 30 s left."
+    assert lines[-1].startswith("Warm-up done after ")
+    assert lines[-1].endswith(", setpoint at -8.0 °C, cooling is off.")
     assert len(lines) == 3
 
 
@@ -328,13 +330,23 @@ async def test_close_with_cooler_already_off_logs_no_warmup(caplog: pytest.LogCa
 
 
 @pytest.mark.asyncio
-async def test_warmup_progress_survives_failing_reads(caplog: pytest.LogCaptureFixture) -> None:
+async def test_close_with_idle_cooler_logs_why_it_stopped_early(caplog: pytest.LogCaptureFixture) -> None:
+    camera = make_camera(cooling_rate_warm=600.0, cooling_close_timeout=30.0)
+    camera._cooling = camera._cooling._replace(temperatures={"CCD": -8.0, "Back": 3.0}, power=0)  # setpoint -10
+    with caplog.at_level("INFO", logger="pyobs.mixins.coolingramp"):
+        await camera.close()
+    lines = [r.getMessage() for r in caplog.records if r.name == "pyobs.mixins.coolingramp"]
+    # idle from -7 (sensor + 1) on, off after the third idle reading at -5
+    assert lines[-1].endswith(", cooler idle at setpoint -5.0 °C, sensor -8.0 °C, power 0 %, cooling is off."), lines[
+        -1
+    ]
+
+
+def test_warmup_progress_without_readings_says_unknown(caplog: pytest.LogCaptureFixture) -> None:
     camera = make_camera()
     camera._cooling_commanded = -12.0
-    camera._get_sensor_temperature = AsyncMock(side_effect=RuntimeError("SDK error"))  # type: ignore[method-assign]
-    camera._get_cooling_hardware = AsyncMock(side_effect=RuntimeError("SDK error"))  # type: ignore[method-assign]
     with caplog.at_level("INFO", logger="pyobs.mixins.coolingramp"):
-        await camera._cooling_log_warm_up(840.0)
+        camera._cooling_log_warm_up(840.0)
     msg = "Warming up: setpoint -12.0 °C, sensor unknown, power unknown, up to 14 min left."
     assert caplog.records[-1].getMessage() == msg
 

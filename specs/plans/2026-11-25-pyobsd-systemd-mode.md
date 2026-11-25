@@ -265,11 +265,11 @@ repo for the PID-file mode. If a host has it installed, it has to be disabled wh
       (current code moves into the PID-file backend without behavior changes).
 - [x] pyobs-core: guard in `PyobsCLI.run()` against `--pid-file` in systemd mode, sharing the mode lookup with
       pyobsd.
-- [ ] pyobs-core: `pyobsd exec <module>` (config lookup by active name, options from the pyobsd config).
+- [x] pyobs-core: `pyobsd exec <module>` (config lookup by active name, options from the pyobsd config).
 - [ ] pyobs-core: unit rendering, unit file sync, enable sync, linger check, user manager selection.
 - [ ] pyobs-core: systemd backend for start/stop/restart/status, extended `status --json`.
-- [ ] pyobs-core: skip the stderr `StreamHandler` when `syslog` and `JOURNAL_STREAM` are set.
-- [ ] pyobs-core: send `READY=1` after the module is open (systemd mode only).
+- [x] pyobs-core: skip the stderr `StreamHandler` when `syslog` and `JOURNAL_STREAM` are set.
+- [x] pyobs-core: send `READY=1` after the module is open (systemd mode only).
 - [ ] pyobs-core tests: unit rendering, sync (tmp dirs, mocked `systemctl`), status JSON parsing, guard,
       `exec` lookup.
 - [ ] pyobs-core docs: `cli.rst`, `installing.rst` (linger, where to put `mode`, reboot drop-in, switching a

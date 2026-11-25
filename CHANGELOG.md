@@ -9,8 +9,19 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Added
+
+- Preparation for a systemd mode of pyobsd: a `mode` key in the `pyobsd` section of the config file, a
+  `--mode` option and `$PYOBSD_MODE` (`pid` or `systemd`, default `pid`). The systemd mode itself is not
+  implemented yet, pyobsd exits with an error in it.
+- `pyobs --pid-file` refuses to start if the config file sets `pyobsd.mode: systemd`, so that a module can't
+  run twice on a host whose modules run under systemd. `PYOBSD_MODE=pid` overrides it. pyobsd in PID-file
+  mode sets it for the modules it starts.
+
 ### Changed
 
+- pyobsd's PID-file code moved into `PidFileDaemon`, with the parts shared by both modes in
+  `PyobsDaemonBase`. `PyobsDaemon` stays as an alias.
 - The warm-up progress line on close shows the sensor temperature and power the last step was planned with,
   instead of reading them again after the step. The done line says why the warm-up ended (setpoint reached, or
   cooler idle, with the readings). `RampStep` has a new field `idle`.

@@ -290,7 +290,7 @@ footgun (any future kwarg threaded through that second call would resurface as a
 *before* `Module`, called `Module.__init__(self, *args, **kwargs)` then a separate
 `MotionStatusMixin.__init__(self, **kwargs)` — classic sibling-leak, with real kwargs on the second
 call this time. Reordered both to `(Module, MotionStatusMixin, IMode, IMotion)`, collapsed to
-`super().__init__(*args, **kwargs)`. Live configs (`config/iagvtsrv/{ldp,led}.yaml`) only set `comm`,
+`super().__init__(*args, **kwargs)`. Live configs (`config/srv-b/{ldp,led}.yaml`) only set `comm`,
 which is consumed by `Object` and doesn't crash — confirmed both pre- and post-fix with those exact
 kwargs. But any sibling-mixin kwarg (`motion_status_interfaces`) does crash pre-fix — confirmed via a
 constructed repro and used as the regression test (`tests/modules/test_ldp_led.py`), since it's the

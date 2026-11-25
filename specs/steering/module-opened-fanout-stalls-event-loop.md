@@ -39,7 +39,7 @@ systems running fine in production; the iag50 shaper mitigation held." That miti
 operational (ejabberd-side traffic shaping on that one host), not a pyobs-core code change -- the
 unthrottled fan-out in `_on_module_opened`/`_get_client` itself was never touched.
 
-**pyobs-gui on `monet` (2026-09-02, this investigation):** the GUI (as `admin@monet.saao.ac.za`)
+**pyobs-gui on `monet` (2026-09-02, this investigation):** the GUI (as `admin@site-c.example.org`)
 joining a **38**-peer fleet showed no failures, but a live ejabberd debug capture (`ejabberdctl
 set_loglevel debug`, tailed during a live repro) showed a continuous flood of disco#info responses,
 RPC responses, and pubsub `headline` state-update messages arriving from dozens of peers, sustained

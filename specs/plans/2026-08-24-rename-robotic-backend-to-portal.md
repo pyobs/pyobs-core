@@ -4,7 +4,7 @@ Status: implemented, closed 2026-08-25. Code merged everywhere; `pyobs-core 2.0.
 (contains the rename) published to PyPI; iagvt/monet pins bumped and pushed (`612d9e4`,
 `ab02dfc`). Deployment confirmed live 2026-08-31: both `pyobs-iagvt/specs/design/pyobs-service-topology.md`
 and `pyobs-monet/specs/design/monets-service-topology.md` show `mastermind.yaml`/`scheduler.yaml`
-on iagvtsrv and monets actually running `PortalTaskArchive`/`PortalObservationArchive`, not just
+on srv-b and monets actually running `PortalTaskArchive`/`PortalObservationArchive`, not just
 merged-on-develop. Individual file-level checkboxes below are left unchecked as a historical
 record of the original plan — treat the PR/MR links as the source of truth for what's actually
 landed.
@@ -21,7 +21,7 @@ landed.
 - Step 5 (`pyobs-iagvt`/`pyobs-monet` deployment YAML): gitlab.gwdg.de/iagvt/pyobs-iagvt!63,
   gitlab.gwdg.de/monet/pyobs-monet!56 — **merged 2026-08-25 into each repo's `develop`.**
   **Not yet safe to deploy**: neither repo has an auto-deploy pipeline (checked
-  `.gitlab-ci.yml`, lint/test only), so nothing on the live iagvtsrv/monet-south hosts has
+  `.gitlab-ci.yml`, lint/test only), so nothing on the live srv-b/monet-south hosts has
   changed yet, but `develop` now points at `pyobs.robotic.storage.portal.PortalTaskArchive`/
   `PortalObservationArchive`, which don't exist in any `pyobs-core` released to PyPI (Step 2
   is unreleased). **Do not deploy or restart Scheduler/Mastermind on either host until
@@ -47,7 +47,7 @@ pyobs-iagvt, pyobs-monet (deployment configs only).
 The `pyobs-core` class rename is a breaking import-path change for any deployment YAML
 naming the old dotted path (`pyobs.robotic.storage.backend.BackendTaskArchive` /
 `BackendObservationArchive`). Confirmed live in two deployments today:
-`pyobs-iagvt/config/iagvtsrv/{scheduler,mastermind}.yaml` and
+`pyobs-iagvt/config/srv-b/{scheduler,mastermind}.yaml` and
 `pyobs-monet/config/south/monet/{scheduler,mastermind}.yaml`. Sequence:
 
 1. Land the `pyobs-robotic-backend` → `pyobs-portal` repo/package rename (Step 1) —
@@ -212,10 +212,10 @@ naming the old dotted path (`pyobs.robotic.storage.backend.BackendTaskArchive` /
 
 ## Step 5 — Deployment YAML (fleet)
 
-- [ ] `pyobs-iagvt/config/iagvtsrv/scheduler.yaml`:
+- [ ] `pyobs-iagvt/config/srv-b/scheduler.yaml`:
       `pyobs.robotic.storage.backend.BackendTaskArchive` → `.storage.portal.PortalTaskArchive`,
       `BackendObservationArchive` → `PortalObservationArchive`
-- [ ] `pyobs-iagvt/config/iagvtsrv/mastermind.yaml`: same two dotted-path updates
+- [ ] `pyobs-iagvt/config/srv-b/mastermind.yaml`: same two dotted-path updates
 - [ ] `pyobs-monet/config/south/monet/scheduler.yaml`: same two dotted-path updates
 - [ ] `pyobs-monet/config/south/monet/mastermind.yaml`: same two dotted-path updates
 - [ ] Confirm no other live site config (iag50, brot, gemini, monti) uses the backend

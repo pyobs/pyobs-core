@@ -946,7 +946,7 @@ issues themselves have been closed yet.
   `01b03f3`
 - pyobs-iagvt: `FTS.reset()` wires the existing `_reset_scan_mode()` into `IResettable`;
   `FiberCamera.reset()` restores gain from `self._settings["Gain"]` when configured (confirmed
-  live in `config/astro159/fibercamera.yaml`) -- `1f0587a`. The `GregoryCamera`/`FiberCamera`
+  live in `config/ws-a/fibercamera.yaml`) -- `1f0587a`. The `GregoryCamera`/`FiberCamera`
   exposure-time gap (shared via `AravisCamera`) needs no separate code change here: it resolves
   automatically once this repo's `pyobs-aravis>=2.0.0` pin picks up a release containing `f855158`.
 

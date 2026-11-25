@@ -31,7 +31,7 @@ without resolving daytime operation.
 - `OnDemandScheduler` stores `twilight`, but never uses it. Its solar-elevation constraints can
   permit daytime or nighttime operation. `AstroplanScheduler` does impose an astronomical or
   nautical `AtNightConstraint`; that separate scheduler is outside this fix.
-- The solar IAGVT scheduler configuration (`../pyobs-iagvt/config/iagvtsrv/scheduler.yaml`)
+- The solar IAGVT scheduler configuration (`../pyobs-iagvt/config/srv-b/scheduler.yaml`)
   uses `OnDemandScheduler` and portal archives without an explicit day/night mode. Therefore
   existing solar deployments cannot be assumed to have selected `mode="day"` already.
 - `PerNightMerit` counts completed task history since the previous sunrise, independently of

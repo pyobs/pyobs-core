@@ -150,7 +150,7 @@ Both reproduced from the reviewer's examples before fixing, to confirm they were
 test added for each. Re-verified against all 803 YAML files across `pyobs-monet`, `pyobs-iagvt`, and
 `pyobs-iag50`: no `comm_cfg` leaks in any consuming config; the two files that still error
 (`pyobs-monet/config/south/monet/_update_imagedb.yaml`'s missing `database.shared.yaml`, and
-`pyobs-iag50/config/iag50cam/telescope.yaml`'s malformed `include _comm.yaml}` missing its opening
+`pyobs-iag50/config/cam-a/telescope.yaml`'s malformed `include _comm.yaml}` missing its opening
 brace) are pre-existing fleet-config bugs, unrelated to this change and unaffected by it either way.
 
 **`environment`/`database` (monet central configs) — resolved 2026-08-18: confirmed gone, no longer
@@ -282,9 +282,9 @@ kwargs check against their real config sites once each class actually imported.
   (`pyobs-monet` `65464c0`)
 - `pyobs_sbig.SbigDriver`/`SbigTracker` — removed from pyobs-sbig 5 years ago (`227b447`,
   "simplified structure", Dec 2021); the shared-driver architecture was folded directly into
-  `SbigCamera`. `pyobs-iag50/config/iag50cam/sbig6303e_tracker.yaml` was the old pre-refactor
+  `SbigCamera`. `pyobs-iag50/config/cam-a/sbig6303e_tracker.yaml` was the old pre-refactor
   version of a camera that already has a current, working config elsewhere
-  (`iag50cam/sbig6303e.yaml`, already cleaned up in the first pass). Removed. (`pyobs-iag50` `994c2c7`)
+  (`cam-a/sbig6303e.yaml`, already cleaned up in the first pass). Removed. (`pyobs-iag50` `994c2c7`)
 
 **Confirmed clean once importable (installed the missing PyPI dependency, re-ran the check, zero
 leftover kwargs found):** `pyobs_asi.AsiCoolCamera` (`zwoasi`), all 4 `pyobs_brot.*` classes

@@ -133,7 +133,7 @@ existing two.
    asserting only "no handler fired" (which passing today too, for the wrong reason — no handler
    registered at all, not because delivery was filtered).
 2. Regression guard: confirm no duplicate delivery — the `add_interest()`/PEP mechanism that
-   caused the `ms` double-send is gone entirely now, not just one call site.
+   caused the `srv-c` double-send is gone entirely now, not just one call site.
 3. Late subscribe: `camera` registers a `LogEvent` handler *after* `control` has already been
    online and publishing for a while. Confirm `camera` starts receiving once its subscribe
    retry-loop succeeds, without needing a reconnect.
@@ -154,7 +154,7 @@ existing two.
    mechanisms entirely).
 2. Restart every module at the site together so they all pick up the new client code at once.
    No ejabberd config change or restart is needed.
-3. Order: dev/`ms` first (already the site used for the double-delivery fix's own validation),
+3. Order: dev/`srv-c` first (already the site used for the double-delivery fix's own validation),
    then IAG50, then remaining sites one at a time. Reuse the monitoring approach from the
    double-delivery fix's rollback plan — watch for modules going silent on events they should be
    receiving.

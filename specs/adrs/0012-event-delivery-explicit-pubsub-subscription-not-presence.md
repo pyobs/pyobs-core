@@ -13,7 +13,7 @@ server-provisioned shared roster (`srg_user_add @all@`). `add_interest()`'s `+no
 declaration — the thing that looks like it expresses "I want this event type" — has no effect on
 delivery at all;
 delivery is decided at the presence layer before caps is ever consulted. Dropping
-`add_interest()` (the near-term fix for the `ms` double-send bug) removes a duplicate wire
+`add_interest()` (the near-term fix for the `srv-c` double-send bug) removes a duplicate wire
 message, but does not introduce any filtering, because none existed: every module already
 receives and parses every other module's events regardless of whether it registered a handler,
 and only drops them afterward at the application layer (`_send_event_to_module`, `comm.py:677`).

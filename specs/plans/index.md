@@ -47,7 +47,7 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-08-logevent-double-delivery-investigation.md](2026-08-08-logevent-double-delivery-investigation.md) —
   pyobs-gui receives every LogEvent twice. **implemented, closed 2026-08-20** — the fix the
   investigation called for (drop `add_interest()`) landed via PR #761 (explicit XEP-0060
-  subscriptions); open threads recorded in the doc: why `ms`'s accounts specifically double-
+  subscriptions); open threads recorded in the doc: why `srv-c`'s accounts specifically double-
   delivered, and rollout of #761 to production sites (operational) (Repos: pyobs-core,
   pyobs-monet)
 - [2026-08-09-night-archive-io-hardening.md](2026-08-09-night-archive-io-hardening.md) — rename
@@ -73,7 +73,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   `pyobs-core` released as `v2.0.0.dev82` (Repos: pyobs-core, pyobs-alpaca, pyobs-brot, pyobs-fli,
   pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti, pyobs-sbig, pyobs-zwoeaf)
 - [2026-08-16-logevent-double-delivery-fix-discussion.md](2026-08-16-logevent-double-delivery-fix-discussion.md) —
-  discussion notes: drop `add_interest()` to fix `ms` double-delivery, plus whether/how to get
+  discussion notes: drop `add_interest()` to fix `srv-c` double-delivery, plus whether/how to get
   real interest-based event filtering. **closed** (actioned as ADR 0012 below)
 - [2026-08-16-explicit-pubsub-event-subscriptions.md](2026-08-16-explicit-pubsub-event-subscriptions.md) —
   real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from

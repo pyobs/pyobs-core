@@ -20,6 +20,9 @@ from ._cli import CLI
 
 log = logging.getLogger("pyobs")
 
+# how long "stop --kill" waits for a killed module to be gone
+_KILL_WAIT_SECONDS = 5.0
+
 
 class PyobsDaemonCLI(CLI):
     """Class for initializing and running pyobsd CLI."""
@@ -82,7 +85,16 @@ class PyobsDaemonCLI(CLI):
         stop_parser.add_argument(
             "--no-wait", action="store_true", help="only send SIGTERM, do not wait for the modules to exit"
         )
-        sp.add_parser("restart", help="restart modules").add_argument("modules", type=str, nargs="*")
+        stop_parser.add_argument(
+            "--kill",
+            action="store_true",
+            help="send SIGKILL right away, e.g. for a module whose shutdown hangs (cuts a camera's warm-up)",
+        )
+        restart_parser = sp.add_parser("restart", help="restart modules")
+        restart_parser.add_argument("modules", type=str, nargs="*")
+        restart_parser.add_argument(
+            "--kill", action="store_true", help="send SIGKILL right away instead of a normal stop, then start"
+        )
         status_parser = sp.add_parser("status", help="status of modules")
         status_parser.add_argument("--json", action="store_true")
         status_parser.add_argument(
@@ -117,9 +129,12 @@ class PyobsDaemonCLI(CLI):
             case "start":
                 daemon.start(modules=self._config["modules"])
             case "stop":
-                daemon.stop(modules=self._config["modules"], wait=not self._config["no_wait"])
+                if self._config["kill"]:
+                    daemon.kill(modules=self._config["modules"])
+                else:
+                    daemon.stop(modules=self._config["modules"], wait=not self._config["no_wait"])
             case "restart":
-                daemon.restart(modules=self._config["modules"])
+                daemon.restart(modules=self._config["modules"], kill=self._config["kill"])
             case "status":
                 daemon.status(print_json=self._config["json"], cpu_interval=self._config["cpu_interval"])
             case "list":
@@ -341,8 +356,46 @@ class PyobsDaemon:
                     print(f'{module} keeps shutting down in the background{until}, see "pyobsd status".')
                 sys.exit(130)
 
-    def restart(self, modules: list[str] | None = None) -> None:
-        self.stop(modules=modules)
+    def kill(self, modules: list[str] | None = None) -> None:
+        """Sends SIGKILL right away, without a shutdown, e.g. to a module whose shutdown hangs, and removes its run
+        files. Without modules, kills all that have a live PID."""
+        if not modules:
+            modules = [m for m in self._list_configs() if self._running_pid(m) is not None]
+
+        killed: dict[str, int] = {}
+        for module in modules:
+            pid = self._running_pid(module)
+            if pid is None:
+                print(f"{module} is not running.")
+                continue
+            print(f"Killing {module}...")
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+            killed[module] = pid
+
+        # SIGKILL can't end a process stuck in the kernel (e.g. in a USB driver call) until that call returns. Keep
+        # the PID file of such a process, so that it doesn't show as stopped and can't be started a second time
+        deadline = time.time() + _KILL_WAIT_SECONDS
+        while killed:
+            for module, pid in list(killed.items()):
+                if not self._is_alive(pid):
+                    self._remove_run_files(module)
+                    del killed[module]
+            if not killed or time.time() >= deadline:
+                break
+            time.sleep(0.1)
+        for module, pid in killed.items():
+            print(f"{module} (PID {pid}) is still alive after SIGKILL, probably stuck in a driver call.")
+        if killed:
+            sys.exit(1)
+
+    def restart(self, modules: list[str] | None = None, kill: bool = False) -> None:
+        if kill:
+            self.kill(modules=modules)
+        else:
+            self.stop(modules=modules)
         time.sleep(1)
         self.start(modules=modules)
 

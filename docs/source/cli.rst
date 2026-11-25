@@ -123,10 +123,14 @@ There are four basic commands:
     down does not get SIGTERM again, pyobsd only waits for it. Ctrl+C stops waiting, but not the shutdown: pyobsd
     prints which modules keep shutting down in the background, and **status** shows them as **stopping**. Even then,
     a module ends itself if its shutdown takes too long (see **--stop-timeout** of :program:`pyobs`).
+    With **--kill**, it sends SIGKILL right away, also to a module that is already shutting down, e.g. one whose
+    shutdown hangs. This cuts a camera's warm-up, so the camera stays cold. A module that is still alive 5 s after
+    SIGKILL (stuck in a driver call) keeps its PID file, so that it can't be started a second time.
 
 :pyobsd restart:
     The **restart** command is equivalent to calling first **stop** and then **start**. Since it waits for the stop,
     it can take as long as the warm-up of a cooled camera.
+    With **--kill**, it calls **stop --kill** instead of **stop**.
 
 :pyobsd status:
     Gives an overview of detected configuration files and started modules. Each module is **running**, **stopped**,

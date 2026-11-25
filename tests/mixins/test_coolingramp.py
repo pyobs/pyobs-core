@@ -243,6 +243,30 @@ async def test_close_keeps_a_given_timeout(monkeypatch: pytest.MonkeyPatch) -> N
     estimate.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_close_with_warmup_asks_for_more_stop_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Whoever stops the module (pyobsd, web-admin, systemd) gets asked to wait for the warm-up, plus 30 s."""
+    from pyobs.mixins import coolingramp
+
+    extend: list[float] = []
+    monkeypatch.setattr(coolingramp, "extend_stop_timeout", lambda seconds: extend.append(seconds))
+    camera = make_camera(cooling_rate_warm=600.0, cooling_close_timeout=45.0, cooling_off_temperature=-8.0)
+    track_setpoint(camera)
+    await camera.close()
+    assert extend == [75.0]
+
+
+@pytest.mark.asyncio
+async def test_close_without_warmup_does_not_ask_for_more_stop_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    from pyobs.mixins import coolingramp
+
+    extend: list[float] = []
+    monkeypatch.setattr(coolingramp, "extend_stop_timeout", lambda seconds: extend.append(seconds))
+    camera = make_camera(cooling_rate_warm=1.0, cooling_warmup_on_close=False)
+    await camera.close()
+    assert extend == []
+
+
 def test_warmup_on_close_is_on_by_default() -> None:
     assert make_camera()._cooling_warmup_on_close is True
 
@@ -272,3 +296,49 @@ async def test_disable_with_unknown_setpoint_and_no_sensor_finishes() -> None:
     await camera.set_cooling(False, 0.0)
     assert await camera._cooling_tick() is None
     camera._set_cooling_hardware.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_close_with_warmup_logs_start_progress_and_end(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The log shows why the module takes long to stop."""
+    from pyobs.mixins import coolingramp
+
+    monkeypatch.setattr(coolingramp, "_WARMUP_LOG_INTERVAL", 0.0)  # a progress line after every step
+    camera = make_camera(cooling_rate_warm=600.0, cooling_close_timeout=30.0, cooling_off_temperature=-8.0)
+    track_setpoint(camera)
+    with caplog.at_level("INFO", logger="pyobs.mixins.coolingramp"):
+        await camera.close()
+    lines = [r.getMessage() for r in caplog.records if r.name == "pyobs.mixins.coolingramp"]
+    assert lines[0] == "Warming up from -9.0 °C towards -8.0 °C before closing, may take up to 30 s."
+    assert lines[1] == "Warming up: setpoint -8.0 °C, sensor -8.5 °C, up to 30 s left."
+    assert lines[-1].startswith("Warm-up done after ") and lines[-1].endswith("cooling is off.")
+    assert len(lines) == 3
+
+
+@pytest.mark.asyncio
+async def test_close_with_cooler_already_off_logs_no_warmup(caplog: pytest.LogCaptureFixture) -> None:
+    camera = make_camera(cooling_rate_warm=600.0, cooling_close_timeout=30.0)
+    camera._cooling = camera._cooling._replace(enabled=False)
+    with caplog.at_level("INFO", logger="pyobs.mixins.coolingramp"):
+        await camera.close()
+    assert not [r for r in caplog.records if r.name == "pyobs.mixins.coolingramp"]
+
+
+@pytest.mark.asyncio
+async def test_warmup_progress_survives_a_failing_sensor(caplog: pytest.LogCaptureFixture) -> None:
+    camera = make_camera()
+    camera._cooling_commanded = -12.0
+    camera._get_sensor_temperature = AsyncMock(side_effect=RuntimeError("SDK error"))  # type: ignore[method-assign]
+    with caplog.at_level("INFO", logger="pyobs.mixins.coolingramp"):
+        await camera._cooling_log_warm_up(840.0)
+    assert caplog.records[-1].getMessage() == "Warming up: setpoint -12.0 °C, sensor unknown, up to 14 min left."
+
+
+def test_duration_format() -> None:
+    from pyobs.mixins.coolingramp import _duration
+
+    assert _duration(30.0) == "30 s"
+    assert _duration(89.0) == "89 s"
+    assert _duration(1320.0) == "22 min"

@@ -410,3 +410,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   `CoolingState.target`/`ramping`, adoption by asi/sbig/fli/flipro/qhyccd and local camera GUIs (#1066).
   **core implemented**, drivers and GUIs proposed (Repos: pyobs-core, pyobs-asi, pyobs-sbig, pyobs-fli,
   pyobs-flipro, pyobs-qhyccd, pyobs-gui)
+- [2026-11-25-pyobsd-systemd-mode.md](2026-11-25-pyobsd-systemd-mode.md): optional `mode: systemd` for pyobsd
+  that runs modules as `pyobs@<module>` systemd user units (start on boot, restart on failure, stderr in the
+  journal), enable state synced from the `_` filename prefix on every call; web-admin calls `pyobsd` in that
+  mode. PID-file mode unchanged. Also fixes the 5 s SIGKILL that cuts camera warm-up on stop (both modes,
+  `EXTEND_TIMEOUT_USEC` / `.stopping` deadline). **in progress**: old-mode stop fix in core merged (#1096),
+  web-admin and systemd mode open (Repos: pyobs-core, pyobs-web-admin)

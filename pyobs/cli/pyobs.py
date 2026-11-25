@@ -24,6 +24,7 @@ class PyobsCLI(CLI):
         "influx_log",
         "debug_time",
         "iers_offline",
+        "stop_timeout",
     ]
 
     def init_cli(self) -> None:
@@ -61,6 +62,15 @@ class PyobsCLI(CLI):
             action="store_true",
             help="disable astropy IERS/leap-second auto-download, use the bundled snapshot",
             default=self._config.get("iers_offline", False),
+        )
+
+        # shutdown
+        self._parser.add_argument(
+            "--stop-timeout",
+            type=float,
+            default=self._config.get("stop_timeout", 30.0),
+            metavar="SECONDS",
+            help="seconds the shutdown may take before the module ends itself, unless it asked for more time",
         )
 
         # debug stuff
@@ -112,6 +122,9 @@ class PyobsCLI(CLI):
         import daemon
         from daemon import pidfile
 
+        # absolute, since DaemonContext changes into the run directory before the application gets the path
+        pid_file = os.path.abspath(pid_file)
+
         # get run directory
         run_dir = os.path.dirname(pid_file)
 
@@ -119,7 +132,7 @@ class PyobsCLI(CLI):
         with daemon.DaemonContext(
             working_directory=run_dir, umask=0o002, pidfile=pidfile.TimeoutPIDLockFile(pid_file)
         ) as _:
-            self.application(**self._config).run()
+            self.application(**{**self._config, "pid_file": pid_file}).run()
 
 
 def main() -> None:

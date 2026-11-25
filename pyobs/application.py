@@ -14,6 +14,7 @@ import yaml
 from pyobs.comm.dummy import DummyComm
 from pyobs.modules import Module, MultiModule
 from pyobs.object import get_class_from_string, get_object
+from pyobs.utils import shutdown
 from pyobs.utils.config import pre_process_yaml
 from pyobs.utils.logging.context import ModuleNameFilter
 from pyobs.utils.versions import loaded_pyobs_packages
@@ -111,6 +112,8 @@ class Application:
         syslog: bool = False,
         influx_log: InfluxLogConfig | None = None,
         iers_offline: bool = False,
+        pid_file: str | None = None,
+        stop_timeout: float = 30.0,
         **kwargs: Any,
     ):
         """Initializes a pyobs application.
@@ -137,7 +140,20 @@ class Application:
                 (pyobs.cli.pyobs's GLOBAL_CONFIG_KEYS) instead of a bare env var, so it applies
                 the same way regardless of how the module process was spawned.
             influx_log: Log to influx DB.
+            pid_file: PID file of a daemonized module, if any. A module that needs more time to shut
+                down then writes its deadline into a stop file next to it (see pyobs.utils.shutdown),
+                which pyobsd and web-admin respect before sending SIGKILL.
+            stop_timeout: Seconds the shutdown may take after the first signal, unless the module asks for more
+                time (see pyobs.utils.shutdown). After that, plus a short grace time, the process ends itself.
+                pyobsd passes its own stop_timeout here.
         """
+        self._stop_timeout = float(stop_timeout)
+        self._stopping = False
+        # stop file for extend_stop_timeout(), removed again at the end of run(); one left behind by an earlier
+        # run (e.g. killed during shutdown) would make this run look like it is stopping
+        shutdown.set_stop_file(shutdown.stop_file_for(pid_file) if pid_file is not None else None)
+        shutdown.clear_stop_file()
+
         if (config is None) == (module_factory is None):
             raise ValueError("Exactly one of 'config' or 'module_factory' must be given.")
         if module_factory is not None and loop_module_class is None:
@@ -355,8 +371,24 @@ class Application:
         log.info("Closing loop...")
         self._loop.close()
 
+        # shutdown is done, so a deadline from extend_stop_timeout() no longer applies
+        shutdown.clear_stop_file()
+
     def _signal_handler(self, sig: int) -> None:
         """React to signals and quit the module."""
+
+        # only the first signal starts the shutdown. The handlers stay installed, since removing them would
+        # restore the default action, and a second SIGTERM (e.g. "pyobsd stop" run again) would then kill the
+        # module in the middle of its shutdown (e.g. while a camera warms up)
+        if self._stopping:
+            log.info("Got signal: %s, already shutting down.", sig)
+            return
+        self._stopping = True
+
+        # let pyobsd/web-admin show the module as "stopping" until it is gone, and end the process if that
+        # takes too long, also when nobody waits to send SIGKILL
+        shutdown.mark_stopping()
+        shutdown.start_watchdog(self._stop_timeout)
 
         if self._module is not None:
             self._module.quit()
@@ -367,11 +399,7 @@ class Application:
             self._main_task.cancel()
             self._loop.stop()
 
-        # reset signal handlers
         log.info("Got signal: %s, shutting down.", sig)
-        loop = asyncio.get_running_loop()
-        loop.remove_signal_handler(signal.SIGTERM)
-        loop.add_signal_handler(signal.SIGINT, lambda: None)
 
     async def _main(self) -> None:
         """Actually run the application."""

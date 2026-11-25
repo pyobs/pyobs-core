@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import signal
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -186,11 +186,37 @@ async def test_signal_handler_before_factory_resolves_cancels_main_task() -> Non
 
     main_task = real_loop.create_task(never_resolves())
 
-    app = make_bare_application(_module=None, _loop=MagicMock(), _main_task=main_task)
+    app = make_bare_application(
+        _module=None, _loop=MagicMock(), _main_task=main_task, _stopping=False, _stop_timeout=30.0
+    )
 
-    app._signal_handler(signal.SIGTERM)
+    with patch("pyobs.application.shutdown.start_watchdog"):
+        app._signal_handler(signal.SIGTERM)
 
     assert main_task.cancelling() > 0
     app._loop.stop.assert_called_once()
     with pytest.raises(asyncio.CancelledError):
         await main_task
+
+
+# ── repeated signals and the shutdown watchdog ───────────────────────────────
+
+
+def test_second_signal_does_not_restart_shutdown() -> None:
+    """Only the first signal quits the module and starts the watchdog. The handlers stay installed, so a second
+    SIGTERM (e.g. "pyobsd stop" run again) does not fall back to the default action and kill the module in the
+    middle of its shutdown."""
+    module = MagicMock()
+    app = make_bare_application(_module=module, _stopping=False, _stop_timeout=12.0)
+
+    with (
+        patch("pyobs.application.shutdown.start_watchdog") as start_watchdog,
+        patch("pyobs.application.shutdown.mark_stopping") as mark_stopping,
+    ):
+        app._signal_handler(signal.SIGTERM)
+        app._signal_handler(signal.SIGTERM)
+        app._signal_handler(signal.SIGINT)
+
+    module.quit.assert_called_once()
+    mark_stopping.assert_called_once()
+    start_watchdog.assert_called_once_with(12.0)

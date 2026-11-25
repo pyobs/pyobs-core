@@ -509,9 +509,13 @@ class PyobsDaemon:
         """Waits for the given modules to exit and sends SIGKILL to those that take too long.
 
         "Too long" is stop_timeout after SIGTERM, or later if the module wrote a later deadline into its stop
-        file (pyobs.utils.shutdown.extend_stop_timeout, e.g. while a camera warms up)."""
+        file (pyobs.utils.shutdown.extend_stop_timeout, e.g. while a camera warms up).
+
+        The last deadline read is kept: the application removes its stop file once its shutdown is done, but the
+        process lives on for a moment after that, and must not fall back to stop_timeout and get killed then."""
         default_deadline = time.time() + self._stop_timeout
         announced: dict[str, float] = {}
+        last_requested: dict[str, float] = {}
         remaining = dict(stopping)
 
         while remaining:
@@ -523,6 +527,10 @@ class PyobsDaemon:
                     continue
 
                 requested = read_stop_deadline(self._stop_file(module))
+                if requested is not None:
+                    last_requested[module] = requested
+                else:
+                    requested = last_requested.get(module)
                 deadline = max(default_deadline, requested or 0.0)
                 if requested is not None and requested > default_deadline and announced.get(module) != requested:
                     announced[module] = requested

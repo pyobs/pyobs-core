@@ -219,10 +219,13 @@ def test_status_table_stopping(dirs, capsys) -> None:
 #   exit:   exits on SIGTERM.
 #   ignore: ignores SIGTERM, like a module that hangs on shutdown.
 #   slow:   on SIGTERM writes a deadline <extend> s from now into its stop file (like
-#           pyobs.utils.shutdown.extend_stop_timeout), then exits <delay> s later.
+#           pyobs.utils.shutdown.extend_stop_timeout), then exits <delay> s later. With <linger> > 0, it removes
+#           the stop file after <delay> s and only exits <linger> s after that, like the application, which
+#           clears its stop file at the end of run() and then still has to tear down.
 _FAKE_MODULE = """
 import os, signal, sys, time
 pid_file, mode, extend, delay = sys.argv[1], sys.argv[2], float(sys.argv[3]), float(sys.argv[4])
+linger = float(sys.argv[5])
 exit_at = None
 def on_term(*_):
     global exit_at
@@ -238,6 +241,9 @@ with open(pid_file + ".tmp", "w") as f:
 os.rename(pid_file + ".tmp", pid_file)
 while exit_at is None or time.time() < exit_at:
     time.sleep(0.02)
+if linger > 0:
+    os.remove(pid_file + ".stopping")
+    time.sleep(linger)
 """
 
 
@@ -245,9 +251,12 @@ while exit_at is None or time.time() < exit_at:
 def fake_module(dirs):
     procs: list[subprocess.Popen[bytes]] = []
 
-    def start(name: str, mode: str = "exit", extend: float = 0.0, delay: float = 0.0) -> subprocess.Popen[bytes]:
+    def start(
+        name: str, mode: str = "exit", extend: float = 0.0, delay: float = 0.0, linger: float = 0.0
+    ) -> subprocess.Popen[bytes]:
         pid_file = dirs[1] / f"{name}.pid"
-        proc = subprocess.Popen([sys.executable, "-c", _FAKE_MODULE, str(pid_file), mode, str(extend), str(delay)])
+        args = [str(pid_file), mode, str(extend), str(delay), str(linger)]
+        proc = subprocess.Popen([sys.executable, "-c", _FAKE_MODULE, *args])
         procs.append(proc)
         # pyobs daemonizes, so pyobsd is never its parent. Here the test is the parent, and a dead but
         # unreaped child would still look alive to os.kill(pid, 0). Reap it as soon as it exits.
@@ -321,6 +330,19 @@ def test_stop_announces_long_wait(dirs, fake_module, capsys) -> None:
     daemon.stop(["camera"])
 
     assert "camera is shutting down, waiting up to 10 min." in capsys.readouterr().out
+
+
+def test_stop_keeps_deadline_after_stop_file_is_removed(dirs, fake_module, capsys) -> None:
+    """The application removes its stop file at the end of its shutdown and exits a moment later. After
+    stop_timeout has passed, that moment must not fall back to stop_timeout and end in SIGKILL."""
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.1)
+    proc = fake_module("camera", mode="slow", extend=5.0, delay=0.4, linger=0.5)
+
+    daemon.stop(["camera"])
+
+    wait_dead(proc)
+    assert proc.returncode == 0  # exited on its own, not killed
+    assert "killing" not in capsys.readouterr().out
 
 
 def test_stop_kills_after_requested_deadline(dirs, fake_module) -> None:

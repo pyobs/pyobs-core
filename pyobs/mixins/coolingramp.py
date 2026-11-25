@@ -218,14 +218,20 @@ class CoolingRampMixin:
         log.info("Warm-up done after %s, cooling is off.", _duration(time.monotonic() - start))
 
     async def _cooling_log_warm_up(self, left: float) -> None:
+        # only for the log, the next tick reports a real problem
         try:
             sensor = await self._get_sensor_temperature()
         except Exception:
-            sensor = None  # only for the log, the next tick reports a real problem
+            sensor = None
+        try:
+            _, _, power = await self._get_cooling_hardware()
+        except Exception:
+            power = None
         log.info(
-            "Warming up: setpoint %s, sensor %s, up to %s left.",
+            "Warming up: setpoint %s, sensor %s, power %s, up to %s left.",
             _temperature(self._cooling_commanded),
             _temperature(sensor),
+            "unknown" if power is None else f"{power} %",
             _duration(max(0.0, left)),
         )
 

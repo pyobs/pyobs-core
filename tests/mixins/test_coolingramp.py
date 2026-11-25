@@ -83,8 +83,9 @@ async def test_disable_stops_early_when_sensor_stops_following() -> None:
     camera = make_camera(cooling_rate_cool=2.0, cooling_rate_warm=1.0)
     camera._cooling = camera._cooling._replace(temperatures={"CCD": -8.0, "Back": 3.0}, power=0)  # setpoint -10
     await camera.set_cooling(False, 0.0)
-    # sensor stays at -8 and the cooler gives no power, so it is idle once the setpoint reaches -7 (sensor + 1)
-    assert await run_ticks(camera) == [-9.0, -8.0, -7.0, None]
+    # sensor stays at -8 and the cooler gives no power, so it is idle once the setpoint reaches -7 (sensor + 1),
+    # and switches off after three idle readings in a row
+    assert await run_ticks(camera) == [-9.0, -8.0, -7.0, -6.0, -5.0, None]
 
 
 @pytest.mark.asyncio
@@ -312,7 +313,7 @@ async def test_close_with_warmup_logs_start_progress_and_end(
         await camera.close()
     lines = [r.getMessage() for r in caplog.records if r.name == "pyobs.mixins.coolingramp"]
     assert lines[0] == "Warming up from -9.0 °C towards -8.0 °C before closing, may take up to 30 s."
-    assert lines[1] == "Warming up: setpoint -8.0 °C, sensor -8.5 °C, up to 30 s left."
+    assert lines[1] == "Warming up: setpoint -8.0 °C, sensor -8.5 °C, power 80 %, up to 30 s left."
     assert lines[-1].startswith("Warm-up done after ") and lines[-1].endswith("cooling is off.")
     assert len(lines) == 3
 
@@ -327,13 +328,15 @@ async def test_close_with_cooler_already_off_logs_no_warmup(caplog: pytest.LogCa
 
 
 @pytest.mark.asyncio
-async def test_warmup_progress_survives_a_failing_sensor(caplog: pytest.LogCaptureFixture) -> None:
+async def test_warmup_progress_survives_failing_reads(caplog: pytest.LogCaptureFixture) -> None:
     camera = make_camera()
     camera._cooling_commanded = -12.0
     camera._get_sensor_temperature = AsyncMock(side_effect=RuntimeError("SDK error"))  # type: ignore[method-assign]
+    camera._get_cooling_hardware = AsyncMock(side_effect=RuntimeError("SDK error"))  # type: ignore[method-assign]
     with caplog.at_level("INFO", logger="pyobs.mixins.coolingramp"):
         await camera._cooling_log_warm_up(840.0)
-    assert caplog.records[-1].getMessage() == "Warming up: setpoint -12.0 °C, sensor unknown, up to 14 min left."
+    msg = "Warming up: setpoint -12.0 °C, sensor unknown, power unknown, up to 14 min left."
+    assert caplog.records[-1].getMessage() == msg
 
 
 def test_duration_format() -> None:

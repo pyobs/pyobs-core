@@ -14,6 +14,7 @@ import yaml
 from pyobs.comm.dummy import DummyComm
 from pyobs.modules import Module, MultiModule
 from pyobs.object import get_class_from_string, get_object
+from pyobs.utils import shutdown
 from pyobs.utils.config import pre_process_yaml
 from pyobs.utils.logging.context import ModuleNameFilter
 from pyobs.utils.versions import loaded_pyobs_packages
@@ -111,6 +112,7 @@ class Application:
         syslog: bool = False,
         influx_log: InfluxLogConfig | None = None,
         iers_offline: bool = False,
+        pid_file: str | None = None,
         **kwargs: Any,
     ):
         """Initializes a pyobs application.
@@ -137,7 +139,13 @@ class Application:
                 (pyobs.cli.pyobs's GLOBAL_CONFIG_KEYS) instead of a bare env var, so it applies
                 the same way regardless of how the module process was spawned.
             influx_log: Log to influx DB.
+            pid_file: PID file of a daemonized module, if any. A module that needs more time to shut
+                down then writes its deadline into a stop file next to it (see pyobs.utils.shutdown),
+                which pyobsd and web-admin respect before sending SIGKILL.
         """
+        # stop file for extend_stop_timeout(), removed again at the end of run()
+        shutdown.set_stop_file(shutdown.stop_file_for(pid_file) if pid_file is not None else None)
+
         if (config is None) == (module_factory is None):
             raise ValueError("Exactly one of 'config' or 'module_factory' must be given.")
         if module_factory is not None and loop_module_class is None:
@@ -354,6 +362,9 @@ class Application:
         # finished
         log.info("Closing loop...")
         self._loop.close()
+
+        # shutdown is done, so a deadline from extend_stop_timeout() no longer applies
+        shutdown.clear_stop_file()
 
     def _signal_handler(self, sig: int) -> None:
         """React to signals and quit the module."""

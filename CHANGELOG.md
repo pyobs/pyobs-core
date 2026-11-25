@@ -9,6 +9,20 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Added
+
+- `pyobs.utils.shutdown.extend_stop_timeout()`: a module can ask for more time to shut down. In pyobsd's PID-file
+  mode it writes the deadline to `<pid_file>.stopping`, under systemd it sends `EXTEND_TIMEOUT_USEC` to
+  `$NOTIFY_SOCKET` (only honored for `Type=notify` services). `CoolingRampMixin.close()` calls it before the
+  warm-up.
+- pyobsd: `--stop-timeout` (config key `stop_timeout`, default 30 s) and `stop --no-wait`.
+
+### Fixed
+
+- pyobsd no longer kills modules 5 s after SIGTERM. It waits `stop_timeout`, or until the deadline the module
+  asked for, so a stop no longer cuts a camera's warm-up on close. `pyobsd stop` sends SIGTERM to all modules
+  first and then waits for them together, and prints how long it waits for a module that asked for more time.
+
 ## [2.28.0] - 2026-11-17
 
 ### Added

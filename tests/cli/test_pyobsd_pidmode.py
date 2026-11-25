@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import threading
@@ -170,16 +171,29 @@ def test_status_json_drops_stale_pid(dirs, capsys) -> None:
 # ── stop with real processes ─────────────────────────────────────────────────
 
 # Stand-in for a daemonized pyobs module: installs its SIGTERM handler, then writes its PID file, then
-# idles. With "ignore" it ignores SIGTERM, like a module that takes too long to shut down.
+# idles. Modes:
+#   exit:   exits on SIGTERM.
+#   ignore: ignores SIGTERM, like a module that hangs on shutdown.
+#   slow:   on SIGTERM writes a deadline <extend> s from now into its stop file (like
+#           pyobs.utils.shutdown.extend_stop_timeout), then exits <delay> s later.
 _FAKE_MODULE = """
 import os, signal, sys, time
-pid_file, mode = sys.argv[1], sys.argv[2]
-signal.signal(signal.SIGTERM, signal.SIG_IGN if mode == "ignore" else lambda *_: sys.exit(0))
+pid_file, mode, extend, delay = sys.argv[1], sys.argv[2], float(sys.argv[3]), float(sys.argv[4])
+exit_at = None
+def on_term(*_):
+    global exit_at
+    if mode == "slow":
+        with open(pid_file + ".stopping", "w") as f:
+            f.write(str(time.time() + extend))
+        exit_at = time.time() + delay
+    else:
+        sys.exit(0)
+signal.signal(signal.SIGTERM, signal.SIG_IGN if mode == "ignore" else on_term)
 with open(pid_file + ".tmp", "w") as f:
     f.write(str(os.getpid()))
 os.rename(pid_file + ".tmp", pid_file)
-while True:
-    time.sleep(0.05)
+while exit_at is None or time.time() < exit_at:
+    time.sleep(0.02)
 """
 
 
@@ -187,9 +201,9 @@ while True:
 def fake_module(dirs):
     procs: list[subprocess.Popen[bytes]] = []
 
-    def start(name: str, mode: str = "exit") -> subprocess.Popen[bytes]:
+    def start(name: str, mode: str = "exit", extend: float = 0.0, delay: float = 0.0) -> subprocess.Popen[bytes]:
         pid_file = dirs[1] / f"{name}.pid"
-        proc = subprocess.Popen([sys.executable, "-c", _FAKE_MODULE, str(pid_file), mode])
+        proc = subprocess.Popen([sys.executable, "-c", _FAKE_MODULE, str(pid_file), mode, str(extend), str(delay)])
         procs.append(proc)
         # pyobs daemonizes, so pyobsd is never its parent. Here the test is the parent, and a dead but
         # unreaped child would still look alive to os.kill(pid, 0). Reap it as soon as it exits.
@@ -224,19 +238,121 @@ def test_stop_graceful(dirs, fake_module) -> None:
     assert not (dirs[1] / "camera.pid").exists()
 
 
-def test_stop_kills_after_timeout(dirs, fake_module, mocker) -> None:
-    """A module that ignores SIGTERM gets SIGKILL once the wait runs out (50 x 0.1 s today). time.sleep in
-    pyobsd is patched out so the wait runs out at once."""
-    daemon = make_daemon(dirs, ["camera.yaml"])
+def test_stop_kills_after_timeout(dirs, fake_module) -> None:
+    """A module that ignores SIGTERM and asks for no extra time gets SIGKILL after stop_timeout."""
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.3)
     proc = fake_module("camera", mode="ignore")
-    time.sleep(0.2)  # make sure the SIG_IGN handler is in place before SIGTERM arrives
-    mocker.patch.object(pyobsd.time, "sleep")
+
+    start = time.monotonic()
+    daemon.stop(["camera"])
+    elapsed = time.monotonic() - start
+
+    wait_dead(proc)
+    assert proc.returncode == -9  # SIGKILL
+    assert 0.3 <= elapsed < 2.0
+    assert not (dirs[1] / "camera.pid").exists()
+
+
+def test_stop_timeout_default(dirs) -> None:
+    assert make_daemon(dirs)._stop_timeout == 30.0
+
+
+def test_stop_waits_for_requested_deadline(dirs, fake_module) -> None:
+    """A module that asks for more time (stop file) is not killed when stop_timeout runs out."""
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.1)
+    proc = fake_module("camera", mode="slow", extend=5.0, delay=0.8)
 
     daemon.stop(["camera"])
 
     wait_dead(proc)
-    assert proc.returncode == -9  # SIGKILL
+    assert proc.returncode == 0  # exited on its own after 0.8 s, not killed after 0.1 s
     assert not (dirs[1] / "camera.pid").exists()
+    assert not (dirs[1] / "camera.pid.stopping").exists()
+
+
+def test_stop_announces_long_wait(dirs, fake_module, capsys) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.1)
+    fake_module("camera", mode="slow", extend=600.0, delay=0.3)
+
+    daemon.stop(["camera"])
+
+    assert "camera is shutting down, waiting up to 10 min." in capsys.readouterr().out
+
+
+def test_stop_kills_after_requested_deadline(dirs, fake_module) -> None:
+    """The requested deadline is a limit too: a module that outlives it gets SIGKILL."""
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.1)
+    proc = fake_module("camera", mode="slow", extend=0.6, delay=30.0)
+
+    start = time.monotonic()
+    daemon.stop(["camera"])
+    elapsed = time.monotonic() - start
+
+    wait_dead(proc)
+    assert proc.returncode == -9
+    assert 0.5 <= elapsed < 3.0
+    assert not (dirs[1] / "camera.pid.stopping").exists()
+
+
+def test_stop_ignores_expired_stop_file(dirs, fake_module) -> None:
+    """A stop file from an earlier run with a deadline in the past does not extend anything."""
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.2)
+    proc = fake_module("camera", mode="ignore")
+    (dirs[1] / "camera.pid.stopping").write_text(str(time.time() - 100))
+
+    start = time.monotonic()
+    daemon.stop(["camera"])
+
+    wait_dead(proc)
+    assert proc.returncode == -9
+    assert time.monotonic() - start < 2.0
+
+
+def test_stop_no_wait(dirs, fake_module) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.1)
+    proc = fake_module("camera", mode="slow", extend=5.0, delay=0.5)
+
+    start = time.monotonic()
+    daemon.stop(["camera"], wait=False)
+
+    assert time.monotonic() - start < 0.3
+    assert proc.poll() is None  # still shutting down
+    wait_dead(proc)
+    assert proc.returncode == 0
+
+
+def test_stop_sends_sigterm_to_all_before_waiting(dirs, fake_module, mocker) -> None:
+    """One module with a long shutdown must not delay SIGTERM for the others."""
+    daemon = make_daemon(dirs, ["camera.yaml", "telescope.yaml"], stop_timeout=0.1)
+    camera = fake_module("camera", mode="slow", extend=5.0, delay=0.5)
+    telescope = fake_module("telescope")
+    kill = mocker.spy(pyobsd.os, "kill")
+    wait = mocker.spy(PyobsDaemon, "_wait_stopped")
+
+    daemon.stop()
+
+    # both got SIGTERM, and there was one wait for both together, not one per module
+    sigterms = sorted(c.args[0] for c in kill.call_args_list if c.args[1] == signal.SIGTERM)
+    assert sigterms == sorted([camera.pid, telescope.pid])
+    assert wait.call_count == 1
+    assert wait.call_args.args[1] == {"camera": camera.pid, "telescope": telescope.pid}
+    wait_dead(camera)
+    wait_dead(telescope)
+    assert camera.returncode == 0
+    assert telescope.returncode == 0
+
+
+def test_start_removes_stale_stop_file(dirs, mocker) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml"])
+    stop_file = dirs[1] / "camera.pid.stopping"
+    stop_file.write_text(str(time.time() + 1000))
+    mocker.patch("subprocess.Popen")
+    mocker.patch.object(PyobsDaemon, "_read_pid", return_value=12345)
+    mocker.patch.object(PyobsDaemon, "_is_alive", return_value=True)
+
+    daemon._start_service("camera")
+
+    assert not stop_file.exists()
 
 
 def test_stop_without_modules_stops_all_running(dirs, fake_module) -> None:

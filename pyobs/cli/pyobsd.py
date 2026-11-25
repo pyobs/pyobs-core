@@ -14,6 +14,8 @@ from typing import Any
 
 import psutil
 
+from pyobs.utils.shutdown import read_stop_deadline, stop_file_for
+
 from ._cli import CLI
 
 log = logging.getLogger("pyobs")
@@ -35,6 +37,7 @@ class PyobsDaemonCLI(CLI):
         "syslog",
         "file_log",
         "chuid",
+        "stop_timeout",
     ]
 
     def init_cli(self) -> None:
@@ -62,12 +65,23 @@ class PyobsDaemonCLI(CLI):
             default=self._config.get("file_log", False),
         )
         self._parser.add_argument("--chuid", type=str, default=self._config.get("chuid", "pyobs:pyobs"))
+        self._parser.add_argument(
+            "--stop-timeout",
+            type=float,
+            default=self._config.get("stop_timeout", 30.0),
+            metavar="SECONDS",
+            help="seconds to wait after SIGTERM before sending SIGKILL, unless the module asked for more time",
+        )
         self._parser.add_argument("-v", "--verbose", action="store_true")
 
         # commands
         sp = self._parser.add_subparsers(dest="command")
         sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
-        sp.add_parser("stop", help="stop modules").add_argument("modules", type=str, nargs="*")
+        stop_parser = sp.add_parser("stop", help="stop modules")
+        stop_parser.add_argument("modules", type=str, nargs="*")
+        stop_parser.add_argument(
+            "--no-wait", action="store_true", help="only send SIGTERM, do not wait for the modules to exit"
+        )
         sp.add_parser("restart", help="restart modules").add_argument("modules", type=str, nargs="*")
         status_parser = sp.add_parser("status", help="status of modules")
         status_parser.add_argument("--json", action="store_true")
@@ -94,6 +108,7 @@ class PyobsDaemonCLI(CLI):
             syslog=self._config["syslog"],
             file_log=self._config["file_log"],
             chuid=self._config["chuid"],
+            stop_timeout=self._config["stop_timeout"],
             verbose=self._config["verbose"],
         )
 
@@ -102,7 +117,7 @@ class PyobsDaemonCLI(CLI):
             case "start":
                 daemon.start(modules=self._config["modules"])
             case "stop":
-                daemon.stop(modules=self._config["modules"])
+                daemon.stop(modules=self._config["modules"], wait=not self._config["no_wait"])
             case "restart":
                 daemon.restart(modules=self._config["modules"])
             case "status":
@@ -123,10 +138,12 @@ class PyobsDaemon:
         syslog: bool = False,
         file_log: bool = False,
         chuid: str | None = None,
+        stop_timeout: float = 30.0,
         verbose: bool = False,
         **kwargs: Any,
     ):
         self._config_path = config_path
+        self._stop_timeout = stop_timeout
         self._run_path = run_path
         self._log_path = log_path
         self._log_level = log_level
@@ -184,6 +201,10 @@ class PyobsDaemon:
 
     def _log_file(self, module: str) -> str:
         return os.path.join(self._log_path, self._strip_disabled(module) + ".log")
+
+    def _stop_file(self, module: str) -> str:
+        """Where a stopping module writes its shutdown deadline (see pyobs.utils.shutdown)."""
+        return stop_file_for(self._pid_file(module))
 
     def _list_configs(self) -> list[str]:
         """Return sorted module names from *.yaml files, excluding *.shared.yaml."""
@@ -288,14 +309,22 @@ class PyobsDaemon:
                 print(f"Starting {module}...")
                 self._start_service(module)
 
-    def stop(self, modules: list[str] | None = None) -> None:
+    def stop(self, modules: list[str] | None = None, wait: bool = True) -> None:
         # if no modules given, stop all that have a live PID
         if not modules:
             modules = [m for m in self._list_configs() if self._running_pid(m) is not None]
 
+        # send SIGTERM to all first, then wait for all together, so that one module with a long shutdown
+        # (e.g. a camera warming up) does not delay sending SIGTERM to the others
+        stopping: dict[str, int] = {}
         for module in modules:
             print(f"Stopping {module}...")
-            self._stop_service(module)
+            pid = self._signal_stop(module)
+            if pid is not None:
+                stopping[module] = pid
+
+        if wait:
+            self._wait_stopped(stopping)
 
     def restart(self, modules: list[str] | None = None) -> None:
         self.stop(modules=modules)
@@ -371,6 +400,12 @@ class PyobsDaemon:
     def _start_service(self, module: str) -> None:
         os.makedirs(self._run_path, exist_ok=True)
 
+        # a stop file left behind by a previous run (e.g. killed during warm-up) must not apply to this one
+        try:
+            os.remove(self._stop_file(module))
+        except FileNotFoundError:
+            pass
+
         cmd = [
             self._pyobs_exec,
             "--pid-file",
@@ -431,34 +466,76 @@ class PyobsDaemon:
             print(f"  stderr: {stderr.decode(errors='replace').strip()}")  # type: ignore[attr-defined]
 
     def _stop_service(self, module: str) -> None:
+        """Stops a single module and waits for it."""
+        pid = self._signal_stop(module)
+        if pid is not None:
+            self._wait_stopped({module: pid})
+
+    def _signal_stop(self, module: str) -> int | None:
+        """Sends SIGTERM to a module. Returns its PID, or None if it is not running (anymore)."""
         pid = self._running_pid(module)
         if pid is None:
             print(f"{module} is not running.")
-            return
+            return None
 
         try:
             os.kill(pid, signal.SIGTERM)
         except OSError:
-            return
+            return None
+        return pid
 
-        # wait up to 5 s for graceful shutdown, then SIGKILL
-        for _ in range(50):
-            if not self._is_alive(pid):
-                break
-            time.sleep(0.1)
-        else:
-            if self._verbose:
-                print(f"[DEBUG] {module} did not stop gracefully, sending SIGKILL")
+    def _wait_stopped(self, stopping: dict[str, int]) -> None:
+        """Waits for the given modules to exit and sends SIGKILL to those that take too long.
+
+        "Too long" is stop_timeout after SIGTERM, or later if the module wrote a later deadline into its stop
+        file (pyobs.utils.shutdown.extend_stop_timeout, e.g. while a camera warms up)."""
+        default_deadline = time.time() + self._stop_timeout
+        announced: dict[str, float] = {}
+        remaining = dict(stopping)
+
+        while remaining:
+            now = time.time()
+            for module, pid in list(remaining.items()):
+                if not self._is_alive(pid):
+                    del remaining[module]
+                    self._remove_run_files(module)
+                    continue
+
+                requested = read_stop_deadline(self._stop_file(module))
+                deadline = max(default_deadline, requested or 0.0)
+                if requested is not None and requested > default_deadline and announced.get(module) != requested:
+                    announced[module] = requested
+                    print(f"{module} is shutting down, waiting up to {self._fmt_wait(requested - now)}.")
+
+                if now >= deadline:
+                    if self._verbose:
+                        print(f"[DEBUG] {module} did not stop in time, sending SIGKILL")
+                    else:
+                        print(f"{module} did not stop in time, killing it.")
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+                    del remaining[module]
+                    self._remove_run_files(module)
+
+            if remaining:
+                time.sleep(0.1)
+
+    def _remove_run_files(self, module: str) -> None:
+        """Removes PID and stop file of a module."""
+        for path in (self._pid_file(module), self._stop_file(module)):
             try:
-                os.kill(pid, signal.SIGKILL)
+                os.remove(path)
             except OSError:
                 pass
 
-        # clean up PID file
-        try:
-            os.remove(self._pid_file(module))
-        except OSError:
-            pass
+    @staticmethod
+    def _fmt_wait(seconds: float) -> str:
+        seconds = max(0, int(seconds))
+        if seconds < 120:
+            return f"{seconds} s"
+        return f"{round(seconds / 60)} min"
 
 
 def main() -> None:

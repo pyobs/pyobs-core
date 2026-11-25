@@ -120,7 +120,10 @@ There are four basic commands:
     it can take as long as the warm-up of a cooled camera.
 
 :pyobsd status:
-    Gives an overview of detected configuration files and started modules.
+    Gives an overview of detected configuration files and started modules. Each module is **running**, **stopped**,
+    or **stopping** (it got SIGTERM and is still shutting down, together with how long it may still take if it asked
+    for more time). With **--json**, a stopping module keeps ``"running": true``, since its process is still alive,
+    and the ``"state"`` field tells it apart.
 
 CLI Parameters
 **************

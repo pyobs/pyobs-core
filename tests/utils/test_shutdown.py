@@ -67,6 +67,37 @@ def test_clear_stop_file(tmp_path: Path) -> None:
     assert not stop_file.exists()
 
 
+def test_mark_stopping_writes_now(tmp_path: Path) -> None:
+    stop_file = tmp_path / "camera.pid.stopping"
+    shutdown.set_stop_file(str(stop_file))
+
+    before = time.time()
+    shutdown.mark_stopping()
+
+    deadline = shutdown.read_stop_deadline(str(stop_file))
+    assert deadline is not None
+    assert before - 0.001 <= deadline <= time.time() + 0.001
+
+
+def test_mark_stopping_keeps_later_deadline(tmp_path: Path) -> None:
+    stop_file = tmp_path / "camera.pid.stopping"
+    shutdown.set_stop_file(str(stop_file))
+    shutdown.extend_stop_timeout(600.0)
+
+    shutdown.mark_stopping()
+
+    deadline = shutdown.read_stop_deadline(str(stop_file))
+    assert deadline is not None and deadline > time.time() + 590
+
+
+def test_mark_stopping_notifies_systemd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    address = str(tmp_path / "notify")
+    with _receiver(address) as sock:
+        monkeypatch.setenv("NOTIFY_SOCKET", address)
+        shutdown.mark_stopping()
+        assert sock.recv(1024) == b"STOPPING=1"
+
+
 @pytest.mark.parametrize("content", ["", "soon", "12:30"])
 def test_read_stop_deadline_invalid(tmp_path: Path, content: str) -> None:
     stop_file = tmp_path / "camera.pid.stopping"

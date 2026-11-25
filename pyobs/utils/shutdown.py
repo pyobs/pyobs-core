@@ -37,6 +37,17 @@ def set_stop_file(path: str | None) -> None:
     _stop_file = path
 
 
+def mark_stopping() -> None:
+    """Marks the module as shutting down, without asking for more time. Called by the application on SIGTERM.
+
+    In PID-file mode, the stop file is what makes pyobsd and web-admin show the module as "stopping". The deadline
+    written is "now" (or a later one that is already there), which extends nothing, since they always wait at least
+    their own stop timeout. Under systemd, sends ``STOPPING=1``. Never raises."""
+    notify("STOPPING=1")
+    if _stop_file is not None:
+        _write_deadline(_stop_file, max(time.time(), read_stop_deadline(_stop_file) or 0.0))
+
+
 def extend_stop_timeout(seconds: float) -> None:
     """Asks for up to ``seconds`` more time to shut down, counted from now. Never raises."""
     notify(f"EXTEND_TIMEOUT_USEC={int(seconds * 1_000_000)}")
@@ -104,6 +115,7 @@ __all__ = [
     "STOP_FILE_SUFFIX",
     "stop_file_for",
     "set_stop_file",
+    "mark_stopping",
     "extend_stop_timeout",
     "clear_stop_file",
     "read_stop_deadline",

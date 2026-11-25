@@ -16,6 +16,9 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   `$NOTIFY_SOCKET` (only honored for `Type=notify` services). `CoolingRampMixin.close()` calls it before the
   warm-up.
 - pyobsd: `--stop-timeout` (config key `stop_timeout`, default 30 s) and `stop --no-wait`.
+- pyobsd `status` shows a module that got SIGTERM and is still shutting down as `stopping`, with how long it may
+  still take. `status --json` adds `state` (`running`, `stopping`, `stopped`) and `stop_deadline`, and keeps
+  `running: true` for a stopping module. The application marks itself as stopping on SIGTERM.
 
 ### Fixed
 

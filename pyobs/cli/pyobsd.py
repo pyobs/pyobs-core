@@ -236,12 +236,13 @@ class PyobsDaemon:
             return None
         if self._is_alive(pid):
             return pid
-        # stale PID file — remove it
-        try:
-            os.remove(self._pid_file(module))
-        except OSError:
-            pass
+        # stale PID file — remove it, together with a stop file the process may have left behind
+        self._remove_run_files(module)
         return None
+
+    def _stop_deadline(self, module: str) -> float | None:
+        """The deadline a running module wrote into its stop file, or None if it is not stopping."""
+        return read_stop_deadline(self._stop_file(module))
 
     def _process_info(self, pid: int) -> dict[str, Any]:
         """Return uptime (seconds) and rss_mb for a running PID. No CPU -- that needs a
@@ -348,15 +349,29 @@ class PyobsDaemon:
         # it slow for no benefit when nobody's looking at CPU. Only pay for it if asked.
         cpu_by_pid = self._sample_cpu_percent(list(pids.values()), cpu_interval) if cpu_interval else {}
 
+        # a running module with a stop file is shutting down (see pyobs.utils.shutdown)
+        deadlines = {module: self._stop_deadline(module) for module in pids}
+        now = time.time()
+
         if print_json:
+            # "running" stays true while a module is stopping (its process is still alive), so consumers that only
+            # know "running" keep working; "state" tells them apart
             result: dict[str, Any] = {}
             for module in modules:
                 pid = pids.get(module)
                 if pid is not None:
                     info = self._process_info(pid)
-                    result[module] = {"running": True, "pid": pid, "cpu": cpu_by_pid.get(pid), **info}
+                    deadline = deadlines[module]
+                    result[module] = {
+                        "running": True,
+                        "state": "stopping" if deadline is not None else "running",
+                        "stop_deadline": deadline,
+                        "pid": pid,
+                        "cpu": cpu_by_pid.get(pid),
+                        **info,
+                    }
                 else:
-                    result[module] = {"running": False}
+                    result[module] = {"running": False, "state": "stopped"}
             print(json.dumps(result))
         else:
             # header
@@ -368,11 +383,17 @@ class PyobsDaemon:
                     info = self._process_info(pid)
                     cpu = cpu_by_pid.get(pid)
                     cpu_str = f"{cpu:>5.1f}%" if cpu is not None else f"{'-':>6}"
+                    deadline = deadlines[module]
+                    state = "stopping" if deadline is not None else "running"
+                    wait = (
+                        f"  (up to {self._fmt_wait(deadline - now)})" if deadline is not None and deadline > now else ""
+                    )
                     print(
-                        f"{module:<30}  {'running':<8}  "
+                        f"{module:<30}  {state:<8}  "
                         f"{self._fmt_uptime(info['uptime']):>12}  "
                         f"{cpu_str}  "
                         f"{info['rss_mb']:>6.1f} MB"
+                        f"{wait}"
                     )
                 else:
                     print(f"{module:<30}  {'stopped':<8}")

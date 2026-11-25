@@ -149,9 +149,11 @@ def test_status_json(dirs, capsys) -> None:
     result = json.loads(capsys.readouterr().out)
 
     assert sorted(result) == ["_dome", "camera", "orphan", "telescope"]
-    assert result["telescope"] == {"running": False}
+    assert result["telescope"] == {"running": False, "state": "stopped"}
     for name in ("camera", "_dome", "orphan"):
         assert result[name]["running"] is True
+        assert result[name]["state"] == "running"
+        assert result[name]["stop_deadline"] is None
         assert result[name]["pid"] == os.getpid()
         assert result[name]["cpu"] is None  # only measured with --cpu-interval
         assert result[name]["uptime"] > 0
@@ -164,8 +166,50 @@ def test_status_json_drops_stale_pid(dirs, capsys) -> None:
 
     daemon.status(print_json=True)
 
-    assert json.loads(capsys.readouterr().out) == {"camera": {"running": False}}
+    assert json.loads(capsys.readouterr().out) == {"camera": {"running": False, "state": "stopped"}}
     assert not pid_file.exists()
+
+
+def test_stale_pid_also_removes_stop_file(dirs) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml"])
+    write_pid(dirs, "camera", dead_pid())
+    stop_file = dirs[1] / "camera.pid.stopping"
+    stop_file.write_text(str(time.time() + 100))
+
+    assert daemon._running_pid("camera") is None
+    assert not stop_file.exists()
+
+
+def test_status_json_stopping(dirs, capsys) -> None:
+    """A running module with a stop file is "stopping", still with running=true for older consumers."""
+    daemon = make_daemon(dirs, ["camera.yaml"])
+    write_pid(dirs, "camera", os.getpid())
+    deadline = time.time() + 600
+    (dirs[1] / "camera.pid.stopping").write_text(str(deadline))
+
+    daemon.status(print_json=True)
+    result = json.loads(capsys.readouterr().out)["camera"]
+
+    assert result["running"] is True
+    assert result["state"] == "stopping"
+    assert result["stop_deadline"] == pytest.approx(deadline)
+
+
+def test_status_table_stopping(dirs, capsys) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml", "dome.yaml", "telescope.yaml"])
+    write_pid(dirs, "camera", os.getpid())
+    (dirs[1] / "camera.pid.stopping").write_text(str(time.time() + 600))
+    write_pid(dirs, "dome", os.getpid())
+    (dirs[1] / "dome.pid.stopping").write_text(str(time.time() - 1))  # stopping, but asked for no extra time
+
+    daemon.status()
+    lines = {line.split()[0]: line for line in capsys.readouterr().out.splitlines()[2:]}
+
+    assert lines["camera"].split()[1] == "stopping"
+    assert lines["camera"].endswith("(up to 10 min)")
+    assert lines["dome"].split()[1] == "stopping"
+    assert "up to" not in lines["dome"]
+    assert lines["telescope"].split()[1] == "stopped"
 
 
 # ── stop with real processes ─────────────────────────────────────────────────
@@ -340,6 +384,27 @@ def test_stop_sends_sigterm_to_all_before_waiting(dirs, fake_module, mocker) -> 
     wait_dead(telescope)
     assert camera.returncode == 0
     assert telescope.returncode == 0
+
+
+def test_status_during_stop_no_wait(dirs, fake_module, capsys) -> None:
+    """After stop --no-wait, status shows the module as stopping until it is gone."""
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.1)
+    proc = fake_module("camera", mode="slow", extend=600.0, delay=1.0)
+
+    daemon.stop(["camera"], wait=False)
+    stop_file = dirs[1] / "camera.pid.stopping"
+    for _ in range(100):
+        if stop_file.exists():
+            break
+        time.sleep(0.02)
+    capsys.readouterr()
+
+    daemon.status(print_json=True)
+    assert json.loads(capsys.readouterr().out)["camera"]["state"] == "stopping"
+
+    wait_dead(proc)
+    daemon.status(print_json=True)
+    assert json.loads(capsys.readouterr().out)["camera"]["state"] == "stopped"
 
 
 def test_start_removes_stale_stop_file(dirs, mocker) -> None:

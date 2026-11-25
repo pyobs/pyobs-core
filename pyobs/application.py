@@ -143,8 +143,10 @@ class Application:
                 down then writes its deadline into a stop file next to it (see pyobs.utils.shutdown),
                 which pyobsd and web-admin respect before sending SIGKILL.
         """
-        # stop file for extend_stop_timeout(), removed again at the end of run()
+        # stop file for extend_stop_timeout(), removed again at the end of run(); one left behind by an earlier
+        # run (e.g. killed during shutdown) would make this run look like it is stopping
         shutdown.set_stop_file(shutdown.stop_file_for(pid_file) if pid_file is not None else None)
+        shutdown.clear_stop_file()
 
         if (config is None) == (module_factory is None):
             raise ValueError("Exactly one of 'config' or 'module_factory' must be given.")
@@ -368,6 +370,9 @@ class Application:
 
     def _signal_handler(self, sig: int) -> None:
         """React to signals and quit the module."""
+
+        # let pyobsd/web-admin show the module as "stopping" until it is gone
+        shutdown.mark_stopping()
 
         if self._module is not None:
             self._module.quit()

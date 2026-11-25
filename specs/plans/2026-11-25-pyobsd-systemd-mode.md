@@ -108,8 +108,9 @@ Writes only happen on a mismatch, and all steps are idempotent.
 | `logs` | journalctl | unchanged (same `SYSLOG_IDENTIFIER`/`PYOBS_MODULE` match) |
 
 - `status --json`: keep the current top-level shape (`{module: {...}}`) so old consumers keep working.
-  Add `mode` and `enabled` per module, plus `restarts` (`NRestarts`) and `state` (`failed` vs
-  `inactive`) in systemd mode.
+  `state` (`running`/`stopping`/`stopped`) and `stop_deadline` already exist in both modes (PR #1096).
+  Add `mode` and `enabled` per module, plus `restarts` (`NRestarts`) in systemd mode, and `failed` as an
+  extra `state` value there (instead of `stopped`, for a unit that failed).
 - `show` takes several units in one call, so status costs one `systemctl` call, not one per module.
 - If PID files with live processes still exist in systemd mode (leftovers from the old mode), `status`
   lists them as `running (pid mode)` and prints a warning, so a half-migrated host is visible.
@@ -174,6 +175,13 @@ for. In both modes web-admin sends the stop (`systemctl --user stop --no-block`,
 immediately, and shows the module as `stopping` until it is gone (systemd: `ActiveState=deactivating`;
 old mode: process alive and `.stopping` file present). The SIGKILL after the deadline then happens on the
 next status poll in old mode.
+
+**`stopping` state (done in PR #1096, pyobsd side).** `Application` calls `shutdown.mark_stopping()` on
+SIGTERM: it writes "now" as the deadline (or keeps a later one), which extends nothing but marks every
+stopping module, not only those that asked for more time, and sends `STOPPING=1` under systemd.
+`pyobsd status` shows `stopping` plus the remaining time, `status --json` has `state` and `stop_deadline`
+and keeps `running: true` while the process is alive. web-admin should read `state`, show `stopping` in
+the list, disable start while stopping, and maybe offer "kill now" for a module that hangs.
 
 **web-admin restart must not block either**, and it cannot simply return early, since the start has to
 wait for the stop. In systemd mode `systemctl --user restart --no-block` does that. In old mode web-admin

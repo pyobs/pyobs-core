@@ -261,9 +261,9 @@ repo for the PID-file mode. If a host has it installed, it has to be disabled wh
 - [x] pyobs-core tests for the PID-file mode before refactoring (`tests/cli/test_pyobsd_pidmode.py`, e9a0084a).
 - [x] pyobs-web-admin, old mode: non-blocking stop, `stopping` state, kill, restart as a background job
       (2.4.0).
-- [ ] pyobs-core: `mode` config key, `--mode` option and `PYOBSD_MODE`, mode-specific backends in `pyobsd.py`
+- [x] pyobs-core: `mode` config key, `--mode` option and `PYOBSD_MODE`, mode-specific backends in `pyobsd.py`
       (current code moves into the PID-file backend without behavior changes).
-- [ ] pyobs-core: guard in `PyobsCLI.run()` against `--pid-file` in systemd mode, sharing the mode lookup with
+- [x] pyobs-core: guard in `PyobsCLI.run()` against `--pid-file` in systemd mode, sharing the mode lookup with
       pyobsd.
 - [ ] pyobs-core: `pyobsd exec <module>` (config lookup by active name, options from the pyobsd config).
 - [ ] pyobs-core: unit rendering, unit file sync, enable sync, linger check, user manager selection.

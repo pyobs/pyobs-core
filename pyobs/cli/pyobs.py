@@ -24,6 +24,7 @@ class PyobsCLI(CLI):
         "influx_log",
         "debug_time",
         "iers_offline",
+        "stop_timeout",
     ]
 
     def init_cli(self) -> None:
@@ -61,6 +62,15 @@ class PyobsCLI(CLI):
             action="store_true",
             help="disable astropy IERS/leap-second auto-download, use the bundled snapshot",
             default=self._config.get("iers_offline", False),
+        )
+
+        # shutdown
+        self._parser.add_argument(
+            "--stop-timeout",
+            type=float,
+            default=self._config.get("stop_timeout", 30.0),
+            metavar="SECONDS",
+            help="seconds the shutdown may take before the module ends itself, unless it asked for more time",
         )
 
         # debug stuff

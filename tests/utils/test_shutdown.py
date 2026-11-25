@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import socket
+import subprocess
+import sys
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -16,8 +18,10 @@ from pyobs.utils import shutdown
 def no_stop_file(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.delenv("NOTIFY_SOCKET", raising=False)
     shutdown.set_stop_file(None)
+    shutdown.clear_stop_file()
     yield
     shutdown.set_stop_file(None)
+    shutdown.clear_stop_file()
 
 
 def test_stop_file_for() -> None:
@@ -145,3 +149,65 @@ def test_notify_unsupported_address(monkeypatch: pytest.MonkeyPatch, address: st
 def test_notify_unreachable_socket_does_not_raise(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NOTIFY_SOCKET", str(tmp_path / "nobody-listens"))
     assert shutdown.notify("READY=1") is False
+
+
+# ── in-memory deadline ───────────────────────────────────────────────────────
+
+
+def test_current_deadline_without_stop_file() -> None:
+    """The deadline is also kept without a stop file, for the watchdog (e.g. a module run in the foreground)."""
+    shutdown.clear_stop_file()
+    assert shutdown.current_deadline() is None
+
+    before = time.time()
+    shutdown.extend_stop_timeout(60.0)
+    deadline = shutdown.current_deadline()
+    assert deadline is not None and before + 60.0 <= deadline <= time.time() + 60.0
+
+    shutdown.mark_stopping()  # does not shorten it
+    assert shutdown.current_deadline() == deadline
+
+    shutdown.clear_stop_file()
+    assert shutdown.current_deadline() is None
+
+
+# ── watchdog, in a child process, since it ends the process ──────────────────
+
+_WATCHDOG = """
+import sys, time
+from pyobs.utils import shutdown
+stop_timeout, extend, run_for = float(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3])
+shutdown.start_watchdog(stop_timeout, grace=0.1, interval=0.05)
+shutdown.start_watchdog(1000.0)  # second call does nothing
+if extend > 0:
+    shutdown.extend_stop_timeout(extend)
+time.sleep(run_for)
+"""
+
+
+def run_watchdog(stop_timeout: float, extend: float, run_for: float) -> tuple[int, float]:
+    start = time.monotonic()
+    proc = subprocess.run(
+        [sys.executable, "-c", _WATCHDOG, str(stop_timeout), str(extend), str(run_for)], timeout=30, check=False
+    )
+    return proc.returncode, time.monotonic() - start
+
+
+def test_watchdog_ends_hanging_shutdown() -> None:
+    code, elapsed = run_watchdog(stop_timeout=0.3, extend=0.0, run_for=20.0)
+    assert code == 1
+    assert elapsed < 10.0
+
+
+def test_watchdog_respects_extension() -> None:
+    """A deadline asked for with extend_stop_timeout() counts, like for pyobsd."""
+    code_short, _ = run_watchdog(stop_timeout=0.2, extend=1.5, run_for=1.0)
+    assert code_short == 0  # finished within the extension, so not ended after 0.2 s
+
+    code_long, _ = run_watchdog(stop_timeout=0.2, extend=0.5, run_for=20.0)
+    assert code_long == 1
+
+
+def test_watchdog_lets_finished_shutdown_exit() -> None:
+    code, _ = run_watchdog(stop_timeout=5.0, extend=0.0, run_for=0.1)
+    assert code == 0

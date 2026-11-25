@@ -9,6 +9,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.29.0] - 2026-11-25
+
 ### Added
 
 - `pyobs.utils.shutdown.extend_stop_timeout()`: a module can ask for more time to shut down. In pyobsd's PID-file

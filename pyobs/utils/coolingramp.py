@@ -9,6 +9,10 @@ from dataclasses import dataclass
 # working, and switching off then lets the sensor warm up several degrees per minute.
 IDLE_MARGIN = 1.0
 
+# A warm-up only stops early after this many idle readings in a row, one per step, so that a single reading (e.g. a
+# power of 0 while the cooler regulates) does not switch the cooler off.
+IDLE_STEPS = 3
+
 # A camera without a real off switch is "switched off" by writing a setpoint above the sensor temperature. This is
 # how far above the off temperature that setpoint may go, so that a sensor at a much higher temperature than
 # expected cannot lead to a setpoint the camera rejects.
@@ -37,6 +41,9 @@ class RampStep:
 class CoolingRamp:
     """Plans the steps of a cooling setpoint ramp. No I/O, no timing: callers write the steps and wait.
 
+    The only state is a count of idle readings during a warm-up, so use one instance per camera and call
+    ``next_step`` once per step.
+
     Shared by the ``CoolingRampMixin`` for modules and by local GUIs that talk to a camera SDK directly.
     Warming up (raising the setpoint or switching the cooler off) has its own rate, since that is the
     direction that can damage a sensor or cause condensation.
@@ -49,6 +56,7 @@ class CoolingRamp:
         step: float = 1.0,
         off_temperature: float = 20.0,
         resolution: float | None = None,
+        idle_steps: int = IDLE_STEPS,
     ):
         """Creates a new planner.
 
@@ -58,17 +66,23 @@ class CoolingRamp:
             step: Setpoint change per write in degC. The delay between writes follows from the rate.
             off_temperature: Temperature the setpoint is ramped to before the cooler is switched off.
             resolution: Resolution of the camera's setpoint in degC (e.g. 1.0 for integer setpoints).
+            idle_steps: Idle readings in a row needed to stop a warm-up early, see IDLE_STEPS.
         """
         if step <= 0:
             raise ValueError("step must be positive.")
         for rate in (rate_warm, rate_cool):
             if rate is not None and rate <= 0:
                 raise ValueError("Rates must be positive or None.")
+        if idle_steps < 1:
+            raise ValueError("idle_steps must be at least 1.")
         self.rate_warm = rate_warm
         self.rate_cool = rate_cool
         self.step = max(step, resolution or 0.0)
         self.off_temperature = off_temperature
         self.resolution = resolution
+        self.idle_steps = idle_steps
+        # idle readings in a row during the current warm-up
+        self._idle_count = 0
 
     @property
     def immediate(self) -> bool:
@@ -123,7 +137,8 @@ class CoolingRamp:
             target: Target setpoint if enabled.
             sensor: Current sensor temperature, used to stop a warm-up early. May be None.
             power: Current cooler power in percent, used to stop a warm-up early. May be None if the camera does not
-                report it, then the sensor temperature alone decides.
+                report it, then the sensor temperature alone decides. A warm-up stops early only after idle_steps
+                idle readings in a row.
 
         Returns:
             The next step.
@@ -132,10 +147,14 @@ class CoolingRamp:
 
         if not enabled:
             idle = sensor is not None and commanded >= sensor + IDLE_MARGIN and (power is None or power == 0)
-            if idle or commanded >= goal or self.rate_warm is None:
+            self._idle_count = self._idle_count + 1 if idle else 0
+            if self._idle_count >= self.idle_steps or commanded >= goal or self.rate_warm is None:
+                self._idle_count = 0
                 return RampStep(write=True, enabled=False, setpoint=None, done=True, delay=0.0)
-        elif commanded == goal:
-            return RampStep(write=False, enabled=True, setpoint=commanded, done=True, delay=0.0)
+        else:
+            self._idle_count = 0
+            if commanded == goal:
+                return RampStep(write=False, enabled=True, setpoint=commanded, done=True, delay=0.0)
 
         warming = goal > commanded
         rate = self.rate_warm if warming else self.rate_cool
@@ -150,4 +169,4 @@ class CoolingRamp:
         return RampStep(write=True, enabled=True, setpoint=new, done=done, delay=delay)
 
 
-__all__ = ["CoolingRamp", "RampStep", "IDLE_MARGIN", "MAX_OFF_ABOVE"]
+__all__ = ["CoolingRamp", "RampStep", "IDLE_MARGIN", "IDLE_STEPS", "MAX_OFF_ABOVE"]

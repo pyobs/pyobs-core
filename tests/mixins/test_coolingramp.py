@@ -243,6 +243,30 @@ async def test_close_keeps_a_given_timeout(monkeypatch: pytest.MonkeyPatch) -> N
     estimate.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_close_with_warmup_asks_for_more_stop_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Whoever stops the module (pyobsd, web-admin, systemd) gets asked to wait for the warm-up, plus 30 s."""
+    from pyobs.mixins import coolingramp
+
+    extend: list[float] = []
+    monkeypatch.setattr(coolingramp, "extend_stop_timeout", lambda seconds: extend.append(seconds))
+    camera = make_camera(cooling_rate_warm=600.0, cooling_close_timeout=45.0, cooling_off_temperature=-8.0)
+    track_setpoint(camera)
+    await camera.close()
+    assert extend == [75.0]
+
+
+@pytest.mark.asyncio
+async def test_close_without_warmup_does_not_ask_for_more_stop_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    from pyobs.mixins import coolingramp
+
+    extend: list[float] = []
+    monkeypatch.setattr(coolingramp, "extend_stop_timeout", lambda seconds: extend.append(seconds))
+    camera = make_camera(cooling_rate_warm=1.0, cooling_warmup_on_close=False)
+    await camera.close()
+    assert extend == []
+
+
 def test_warmup_on_close_is_on_by_default() -> None:
     assert make_camera()._cooling_warmup_on_close is True
 

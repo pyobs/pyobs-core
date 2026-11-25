@@ -6,6 +6,7 @@ from typing import Any
 
 from pyobs.interfaces import CoolingState
 from pyobs.utils.coolingramp import CoolingRamp
+from pyobs.utils.shutdown import extend_stop_timeout
 
 log = logging.getLogger(__name__)
 
@@ -16,6 +17,8 @@ _RETRY_DELAY = 5.0
 _CLOSE_MARGIN_FACTOR = 1.2
 _CLOSE_MARGIN_SECONDS = 60.0
 _CLOSE_FALLBACK_TIMEOUT = 300.0
+# extra time asked from pyobsd/systemd on top of the warm-up, for the rest of close()
+_STOP_TIMEOUT_EXTRA_SECONDS = 30.0
 
 
 class CoolingRampMixin:
@@ -143,6 +146,8 @@ class CoolingRampMixin:
             timeout = self._cooling_close_timeout
             if timeout is None:
                 timeout = await self._cooling_estimated_close_timeout()
+            # whoever stops the module (pyobsd, web-admin, systemd) must not kill it during the warm-up
+            extend_stop_timeout(timeout + _STOP_TIMEOUT_EXTRA_SECONDS)
             self._cooling_target = (False, None)
             try:
                 await asyncio.wait_for(self._cooling_run_to_end(), timeout)

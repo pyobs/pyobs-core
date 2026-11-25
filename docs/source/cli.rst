@@ -109,13 +109,21 @@ There are four basic commands:
     the camera module with aconfiguration in **camera.yaml**.
 
 :pyobsd stop:
-    Works the same way as :program:`pyobsd start`, but stops the modules.
+    Works the same way as :program:`pyobsd start`, but stops the modules. It sends SIGTERM to all of them first, then
+    waits for them to exit. A module that is still running after **--stop-timeout** seconds gets SIGKILL, unless it
+    asked for more time to shut down (e.g. a cooled camera warming up on close, see
+    :class:`~pyobs.mixins.CoolingRampMixin`). In that case pyobsd prints how long it waits and only kills the module
+    after that. With **--no-wait**, it only sends SIGTERM and returns immediately.
 
 :pyobsd restart:
-    The **restart** command is equivalent to calling first **stop** and then **start**
+    The **restart** command is equivalent to calling first **stop** and then **start**. Since it waits for the stop,
+    it can take as long as the warm-up of a cooled camera.
 
 :pyobsd status:
-    Gives an overview of detected configuration files and started modules.
+    Gives an overview of detected configuration files and started modules. Each module is **running**, **stopped**,
+    or **stopping** (it got SIGTERM and is still shutting down, together with how long it may still take if it asked
+    for more time). With **--json**, a stopping module keeps ``"running": true``, since its process is still alive,
+    and the ``"state"`` field tells it apart.
 
 CLI Parameters
 **************
@@ -149,6 +157,11 @@ The command accepts the following optional parameters:
 
 :--chuid <user>\:<group>:
     Switches user to the given user in the given group when starting/stopping a module, defaults to **pyobs**.
+
+:--stop-timeout <seconds>:
+    How long **stop** and **restart** wait after SIGTERM before sending SIGKILL, defaults to 30. A module can ask for
+    more time while it shuts down (it writes the deadline to **<module>.pid.stopping** in the run path). Can also be
+    set as **stop_timeout** in the config file.
 
 :--start-stop-daemon <path>:
     The path to the :program:`start-stop-daemon` executable, defaults to **/sbin/start-stop-daemon**.

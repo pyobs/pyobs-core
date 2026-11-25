@@ -112,6 +112,9 @@ class PyobsCLI(CLI):
         import daemon
         from daemon import pidfile
 
+        # absolute, since DaemonContext changes into the run directory before the application gets the path
+        pid_file = os.path.abspath(pid_file)
+
         # get run directory
         run_dir = os.path.dirname(pid_file)
 
@@ -119,7 +122,7 @@ class PyobsCLI(CLI):
         with daemon.DaemonContext(
             working_directory=run_dir, umask=0o002, pidfile=pidfile.TimeoutPIDLockFile(pid_file)
         ) as _:
-            self.application(**self._config).run()
+            self.application(**{**self._config, "pid_file": pid_file}).run()
 
 
 def main() -> None:

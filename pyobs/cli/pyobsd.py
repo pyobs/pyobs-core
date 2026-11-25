@@ -325,7 +325,21 @@ class PyobsDaemon:
                 stopping[module] = pid
 
         if wait:
-            self._wait_stopped(stopping)
+            try:
+                self._wait_stopped(stopping)
+            except KeyboardInterrupt:
+                # the modules run in their own session and keep shutting down without us
+                print("\nStopped waiting.")
+                now = time.time()
+                for module, pid in stopping.items():
+                    if not self._is_alive(pid):
+                        continue
+                    deadline = read_stop_deadline(self._stop_file(module))
+                    until = ""
+                    if deadline is not None and deadline > now:
+                        until = f" (up to {self._fmt_wait(deadline - now)})"
+                    print(f'{module} keeps shutting down in the background{until}, see "pyobsd status".')
+                sys.exit(130)
 
     def restart(self, modules: list[str] | None = None) -> None:
         self.stop(modules=modules)
@@ -433,6 +447,9 @@ class PyobsDaemon:
             self._pid_file(module),
             "--log-level",
             self._log_level,
+            # the module ends itself if its shutdown takes longer than this (or what it asked for)
+            "--stop-timeout",
+            str(self._stop_timeout),
             self._config_file(module),
         ]
         if self._file_log:
@@ -498,6 +515,12 @@ class PyobsDaemon:
         if pid is None:
             print(f"{module} is not running.")
             return None
+
+        # already shutting down (e.g. an earlier "pyobsd stop" was interrupted): don't signal again, a module with
+        # an older pyobs-core would get killed by a second SIGTERM in the middle of its shutdown
+        if os.path.exists(self._stop_file(module)):
+            print(f"{module} is already shutting down.")
+            return pid
 
         try:
             os.kill(pid, signal.SIGTERM)

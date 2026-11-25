@@ -9,7 +9,12 @@ A module with a long shutdown (e.g. a cooled camera warming up in ``close()``) c
   started with ``--pid-file`` (pyobsd's and web-admin's PID-file mode). They read it with
   :func:`read_stop_deadline` and only send SIGKILL after that deadline.
 
-Without either, it does nothing.
+Without either, it only moves the module's own deadline (see :func:`start_watchdog`).
+
+On the first signal, the application also starts a watchdog thread (:func:`start_watchdog`). It ends the
+process with ``os._exit(1)`` if the shutdown runs past the deadline, so a module whose shutdown hangs does not
+stay "stopping" forever when nobody is waiting to send SIGKILL (``pyobsd stop --no-wait``, Ctrl+C on
+``pyobsd stop``).
 """
 
 from __future__ import annotations
@@ -17,13 +22,22 @@ from __future__ import annotations
 import logging
 import os
 import socket
+import threading
 import time
 
 log = logging.getLogger(__name__)
 
 STOP_FILE_SUFFIX = ".stopping"
 
+# seconds the watchdog waits past the deadline before ending the process, so that pyobsd's SIGKILL (at the
+# deadline) usually comes first, and the module only ends itself when nobody else does
+WATCHDOG_GRACE_SECONDS = 5.0
+
 _stop_file: str | None = None
+
+# the module's own deadline (epoch seconds), as last set by mark_stopping()/extend_stop_timeout()
+_deadline: float | None = None
+_watchdog: threading.Thread | None = None
 
 
 def stop_file_for(pid_file: str) -> str:
@@ -43,6 +57,8 @@ def mark_stopping() -> None:
     In PID-file mode, the stop file is what makes pyobsd and web-admin show the module as "stopping". The deadline
     written is "now" (or a later one that is already there), which extends nothing, since they always wait at least
     their own stop timeout. Under systemd, sends ``STOPPING=1``. Never raises."""
+    global _deadline
+    _deadline = max(time.time(), _deadline or 0.0)
     notify("STOPPING=1")
     if _stop_file is not None:
         _write_deadline(_stop_file, max(time.time(), read_stop_deadline(_stop_file) or 0.0))
@@ -50,13 +66,18 @@ def mark_stopping() -> None:
 
 def extend_stop_timeout(seconds: float) -> None:
     """Asks for up to ``seconds`` more time to shut down, counted from now. Never raises."""
+    global _deadline
+    _deadline = time.time() + seconds
     notify(f"EXTEND_TIMEOUT_USEC={int(seconds * 1_000_000)}")
     if _stop_file is not None:
         _write_deadline(_stop_file, time.time() + seconds)
 
 
 def clear_stop_file() -> None:
-    """Removes the stop file, if any. Called by the application at the end of its shutdown."""
+    """Removes the stop file, if any, and forgets the deadline. Called by the application at the end of its
+    shutdown."""
+    global _deadline
+    _deadline = None
     if _stop_file is None:
         return
     try:
@@ -74,6 +95,51 @@ def read_stop_deadline(path: str) -> float | None:
             return float(f.read().strip())
     except (OSError, ValueError):
         return None
+
+
+def current_deadline() -> float | None:
+    """The module's own deadline (epoch seconds), as last set by :func:`mark_stopping` or
+    :func:`extend_stop_timeout`, or None."""
+    return _deadline
+
+
+def start_watchdog(stop_timeout: float, grace: float = WATCHDOG_GRACE_SECONDS, interval: float = 1.0) -> None:
+    """Starts a daemon thread that ends the process if its shutdown takes too long. Called by the application
+    on the first signal; calling it again does nothing.
+
+    "Too long" is the same as for pyobsd: ``stop_timeout`` after now, or later if the module asked for more
+    time via :func:`extend_stop_timeout`, plus ``grace``. The thread checks the deadline every ``interval``
+    seconds, so later extensions apply. Being a daemon thread, it also covers a hang after ``run()`` returned,
+    e.g. while the interpreter waits for a blocked executor thread."""
+    global _watchdog
+    if _watchdog is not None:
+        return
+    default_deadline = time.time() + stop_timeout
+    _watchdog = threading.Thread(
+        target=_watch, args=(default_deadline, grace, interval), name="pyobs-shutdown-watchdog", daemon=True
+    )
+    _watchdog.start()
+
+
+def _watch(default_deadline: float, grace: float, interval: float) -> None:
+    last: float | None = None
+    while True:
+        # keep the last deadline seen, clear_stop_file() resets it at the very end of the shutdown
+        last = _deadline if _deadline is not None else last
+        deadline = max(default_deadline, last or 0.0) + grace
+        now = time.time()
+        if now >= deadline:
+            break
+        time.sleep(min(interval, deadline - now))
+
+    log.error("Shutdown did not finish in time, exiting now.")
+    clear_stop_file()
+    for handler in logging.getLogger().handlers:
+        try:
+            handler.flush()
+        except Exception:
+            pass
+    os._exit(1)
 
 
 def notify(message: str) -> bool:
@@ -119,5 +185,7 @@ __all__ = [
     "extend_stop_timeout",
     "clear_stop_file",
     "read_stop_deadline",
+    "current_deadline",
+    "start_watchdog",
     "notify",
 ]

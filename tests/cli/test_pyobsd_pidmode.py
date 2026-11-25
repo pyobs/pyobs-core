@@ -460,3 +460,86 @@ def test_stop_not_running(dirs, capsys) -> None:
     daemon = make_daemon(dirs, ["camera.yaml"])
     daemon.stop(["camera"])
     assert "camera is not running." in capsys.readouterr().out
+
+
+# ── stopping a module that is already shutting down, and Ctrl+C ─────────────
+
+
+def wait_for_stop_file(dirs: tuple[Path, Path, Path], name: str) -> None:
+    stop_file = dirs[1] / f"{name}.pid.stopping"
+    for _ in range(100):
+        if stop_file.exists():
+            return
+        time.sleep(0.02)
+    raise RuntimeError("fake module did not write its stop file")
+
+
+def test_stop_does_not_signal_stopping_module_again(dirs, fake_module, mocker, capsys) -> None:
+    """A second "pyobsd stop" (e.g. after Ctrl+C on the first) only waits. A module with an older pyobs-core
+    would get killed by a second SIGTERM in the middle of its shutdown."""
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.1)
+    proc = fake_module("camera", mode="slow", extend=5.0, delay=0.8)
+    daemon.stop(["camera"], wait=False)
+    wait_for_stop_file(dirs, "camera")
+    kill = mocker.spy(pyobsd.os, "kill")
+    capsys.readouterr()
+
+    daemon.stop(["camera"])
+
+    assert [c for c in kill.call_args_list if c.args[1] == signal.SIGTERM] == []
+    assert "camera is already shutting down." in capsys.readouterr().out
+    wait_dead(proc)
+    assert proc.returncode == 0  # waited for, not killed
+
+
+def test_stop_ctrl_c(dirs, fake_module, mocker, capsys) -> None:
+    """Ctrl+C while waiting prints which modules keep shutting down, no traceback, and exits with 130."""
+    daemon = make_daemon(dirs, ["camera.yaml", "telescope.yaml"], stop_timeout=0.1)
+    camera = fake_module("camera", mode="slow", extend=600.0, delay=1.0)
+    fake_module("telescope")
+    real_wait = PyobsDaemon._wait_stopped
+
+    def interrupted(self, stopping):
+        wait_for_stop_file(dirs, "camera")
+        # let the telescope go, so that only the camera is still shutting down
+        real_wait(self, {k: v for k, v in stopping.items() if k == "telescope"})
+        raise KeyboardInterrupt
+
+    mocker.patch.object(PyobsDaemon, "_wait_stopped", interrupted)
+
+    with pytest.raises(SystemExit) as exc:
+        daemon.stop()
+
+    assert exc.value.code == 130
+    out = capsys.readouterr().out
+    assert "Stopped waiting." in out
+    assert 'camera keeps shutting down in the background (up to 10 min), see "pyobsd status".' in out
+    assert "telescope keeps" not in out
+    assert camera.poll() is None  # not killed
+    wait_dead(camera)
+    assert camera.returncode == 0
+
+
+def test_restart_ctrl_c_does_not_start(dirs, mocker) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml"])
+    mocker.patch.object(PyobsDaemon, "_signal_stop", return_value=None)
+    mocker.patch.object(PyobsDaemon, "_wait_stopped", side_effect=KeyboardInterrupt)
+    start = mocker.patch.object(PyobsDaemon, "start")
+
+    with pytest.raises(SystemExit):
+        daemon.restart(["camera"])
+
+    start.assert_not_called()
+
+
+def test_start_passes_stop_timeout(dirs, mocker) -> None:
+    """The module gets pyobsd's stop timeout, for its own watchdog."""
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=12.5)
+    popen = mocker.patch("subprocess.Popen")
+    mocker.patch.object(PyobsDaemon, "_read_pid", return_value=12345)
+    mocker.patch.object(PyobsDaemon, "_is_alive", return_value=True)
+
+    daemon._start_service("camera")
+
+    cmd = popen.call_args.args[0]
+    assert cmd[cmd.index("--stop-timeout") + 1] == "12.5"

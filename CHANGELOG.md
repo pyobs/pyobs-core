@@ -19,12 +19,21 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 - pyobsd `status` shows a module that got SIGTERM and is still shutting down as `stopping`, with how long it may
   still take. `status --json` adds `state` (`running`, `stopping`, `stopped`) and `stop_deadline`, and keeps
   `running: true` for a stopping module. The application marks itself as stopping on SIGTERM.
+- pyobs: `--stop-timeout` (config key `stop_timeout`, default 30 s). On the first signal, the application starts a
+  watchdog that ends the process if the shutdown runs past that, or past the deadline the module asked for, plus
+  5 s. So a hanging shutdown also ends when nobody waits to send SIGKILL (`pyobsd stop --no-wait`, Ctrl+C).
+  pyobsd passes its own `stop_timeout` to the modules it starts.
 
 ### Fixed
 
 - pyobsd no longer kills modules 5 s after SIGTERM. It waits `stop_timeout`, or until the deadline the module
   asked for, so a stop no longer cuts a camera's warm-up on close. `pyobsd stop` sends SIGTERM to all modules
   first and then waits for them together, and prints how long it waits for a module that asked for more time.
+- A second SIGTERM during the shutdown no longer kills the module immediately. The application used to remove its
+  SIGTERM handler after the first signal, so e.g. running `pyobsd stop` again cut a camera's warm-up. Now further
+  signals are only logged. pyobsd also no longer sends SIGTERM to a module that is already shutting down.
+- Ctrl+C on `pyobsd stop` or `restart` prints which modules keep shutting down in the background instead of a
+  traceback, and exits with 130. `restart` does not start the modules then.
 
 ## [2.28.0] - 2026-11-17
 

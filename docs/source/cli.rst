@@ -60,6 +60,12 @@ The command accepts the following optional parameters:
 :-p/--pid-file <file>:
     If given, *pyobs* writes its process ID into the given file and starts in the background.
 
+:--stop-timeout <seconds>:
+    How long the shutdown may take after SIGTERM or Ctrl+C, defaults to 30. A module can ask for more time while it
+    shuts down (e.g. a cooled camera warming up). If the shutdown takes longer than that, plus a few seconds, the
+    module ends itself, so it does not hang even if nobody sends SIGKILL. Further signals during the shutdown are
+    ignored. :program:`pyobsd` passes its own **--stop-timeout** here.
+
 :--gui:
     Shows an additional GUI, which is especially useful under Windows, where a graceful exit is otherwise
     impossible.
@@ -113,7 +119,10 @@ There are four basic commands:
     waits for them to exit. A module that is still running after **--stop-timeout** seconds gets SIGKILL, unless it
     asked for more time to shut down (e.g. a cooled camera warming up on close, see
     :class:`~pyobs.mixins.CoolingRampMixin`). In that case pyobsd prints how long it waits and only kills the module
-    after that. With **--no-wait**, it only sends SIGTERM and returns immediately.
+    after that. With **--no-wait**, it only sends SIGTERM and returns immediately. A module that is already shutting
+    down does not get SIGTERM again, pyobsd only waits for it. Ctrl+C stops waiting, but not the shutdown: pyobsd
+    prints which modules keep shutting down in the background, and **status** shows them as **stopping**. Even then,
+    a module ends itself if its shutdown takes too long (see **--stop-timeout** of :program:`pyobs`).
 
 :pyobsd restart:
     The **restart** command is equivalent to calling first **stop** and then **start**. Since it waits for the stop,

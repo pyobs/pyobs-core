@@ -17,11 +17,18 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 - `pyobs --pid-file` refuses to start if the config file sets `pyobsd.mode: systemd`, so that a module can't
   run twice on a host whose modules run under systemd. `PYOBSD_MODE=pid` overrides it. pyobsd in PID-file
   mode sets it for the modules it starts.
+- A module sends `READY=1` to systemd once it is open (only if `$NOTIFY_SOCKET` is set), for units with
+  `Type=notify`.
+- `pyobsd exec <module>` (internal, not in the help) replaces pyobsd with `pyobs` running the module in the
+  foreground, with the options from the pyobsd config and without a PID file. It finds `<module>.yaml` or
+  `_<module>.yaml`. The systemd unit will run this.
 
 ### Changed
 
 - pyobsd's PID-file code moved into `PidFileDaemon`, with the parts shared by both modes in
   `PyobsDaemonBase`. `PyobsDaemon` stays as an alias.
+- With `--syslog`, a module no longer logs to stderr if stderr is the systemd journal (`$JOURNAL_STREAM`
+  matches stderr), so lines don't show up twice in the journal.
 - The warm-up progress line on close shows the sensor temperature and power the last step was planned with,
   instead of reading them again after the step. The done line says why the warm-up ended (setpoint reached, or
   cooler idle, with the readings). `RampStep` has a new field `idle`.

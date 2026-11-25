@@ -95,7 +95,8 @@ class PyobsDaemonCLI(CLI):
         self._parser.add_argument("-v", "--verbose", action="store_true")
 
         # commands
-        sp = self._parser.add_subparsers(dest="command")
+        # metavar lists the commands for users, without the internal "exec"
+        sp = self._parser.add_subparsers(dest="command", metavar="{start,stop,restart,status,list,logs}")
         sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
         stop_parser = sp.add_parser("stop", help="stop modules")
         stop_parser.add_argument("modules", type=str, nargs="*")
@@ -126,9 +127,12 @@ class PyobsDaemonCLI(CLI):
         sp.add_parser("logs", help="show/follow module logs via journalctl").add_argument(
             "args", nargs=argparse.REMAINDER, help="[module] [journalctl arguments...]"
         )
+        # internal: what the systemd unit runs, replaces pyobsd with "pyobs" for the module, in the foreground
+        sp.add_parser("exec").add_argument("module", type=str)
 
     def run(self) -> None:
-        if self._config["mode"] == "systemd":
+        # "exec" is the same in both modes
+        if self._config["mode"] == "systemd" and self._config["command"] != "exec":
             print("The systemd mode is not implemented in this version of pyobsd yet.")
             sys.exit(1)
 
@@ -162,6 +166,8 @@ class PyobsDaemonCLI(CLI):
                 daemon.list_modules()
             case "logs":
                 daemon.logs(self._config["args"])
+            case "exec":
+                daemon.exec_module(self._config["module"])
 
 
 class PyobsDaemonBase(abc.ABC):
@@ -317,6 +323,49 @@ class PyobsDaemonBase(abc.ABC):
     @abc.abstractmethod
     def status(self, print_json: bool = False, cpu_interval: float | None = None) -> None:
         """Prints the status of all modules."""
+
+    def _pyobs_args(self, module: str) -> list[str]:
+        """Options and config file for running a module with pyobs, the same in both modes."""
+        args = [
+            "--log-level",
+            self._log_level,
+            # the module ends itself if its shutdown takes longer than this (or what it asked for)
+            "--stop-timeout",
+            str(self._stop_timeout),
+            self._config_file(module),
+        ]
+        if self._file_log:
+            os.makedirs(self._log_path, exist_ok=True)
+            args += ["--log-file", self._log_file(module)]
+        if self._syslog:
+            args.append("--syslog")
+        return args
+
+    def _find_config(self, name: str) -> str | None:
+        """The config of a module by its active name: "<name>", or else the disabled "_<name>". A leading
+        underscore in name is ignored. None if neither exists."""
+        active = self._strip_disabled(name)
+        configs = self._list_configs()
+        for module in (active, "_" + active):
+            if module in configs:
+                return module
+        return None
+
+    def exec_module(self, name: str) -> None:
+        """Replaces this process with pyobs running the module in the foreground, without a PID file.
+
+        This is what the systemd unit runs ("pyobsd exec %i", with the active name). The process keeps its PID,
+        so pyobs is the unit's main process and can notify systemd. Runs as the calling user, chuid is not used.
+        """
+        module = self._find_config(name)
+        if module is None:
+            self._error(f"Module {name!r} does not exist.")
+            return
+        cmd = [self._pyobs_exec, *self._pyobs_args(module)]
+        if self._verbose:
+            print(f"[DEBUG] Executing: {' '.join(cmd)}")
+        sys.stdout.flush()
+        os.execv(self._pyobs_exec, cmd)
 
     def list_modules(self) -> None:
         print("\n".join(self._list_configs()))
@@ -552,22 +601,7 @@ class PidFileDaemon(PyobsDaemonBase):
         except FileNotFoundError:
             pass
 
-        cmd = [
-            self._pyobs_exec,
-            "--pid-file",
-            self._pid_file(module),
-            "--log-level",
-            self._log_level,
-            # the module ends itself if its shutdown takes longer than this (or what it asked for)
-            "--stop-timeout",
-            str(self._stop_timeout),
-            self._config_file(module),
-        ]
-        if self._file_log:
-            os.makedirs(self._log_path, exist_ok=True)
-            cmd += ["--log-file", self._log_file(module)]
-        if self._syslog:
-            cmd.append("--syslog")
+        cmd = [self._pyobs_exec, "--pid-file", self._pid_file(module), *self._pyobs_args(module)]
 
         if self._verbose:
             print(f"[DEBUG] Executing: {' '.join(cmd)}")

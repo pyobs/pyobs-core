@@ -1,0 +1,148 @@
+"""Tests for running a module under systemd: READY=1 once the module is open, and no stderr log handler when
+stderr goes to the journal anyway (see specs/plans/2026-11-25-pyobsd-systemd-mode.md)."""
+
+from __future__ import annotations
+
+import logging
+import os
+import sys
+from pathlib import Path
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+
+import logging_journald
+import pytest
+
+from pyobs import application
+from pyobs.application import Application, _stderr_is_journal
+from pyobs.modules import Module
+
+# ── READY=1 ──────────────────────────────────────────────────────────────────
+
+
+def make_module(**kwargs: Any) -> MagicMock:
+    module = MagicMock(spec=Module)
+    module.startup = AsyncMock(**kwargs)
+    module.main = AsyncMock()
+    module.close = AsyncMock()
+    return module
+
+
+def make_app(module: MagicMock) -> Application:
+    app = Application.__new__(Application)
+    app._module = module
+    app._module_factory = None
+    return app
+
+
+@pytest.mark.asyncio
+async def test_ready_after_startup(mocker) -> None:
+    notify = mocker.patch.object(application.shutdown, "notify")
+    module = make_module()
+    # READY=1 must come after startup() and before main()
+    module.main.side_effect = lambda: notify.assert_called_once_with("READY=1")
+
+    await make_app(module)._main()
+
+    module.startup.assert_awaited_once()
+    module.main.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_no_ready_if_startup_fails(mocker) -> None:
+    notify = mocker.patch.object(application.shutdown, "notify")
+    module = make_module(side_effect=RuntimeError("no camera"))
+
+    await make_app(module)._main()
+
+    notify.assert_not_called()
+    module.main.assert_not_awaited()
+
+
+# ── stderr and the journal ───────────────────────────────────────────────────
+
+
+@pytest.fixture
+def stderr_file(tmp_path: Path, monkeypatch):
+    """Returns a function that makes a file stderr and returns the JOURNAL_STREAM value systemd would set for it.
+    It has to be called in the test itself, pytest's output capturing replaces sys.stderr after the fixtures."""
+    with open(tmp_path / "stderr", "w") as f:
+
+        def use() -> str:
+            monkeypatch.setattr(sys, "stderr", f)
+            st = os.fstat(f.fileno())
+            return f"{st.st_dev}:{st.st_ino}"
+
+        yield use
+
+
+def test_stderr_is_journal(stderr_file, monkeypatch) -> None:
+    monkeypatch.setenv("JOURNAL_STREAM", stderr_file())
+    assert _stderr_is_journal()
+
+
+def test_stderr_is_journal_not_set(stderr_file, monkeypatch) -> None:
+    stderr_file()
+    monkeypatch.delenv("JOURNAL_STREAM", raising=False)
+    assert not _stderr_is_journal()
+
+
+def test_stderr_is_journal_inherited(stderr_file, monkeypatch) -> None:
+    """A child process inherits JOURNAL_STREAM, but its stderr may go elsewhere."""
+    device, inode = stderr_file().split(":")
+    monkeypatch.setenv("JOURNAL_STREAM", f"{device}:{int(inode) + 1}")
+    assert not _stderr_is_journal()
+
+
+@pytest.mark.parametrize("value", ["", "garbage", "1:2:3", "a:b"])
+def test_stderr_is_journal_invalid(stderr_file, monkeypatch, value) -> None:
+    stderr_file()
+    monkeypatch.setenv("JOURNAL_STREAM", value)
+    assert not _stderr_is_journal()
+
+
+def test_stderr_is_journal_no_stderr(monkeypatch) -> None:
+    monkeypatch.setenv("JOURNAL_STREAM", "1:2")
+    monkeypatch.setattr(sys, "stderr", None)
+    assert not _stderr_is_journal()
+
+
+class FakeJournaldLogHandler(logging.Handler):
+    """Stands in for logging_journald's handler, so the tests don't need a journal."""
+
+    LEVELS: dict[int, int] = {}
+
+    def __init__(self, identifier: str = "", **kwargs: Any) -> None:
+        super().__init__()
+
+
+def handler_types(monkeypatch, mocker, tmp_path: Path, syslog: bool) -> list[str]:
+    monkeypatch.setattr(logging_journald, "JournaldLogHandler", FakeJournaldLogHandler)
+    basic_config = mocker.patch.object(application.logging, "basicConfig")
+    config = tmp_path / "test_module.yaml"
+    config.write_text("class: pyobs.modules.Module\n")
+
+    app = Application(config=str(config), syslog=syslog)
+    app._loop.close()
+
+    return [type(h).__name__ for h in basic_config.call_args.kwargs["handlers"]]
+
+
+@pytest.mark.asyncio
+async def test_no_stream_handler_under_journal(stderr_file, monkeypatch, mocker, tmp_path) -> None:
+    monkeypatch.setenv("JOURNAL_STREAM", stderr_file())
+    assert handler_types(monkeypatch, mocker, tmp_path, syslog=True) == ["PyobsJournaldLogHandler"]
+
+
+@pytest.mark.asyncio
+async def test_stream_handler_without_syslog(stderr_file, monkeypatch, mocker, tmp_path) -> None:
+    """Without --syslog, stderr is the only way into the journal, so it stays."""
+    monkeypatch.setenv("JOURNAL_STREAM", stderr_file())
+    assert handler_types(monkeypatch, mocker, tmp_path, syslog=False) == ["StreamHandler"]
+
+
+@pytest.mark.asyncio
+async def test_stream_handler_outside_journal(stderr_file, monkeypatch, mocker, tmp_path) -> None:
+    stderr_file()
+    monkeypatch.delenv("JOURNAL_STREAM", raising=False)
+    assert handler_types(monkeypatch, mocker, tmp_path, syslog=True) == ["StreamHandler", "PyobsJournaldLogHandler"]

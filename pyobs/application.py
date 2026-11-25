@@ -4,6 +4,7 @@ import logging.handlers
 import os
 import platform
 import signal
+import sys
 import warnings
 from collections.abc import Awaitable, Callable
 from io import StringIO
@@ -99,6 +100,23 @@ class InfluxLogConfig(TypedDict):
     bucket: str
 
 
+def _stderr_is_journal() -> bool:
+    """Whether stderr is connected to the systemd journal.
+
+    systemd sets $JOURNAL_STREAM to "<device>:<inode>" of that stream. Child processes inherit the variable even if
+    their stderr goes elsewhere, so it is compared with stderr's own device and inode (see systemd.exec(5),
+    $JOURNAL_STREAM)."""
+    value = os.environ.get("JOURNAL_STREAM")
+    if not value:
+        return False
+    try:
+        device, inode = (int(v) for v in value.split(":"))
+        st = os.fstat(sys.stderr.fileno())
+    except (ValueError, OSError, AttributeError):
+        return False
+    return (st.st_dev, st.st_ino) == (device, inode)
+
+
 class Application:
     """Class for initializing and shutting down a pyobs process."""
 
@@ -179,11 +197,13 @@ class Application:
 
         handlers: list[logging.Handler] = []
 
-        # create stdout logging handler
-        stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(formatter)
-        stream_handler.addFilter(module_name_filter)
-        handlers.append(stream_handler)
+        # create stderr logging handler, unless stderr goes to the journal anyway (under systemd), where the
+        # journal handler below already writes every line, with PYOBS_MODULE
+        if not (syslog and _stderr_is_journal()):
+            stream_handler = logging.StreamHandler()
+            stream_handler.setFormatter(formatter)
+            stream_handler.addFilter(module_name_filter)
+            handlers.append(stream_handler)
 
         # create file logging handler, if log file is given
         if log_file is not None:
@@ -443,6 +463,9 @@ class Application:
 
             await self._module.startup()
             log.info("Started successfully.")
+
+            # under systemd (Type=notify), the start only counts as done once the module is open. No-op otherwise
+            shutdown.notify("READY=1")
 
             # run module
             await self._module.main()

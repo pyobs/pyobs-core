@@ -176,6 +176,14 @@ immediately, and shows the module as `stopping` until it is gone (systemd: `Acti
 old mode: process alive and `.stopping` file present). The SIGKILL after the deadline then happens on the
 next status poll in old mode.
 
+**Keep the last deadline seen.** `Application.run()` removes the stop file once its shutdown is done, and
+the process lives on for a moment after that. Whoever waits must keep the last deadline it read instead of
+falling back to `stop_timeout` when the file disappears, or it kills the module in its last moments (found
+in the end-to-end test with `DummyCamera`, fixed in pyobsd's `_wait_stopped`). web-admin polls without
+state, so it would need to store that deadline itself. Simpler: in old mode, web-admin runs
+`pyobsd stop <module>` as a background job, like the restart, and gets the whole wait/kill logic from
+pyobsd instead of a second copy.
+
 **`stopping` state (done in PR #1096, pyobsd side).** `Application` calls `shutdown.mark_stopping()` on
 SIGTERM: it writes "now" as the deadline (or keeps a later one), which extends nothing but marks every
 stopping module, not only those that asked for more time, and sends `STOPPING=1` under systemd.

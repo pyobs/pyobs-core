@@ -29,6 +29,7 @@ class RampStep:
         setpoint: Setpoint to write, None if the cooler is to be switched off.
         done: Whether the ramp has reached its target after this step.
         delay: Seconds to wait before asking for the next step (0 if done).
+        idle: Whether a warm-up stopped early because the cooler was idle.
     """
 
     write: bool
@@ -36,6 +37,7 @@ class RampStep:
     setpoint: float | None
     done: bool
     delay: float
+    idle: bool = False
 
 
 class CoolingRamp:
@@ -148,9 +150,10 @@ class CoolingRamp:
         if not enabled:
             idle = sensor is not None and commanded >= sensor + IDLE_MARGIN and (power is None or power == 0)
             self._idle_count = self._idle_count + 1 if idle else 0
-            if self._idle_count >= self.idle_steps or commanded >= goal or self.rate_warm is None:
+            stop_idle = self._idle_count >= self.idle_steps and commanded < goal
+            if stop_idle or commanded >= goal or self.rate_warm is None:
                 self._idle_count = 0
-                return RampStep(write=True, enabled=False, setpoint=None, done=True, delay=0.0)
+                return RampStep(write=True, enabled=False, setpoint=None, done=True, delay=0.0, idle=stop_idle)
         else:
             self._idle_count = 0
             if commanded == goal:

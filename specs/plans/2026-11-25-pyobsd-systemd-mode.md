@@ -1,6 +1,6 @@
 # Plan: systemd mode for pyobsd
 
-Status: proposed
+Status: in progress (old-mode stop fix in pyobs-core merged in #1096, not released yet)
 Repos: pyobs-core, pyobs-web-admin
 
 ## Summary
@@ -254,12 +254,14 @@ labcourse has no pyobs.
 - [ ] pyobs-core: unit rendering, unit file sync, enable sync, linger check, user manager selection.
 - [ ] pyobs-core: systemd backend for start/stop/restart/status, extended `status --json`.
 - [ ] pyobs-core: skip the stderr `StreamHandler` when `syslog` and `JOURNAL_STREAM` are set.
-- [ ] pyobs-core: `sd_notify` helper (no libsystemd), `READY=1` after open, `extend_stop_timeout()` for
+- [x] pyobs-core: `sd_notify` helper (no libsystemd, `pyobs.utils.shutdown`), `extend_stop_timeout()` for
       both modes (PID file path passed in by `Application`), called once from `CoolingRampMixin.close()`
-      before the warm-up, `.stopping` removed at the end of `Application.run()`.
-- [ ] pyobs-core, old mode: honor `<pid_file>.stopping` in pyobsd `stop`, configurable `stop_timeout`
-      instead of the fixed 5 s, `--no-wait` for `stop`, `restart` prints how long it waits. Adapt
-      `test_stop_kills_after_timeout` in `tests/cli/test_pyobsd_pidmode.py`.
+      before the warm-up, `.stopping` removed at the end of `Application.run()`, `mark_stopping()` on
+      SIGTERM (#1096).
+- [ ] pyobs-core: send `READY=1` after the module is open (systemd mode only).
+- [x] pyobs-core, old mode: honor `<pid_file>.stopping` in pyobsd `stop`, configurable `stop_timeout`
+      instead of the fixed 5 s, `--no-wait` for `stop`, `restart` prints how long it waits, `stopping`
+      state in `status` (#1096).
 - [x] pyobs-core tests for the PID-file mode before refactoring (`tests/cli/test_pyobsd_pidmode.py`, e9a0084a).
 - [ ] pyobs-core tests: unit rendering, sync (tmp dirs, mocked `systemctl`), status JSON parsing.
 - [ ] pyobs-core docs: `cli.rst`, `installing.rst` (linger, switching a host), CHANGELOG.

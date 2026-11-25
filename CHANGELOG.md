@@ -23,6 +23,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   watchdog that ends the process if the shutdown runs past that, or past the deadline the module asked for, plus
   5 s. So a hanging shutdown also ends when nobody waits to send SIGKILL (`pyobsd stop --no-wait`, Ctrl+C).
   pyobsd passes its own `stop_timeout` to the modules it starts.
+- pyobsd: `stop --kill` and `restart --kill` send SIGKILL right away, also to a module that is already shutting
+  down, and remove its run files. A module that is still alive 5 s after SIGKILL keeps its PID file.
 
 ### Fixed
 

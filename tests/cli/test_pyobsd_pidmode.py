@@ -543,3 +543,113 @@ def test_start_passes_stop_timeout(dirs, mocker) -> None:
 
     cmd = popen.call_args.args[0]
     assert cmd[cmd.index("--stop-timeout") + 1] == "12.5"
+
+
+# ── stop --kill ──────────────────────────────────────────────────────────────
+
+
+def test_kill_stopping_module(dirs, fake_module, capsys) -> None:
+    """--kill ends a module right away, also one that is in the middle of a long shutdown."""
+    daemon = make_daemon(dirs, ["camera.yaml"], stop_timeout=0.1)
+    proc = fake_module("camera", mode="slow", extend=600.0, delay=30.0)
+    daemon.stop(["camera"], wait=False)
+    wait_for_stop_file(dirs, "camera")
+
+    start = time.monotonic()
+    daemon.kill(["camera"])
+
+    assert time.monotonic() - start < 3.0
+    wait_dead(proc)
+    assert proc.returncode == -9
+    assert not (dirs[1] / "camera.pid").exists()
+    assert not (dirs[1] / "camera.pid.stopping").exists()
+    assert "Killing camera..." in capsys.readouterr().out
+
+
+def test_kill_without_modules_kills_all_running(dirs, fake_module) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml", "telescope.yaml"])
+    camera = fake_module("camera", mode="ignore")
+    telescope = fake_module("telescope")
+
+    daemon.kill()
+
+    wait_dead(camera)
+    wait_dead(telescope)
+    assert camera.returncode == -9
+    assert telescope.returncode == -9
+    assert list(dirs[1].glob("*.pid")) == []
+
+
+def test_kill_not_running(dirs, capsys) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml"])
+    daemon.kill(["camera"])
+    assert "camera is not running." in capsys.readouterr().out
+
+
+def test_kill_keeps_pid_file_of_process_that_survives(dirs, mocker, capsys) -> None:
+    """A process stuck in the kernel survives SIGKILL for a while. Its PID file stays, so it can't be started twice."""
+    daemon = make_daemon(dirs, ["camera.yaml"])
+    pid_file = write_pid(dirs, "camera", 12345)
+    mocker.patch.object(PyobsDaemon, "_is_alive", return_value=True)
+    kill = mocker.patch.object(pyobsd.os, "kill")
+    mocker.patch.object(pyobsd, "_KILL_WAIT_SECONDS", 0.2)
+
+    with pytest.raises(SystemExit) as exc:
+        daemon.kill(["camera"])
+
+    assert exc.value.code == 1
+    kill.assert_called_once_with(12345, signal.SIGKILL)
+    assert pid_file.exists()
+    assert "camera (PID 12345) is still alive after SIGKILL" in capsys.readouterr().out
+
+
+def test_cli_stop_kill(dirs, mocker, monkeypatch) -> None:
+    """ "pyobsd stop --kill" calls kill(), not stop()."""
+    config, run, log = dirs
+    kill = mocker.patch.object(PyobsDaemon, "kill")
+    stop = mocker.patch.object(PyobsDaemon, "stop")
+    monkeypatch.setattr(
+        sys, "argv", ["pyobsd", "-c", str(config), "-r", str(run), "-l", str(log), "stop", "--kill", "camera"]
+    )
+
+    pyobsd.main()
+
+    kill.assert_called_once_with(modules=["camera"])
+    stop.assert_not_called()
+
+
+def test_restart_kill(dirs, mocker) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml"])
+    kill = mocker.patch.object(PyobsDaemon, "kill")
+    stop = mocker.patch.object(PyobsDaemon, "stop")
+    start = mocker.patch.object(PyobsDaemon, "start")
+    mocker.patch.object(pyobsd.time, "sleep")
+
+    daemon.restart(["camera"], kill=True)
+
+    kill.assert_called_once_with(modules=["camera"])
+    stop.assert_not_called()
+    start.assert_called_once_with(modules=["camera"])
+
+
+def test_restart_kill_does_not_start_if_kill_failed(dirs, mocker) -> None:
+    daemon = make_daemon(dirs, ["camera.yaml"])
+    mocker.patch.object(PyobsDaemon, "kill", side_effect=SystemExit(1))
+    start = mocker.patch.object(PyobsDaemon, "start")
+
+    with pytest.raises(SystemExit):
+        daemon.restart(["camera"], kill=True)
+
+    start.assert_not_called()
+
+
+def test_cli_restart_kill(dirs, mocker, monkeypatch) -> None:
+    config, run, log = dirs
+    restart = mocker.patch.object(PyobsDaemon, "restart")
+    monkeypatch.setattr(
+        sys, "argv", ["pyobsd", "-c", str(config), "-r", str(run), "-l", str(log), "restart", "--kill", "camera"]
+    )
+
+    pyobsd.main()
+
+    restart.assert_called_once_with(modules=["camera"], kill=True)

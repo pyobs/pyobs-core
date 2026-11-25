@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 from pyobs.interfaces import CoolingState
@@ -19,6 +20,8 @@ _CLOSE_MARGIN_SECONDS = 60.0
 _CLOSE_FALLBACK_TIMEOUT = 300.0
 # extra time asked from pyobsd/systemd on top of the warm-up, for the rest of close()
 _STOP_TIMEOUT_EXTRA_SECONDS = 30.0
+# how often the warm-up on close logs its progress, in seconds
+_WARMUP_LOG_INTERVAL = 60.0
 
 
 class CoolingRampMixin:
@@ -150,7 +153,7 @@ class CoolingRampMixin:
             extend_stop_timeout(timeout + _STOP_TIMEOUT_EXTRA_SECONDS)
             self._cooling_target = (False, None)
             try:
-                await asyncio.wait_for(self._cooling_run_to_end(), timeout)
+                await asyncio.wait_for(self._cooling_warm_up(timeout), timeout)
             except TimeoutError:
                 log.warning(
                     "Warm-up on close did not finish within %.0fs (setpoint at %s). "
@@ -190,11 +193,41 @@ class CoolingRampMixin:
 
     # ramp -------------------------------------------------------------------------------------------------------
 
-    async def _cooling_run_to_end(self) -> None:
+    async def _cooling_warm_up(self, timeout: float) -> None:
+        """Runs the warm-up ramp to its end. Logs when it starts, about every _WARMUP_LOG_INTERVAL seconds while it
+        runs, and when it is done, so the log shows why the module takes long to stop."""
+        start = time.monotonic()
+        delay = await self._cooling_tick()
+        if self._cooling_target is None:
+            return  # cooler was off already, or switched off in the first step
+        log.info(
+            "Warming up from %s towards %.1f °C before closing, may take up to %s.",
+            _temperature(self._cooling_commanded),
+            self._cooling_ramp.off_temperature,
+            _duration(timeout),
+        )
+        next_log = start + _WARMUP_LOG_INTERVAL
         while self._cooling_target is not None:
-            delay = await self._cooling_tick()
             if delay:
                 await asyncio.sleep(delay)
+            delay = await self._cooling_tick()
+            now = time.monotonic()
+            if self._cooling_target is not None and now >= next_log:
+                await self._cooling_log_warm_up(start + timeout - now)
+                next_log = now + _WARMUP_LOG_INTERVAL
+        log.info("Warm-up done after %s, cooling is off.", _duration(time.monotonic() - start))
+
+    async def _cooling_log_warm_up(self, left: float) -> None:
+        try:
+            sensor = await self._get_sensor_temperature()
+        except Exception:
+            sensor = None  # only for the log, the next tick reports a real problem
+        log.info(
+            "Warming up: setpoint %s, sensor %s, up to %s left.",
+            _temperature(self._cooling_commanded),
+            _temperature(sensor),
+            _duration(max(0.0, left)),
+        )
 
     async def _cooling_ramp_loop(self) -> None:
         while True:
@@ -276,6 +309,14 @@ class CoolingRampMixin:
         """Marks target as done unless a newer one was set in the meantime."""
         if self._cooling_target is target:
             self._cooling_target = None
+
+
+def _temperature(value: float | None) -> str:
+    return "unknown" if value is None else f"{value:.1f} °C"
+
+
+def _duration(seconds: float) -> str:
+    return f"{seconds:.0f} s" if seconds < 90 else f"{seconds / 60:.0f} min"
 
 
 __all__ = ["CoolingRampMixin"]

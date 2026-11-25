@@ -9,6 +9,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.29.1] - 2026-11-25
+
 ### Changed
 
 - `CoolingRamp` stops a warm-up early only after three idle readings in a row (new argument `idle_steps`,

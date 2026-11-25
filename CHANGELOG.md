@@ -9,6 +9,14 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.29.1] - 2026-11-25
+
+### Changed
+
+- `CoolingRamp` stops a warm-up early only after three idle readings in a row (new argument `idle_steps`,
+  default `IDLE_STEPS` = 3), so a single reading of 0 % power no longer switches the cooler off. The warm-up
+  progress line on close also shows the cooler power.
+
 ## [2.29.0] - 2026-11-25
 
 ### Added

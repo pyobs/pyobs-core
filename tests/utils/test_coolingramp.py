@@ -68,8 +68,39 @@ def test_disable_ramps_to_off_temperature_then_switches_off() -> None:
 def test_disable_stops_early_when_sensor_stops_following() -> None:
     # ambient 5 degC: setpoint passes sensor + 1 on the way, cooler is idle, so switch off
     ramp = CoolingRamp(rate_warm=1.0, off_temperature=20.0)
-    step = ramp.next_step(6.0, False, None, sensor=5.0, power=0)
+    assert ramp.next_step(6.0, False, None, sensor=5.0, power=0).setpoint == 7.0
+    assert ramp.next_step(7.0, False, None, sensor=5.0, power=0).setpoint == 8.0
+    step = ramp.next_step(8.0, False, None, sensor=5.0, power=0)
     assert step.done and step.enabled is False and step.setpoint is None
+
+
+def test_disable_needs_idle_readings_in_a_row() -> None:
+    # a single reading with power on resets the count
+    ramp = CoolingRamp(rate_warm=1.0, off_temperature=20.0)
+    assert not ramp.next_step(6.0, False, None, sensor=5.0, power=0).done
+    assert not ramp.next_step(7.0, False, None, sensor=5.0, power=0).done
+    assert not ramp.next_step(8.0, False, None, sensor=5.0, power=10).done
+    assert not ramp.next_step(9.0, False, None, sensor=5.0, power=0).done
+    assert not ramp.next_step(10.0, False, None, sensor=5.0, power=0).done
+    assert ramp.next_step(11.0, False, None, sensor=5.0, power=0).done
+
+
+def test_idle_count_starts_over_with_a_new_warm_up() -> None:
+    ramp = CoolingRamp(rate_warm=1.0, off_temperature=20.0)
+    ramp.next_step(6.0, False, None, sensor=5.0, power=0)
+    ramp.next_step(7.0, False, None, sensor=5.0, power=0)
+    ramp.next_step(8.0, True, 8.0, sensor=None)  # cooling switched on again in between
+    assert not ramp.next_step(8.0, False, None, sensor=5.0, power=0).done
+
+
+def test_disable_with_one_idle_step_stops_at_once() -> None:
+    step = CoolingRamp(rate_warm=1.0, idle_steps=1).next_step(6.0, False, None, sensor=5.0, power=0)
+    assert step.done and step.enabled is False
+
+
+def test_idle_steps_must_be_positive() -> None:
+    with pytest.raises(ValueError):
+        CoolingRamp(idle_steps=0)
 
 
 def test_disable_keeps_warming_while_the_cooler_still_works() -> None:
@@ -80,7 +111,7 @@ def test_disable_keeps_warming_while_the_cooler_still_works() -> None:
 
 
 def test_disable_without_power_reading_uses_the_sensor_alone() -> None:
-    ramp = CoolingRamp(rate_warm=1.0, off_temperature=20.0)
+    ramp = CoolingRamp(rate_warm=1.0, off_temperature=20.0, idle_steps=1)
     step = ramp.next_step(6.0, False, None, sensor=5.0, power=None)
     assert step.done and step.enabled is False
 

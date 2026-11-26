@@ -53,7 +53,7 @@ Rendered by pyobsd from its config (paths, user, group), roughly:
 [Unit]
 Description=pyobs module %i
 Wants=network-online.target
-After=network-online.target
+After=network-online.target ejabberd.service
 ConditionPathExists=|<config_path>/%i.yaml
 ConditionPathExists=|<config_path>/_%i.yaml
 StartLimitIntervalSec=300
@@ -74,6 +74,11 @@ TimeoutStopSec=30
 ```
 
 - No `[Install]` section, the generator creates the wants links (see "Enable state").
+- `After=ejabberd.service`, without `Wants=`: on a host with a local ejabberd, modules start after it and stop
+  before it, so on a reboot a camera keeps its XMPP connection during the warm-up and modules log out cleanly.
+  On a host without it, `After=` does nothing. Whether ejabberd already accepts connections when systemd counts
+  it as started depends on its unit type (not checked); the XMPP retry covers the gap. An `after:` list in the
+  pyobsd config for other dependencies only if a host needs one.
 - The two `ConditionPathExists=|` lines are ORed (`man systemd.unit`, "Conditions and Asserts"). They cover a
   module started by hand whose config was removed since.
 - `User=`/`Group=` come from `chuid` (default `pyobs:pyobs`). systemd sets `HOME`, `USER` and `LOGNAME` for

@@ -203,7 +203,8 @@ what it will do and asks before doing it:
 
 - create the user,
 - create the directories *config*, *log*, *run* and *storage* in the base path, owned by the user and group, or
-  fix their owner (their content is not touched),
+  fix their owner (their content is not touched). A directory that is a symlink, e.g. into a git checkout,
+  is not changed, setup only warns if its owner is wrong,
 - write the answers into the **pyobsd** section of :file:`/etc/pyobs.yaml`. Other sections and other keys in the
   **pyobsd** section keep their values. An existing file is rewritten as plain YAML, so its comments and formatting
   are lost. The old file is copied to :file:`/etc/pyobs.yaml.bak` first.
@@ -227,6 +228,9 @@ In systemd mode, it also:
 and warns if polkitd is not installed (without it, only root can start and stop modules), if the old
 *pyobs.service* is still enabled, if modules are still running in PID-file mode, and if a module name can't be used
 as a unit name (allowed are letters, digits and ``_.:-``). It doesn't install packages.
+
+In PID-file mode, it removes these files again if a systemd setup left them, so a reboot doesn't start the
+modules as units. It refuses that while modules run as units.
 
 Every other :program:`pyobsd` call in systemd mode compares unit, generator and polkit rule with what setup would
 write and warns if one is missing or outdated.

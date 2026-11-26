@@ -31,7 +31,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   start, stop, restart and kill `pyobs@*.service`. It adds the user to `systemd-journal`, can raise the timeout of
   reboots for cooled cameras (`--shutdown-timeout`), and warns about a missing polkitd, an enabled old
   `pyobs.service` and modules still running with PID files. Other pyobsd calls in systemd mode warn if these files
-  are missing or outdated. The systemd mode itself (start, stop, status) is still not implemented.
+  are missing or outdated. In PID-file mode, it removes these files again. The systemd mode itself (start,
+  stop, status) is still not implemented.
 
 ### Changed
 

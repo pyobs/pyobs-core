@@ -27,6 +27,7 @@ class FakeSystem:
         self.journal: set[str] = set()
         self.units: set[str] = {"polkit.service"}
         self.enabled: set[str] = set()
+        self.active: set[str] = set()
 
     def run(self, cmd: list[str]) -> None:
         self.commands.append(cmd)
@@ -57,6 +58,7 @@ def system(monkeypatch, tmp_path) -> FakeSystem:
     monkeypatch.setattr(_setup, "_in_group", lambda u, g: g == "systemd-journal" and u in fake.journal)
     monkeypatch.setattr(_setup, "_unit_exists", lambda u: u in fake.units)
     monkeypatch.setattr(_setup, "_unit_enabled", lambda u: u in fake.enabled)
+    monkeypatch.setattr(_setup, "_active_units", lambda pattern: sorted(fake.active))
 
     # no real config files in the lookup order
     monkeypatch.setattr(
@@ -586,3 +588,97 @@ def test_cli_passes_shutdown_timeout(monkeypatch, mocker) -> None:
         with pytest.raises(SystemExit):
             pyobsd.main()
         assert init.call_args[0][1].shutdown_timeout == expected
+
+
+# ── back to PID-file mode ────────────────────────────────────────────────────
+
+
+def test_pid_mode_removes_systemd_files(system, tmp_path, capsys) -> None:
+    paths = systemd_paths(tmp_path)
+    assert make_setup(tmp_path, systemd_opts(tmp_path, shutdown_timeout=60))() == 0
+    system.commands.clear()
+
+    assert make_setup(tmp_path, opts(tmp_path, mode="pid"))() == 0
+    for f in (paths.unit, paths.generator, paths.polkit_rule, *paths.shutdown_dropins):
+        assert not os.path.exists(f)
+    # the generator's and the drop-ins' directories go, the shared ones stay
+    assert not os.path.exists(os.path.dirname(paths.generator))
+    assert not any(os.path.exists(os.path.dirname(d)) for d in paths.shutdown_dropins)
+    assert os.path.isdir(os.path.dirname(paths.unit))
+    assert os.path.isdir(os.path.dirname(paths.polkit_rule))
+    assert ["systemctl", "daemon-reload"] in system.commands
+    assert read_config(tmp_path)["pyobsd"]["mode"] == "pid"
+
+    # nothing left to do
+    capsys.readouterr()
+    assert make_setup(tmp_path, opts(tmp_path, mode="pid"))() == 0
+    assert "Nothing to do." in capsys.readouterr().out
+
+
+def test_pid_mode_keeps_other_files_in_shared_dirs(system, tmp_path) -> None:
+    paths = systemd_paths(tmp_path)
+    assert make_setup(tmp_path, systemd_opts(tmp_path, shutdown_timeout=60))() == 0
+    other = Path(paths.shutdown_dropins[0]).parent / "other.conf"
+    other.write_text("[Unit]\n")
+    assert make_setup(tmp_path, opts(tmp_path, mode="pid"))() == 0
+    assert other.exists()
+
+
+def test_pid_mode_refuses_with_running_units(system, tmp_path, capsys) -> None:
+    paths = systemd_paths(tmp_path)
+    assert make_setup(tmp_path, systemd_opts(tmp_path))() == 0
+    system.active.add("pyobs@camera.service")
+
+    assert make_setup(tmp_path, opts(tmp_path, mode="pid"))() == 1
+    assert "running as systemd units: pyobs@camera.service" in capsys.readouterr().out
+    assert os.path.exists(paths.unit)
+    assert read_config(tmp_path)["pyobsd"]["mode"] == "systemd"
+
+
+def test_pid_mode_only_polkit_rule_needs_no_reload(system, tmp_path) -> None:
+    paths = systemd_paths(tmp_path)
+    Path(paths.polkit_rule).parent.mkdir(parents=True)
+    Path(paths.polkit_rule).write_text("old")
+    assert make_setup(tmp_path, opts(tmp_path))() == 0
+    assert not os.path.exists(paths.polkit_rule)
+    assert ["systemctl", "daemon-reload"] not in system.commands
+
+
+def test_removed_shutdown_dropins_take_their_dirs(system, tmp_path) -> None:
+    paths = systemd_paths(tmp_path)
+    assert make_setup(tmp_path, systemd_opts(tmp_path, shutdown_timeout=60))() == 0
+    assert make_setup(tmp_path, systemd_opts(tmp_path, shutdown_timeout=0))() == 0
+    assert not any(os.path.exists(os.path.dirname(d)) for d in paths.shutdown_dropins)
+
+
+# ── symlinked directories ────────────────────────────────────────────────────
+
+
+def test_symlinked_dir_owner_is_not_changed(system, tmp_path, capsys) -> None:
+    target = tmp_path / "checkout" / "config"
+    target.mkdir(parents=True)
+    (tmp_path / "pyobs").mkdir()
+    (tmp_path / "pyobs" / "config").symlink_to(target)
+
+    assert make_setup(tmp_path, opts(tmp_path))() == 0
+    assert str(target) not in system.owners
+    assert str(tmp_path / "pyobs" / "config") not in system.owners
+    assert "config is a symlink, its target is not owned by pyobs:pyobs" in capsys.readouterr().out
+
+
+def test_symlinked_dir_with_right_owner(system, tmp_path, capsys) -> None:
+    target = tmp_path / "checkout" / "config"
+    target.mkdir(parents=True)
+    (tmp_path / "pyobs").mkdir()
+    (tmp_path / "pyobs" / "config").symlink_to(target)
+    system.owners[str(tmp_path / "pyobs" / "config")] = ("pyobs", "pyobs")
+
+    assert make_setup(tmp_path, opts(tmp_path))() == 0
+    assert "is a symlink" not in capsys.readouterr().out
+
+
+def test_broken_symlink_is_an_error(system, tmp_path, capsys) -> None:
+    (tmp_path / "pyobs").mkdir()
+    (tmp_path / "pyobs" / "config").symlink_to(tmp_path / "missing")
+    assert make_setup(tmp_path, opts(tmp_path))() == 1
+    assert "symlink to a missing directory" in capsys.readouterr().out

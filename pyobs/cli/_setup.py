@@ -222,6 +222,8 @@ class Setup:
                 group=group,
             )
             self._plan_systemd(plan, settings)
+        else:
+            self._plan_remove_systemd(plan)
 
         # config files that hide ours, or that we hide
         self._check_shadowing(plan, user)
@@ -248,7 +250,7 @@ class Setup:
                     plan.actions.append(_Action(description, _writer(filename, content, 0o644)))
                     reload = True
             elif os.path.exists(filename):
-                plan.actions.append(_Action(f"Remove {filename}", _remover(filename)))
+                plan.actions.append(_Action(f"Remove {filename}", _remover(filename, remove_empty_dir=True)))
                 reload = True
 
         if reload:
@@ -282,6 +284,29 @@ class Setup:
                 f"These module names can't be unit names, so the modules can't run: {', '.join(invalid)}. "
                 "Use only letters, digits and _.:-"
             )
+
+    def _plan_remove_systemd(self, plan: _Plan) -> None:
+        """PID-file mode: remove what the systemd mode installed, so a reboot doesn't start the modules as units."""
+        paths = self._systemd_paths
+        # (file, whether its directory is ours alone and can go when empty)
+        files = [(paths.unit, False), (paths.generator, True), (paths.polkit_rule, False)]
+        files += [(d, True) for d in paths.shutdown_dropins]
+        installed = [(f, own) for f, own in files if os.path.exists(f)]
+        if not installed:
+            return
+
+        # removing the unit of a running module would leave it running without its unit file
+        active = _active_units("pyobs@*.service")
+        if active:
+            raise SetupError(
+                f"Modules are running as systemd units: {', '.join(active)}. Stop them first: "
+                "systemctl stop 'pyobs@*'"
+            )
+
+        for filename, own in installed:
+            plan.actions.append(_Action(f"Remove {filename} (systemd mode)", _remover(filename, remove_empty_dir=own)))
+        if any(f != paths.polkit_rule for f, _ in installed):
+            plan.actions.append(_Action("Run systemctl daemon-reload", _runner(["systemctl", "daemon-reload"])))
 
     def _ask_shutdown_timeout(self, current: int | None) -> int:
         """Minutes, 0 for none."""
@@ -322,6 +347,16 @@ class Setup:
         plan.actions.append(_Action(f"Create user: {' '.join(cmd)}", lambda: _run(cmd)))
 
     def _plan_directory(self, plan: _Plan, directory: str, user: str, group: str) -> None:
+        if os.path.islink(directory):
+            # e.g. config linked into a git checkout: don't change owners in there
+            if not os.path.isdir(directory):
+                raise SetupError(f"{directory} is a symlink to a missing directory.")
+            if _owner(directory) != (user, group):
+                plan.warnings.append(
+                    f"{directory} is a symlink, its target is not owned by {user}:{group}. Not changed, check that "
+                    f"{user} can read it."
+                )
+            return
         if not os.path.isdir(directory):
             plan.actions.append(
                 _Action(f"Create {directory}, owned by {user}:{group}", lambda: _make_dir(directory, user, group))
@@ -427,8 +462,17 @@ def _writer(filename: str, content: str, mode: int) -> Callable[[], None]:
     return write
 
 
-def _remover(filename: str) -> Callable[[], None]:
-    return lambda: os.remove(filename)
+def _remover(filename: str, remove_empty_dir: bool = False) -> Callable[[], None]:
+    def remove() -> None:
+        os.remove(filename)
+        if remove_empty_dir:
+            try:
+                os.rmdir(os.path.dirname(filename))
+            except OSError:
+                # not empty
+                pass
+
+    return remove
 
 
 def _runner(cmd: list[str]) -> Callable[[], None]:
@@ -468,6 +512,17 @@ def _in_group(user: str, group: str) -> bool:
 def _unit_exists(unit: str) -> bool:
     out = subprocess.run(["systemctl", "list-unit-files", unit], capture_output=True, text=True)
     return unit in out.stdout
+
+
+def _active_units(pattern: str) -> list[str]:
+    """Units matching the pattern that are running, starting or stopping."""
+    cmd = ["systemctl", "list-units", "--plain", "--no-legend", "--state=active,activating,deactivating", pattern]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError:
+        # no systemd
+        return []
+    return [line.split()[0] for line in out.stdout.splitlines() if line.strip()]
 
 
 def _unit_enabled(unit: str) -> bool:

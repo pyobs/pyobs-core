@@ -111,8 +111,8 @@ with the config path), runs at boot and on every `daemon-reload` (`man systemd.g
 - Generators run very early at boot, before most file systems are mounted. The config directory has to be on
   the root file system. On all hosts checked, `/opt/pyobs` is.
 - The script must be fast and must not fail: a missing config directory means no links.
-- `pyobsd status` shows `enabled` from the filename, not from systemd (`UnitFileState` is `generated`, or
-  empty for a disabled module).
+- `pyobsd status` shows `enabled` from the filename, not from systemd (`UnitFileState` is `enabled-runtime`
+  for a linked unit, checked on a host, or empty for a disabled module).
 
 ### polkit rule
 
@@ -183,7 +183,8 @@ Then a summary of every action, `Continue? [y/N]`, and only then changes.
 
 - Create the user, if confirmed.
 - Create `<path>/config`, `log`, `run`, `storage` if missing, owned by the user and group. Existing
-  directories keep their content; only a wrong owner on them is fixed.
+  directories keep their content; only a wrong owner on them is fixed. A symlinked directory (e.g. `config`
+  linked into a git checkout) is not changed, only a warning if its owner is wrong.
 - Write the answers into the `pyobsd` section of `/etc/pyobs.yaml`. A new file is just written. An existing
   file is rewritten with plain `yaml` (no `ruamel.yaml` dependency): other sections keep their values, the
   keys `setup` asks for are replaced in the `pyobsd` section, other keys there (e.g. `stop_timeout`) stay.
@@ -204,6 +205,10 @@ Then a summary of every action, `Continue? [y/N]`, and only then changes.
 4. Checks, no changes, each printing the command that fixes it: polkitd installed (`apt install polkitd`, not
    run by pyobsd), old `pyobs.service` still enabled, PID files of running modules from the old mode, module
    names that aren't valid unit names.
+
+**Actions, PID-file mode only:** remove unit, generator, polkit rule and drop-ins if they exist (from an earlier
+systemd setup), so a reboot doesn't start the modules as units, then `daemon-reload`. Refused while `pyobs@`
+units are running.
 
 **Not done:** installing packages, installing pyobs itself, writing module configs.
 
@@ -360,7 +365,12 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
 - [x] pyobs-core: `pyobsd setup` for both modes: questions and flags, user, directories, `/etc/pyobs.yaml`,
       shadowing config check; `installing.rst` uses it (#1108).
 - [x] pyobs-core: `pyobsd setup` in systemd mode: render and install unit, generator and polkit rule, journal
-      group, shutdown drop-in, checks; other calls compare and warn.
+      group, shutdown drop-in, checks; other calls compare and warn (#1109).
+- [x] Check `pyobsd setup` on a host, both modes and back: idempotent, rewrite with `.bak`, interactive,
+      `systemd-analyze verify`, generator links, polkit as the user, drop-ins. Found: PID-file mode left the
+      systemd files, owner fix through symlinks, empty drop-in directories. Also: pyobsd needs psutil, which
+      is only in the `full` extra. Stays so: the plain install is for pyobs-gui, every host running modules
+      uses `pyobs-core[full]`.
 - [ ] pyobs-core: systemd backend for start/stop/restart/kill/status, extended `status --json`, module name
       check.
 - [ ] pyobs-core tests: setup (tmp dirs, mocked `adduser`/`systemctl`, answers via flags and stdin),

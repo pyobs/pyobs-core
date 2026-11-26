@@ -29,6 +29,9 @@ log = logging.getLogger(__name__)
 
 STOP_FILE_SUFFIX = ".stopping"
 
+# under systemd, the deadline goes into the unit's status text as "stopping, deadline <epoch seconds>"
+STATUS_PREFIX = "STATUS=stopping, deadline "
+
 # seconds the watchdog waits past the deadline before ending the process, so that pyobsd's SIGKILL (at the
 # deadline) usually comes first, and the module only ends itself when nobody else does
 WATCHDOG_GRACE_SECONDS = 5.0
@@ -68,7 +71,8 @@ def extend_stop_timeout(seconds: float) -> None:
     """Asks for up to ``seconds`` more time to shut down, counted from now. Never raises."""
     global _deadline
     _deadline = time.time() + seconds
-    notify(f"EXTEND_TIMEOUT_USEC={int(seconds * 1_000_000)}")
+    # systemd doesn't show the extended deadline, so put it into the status text for "pyobsd status"
+    notify(f"EXTEND_TIMEOUT_USEC={int(seconds * 1_000_000)}\n{STATUS_PREFIX}{_deadline:.3f}")
     if _stop_file is not None:
         _write_deadline(_stop_file, time.time() + seconds)
 
@@ -94,6 +98,18 @@ def read_stop_deadline(path: str) -> float | None:
         with open(path) as f:
             return float(f.read().strip())
     except (OSError, ValueError):
+        return None
+
+
+def parse_status_deadline(status_text: str) -> float | None:
+    """Reads the deadline (epoch seconds) from a unit's status text (``StatusText``), as sent by
+    :func:`extend_stop_timeout`, or None."""
+    prefix = STATUS_PREFIX.removeprefix("STATUS=")
+    if not status_text.startswith(prefix):
+        return None
+    try:
+        return float(status_text[len(prefix) :])
+    except ValueError:
         return None
 
 
@@ -185,6 +201,7 @@ __all__ = [
     "extend_stop_timeout",
     "clear_stop_file",
     "read_stop_deadline",
+    "parse_status_deadline",
     "current_deadline",
     "start_watchdog",
     "notify",

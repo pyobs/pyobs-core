@@ -222,22 +222,29 @@ the configured user; `status` and `list` work for everybody.
 |---|---|---|
 | `start [m...]` | spawn `pyobs --pid-file` | `systemctl start pyobs@m`; no args: all non-underscore modules |
 | `stop [m...]` | SIGTERM, then SIGKILL | `systemctl stop pyobs@m`; no args: all active `pyobs@*` |
-| `stop --kill` | SIGKILL | `systemctl kill -s SIGKILL pyobs@m` |
+| `stop --kill` | SIGKILL | `systemctl kill -s SIGKILL pyobs@m`, then `systemctl stop --no-block pyobs@m` |
 | `stop --no-wait` | SIGTERM only | `systemctl stop --no-block pyobs@m` |
-| `restart [m...]` | stop, sleep, start | `systemctl restart pyobs@m` |
-| `status [--json]` | PID files + psutil | `systemctl show -p ActiveState,SubState,MainPID,NRestarts pyobs@m...`, psutil on `MainPID` for uptime/rss/cpu |
+| `restart [m...]` | stop, sleep, start | `systemctl restart pyobs@m`; no args or `--kill`: stop (kill), then start |
+| `status [--json]` | PID files + psutil | `systemctl show -p ActiveState,SubState,MainPID,NRestarts,StatusText pyobs@m...`, psutil on `MainPID` for uptime/rss/cpu |
 | `list` | configs | unchanged |
-| `logs` | journalctl | unchanged (same `SYSLOG_IDENTIFIER`/`PYOBS_MODULE` match) |
+| `logs` | journalctl | `journalctl -u pyobs@m` (all: `-u 'pyobs@*'`), which also has what the module wrote to stdout/stderr |
 
 - Module names given as `_foo` map to the instance `pyobs@foo`. `pyobsd start _foo` starts it once, it does not
   start at boot.
 - `systemctl start` blocks until `READY=1` or `TimeoutStartSec`, so a module that fails to open is reported as
-  a failed start.
+  a failed start. All modules go into one `systemctl start` call, so they start in parallel, like at boot.
+  That's no more XMPP load than in PID-file mode, where pyobsd only waits for the PID file, not the login.
+- `stop --kill` sends SIGKILL, then a stop (SIGKILL alone counts as a failure, so `Restart=on-failure` would
+  start the module again), then `reset-failed`, so the unit shows as stopped, not failed.
+- `start` and `restart` refuse a module that still runs in PID-file mode, so it can't run twice.
 - `status --json`: keep the current top-level shape (`{module: {...}}`) so old consumers keep working.
   `state` (`running`/`stopping`/`stopped`) and `stop_deadline` already exist in both modes (#1096). Add `mode`
   and `enabled` per module, plus `restarts` (`NRestarts`) in systemd mode, and `failed` as an extra `state`
-  value there (instead of `stopped`, for a unit that failed). Where `stop_deadline` comes from in systemd mode
-  (or whether it stays `null`) is to be decided during implementation.
+  value there (instead of `stopped`, for a unit that failed, also while it waits for an automatic restart,
+  then with `"restarting": true`), and `starting` (`activating`, before `READY=1`). `stop_deadline`: systemd doesn't show the extended timeout
+  (checked: `TimeoutStopUSec` stays at the unit's value after `EXTEND_TIMEOUT_USEC`), so
+  `extend_stop_timeout()` also sends `STATUS=stopping, deadline <epoch>`, and status reads it from
+  `StatusText`.
 - `show` takes several units in one call, so status costs one `systemctl` call, not one per module.
 - If PID files with live processes still exist in systemd mode (leftovers from the old mode), `status` lists
   them as `running (pid mode)` and prints a warning, so a half-migrated host is visible.
@@ -371,12 +378,18 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
       systemd files, owner fix through symlinks, empty drop-in directories. Also: pyobsd needs psutil, which
       is only in the `full` extra. Stays so: the plain install is for pyobs-gui, every host running modules
       uses `pyobs-core[full]`.
-- [ ] pyobs-core: systemd backend for start/stop/restart/kill/status, extended `status --json`, module name
+- [x] pyobs-core: systemd backend for start/stop/restart/kill/status, extended `status --json`, module name
       check.
 - [ ] pyobs-core tests: setup (tmp dirs, mocked `adduser`/`systemctl`, answers via flags and stdin),
       rendering, generator script, status JSON parsing.
 - [ ] pyobs-core docs: `cli.rst`, `installing.rst` (polkitd, journal group, where to put `mode`, shutdown
       drop-in, switching a host), CHANGELOG.
+- [x] Check the systemd backend on a host (unit for a test path, no generator/polkit): start of several
+      modules in one call returns after `READY=1`, status/JSON, `logs` via `-u` with module fields and no
+      duplicate lines, `stop --no-wait` with `extend_stop_timeout(90)` shows "stopping (up to 86 s)" from
+      `StatusText` and systemd waits past `TimeoutStopSec=30`, `stop --kill` doesn't restart, a failing
+      start is reported right away, `restart` gives a new PID. Found and fixed: `failed` after `--kill`,
+      `starting` shown for a unit waiting for its automatic restart.
 - [ ] Check on one host: comm reconnect at boot with the server down, journal without duplicates, reboot
       starts enabled modules only, reboot during a warm-up.
 - [ ] Release pyobs-core.

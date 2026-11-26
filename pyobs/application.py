@@ -167,6 +167,8 @@ class Application:
         """
         self._stop_timeout = float(stop_timeout)
         self._stopping = False
+        # set if a step of _main() raised, makes run() return 1
+        self._failed = False
         # stop file for extend_stop_timeout(), removed again at the end of run(); one left behind by an earlier
         # run (e.g. killed during shutdown) would make this run look like it is stopping
         shutdown.set_stop_file(shutdown.stop_file_for(pid_file) if pid_file is not None else None)
@@ -348,12 +350,20 @@ class Application:
             self._loop = loop_module_class.new_event_loop()
             asyncio.set_event_loop(self._loop)
 
-    def run(self) -> None:
-        """Run app."""
+    def run(self) -> int:
+        """Run app.
+
+        Returns:
+            Exit code: 1 if creating, opening, running or closing the module raised, otherwise 0. A stop by signal
+            is a normal end, so systemd only restarts the module (Restart=on-failure) after an error.
+        """
 
         # run main task forever -- created before the signal handlers are registered below, so
         # a signal arriving the instant it's registered can never find self._main_task unset
         self._main_task = self._loop.create_task(self._main())
+        # once _main() is done, e.g. after a failed startup, nothing is left to do, so end the process instead of
+        # idling until a signal. Normally, Module.quit() has already stopped the loop by then
+        self._main_task.add_done_callback(lambda _: self._loop.stop())
 
         # signals
         for sig in (signal.SIGTERM, signal.SIGINT):
@@ -393,6 +403,8 @@ class Application:
 
         # shutdown is done, so a deadline from extend_stop_timeout() no longer applies
         shutdown.clear_stop_file()
+
+        return 1 if self._failed else 0
 
     def _signal_handler(self, sig: int) -> None:
         """React to signals and quit the module."""
@@ -473,6 +485,7 @@ class Application:
         except Exception:
             # some exception was thrown
             log.exception("Something went wrong.")
+            self._failed = True
 
         finally:
             # shutting down
@@ -484,7 +497,8 @@ class Application:
                 try:
                     await self._module.close()
                 except Exception:
-                    log.exception("hey")
+                    log.exception("Could not close module.")
+                    self._failed = True
 
             # finished
             log.info("Finished shutting down.")

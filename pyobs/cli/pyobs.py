@@ -112,11 +112,11 @@ class PyobsCLI(CLI):
             delta = Time(self._config["debug_time"]) - Time.now()
             Time.set_offset_to_now(delta)
 
-        # run app
+        # run app, exit with its exit code
         if self._config["pid_file"] is not None:
-            self._start_daemon(**self._config)
+            sys.exit(self._start_daemon(**self._config))
         else:
-            self.application(**self._config).run()
+            sys.exit(self.application(**self._config).run())
 
     def _check_pid_mode(self) -> None:
         """Exits if pyobsd runs the modules on this host under systemd, see pyobsd_mode."""
@@ -130,7 +130,7 @@ class PyobsCLI(CLI):
                 f"Use pyobsd start <module>, or set {PYOBSD_MODE_ENV}=pid to start it with a PID file anyway."
             )
 
-    def _start_daemon(self, pid_file: str, **kwargs: Any) -> None:
+    def _start_daemon(self, pid_file: str, **kwargs: Any) -> int:
         """Start process as a daemon.
 
         Args:
@@ -149,7 +149,7 @@ class PyobsCLI(CLI):
         with daemon.DaemonContext(
             working_directory=run_dir, umask=0o002, pidfile=pidfile.TimeoutPIDLockFile(pid_file)
         ) as _:
-            self.application(**{**self._config, "pid_file": pid_file}).run()
+            return self.application(**{**self._config, "pid_file": pid_file}).run()
 
 
 def main() -> None:

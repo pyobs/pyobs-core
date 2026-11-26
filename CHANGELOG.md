@@ -29,6 +29,10 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   `PyobsDaemonBase`. `PyobsDaemon` stays as an alias.
 - With `--syslog`, a module no longer logs to stderr if stderr is the systemd journal (`$JOURNAL_STREAM`
   matches stderr), so lines don't show up twice in the journal.
+- `pyobs` exits with code 1 if creating, opening, running or closing the module raised, otherwise 0 (also
+  after a stop by signal). `Application.run()` returns that code. Before, it was always 0.
+- A module whose startup failed now exits right away. Before, the process stayed alive, doing nothing, until
+  it got a signal, so in PID-file mode it showed as running.
 - The warm-up progress line on close shows the sensor temperature and power the last step was planned with,
   instead of reading them again after the step. The done line says why the warm-up ended (setpoint reached, or
   cooler idle, with the readings). `RampStep` has a new field `idle`.

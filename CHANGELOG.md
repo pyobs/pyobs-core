@@ -9,6 +9,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.30.1] - 2026-11-26
+
 ### Added
 
 - `pyobsd start --no-wait` and `pyobsd restart --no-wait`: in systemd mode, return once the job is queued

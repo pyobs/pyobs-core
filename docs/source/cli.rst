@@ -190,11 +190,13 @@ Setting up a host
 *****************
 :program:`pyobsd setup`, run as root, sets up a host for :program:`pyobsd`. It asks for:
 
-1. the mode, **pid** (the systemd mode is not supported by setup yet),
+1. the mode, **pid** (default) or **systemd**,
 2. the user and group to run the modules as (default **pyobs:pyobs**), and whether to create the user if it doesn't
    exist (with ``adduser --system``, home directory is the base path),
 3. the base path (default **/opt/pyobs**),
-4. whether to log to the systemd journal (default yes) and to log files (default no).
+4. whether to log to the systemd journal (default yes) and to log files (default no),
+5. in systemd mode only: whether the host has cooled cameras, and if so, how many minutes a reboot or poweroff may
+   wait for the modules to stop (default 60).
 
 The default for each question is the current value from the config file, else the built-in default. Then it shows
 what it will do and asks before doing it:
@@ -206,6 +208,29 @@ what it will do and asks before doing it:
   **pyobsd** section keep their values. An existing file is rewritten as plain YAML, so its comments and formatting
   are lost. The old file is copied to :file:`/etc/pyobs.yaml.bak` first.
 
+In systemd mode, it also:
+
+- writes the template unit :file:`/etc/systemd/system/pyobs@.service`, which runs a module as the user, as
+  ``pyobsd exec <module>``. It uses the :program:`pyobsd` that runs setup, so run setup again after moving pyobs to
+  another environment.
+- writes the generator :file:`/etc/systemd/system-generators/pyobs-generator`, which starts every module whose config
+  file doesn't start with an underscore at boot. Renaming a config file changes that at the next boot, no
+  ``systemctl enable`` needed.
+- writes the polkit rule :file:`/etc/polkit-1/rules.d/50-pyobs.rules`, which lets the user start, stop, restart and
+  kill ``pyobs@*.service``, and nothing else,
+- runs ``systemctl daemon-reload`` if the unit, the generator or a drop-in changed,
+- adds the user to the group *systemd-journal*, to read the module logs,
+- with cooled cameras, writes drop-ins for *reboot.target* and *poweroff.target* that raise their
+  ``JobTimeoutSec`` (30 min by default on Debian 13), so a reboot doesn't cut a camera's warm-up. Without, it
+  removes them.
+
+and warns if polkitd is not installed (without it, only root can start and stop modules), if the old
+*pyobs.service* is still enabled, if modules are still running in PID-file mode, and if a module name can't be used
+as a unit name (allowed are letters, digits and ``_.:-``). It doesn't install packages.
+
+Every other :program:`pyobsd` call in systemd mode compares unit, generator and polkit rule with what setup would
+write and warns if one is missing or outdated.
+
 It warns if a config file earlier in the lookup order (see :ref:`cli-config-file`) exists, e.g.
 :file:`~/.config/pyobs.yaml`, since that would be used instead, and if :file:`/opt/pyobs/storage/pyobs.yaml` has a
 **pyobsd** section, which is then ignored. It's safe to run it again, it only changes what differs.
@@ -213,7 +238,7 @@ It warns if a config file earlier in the lookup order (see :ref:`cli-config-file
 Every question has an option. A question given as an option is not asked. With **-y**, or if stdin is not a
 terminal, nothing is asked at all, and options not given take their default:
 
-:--mode pid:
+:--mode pid|systemd:
     The mode.
 
 :--user <user>[\:<group>]:
@@ -228,6 +253,10 @@ terminal, nothing is asked at all, and options not given take their default:
 
 :--syslog/--no-syslog, --file-log/--no-file-log:
     Logging, see above.
+
+:--shutdown-timeout <minutes>, --no-shutdown-timeout:
+    systemd mode: the timeout for reboots and poweroffs on hosts with cooled cameras, or none. Defaults to the
+    current drop-in, if there is one.
 
 :-y/--yes:
     Ask nothing, don't confirm.

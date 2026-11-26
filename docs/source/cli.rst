@@ -138,6 +138,9 @@ There are four basic commands:
     for more time). With **--json**, a stopping module keeps ``"running": true``, since its process is still alive,
     and the ``"state"`` field tells it apart.
 
+:pyobsd setup:
+    Sets up the host, see :ref:`cli-pyobsd-setup`.
+
 CLI Parameters
 **************
 The command accepts the following optional parameters:
@@ -180,3 +183,56 @@ The command accepts the following optional parameters:
     The path to the :program:`start-stop-daemon` executable, defaults to **/sbin/start-stop-daemon**.
 
 Note that none of the pathes have to be defined, if the recommended path structure is used.
+
+.. _cli-pyobsd-setup:
+
+Setting up a host
+*****************
+:program:`pyobsd setup`, run as root, sets up a host for :program:`pyobsd`. It asks for:
+
+1. the mode, **pid** (the systemd mode is not supported by setup yet),
+2. the user and group to run the modules as (default **pyobs:pyobs**), and whether to create the user if it doesn't
+   exist (with ``adduser --system``, home directory is the base path),
+3. the base path (default **/opt/pyobs**),
+4. whether to log to the systemd journal (default yes) and to log files (default no).
+
+The default for each question is the current value from the config file, else the built-in default. Then it shows
+what it will do and asks before doing it:
+
+- create the user,
+- create the directories *config*, *log*, *run* and *storage* in the base path, owned by the user and group, or
+  fix their owner (their content is not touched),
+- write the answers into the **pyobsd** section of :file:`/etc/pyobs.yaml`. Other sections and other keys in the
+  **pyobsd** section keep their values. An existing file is rewritten as plain YAML, so its comments and formatting
+  are lost. The old file is copied to :file:`/etc/pyobs.yaml.bak` first.
+
+It warns if a config file earlier in the lookup order (see :ref:`cli-config-file`) exists, e.g.
+:file:`~/.config/pyobs.yaml`, since that would be used instead, and if :file:`/opt/pyobs/storage/pyobs.yaml` has a
+**pyobsd** section, which is then ignored. It's safe to run it again, it only changes what differs.
+
+Every question has an option. A question given as an option is not asked. With **-y**, or if stdin is not a
+terminal, nothing is asked at all, and options not given take their default:
+
+:--mode pid:
+    The mode.
+
+:--user <user>[\:<group>]:
+    The user and group, the group defaults to the user's name.
+
+:--create-user/--no-create-user:
+    Create the user if it doesn't exist. Without **--create-user**, a missing user is an error when nothing is
+    asked.
+
+:--path <dir>:
+    The base path.
+
+:--syslog/--no-syslog, --file-log/--no-file-log:
+    Logging, see above.
+
+:-y/--yes:
+    Ask nothing, don't confirm.
+
+:--strict:
+    Exit with code 1 on warnings, too. The changes are still made.
+
+The exit code is 0 if the host is set up, and 1 on an error, so a deploy script can check it.

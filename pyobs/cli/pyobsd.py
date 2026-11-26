@@ -47,11 +47,13 @@ class PyobsDaemonCLI(CLI):
     # pyobsd_mode), instead of the generic $PYOBS_<KEY>
 
     def init_cli(self) -> None:
-        # mode
+        # mode, an invalid one is only an error for commands other than "setup", which can fix it
+        self._mode_error: str | None = None
         try:
             mode = pyobsd_mode(self.file_config)
         except ValueError as e:
-            self._parser.error(str(e))
+            self._mode_error = str(e)
+            mode = "pid"
         self._parser.add_argument(
             "--mode",
             type=str,
@@ -96,7 +98,7 @@ class PyobsDaemonCLI(CLI):
 
         # commands
         # metavar lists the commands for users, without the internal "exec"
-        sp = self._parser.add_subparsers(dest="command", metavar="{start,stop,restart,status,list,logs}")
+        sp = self._parser.add_subparsers(dest="command", metavar="{start,stop,restart,status,list,logs,setup}")
         sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
         stop_parser = sp.add_parser("stop", help="stop modules")
         stop_parser.add_argument("modules", type=str, nargs="*")
@@ -127,10 +129,53 @@ class PyobsDaemonCLI(CLI):
         sp.add_parser("logs", help="show/follow module logs via journalctl").add_argument(
             "args", nargs=argparse.REMAINDER, help="[module] [journalctl arguments...]"
         )
+        self._add_setup_parser(sp)
         # internal: what the systemd unit runs, replaces pyobsd with "pyobs" for the module, in the foreground
         sp.add_parser("exec").add_argument("module", type=str)
 
+    @staticmethod
+    def _add_setup_parser(sp: Any) -> None:
+        # own dests (setup_*), so they don't clash with the global options of the same name; None means "not given"
+        p = sp.add_parser(
+            "setup",
+            help="set up this host for pyobsd (as root): user, directories, /etc/pyobs.yaml",
+            description="Set up this host for pyobsd. Asks for every value not given as an option, unless -y is "
+            "given or stdin is not a terminal. Run as root.",
+        )
+        p.add_argument("--mode", dest="setup_mode", choices=PYOBSD_MODES, default=None)
+        p.add_argument("--user", dest="setup_user", metavar="USER[:GROUP]", default=None, help="the user for pyobs")
+        p.add_argument(
+            "--create-user",
+            dest="setup_create_user",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="create the user if it doesn't exist (never done unattended without this)",
+        )
+        p.add_argument("--path", dest="setup_path", metavar="DIR", default=None, help="base path")
+        p.add_argument(
+            "--syslog",
+            dest="setup_syslog",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="log to the systemd journal",
+        )
+        p.add_argument(
+            "--file-log",
+            dest="setup_file_log",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="also write log files",
+        )
+        p.add_argument("-y", "--yes", dest="setup_yes", action="store_true", help="ask nothing, don't confirm")
+        p.add_argument("--strict", dest="setup_strict", action="store_true", help="exit with 1 on warnings")
+
     def run(self) -> None:
+        if self._config["command"] == "setup":
+            self._run_setup()
+            return
+        if self._mode_error is not None:
+            self._parser.error(self._mode_error)
+
         # "exec" is the same in both modes
         if self._config["mode"] == "systemd" and self._config["command"] != "exec":
             print("The systemd mode is not implemented in this version of pyobsd yet.")
@@ -168,6 +213,22 @@ class PyobsDaemonCLI(CLI):
                 daemon.logs(self._config["args"])
             case "exec":
                 daemon.exec_module(self._config["module"])
+
+    def _run_setup(self) -> None:
+        from ._setup import Setup, SetupOptions
+
+        c = self._config
+        options = SetupOptions(
+            mode=c["setup_mode"],
+            user=c["setup_user"],
+            create_user=c["setup_create_user"],
+            path=c["setup_path"],
+            syslog=c["setup_syslog"],
+            file_log=c["setup_file_log"],
+            yes=c["setup_yes"],
+            strict=c["setup_strict"],
+        )
+        sys.exit(Setup(options, self.file_config)())
 
 
 class PyobsDaemonBase(abc.ABC):

@@ -124,5 +124,5 @@ def test_exec_not_in_help(monkeypatch, capsys) -> None:
     with pytest.raises(SystemExit):
         pyobsd.main()
     out = capsys.readouterr().out
-    assert "{start,stop,restart,status,list,logs}" in out
+    assert "{start,stop,restart,status,list,logs,setup}" in out
     assert "exec" not in out

@@ -22,6 +22,11 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 - `pyobsd exec <module>` (internal, not in the help) replaces pyobsd with `pyobs` running the module in the
   foreground, with the options from the pyobsd config and without a PID file. It finds `<module>.yaml` or
   `_<module>.yaml`. The systemd unit will run this.
+- `pyobsd setup`, run as root, sets up a host for pyobsd: creates the user (only when confirmed or with
+  `--create-user`), the directories `config`, `log`, `run` and `storage`, and writes the `pyobsd` section of
+  `/etc/pyobs.yaml` (rewritten as plain YAML, the old file is kept as `.bak`). It asks for every value, or takes
+  them from options (`--mode`, `--user`, `--path`, `--syslog`, `--file-log`, `-y`) to run unattended. It warns
+  about config files that hide `/etc/pyobs.yaml`. For now only the PID-file mode.
 
 ### Changed
 

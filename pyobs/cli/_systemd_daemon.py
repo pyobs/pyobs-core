@@ -157,6 +157,11 @@ class SystemdDaemon(PyobsDaemonBase):
         if not to_start:
             return
 
+        # after 5 failed starts in 5 min, systemd refuses every start until the counter is reset, also a manual one
+        failed = [u for u in to_start if states.get(u, {}).get("ActiveState") == "failed"]
+        if failed:
+            self._systemctl("reset-failed", "--", *failed)
+
         # one call for all, like at boot: systemd starts them in parallel and returns once all sent READY=1
         print(f"Starting {', '.join(self._module_of_unit(u) for u in to_start)}...")
         if self._systemctl("start", "--", *to_start).returncode != 0:

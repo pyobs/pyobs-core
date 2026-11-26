@@ -150,7 +150,8 @@ every module runs as an instance of the systemd unit **pyobs@.service**, e.g. **
 and writes everything a module prints to the journal. The commands stay the same, they call :program:`systemctl`:
 
 - **start** starts all modules in one call, so they start in parallel, and returns once all are open. A module
-  that fails to open is reported as a failed start. A module that still runs in PID-file mode is refused.
+  that fails to open is reported as a failed start. A module that still runs in PID-file mode is refused. A
+  failed module is reset first (``systemctl reset-failed``), so it also starts after systemd gave up restarting it.
 - **stop** waits for the modules to stop, as long as they asked for (e.g. a camera warming up). **--no-wait**
   returns right away, **--kill** sends SIGKILL and then stops the unit, so that systemd doesn't restart it.
 - **status** also shows **starting** (not open yet), **failed** (stopped after an error, or waiting for systemd

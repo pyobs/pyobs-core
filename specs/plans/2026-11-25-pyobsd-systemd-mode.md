@@ -34,10 +34,11 @@ Python package.
   disabled. A systemd generator turns that into the boot-time wants links. `systemctl enable`/`disable` is
   never used.
 - **polkit, not sudo**, for the pyobs user: start, stop, restart and kill on `pyobs@*.service` only.
-- **Root installs, everybody else uses.** Unit, generator and polkit rule are written only when pyobsd runs as
-  root. As the pyobs user, pyobsd only compares and warns.
-- **No new user-facing pyobsd commands.** Installing happens on any pyobsd call as root in systemd mode.
-  Activate/deactivate stays a rename of the config file. The unit uses the hidden `pyobsd exec <module>`
+- **`pyobsd setup` installs, everybody else uses.** One new command, run as root, sets up a host for either
+  mode: directories, user, `/etc/pyobs.yaml`, and in systemd mode unit, generator and polkit rule (see
+  "pyobsd setup"). No other call writes outside the module directories: in systemd mode, pyobsd only compares
+  the installed files and warns ("run pyobsd setup").
+- Activate/deactivate stays a rename of the config file. The unit uses the hidden `pyobsd exec <module>`
   (#1106).
 - **`pyobs --pid-file` refuses to start in systemd mode** (#1105).
 - **web-admin calls `pyobsd`** through a new `PYOBSD_EXEC` setting (like `PYOBS_EXEC`), only in systemd mode.
@@ -137,16 +138,75 @@ polkit.addRule(function(action, subject) {
 - `daemon-reload` and unit-file changes stay root-only.
 - Needs polkitd, which is missing on most hosts so far (doc step).
 
-### Install on pyobsd calls as root (systemd mode only)
+### pyobsd setup
 
-1. Render unit, generator and polkit rule, compare each with the file on disk. Write the ones that are missing
-   or differ. If unit or generator changed, run `systemctl daemon-reload`. A new pyobs-core version or changed
-   config then updates them on the next root call.
-2. Check that the user from `chuid` is in `systemd-journal`. If not, warn (needed for `pyobsd logs` and
-   web-admin's log view as that user).
+`pyobsd setup` sets up a host, for both modes. Run as root, idempotent, safe to re-run (e.g. after a pyobs-core
+upgrade, to update the unit). It replaces the manual steps in `installing.rst` (`adduser`, `mkdir`, config
+file).
 
-As the pyobs user: compare only, and warn if something is missing or outdated ("run pyobsd as root once").
-Other users: commands that change state are refused by polkit anyway, `status` and `list` work.
+**Questions**, each with the current value as default (from the active config file, else the built-in
+default):
+
+1. Mode: `pid` or `systemd` (default `pid`).
+2. User and group (`chuid`, default `pyobs:pyobs`). If the user doesn't exist, offer to create it
+   (`adduser --system --group --home <path> <user>`).
+3. Base path (default `/opt/pyobs`).
+4. Logging: journal (`syslog`, default on), log files in `log/` (`file_log`, default off).
+5. systemd mode only: cooled cameras on this host? If yes, the shutdown timeout for reboots in minutes (default
+   60).
+
+Then a summary of every action, `Continue? [y/N]`, and only then changes.
+
+**Unsupervised:** every question has a command line option, so `setup` can run without anyone answering
+(deploy scripts):
+
+| question | option |
+|---|---|
+| mode | `--mode pid\|systemd` |
+| user and group | `--user <user>[:<group>]` |
+| create a missing user | `--create-user` / `--no-create-user` |
+| base path | `--path <dir>` |
+| journal | `--syslog` / `--no-syslog` |
+| log files | `--file-log` / `--no-file-log` |
+| cooled cameras, shutdown timeout | `--shutdown-timeout <min>` / `--no-shutdown-timeout` |
+| `Continue?` | `-y` |
+
+- A question given as an option is not asked. With `-y`, or if stdin is not a terminal, nothing is asked:
+  options not given take their default (current value, else built-in default), and the summary is printed
+  but not confirmed.
+- Exception: a missing user is never created without `--create-user`. Unsupervised, a missing user without
+  that option is an error, before any change.
+- Exit code 0 if everything is set up, 1 on an error, so a deploy script can check it. Warnings from the checks
+  (polkitd, old `pyobs.service`, PID files) don't change the exit code, but `--strict` makes them errors.
+
+**Actions, both modes:**
+
+- Create the user, if confirmed.
+- Create `<path>/config`, `log`, `run`, `storage` if missing, owned by the user and group. Existing
+  directories keep their content; only a wrong owner on them is fixed.
+- Write the answers into the `pyobsd` section of `/etc/pyobs.yaml`. A new file is just written. An existing
+  file is rewritten with plain `yaml` (no `ruamel.yaml` dependency): other sections keep their values, the
+  `pyobsd` section is replaced. Comments and formatting are lost, so before `Continue?` the summary warns
+  about that and shows the diff of the values, and the old file is copied to `/etc/pyobs.yaml.bak` before
+  writing.
+- Warn if a config file earlier in the lookup order exists (`~/.config/pyobs.yaml` of root or of the user),
+  since it would hide `/etc/pyobs.yaml`. `/opt/pyobs/storage/pyobs.yaml` comes after it, so its `pyobsd`
+  section would be ignored; warn about that too.
+
+**Actions, systemd mode only:**
+
+1. Render unit, generator and polkit rule, compare each with the file on disk, write the ones that are missing
+   or differ. If unit or generator changed, run `systemctl daemon-reload`.
+2. Add the user to `systemd-journal` (needed for `pyobsd logs` and web-admin's log view as that user).
+3. With a shutdown timeout: a drop-in raising `JobTimeoutSec` of `reboot.target` and `poweroff.target`.
+4. Checks, no changes, each printing the command that fixes it: polkitd installed (`apt install polkitd`, not
+   run by pyobsd), old `pyobs.service` still enabled, PID files of running modules from the old mode.
+
+**Not done:** installing packages, installing pyobs itself, writing module configs.
+
+**Other calls in systemd mode:** compare unit, generator and polkit rule with what `setup` would write, and warn
+if something is missing or outdated. Commands that change state are refused by polkit for anyone but root and
+the configured user; `status` and `list` work for everybody.
 
 ### Commands in systemd mode
 
@@ -294,12 +354,14 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
 - [x] pyobs-core: send `READY=1` after the module is open (#1106).
 - [x] pyobs-core: exit code 1 after an error, exit after a failed startup (#1107).
 - [x] Check on a host: polkit gets `unit`/`verb` for `manage-units`, verbs of `kill`/`reset-failed`.
-- [ ] pyobs-core: render unit, generator and polkit rule, install as root, compare and warn otherwise,
-      journal group check.
+- [ ] pyobs-core: `pyobsd setup` for both modes: questions and flags, user, directories, `/etc/pyobs.yaml`,
+      shadowing config check; `installing.rst` uses it (own PR, before the systemd parts).
+- [ ] pyobs-core: `pyobsd setup` in systemd mode: render and install unit, generator and polkit rule, journal
+      group, shutdown drop-in, checks; other calls compare and warn.
 - [ ] pyobs-core: systemd backend for start/stop/restart/kill/status, extended `status --json`, module name
       check.
-- [ ] pyobs-core tests: rendering, install (tmp dirs, mocked `systemctl`), generator script, status JSON
-      parsing.
+- [ ] pyobs-core tests: setup (tmp dirs, mocked `adduser`/`systemctl`, answers via flags and stdin),
+      rendering, generator script, status JSON parsing.
 - [ ] pyobs-core docs: `cli.rst`, `installing.rst` (polkitd, journal group, where to put `mode`, shutdown
       drop-in, switching a host), CHANGELOG.
 - [ ] Check on one host: comm reconnect at boot with the server down, journal without duplicates, reboot
@@ -314,11 +376,14 @@ Later:
 ## Switching a host
 
 1. `pyobsd stop` (PID-file mode).
-2. As root: install polkitd if missing, add the pyobs user to `systemd-journal`. On hosts with cooled cameras,
-   a drop-in raising `JobTimeoutSec` of `reboot.target` and `poweroff.target`.
-3. Set `mode: systemd` in `/etc/pyobs.yaml`, disable the old `pyobs.service` if installed.
-4. `pyobsd start` as root (installs unit, generator and polkit rule, starts the enabled modules).
+2. As root: `apt install polkitd` if missing.
+3. `pyobsd setup`, answer `systemd` (and the shutdown timeout on hosts with cooled cameras). Disable the old
+   `pyobs.service` if `setup` reports it.
+4. `pyobsd start` (starts the enabled modules).
 5. web-admin: until it supports systemd mode, its Start/Restart fail on this host (see the guard).
+
+A new host: `pip install pyobs-core` (plus plugins), `pyobsd setup`, module configs into `config/`,
+`pyobsd start`.
 
 ## Open questions
 

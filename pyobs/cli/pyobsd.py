@@ -99,7 +99,13 @@ class PyobsDaemonCLI(CLI):
         # commands
         # metavar lists the commands for users, without the internal "exec"
         sp = self._parser.add_subparsers(dest="command", metavar="{start,stop,restart,status,list,logs,setup}")
-        sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
+        start_parser = sp.add_parser("start", help="start modules")
+        start_parser.add_argument("modules", type=str, nargs="*")
+        start_parser.add_argument(
+            "--no-wait",
+            action="store_true",
+            help="systemd mode: return once the start is queued, do not wait for the modules to be ready",
+        )
         stop_parser = sp.add_parser("stop", help="stop modules")
         stop_parser.add_argument("modules", type=str, nargs="*")
         stop_parser.add_argument(
@@ -114,6 +120,11 @@ class PyobsDaemonCLI(CLI):
         restart_parser.add_argument("modules", type=str, nargs="*")
         restart_parser.add_argument(
             "--kill", action="store_true", help="send SIGKILL right away instead of a normal stop, then start"
+        )
+        restart_parser.add_argument(
+            "--no-wait",
+            action="store_true",
+            help="systemd mode: return once the restart is queued, do not wait for the stop and the start",
         )
         status_parser = sp.add_parser("status", help="status of modules")
         status_parser.add_argument("--json", action="store_true")
@@ -216,14 +227,16 @@ class PyobsDaemonCLI(CLI):
         # run
         match self._config["command"]:
             case "start":
-                daemon.start(modules=self._config["modules"])
+                daemon.start(modules=self._config["modules"], wait=not self._config["no_wait"])
             case "stop":
                 if self._config["kill"]:
                     daemon.kill(modules=self._config["modules"])
                 else:
                     daemon.stop(modules=self._config["modules"], wait=not self._config["no_wait"])
             case "restart":
-                daemon.restart(modules=self._config["modules"], kill=self._config["kill"])
+                daemon.restart(
+                    modules=self._config["modules"], kill=self._config["kill"], wait=not self._config["no_wait"]
+                )
             case "status":
                 daemon.status(print_json=self._config["json"], cpu_interval=self._config["cpu_interval"])
             case "list":
@@ -406,8 +419,9 @@ class PyobsDaemonBase(abc.ABC):
     # ── public commands ───────────────────────────────────────────────────────
 
     @abc.abstractmethod
-    def start(self, modules: list[str] | None = None) -> None:
-        """Starts the given modules, or all enabled ones."""
+    def start(self, modules: list[str] | None = None, wait: bool = True) -> None:
+        """Starts the given modules, or all enabled ones. With wait=False, does not wait for them to be ready
+        (systemd mode only)."""
 
     @abc.abstractmethod
     def stop(self, modules: list[str] | None = None, wait: bool = True) -> None:
@@ -418,8 +432,9 @@ class PyobsDaemonBase(abc.ABC):
         """Kills the given modules, or all running ones, without a shutdown."""
 
     @abc.abstractmethod
-    def restart(self, modules: list[str] | None = None, kill: bool = False) -> None:
-        """Restarts the given modules. With kill=True, kills them instead of a normal stop."""
+    def restart(self, modules: list[str] | None = None, kill: bool = False, wait: bool = True) -> None:
+        """Restarts the given modules. With kill=True, kills them instead of a normal stop. With wait=False, does
+        not wait for the stop and the start (systemd mode only)."""
 
     @abc.abstractmethod
     def status(self, print_json: bool = False, cpu_interval: float | None = None) -> None:
@@ -534,7 +549,8 @@ class PidFileDaemon(PyobsDaemonBase):
 
     # ── public commands ───────────────────────────────────────────────────────
 
-    def start(self, modules: list[str] | None = None) -> None:
+    def start(self, modules: list[str] | None = None, wait: bool = True) -> None:
+        # wait is for the systemd mode, a start here returns once the PID file is there
         configs = self._list_configs()
 
         # if no modules given, start all non-underscore configs
@@ -617,7 +633,8 @@ class PidFileDaemon(PyobsDaemonBase):
         if killed:
             sys.exit(1)
 
-    def restart(self, modules: list[str] | None = None, kill: bool = False) -> None:
+    def restart(self, modules: list[str] | None = None, kill: bool = False, wait: bool = True) -> None:
+        # wait is for the systemd mode: here, the start needs the old process to be gone
         if kill:
             self.kill(modules=modules)
         else:

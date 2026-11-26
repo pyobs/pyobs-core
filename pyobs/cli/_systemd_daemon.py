@@ -139,7 +139,7 @@ class SystemdDaemon(PyobsDaemonBase):
 
     # ── public commands ───────────────────────────────────────────────────────
 
-    def start(self, modules: list[str] | None = None) -> None:
+    def start(self, modules: list[str] | None = None, wait: bool = True) -> None:
         modules = self._resolve(modules) if modules else self._enabled_modules()
         if not modules:
             print("No modules to start.")
@@ -162,9 +162,11 @@ class SystemdDaemon(PyobsDaemonBase):
         if failed:
             self._systemctl("reset-failed", "--", *failed)
 
-        # one call for all, like at boot: systemd starts them in parallel and returns once all sent READY=1
+        # one call for all, like at boot: systemd starts them in parallel and returns once all sent READY=1, or
+        # with --no-block once the jobs are queued (then a failing start shows only in status and logs)
         print(f"Starting {', '.join(self._module_of_unit(u) for u in to_start)}...")
-        if self._systemctl("start", "--", *to_start).returncode != 0:
+        args = ["start"] if wait else ["start", "--no-block"]
+        if self._systemctl(*args, "--", *to_start).returncode != 0:
             failed = [
                 self._module_of_unit(u)
                 for u, props in self._show(to_start).items()
@@ -223,23 +225,50 @@ class SystemdDaemon(PyobsDaemonBase):
         # SIGKILL leaves the unit "failed", but it was stopped on purpose
         self._systemctl("reset-failed", "--", *running)
 
-    def restart(self, modules: list[str] | None = None, kill: bool = False) -> None:
-        if kill or not modules:
-            # like the PID-file mode: stop (or kill) them, then start; without names, that's all running ones and
-            # then all enabled ones
-            if kill:
-                self.kill(modules=modules)
+    def restart(self, modules: list[str] | None = None, kill: bool = False, wait: bool = True) -> None:
+        if kill:
+            # kill() waits until they are gone (a few seconds at most), so the start can't cancel a stop job
+            self.kill(modules=modules)
+            self.start(modules=modules, wait=wait)
+            return
+        if not modules:
+            # like the PID-file mode: all running ones stop, then all enabled ones start
+            if wait:
+                self.stop()
+                self.start()
             else:
-                self.stop(modules=modules)
-            self.start(modules=modules)
+                self._restart_all_no_wait()
             return
 
         resolved = self._resolve(modules)
         self._refuse_pid_mode(resolved)
         units = [self._unit(m) for m in resolved]
         print(f"Restarting {', '.join(self._module_of_unit(u) for u in units)}...")
-        if self._systemctl("restart", "--", *units).returncode != 0:
+        args = ["restart"] if wait else ["restart", "--no-block"]
+        if self._systemctl(*args, "--", *units).returncode != 0:
             self._error("Could not restart all modules, see: pyobsd logs <module>")
+
+    def _restart_all_no_wait(self) -> None:
+        """restart() without names and without waiting. A stop and then a start without waiting would queue a
+        start job that cancels the stop job of the same unit, so: running and enabled ones restart, running and
+        disabled ones stop, the other enabled ones start."""
+        enabled = {self._unit(m): m for m in self._enabled_modules()}
+        self._refuse_pid_mode(list(enabled.values()))
+        active = self._active_units()
+        to_stop = [u for u in active if u not in enabled]
+        to_restart = [u for u in active if u in enabled]
+        to_start = [m for u, m in enabled.items() if u not in active]
+        if to_stop:
+            # by unit, its config may be gone
+            print(f"Stopping {', '.join(self._module_of_unit(u) for u in to_stop)}...")
+            if self._systemctl("stop", "--no-block", "--", *to_stop).returncode != 0:
+                self._error("Could not stop all modules, see: pyobsd logs <module>")
+        if to_restart:
+            print(f"Restarting {', '.join(self._module_of_unit(u) for u in to_restart)}...")
+            if self._systemctl("restart", "--no-block", "--", *to_restart).returncode != 0:
+                self._error("Could not restart all modules, see: pyobsd logs <module>")
+        if to_start:
+            self.start(to_start, wait=False)
 
     def status(self, print_json: bool = False, cpu_interval: float | None = None) -> None:
         configs = self._list_configs()

@@ -47,7 +47,7 @@ Implementation plans, checklist-style. Newest at the bottom.
 - [2026-08-08-logevent-double-delivery-investigation.md](2026-08-08-logevent-double-delivery-investigation.md) —
   pyobs-gui receives every LogEvent twice. **implemented, closed 2026-08-20** — the fix the
   investigation called for (drop `add_interest()`) landed via PR #761 (explicit XEP-0060
-  subscriptions); open threads recorded in the doc: why `ms`'s accounts specifically double-
+  subscriptions); open threads recorded in the doc: why `srv-c`'s accounts specifically double-
   delivered, and rollout of #761 to production sites (operational) (Repos: pyobs-core,
   pyobs-monet)
 - [2026-08-09-night-archive-io-hardening.md](2026-08-09-night-archive-io-hardening.md) — rename
@@ -73,7 +73,7 @@ Implementation plans, checklist-style. Newest at the bottom.
   `pyobs-core` released as `v2.0.0.dev82` (Repos: pyobs-core, pyobs-alpaca, pyobs-brot, pyobs-fli,
   pyobs-gemini, pyobs-iagvt, pyobs-monet, pyobs-monti, pyobs-sbig, pyobs-zwoeaf)
 - [2026-08-16-logevent-double-delivery-fix-discussion.md](2026-08-16-logevent-double-delivery-fix-discussion.md) —
-  discussion notes: drop `add_interest()` to fix `ms` double-delivery, plus whether/how to get
+  discussion notes: drop `add_interest()` to fix `srv-c` double-delivery, plus whether/how to get
   real interest-based event filtering. **closed** (actioned as ADR 0012 below)
 - [2026-08-16-explicit-pubsub-event-subscriptions.md](2026-08-16-explicit-pubsub-event-subscriptions.md) —
   real interest-based event delivery via explicit XEP-0060 subscriptions, decoupled from
@@ -411,8 +411,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   **core implemented**, drivers and GUIs proposed (Repos: pyobs-core, pyobs-asi, pyobs-sbig, pyobs-fli,
   pyobs-flipro, pyobs-qhyccd, pyobs-gui)
 - [2026-11-25-pyobsd-systemd-mode.md](2026-11-25-pyobsd-systemd-mode.md): optional `mode: systemd` for pyobsd
-  that runs modules as `pyobs@<module>` systemd user units (start on boot, restart on failure, stderr in the
-  journal), enable state synced from the `_` filename prefix on every call; web-admin calls `pyobsd` in that
-  mode. PID-file mode unchanged. Also fixes the 5 s SIGKILL that cuts camera warm-up on stop (both modes,
-  `EXTEND_TIMEOUT_USEC` / `.stopping` deadline). **in progress**: old-mode stop fix in core merged (#1096),
-  web-admin and systemd mode open (Repos: pyobs-core, pyobs-web-admin)
+  that runs modules as `pyobs@<module>` systemd system units as the pyobs user (start on boot, restart on
+  failure, stderr in the journal), boot state from the `_` filename prefix via a generator, start/stop for the
+  pyobs user via polkit (ADR 0020); web-admin calls `pyobsd` in that mode. PID-file mode unchanged. Also fixes
+  the 5 s SIGKILL that cuts camera warm-up on stop (both modes). **in progress**: stop fix, mode switch, guard,
+  module side and exit code merged (#1096, #1105, #1106, #1107), systemd backend and web-admin open
+  (Repos: pyobs-core, pyobs-web-admin)

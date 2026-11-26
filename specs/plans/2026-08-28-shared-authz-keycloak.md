@@ -7,7 +7,7 @@ Repos: pyobs-auth, pyobs-archive, pyobs-portal, pyobs-web-admin
 Status: **implemented and released everywhere** (pyobs-auth `v2.1.0`, pyobs-archive `v2.1.0`,
 pyobs-portal `v2.1.0`, pyobs-web-admin `v2.1.0`). Verified 2026-08-31 by reading each repo's
 `develop`/`main` and, for section 0, by observing that Keycloak-gated login is actively working
-in production at MONET/S (`admin.monet.saao.ac.za`, group `/pyobs-web-admin-monets`) — not by
+in production at MONET/S (`admin.site-c.example.org`, group `/pyobs-web-admin-monets`) — not by
 directly inspecting the Keycloak admin console, so treat section 0 as inferred-done rather than
 independently confirmed there.
 
@@ -41,7 +41,7 @@ independently confirmed there.
 - [x] New middleware (`pyobs_auth.middleware.KeycloakSessionRefreshMiddleware`): once the access
       token's `exp` has passed, call `KeycloakClient.refresh()`, re-validate the resulting
       claims, and re-run `authorize()`; end the session (force logout) if it now fails. Wired
-      into `pyobs-web-admin`'s `MIDDLEWARE` (confirmed live on `frontend.monets` after the
+      into `pyobs-web-admin`'s `MIDDLEWARE` (confirmed live on `frontend-c` after the
       2026-08-31 update).
 - [x] Tests for both paths (claims present/absent, both settings, no-settings passthrough,
       `enforce_local_active` interplay) plus the refresh path — `tests/test_authorization.py`,

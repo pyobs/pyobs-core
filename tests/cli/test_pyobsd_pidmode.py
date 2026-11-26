@@ -149,8 +149,11 @@ def test_status_json(dirs, capsys) -> None:
     result = json.loads(capsys.readouterr().out)
 
     assert sorted(result) == ["_dome", "camera", "orphan", "telescope"]
-    assert result["telescope"] == {"running": False, "state": "stopped"}
+    assert result["telescope"] == {"mode": "pid", "enabled": True, "running": False, "state": "stopped"}
+    # mode and enabled, the same fields as in systemd mode
+    assert [result[m]["enabled"] for m in ("_dome", "camera", "orphan")] == [False, True, False]
     for name in ("camera", "_dome", "orphan"):
+        assert result[name]["mode"] == "pid"
         assert result[name]["running"] is True
         assert result[name]["state"] == "running"
         assert result[name]["stop_deadline"] is None
@@ -166,7 +169,9 @@ def test_status_json_drops_stale_pid(dirs, capsys) -> None:
 
     daemon.status(print_json=True)
 
-    assert json.loads(capsys.readouterr().out) == {"camera": {"running": False, "state": "stopped"}}
+    assert json.loads(capsys.readouterr().out) == {
+        "camera": {"mode": "pid", "enabled": True, "running": False, "state": "stopped"}
+    }
     assert not pid_file.exists()
 
 

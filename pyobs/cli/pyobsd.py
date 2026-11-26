@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import abc
 import argparse
 import glob
 import json
@@ -16,7 +17,7 @@ import psutil
 
 from pyobs.utils.shutdown import read_stop_deadline, stop_file_for
 
-from ._cli import CLI
+from ._cli import CLI, PYOBSD_MODE_ENV, PYOBSD_MODES, pyobsd_mode
 
 log = logging.getLogger("pyobs")
 
@@ -42,8 +43,26 @@ class PyobsDaemonCLI(CLI):
         "chuid",
         "stop_timeout",
     ]
+    # "mode" is not in GLOBAL_CONFIG_KEYS: pyobs reads it too, so it has its own lookup with $PYOBSD_MODE (see
+    # pyobsd_mode), instead of the generic $PYOBS_<KEY>
 
     def init_cli(self) -> None:
+        # mode, an invalid one is only an error for commands other than "setup", which can fix it
+        self._mode_error: str | None = None
+        try:
+            mode = pyobsd_mode(self.file_config)
+        except ValueError as e:
+            self._mode_error = str(e)
+            mode = "pid"
+        self._parser.add_argument(
+            "--mode",
+            type=str,
+            choices=PYOBSD_MODES,
+            default=mode,
+            help="run modules as daemons with PID files, or as instances of the systemd unit pyobs@.service "
+            f"(default from ${PYOBSD_MODE_ENV} or pyobsd.mode in the config file, else pid)",
+        )
+
         # init parser
         self._parser.add_argument("-p", "--path", type=str, default=self._config.get("path", "/opt/pyobs"))
         self._parser.add_argument("-c", "--config-path", type=str, default=self._config.get("config_path", "config"))
@@ -78,7 +97,8 @@ class PyobsDaemonCLI(CLI):
         self._parser.add_argument("-v", "--verbose", action="store_true")
 
         # commands
-        sp = self._parser.add_subparsers(dest="command")
+        # metavar lists the commands for users, without the internal "exec"
+        sp = self._parser.add_subparsers(dest="command", metavar="{start,stop,restart,status,list,logs,setup}")
         sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
         stop_parser = sp.add_parser("stop", help="stop modules")
         stop_parser.add_argument("modules", type=str, nargs="*")
@@ -109,10 +129,79 @@ class PyobsDaemonCLI(CLI):
         sp.add_parser("logs", help="show/follow module logs via journalctl").add_argument(
             "args", nargs=argparse.REMAINDER, help="[module] [journalctl arguments...]"
         )
+        self._add_setup_parser(sp)
+        # internal: what the systemd unit runs, replaces pyobsd with "pyobs" for the module, in the foreground
+        sp.add_parser("exec").add_argument("module", type=str)
+
+    @staticmethod
+    def _add_setup_parser(sp: Any) -> None:
+        # own dests (setup_*), so they don't clash with the global options of the same name; None means "not given"
+        p = sp.add_parser(
+            "setup",
+            help="set up this host for pyobsd (as root): user, directories, /etc/pyobs.yaml, systemd units",
+            description="Set up this host for pyobsd. Asks for every value not given as an option, unless -y is "
+            "given or stdin is not a terminal. Run as root.",
+        )
+        p.add_argument("--mode", dest="setup_mode", choices=PYOBSD_MODES, default=None)
+        p.add_argument("--user", dest="setup_user", metavar="USER[:GROUP]", default=None, help="the user for pyobs")
+        p.add_argument(
+            "--create-user",
+            dest="setup_create_user",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="create the user if it doesn't exist (never done unattended without this)",
+        )
+        p.add_argument("--path", dest="setup_path", metavar="DIR", default=None, help="base path")
+        p.add_argument(
+            "--syslog",
+            dest="setup_syslog",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="log to the systemd journal",
+        )
+        p.add_argument(
+            "--file-log",
+            dest="setup_file_log",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="also write log files",
+        )
+        p.add_argument(
+            "--shutdown-timeout",
+            dest="setup_shutdown_timeout",
+            type=int,
+            metavar="MINUTES",
+            default=None,
+            help="systemd mode: timeout for reboots and poweroffs, for hosts with cooled cameras",
+        )
+        p.add_argument(
+            "--no-shutdown-timeout",
+            dest="setup_shutdown_timeout",
+            action="store_const",
+            const=0,
+            help="systemd mode: keep the default timeout for reboots and poweroffs",
+        )
+        p.add_argument("-y", "--yes", dest="setup_yes", action="store_true", help="ask nothing, don't confirm")
+        p.add_argument("--strict", dest="setup_strict", action="store_true", help="exit with 1 on warnings")
 
     def run(self) -> None:
+        if self._config["command"] == "setup":
+            self._run_setup()
+            return
+        if self._mode_error is not None:
+            self._parser.error(self._mode_error)
+
+        # "exec" is the same in both modes, and runs at every start of a unit, so it doesn't check the files
+        daemon_class: type[PyobsDaemonBase] = PidFileDaemon
+        if self._config["mode"] == "systemd":
+            from ._systemd_daemon import SystemdDaemon
+
+            daemon_class = SystemdDaemon
+            if self._config["command"] != "exec":
+                self._warn_systemd_files()
+
         # init daemon
-        daemon = PyobsDaemon(
+        daemon = daemon_class(
             str(os.path.join(self._config["path"], self._config["config_path"])),
             str(os.path.join(self._config["path"], self._config["run_path"])),
             str(os.path.join(self._config["path"], self._config["log_path"])),
@@ -141,9 +230,50 @@ class PyobsDaemonCLI(CLI):
                 daemon.list_modules()
             case "logs":
                 daemon.logs(self._config["args"])
+            case "exec":
+                daemon.exec_module(self._config["module"])
+
+    def _run_setup(self) -> None:
+        from ._setup import Setup, SetupOptions
+
+        c = self._config
+        options = SetupOptions(
+            mode=c["setup_mode"],
+            user=c["setup_user"],
+            create_user=c["setup_create_user"],
+            path=c["setup_path"],
+            syslog=c["setup_syslog"],
+            file_log=c["setup_file_log"],
+            shutdown_timeout=c["setup_shutdown_timeout"],
+            yes=c["setup_yes"],
+            strict=c["setup_strict"],
+        )
+        sys.exit(Setup(options, self.file_config)())
+
+    def _warn_systemd_files(self) -> None:
+        """Warn on stderr if unit, generator or polkit rule differ from what "pyobsd setup" would write."""
+        from ._setup import SetupError, find_pyobsd_exec
+        from ._systemd_files import SystemdSettings, check_installed
+
+        user, _, group = str(self._config["chuid"]).partition(":")
+        try:
+            pyobsd_exec = find_pyobsd_exec()
+        except SetupError:
+            return
+        settings = SystemdSettings(
+            pyobsd_exec=pyobsd_exec,
+            config_path=os.path.abspath(os.path.join(self._config["path"], self._config["config_path"])),
+            run_path=os.path.abspath(os.path.join(self._config["path"], self._config["run_path"])),
+            user=user,
+            group=group or user,
+        )
+        for warning in check_installed(settings):
+            print(f"Warning: {warning}", file=sys.stderr)
 
 
-class PyobsDaemon:
+class PyobsDaemonBase(abc.ABC):
+    """What both modes of pyobsd share: module names, config files, process info, logs."""
+
     def __init__(
         self,
         config_path: str,
@@ -211,53 +341,13 @@ class PyobsDaemon:
     def _config_file(self, module: str) -> str:
         return os.path.join(self._config_path, module + ".yaml")
 
-    def _pid_file(self, module: str) -> str:
-        return os.path.join(self._run_path, self._strip_disabled(module) + ".pid")
-
     def _log_file(self, module: str) -> str:
         return os.path.join(self._log_path, self._strip_disabled(module) + ".log")
-
-    def _stop_file(self, module: str) -> str:
-        """Where a stopping module writes its shutdown deadline (see pyobs.utils.shutdown)."""
-        return stop_file_for(self._pid_file(module))
 
     def _list_configs(self) -> list[str]:
         """Return sorted module names from *.yaml files, excluding *.shared.yaml."""
         paths = sorted(glob.glob(os.path.join(self._config_path, "*.yaml")))
         return [self._module(p) for p in paths if not p.endswith(".shared.yaml")]
-
-    def _read_pid(self, module: str) -> int | None:
-        """Read and return the PID from the module's PID file, or None."""
-        pid_file = self._pid_file(module)
-        if not os.path.exists(pid_file):
-            return None
-        try:
-            with open(pid_file) as f:
-                return int(f.read().strip())
-        except (ValueError, OSError):
-            return None
-
-    def _is_alive(self, pid: int) -> bool:
-        try:
-            os.kill(pid, 0)
-            return True
-        except OSError:
-            return False
-
-    def _running_pid(self, module: str) -> int | None:
-        """Return the live PID for a module, or None. Cleans up stale PID files."""
-        pid = self._read_pid(module)
-        if pid is None:
-            return None
-        if self._is_alive(pid):
-            return pid
-        # stale PID file — remove it, together with a stop file the process may have left behind
-        self._remove_run_files(module)
-        return None
-
-    def _stop_deadline(self, module: str) -> float | None:
-        """The deadline a running module wrote into its stop file, or None if it is not stopping."""
-        return read_stop_deadline(self._stop_file(module))
 
     def _process_info(self, pid: int) -> dict[str, Any]:
         """Return uptime (seconds) and rss_mb for a running PID. No CPU -- that needs a
@@ -305,6 +395,142 @@ class PyobsDaemon:
         if d:
             return f"{d}d {h:02d}:{m:02d}:{s:02d}"
         return f"{h:02d}:{m:02d}:{s:02d}"
+
+    @staticmethod
+    def _fmt_wait(seconds: float) -> str:
+        seconds = max(0, int(seconds))
+        if seconds < 120:
+            return f"{seconds} s"
+        return f"{round(seconds / 60)} min"
+
+    # ── public commands ───────────────────────────────────────────────────────
+
+    @abc.abstractmethod
+    def start(self, modules: list[str] | None = None) -> None:
+        """Starts the given modules, or all enabled ones."""
+
+    @abc.abstractmethod
+    def stop(self, modules: list[str] | None = None, wait: bool = True) -> None:
+        """Stops the given modules, or all running ones. With wait=False, does not wait for them to exit."""
+
+    @abc.abstractmethod
+    def kill(self, modules: list[str] | None = None) -> None:
+        """Kills the given modules, or all running ones, without a shutdown."""
+
+    @abc.abstractmethod
+    def restart(self, modules: list[str] | None = None, kill: bool = False) -> None:
+        """Restarts the given modules. With kill=True, kills them instead of a normal stop."""
+
+    @abc.abstractmethod
+    def status(self, print_json: bool = False, cpu_interval: float | None = None) -> None:
+        """Prints the status of all modules."""
+
+    def _pyobs_args(self, module: str) -> list[str]:
+        """Options and config file for running a module with pyobs, the same in both modes."""
+        args = [
+            "--log-level",
+            self._log_level,
+            # the module ends itself if its shutdown takes longer than this (or what it asked for)
+            "--stop-timeout",
+            str(self._stop_timeout),
+            self._config_file(module),
+        ]
+        if self._file_log:
+            os.makedirs(self._log_path, exist_ok=True)
+            args += ["--log-file", self._log_file(module)]
+        if self._syslog:
+            args.append("--syslog")
+        return args
+
+    def _find_config(self, name: str) -> str | None:
+        """The config of a module by its active name: "<name>", or else the disabled "_<name>". A leading
+        underscore in name is ignored. None if neither exists."""
+        active = self._strip_disabled(name)
+        configs = self._list_configs()
+        for module in (active, "_" + active):
+            if module in configs:
+                return module
+        return None
+
+    def exec_module(self, name: str) -> None:
+        """Replaces this process with pyobs running the module in the foreground, without a PID file.
+
+        This is what the systemd unit runs ("pyobsd exec %i", with the active name). The process keeps its PID,
+        so pyobs is the unit's main process and can notify systemd. Runs as the calling user, chuid is not used.
+        """
+        module = self._find_config(name)
+        if module is None:
+            self._error(f"Module {name!r} does not exist.")
+            return
+        cmd = [self._pyobs_exec, *self._pyobs_args(module)]
+        if self._verbose:
+            print(f"[DEBUG] Executing: {' '.join(cmd)}")
+        sys.stdout.flush()
+        os.execv(self._pyobs_exec, cmd)
+
+    def list_modules(self) -> None:
+        print("\n".join(self._list_configs()))
+
+    def logs(self, args: list[str]) -> None:
+        """Show/follow module logs by exec'ing into journalctl."""
+        match_args = ["SYSLOG_IDENTIFIER=pyobs"]
+        remainder = list(args)
+        # "--" may have been auto-inserted by main() to work around argparse.REMAINDER
+        # refusing to swallow a leading flag (e.g. "pyobsd logs -f") — drop it here.
+        if remainder and remainder[0] == "--":
+            remainder.pop(0)
+        if remainder and remainder[0] in self._list_configs():
+            match_args.append(f"PYOBS_MODULE={remainder.pop(0)}")
+        cmd = ["journalctl", *match_args, *remainder]
+        if self._verbose:
+            print(f"[DEBUG] Executing: {' '.join(cmd)}")
+        os.execvp("journalctl", cmd)
+
+
+class PidFileDaemon(PyobsDaemonBase):
+    """PID-file mode: runs modules as daemons (pyobs --pid-file) and tracks them by their PID files."""
+
+    # ── helpers ───────────────────────────────────────────────────────────────
+
+    def _pid_file(self, module: str) -> str:
+        return os.path.join(self._run_path, self._strip_disabled(module) + ".pid")
+
+    def _stop_file(self, module: str) -> str:
+        """Where a stopping module writes its shutdown deadline (see pyobs.utils.shutdown)."""
+        return stop_file_for(self._pid_file(module))
+
+    def _read_pid(self, module: str) -> int | None:
+        """Read and return the PID from the module's PID file, or None."""
+        pid_file = self._pid_file(module)
+        if not os.path.exists(pid_file):
+            return None
+        try:
+            with open(pid_file) as f:
+                return int(f.read().strip())
+        except (ValueError, OSError):
+            return None
+
+    def _is_alive(self, pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+    def _running_pid(self, module: str) -> int | None:
+        """Return the live PID for a module, or None. Cleans up stale PID files."""
+        pid = self._read_pid(module)
+        if pid is None:
+            return None
+        if self._is_alive(pid):
+            return pid
+        # stale PID file — remove it, together with a stop file the process may have left behind
+        self._remove_run_files(module)
+        return None
+
+    def _stop_deadline(self, module: str) -> float | None:
+        """The deadline a running module wrote into its stop file, or None if it is not stopping."""
+        return read_stop_deadline(self._stop_file(module))
 
     # ── public commands ───────────────────────────────────────────────────────
 
@@ -426,10 +652,13 @@ class PyobsDaemon:
             result: dict[str, Any] = {}
             for module in modules:
                 pid = pids.get(module)
+                # same fields as in systemd mode, so consumers can tell the modes apart
+                common = {"mode": "pid", "enabled": module in configs and not module.startswith("_")}
                 if pid is not None:
                     info = self._process_info(pid)
                     deadline = deadlines[module]
                     result[module] = {
+                        **common,
                         "running": True,
                         "state": "stopping" if deadline is not None else "running",
                         "stop_deadline": deadline,
@@ -438,7 +667,7 @@ class PyobsDaemon:
                         **info,
                     }
                 else:
-                    result[module] = {"running": False, "state": "stopped"}
+                    result[module] = {**common, "running": False, "state": "stopped"}
             print(json.dumps(result))
         else:
             # header
@@ -465,24 +694,6 @@ class PyobsDaemon:
                 else:
                     print(f"{module:<30}  {'stopped':<8}")
 
-    def list_modules(self) -> None:
-        print("\n".join(self._list_configs()))
-
-    def logs(self, args: list[str]) -> None:
-        """Show/follow module logs by exec'ing into journalctl."""
-        match_args = ["SYSLOG_IDENTIFIER=pyobs"]
-        remainder = list(args)
-        # "--" may have been auto-inserted by main() to work around argparse.REMAINDER
-        # refusing to swallow a leading flag (e.g. "pyobsd logs -f") — drop it here.
-        if remainder and remainder[0] == "--":
-            remainder.pop(0)
-        if remainder and remainder[0] in self._list_configs():
-            match_args.append(f"PYOBS_MODULE={remainder.pop(0)}")
-        cmd = ["journalctl", *match_args, *remainder]
-        if self._verbose:
-            print(f"[DEBUG] Executing: {' '.join(cmd)}")
-        os.execvp("journalctl", cmd)
-
     # ── process management ────────────────────────────────────────────────────
 
     def _start_service(self, module: str) -> None:
@@ -494,30 +705,20 @@ class PyobsDaemon:
         except FileNotFoundError:
             pass
 
-        cmd = [
-            self._pyobs_exec,
-            "--pid-file",
-            self._pid_file(module),
-            "--log-level",
-            self._log_level,
-            # the module ends itself if its shutdown takes longer than this (or what it asked for)
-            "--stop-timeout",
-            str(self._stop_timeout),
-            self._config_file(module),
-        ]
-        if self._file_log:
-            os.makedirs(self._log_path, exist_ok=True)
-            cmd += ["--log-file", self._log_file(module)]
-        if self._syslog:
-            cmd.append("--syslog")
+        cmd = [self._pyobs_exec, "--pid-file", self._pid_file(module), *self._pyobs_args(module)]
 
         if self._verbose:
             print(f"[DEBUG] Executing: {' '.join(cmd)}")
 
+        # pyobs refuses --pid-file if the config says systemd mode, but this pyobsd runs in PID-file mode (e.g. with
+        # --mode pid), so pass that on
+        env = os.environ.copy()
+        env[PYOBSD_MODE_ENV] = "pid"
         kwargs: dict[str, Any] = dict(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             start_new_session=True,  # detach from pyobsd's process group
+            env=env,
         )
         if self._user:
             kwargs["user"] = self._user
@@ -527,11 +728,9 @@ class PyobsDaemon:
             # Mimic `su`/`sudo -u` and set HOME/USER/LOGNAME for the target user.
             try:
                 pw = pwd.getpwnam(self._user)
-                env = os.environ.copy()
                 env["HOME"] = pw.pw_dir
                 env["USER"] = self._user
                 env["LOGNAME"] = self._user
-                kwargs["env"] = env
             except KeyError:
                 self._error(f"User {self._user!r} not found.")
         if self._group:
@@ -635,12 +834,9 @@ class PyobsDaemon:
             except OSError:
                 pass
 
-    @staticmethod
-    def _fmt_wait(seconds: float) -> str:
-        seconds = max(0, int(seconds))
-        if seconds < 120:
-            return f"{seconds} s"
-        return f"{round(seconds / 60)} min"
+
+# old name, from before there were two modes
+PyobsDaemon = PidFileDaemon
 
 
 def main() -> None:

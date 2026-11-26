@@ -292,10 +292,10 @@ Does **not** reproduce the production silent-timeout behavior at this scale loca
 connection-churn shape is fast and reliable against a fresh local ejabberd. Useful negative result:
 whatever caused the incident isn't an inherent property of "a few clients reconnect and immediately
 query each other" in general, so it's more likely specific to the production environment (real network
-latency/config to `iag50srv`, its particular ejabberd version, load at that moment, or a stale-session/
+latency/config to `srv-a`, its particular ejabberd version, load at that moment, or a stale-session/
 routing race from the restart — see the open question already flagged elsewhere in this doc about
 production peer-discovery/roster-subscription assumptions) than a universal client-library behavior.
-**Next step, if pursued:** run the same scenario against `iag50srv` itself during a no-ops window —
+**Next step, if pursued:** run the same scenario against `srv-a` itself during a no-ops window —
 production owner confirmed this is acceptable — to see whether it reproduces there where it didn't
 locally.
 
@@ -478,7 +478,7 @@ with the same fixed resource (`.../pyobs`, not randomized per connection) -- rat
 client-library or pyobs-core/pyobs-brot code bug. If it were the latter, monet-south should show the
 same symptom and doesn't.
 
-### Runbook for tomorrow: run `late-joiner` and `reconnect-storm` against both `iag50srv` and monet-south
+### Runbook for tomorrow: run `late-joiner` and `reconnect-storm` against both `srv-a` and monet-south
 
 **Goal:** determine whether `late-joiner` (the precise reproduction of what actually happened twice:
 a stable 7-peer fleet, one more joins) or `reconnect-storm` (simultaneous multi-client reconnect)
@@ -498,9 +498,9 @@ it's still real traffic against a server real operations depend on.
 
 **Connection details** (from each repo's own shared comm config -- both use TLS, unlike this repo's
 local test ejabberd):
-- iag50: `domain: iag50srv.astro.physik.uni-goettingen.de` (`pyobs-iag50/config/iag50srv/comm.shared.yaml`)
-- monet-south: `domain: monet.saao.ac.za` (`pyobs-monet/config/south/monet/comm.shared.yaml`,
-  commented-out server hint: `monet.monets:5222`)
+- iag50: `domain: srv-a.example.org` (`pyobs-iag50/config/srv-a/comm.shared.yaml`)
+- monet-south: `domain: site-c.example.org` (`pyobs-monet/config/south/monet/comm.shared.yaml`,
+  commented-out server hint: `srv-c:5222`)
 - Real account passwords aren't in either repo's checked-in config (only test/dummy passwords are
   committed anywhere) -- get the real ones separately before running; `PYOBS_TEST_XMPP_PASSWORD` is
   shared by every `bench<N>` account the script registers, so one password covers a whole run.
@@ -518,8 +518,8 @@ computer than this session):
 
 ```bash
 # against iag50 -- late-joiner first, the precise reproduction (7 stable peers, 1 joins)
-PYOBS_TEST_XMPP_HOST=iag50srv.astro.physik.uni-goettingen.de \
-PYOBS_TEST_XMPP_DOMAIN=iag50srv.astro.physik.uni-goettingen.de \
+PYOBS_TEST_XMPP_HOST=srv-a.example.org \
+PYOBS_TEST_XMPP_DOMAIN=srv-a.example.org \
 PYOBS_TEST_XMPP_PORT=5222 \
 PYOBS_TEST_XMPP_TLS=1 \
 PYOBS_TEST_XMPP_PASSWORD=<real password for bench accounts> \
@@ -536,8 +536,8 @@ python scripts/xmpp/benchmark_state_throughput.py reconnect-storm --k 7 --rechec
     --register-via local --output iag50_reconnect_storm.jsonl
 
 # against monet-south (same shapes, different host/domain)
-PYOBS_TEST_XMPP_HOST=monet.saao.ac.za \
-PYOBS_TEST_XMPP_DOMAIN=monet.saao.ac.za \
+PYOBS_TEST_XMPP_HOST=site-c.example.org \
+PYOBS_TEST_XMPP_DOMAIN=site-c.example.org \
 PYOBS_TEST_XMPP_PORT=5222 \
 PYOBS_TEST_XMPP_TLS=1 \
 PYOBS_TEST_XMPP_PASSWORD=<real password for bench accounts> \
@@ -569,7 +569,7 @@ turn out to share a cause once more data exists.
   and the "works fine on monet-south" premise from real operation would need re-examining --
   maybe monet-south just hasn't had 3-4 modules restart together recently, rather than being immune.
 
-### Runbook executed against iag50srv itself (2026-07-28)
+### Runbook executed against srv-a itself (2026-07-28)
 
 **Deviation from the runbook as written, done deliberately with explicit confirmation:** rather
 than throwaway `bench<N>` accounts, this run authenticated as the **real production module JIDs**
@@ -577,7 +577,7 @@ than throwaway `bench<N>` accounts, this run authenticated as the **real product
 `scheduler`, plus `dome`/`telescope`/`flatfield` as joiners) — the exact account set involved in
 the real 7/8-module incidents described above. Confirmed with the user first that these modules
 were not currently running (no live session to collide with) before connecting as them. Real
-per-account passwords (sourced from `pyobs-iag50/config/iag50srv/*.yaml`, each module has its own,
+per-account passwords (sourced from `pyobs-iag50/config/srv-a/*.yaml`, each module has its own,
 unlike the shared `PYOBS_TEST_XMPP_PASSWORD` throwaway accounts use) were staged in a
 `PYOBS_TEST_XMPP_CREDENTIALS_FILE` JSON outside this repo (scratchpad, never committed) — not
 inline in commands or in any tracked file.
@@ -606,9 +606,9 @@ local numbers:**
 | `late-joiner` | 15 (+ focuser, asi071mc, sbig6303e, tc237h, fibercamera, autoguider, startup, telegram) | `focusmodel` | 30 | 0 | 60.6ms | 89.6ms |
 | `late-joiner` | 21 (every unique real account on the domain except one) | `warning` | 42 | 0 | 75.6ms | 97.6ms |
 
-The k=21 run used **every distinct real account registered on `iag50srv`'s domain** (confirmed by
-reading each config dir's `_comm.yaml`/`comm.shared.yaml` — `iag50srv`, `iag50cam`, `iag50tel`,
-`iag50obs`, `allsky` subdirs all share the one `iag50srv.astro.physik.uni-goettingen.de` domain;
+The k=21 run used **every distinct real account registered on `srv-a`'s domain** (confirmed by
+reading each config dir's `_comm.yaml`/`comm.shared.yaml` — `srv-a`, `cam-a`, `iag50tel`,
+`iag50obs`, `allsky` subdirs all share the one `srv-a.example.org` domain;
 `gui`/`config` at the repo's top level are excluded, they're hardcoded to a *different* domain,
 `iag50obs.astro...`, a separate server) minus the one held back as the joiner — the largest
 real-account fleet this server has, short of registering new throwaway accounts. This run was
@@ -637,12 +637,12 @@ timestamps (`18:02:37-39`, `18:30:07-33`, etc. — see timeline above) if they'r
 rather than trying to re-trigger the condition blind. Monet-south comparison stays on the shelf
 unless iag50 reproduces something first.
 
-### Reproduced live with real modules on iag50srv (2026-07-28) — root cause still open, but the incident is real and reproducible
+### Reproduced live with real modules on srv-a (2026-07-28) — root cause still open, but the incident is real and reproducible
 
 **Everything above (synthetic `benchmark_state_throughput.py` client, up to k=21, every real account on the
 domain) was clean.** That result held up to its own scope: bare `XmppComm` connections doing nothing but
 connect and fetch capabilities. The next step was running the **actual production `Module` classes** — real
-`Module.open()`, real `_on_module_opened` cascade, real background tasks — via SSH as root on `iag50srv`
+`Module.open()`, real `_on_module_opened` cascade, real background tasks — via SSH as root on `srv-a`
 itself, under `sudo -u pyobs`, using the live `pyobs` CLI (`/opt/pyobs/venv/bin/pyobs /opt/pyobs/config/<name>.yaml
 -l <logfile>`) against the real configs symlinked into `/opt/pyobs/config/`.
 
@@ -662,11 +662,11 @@ module code, not assumed):
 - `telegram` **excluded** — real bot token, would send real messages to real people. Also unrelated to the test.
 - `_pointing.yaml`'s leading underscore in the deployed `/opt/pyobs/config/` symlink indicates it's deliberately
   excluded from the current production launch set — left out here too, matching production as-is.
-- No camera modules (`sbig6303e`, `asi071mc`, `fibercamera`) are deployed on `iag50srv` at all — they run on
-  the separate `iag50cam` host, out of scope for what's runnable from this host.
-- SSH itself required care: the FQDN (`iag50srv.astro.physik.uni-goettingen.de`) hit a host-key mismatch in
+- No camera modules (`sbig6303e`, `asi071mc`, `fibercamera`) are deployed on `srv-a` at all — they run on
+  the separate `cam-a` host, out of scope for what's runnable from this host.
+- SSH itself required care: the FQDN (`srv-a.example.org`) hit a host-key mismatch in
   this environment specifically (not reproducible from the user's own terminal) — resolved by using the short
-  hostname `iag50srv` instead, which the user confirmed is what they'd always used, and which connects with a
+  hostname `srv-a` instead, which the user confirmed is what they'd always used, and which connects with a
   verified-correct host key.
 - Real per-account passwords, sourced from `/opt/pyobs/config/*.yaml` on the box (same values as the local repo
   checkout), staged only in a scratchpad JSON, never committed.
@@ -708,7 +708,7 @@ covered), then started `dome` as the 8th, exactly matching the second real incid
   showing indefinite escalation either.
 
 **New evidence the original investigation never had — root cause still not identified, but ruled out further:**
-- **`ejabberd` runs on the same host as the pyobs modules** (`iag50srv` itself) — confirmed via `systemctl
+- **`ejabberd` runs on the same host as the pyobs modules** (`srv-a` itself) — confirmed via `systemctl
   list-units '*ejabberd*'`. This is architecturally different from every prior test in this doc (local
   docker-compose: separate container; synthetic benchmark: remote client machine talking to the real server).
   All client↔server traffic here is over IPv6 loopback (`[::1]:5222`), confirmed in ejabberd's own connection
@@ -781,7 +781,7 @@ flushing stanzas for `dome` specifically:
   the sender's side (a `get_capabilities` request whose reply is queued, not lost, looks identical to a
   timeout until whatever flushes the queue).
 - Confirmed via `ejabberdctl dump_config` and the raw `/etc/ejabberd/ejabberd.yml`: `mod_client_state` is
-  loaded on `iag50srv`'s production ejabberd with default settings (`mod_client_state: {}`), as part of
+  loaded on `srv-a`'s production ejabberd with default settings (`mod_client_state: {}`), as part of
   what looks like an unpruned, fairly complete default module list (`mod_bosh`, `mod_carboncopy`,
   `mod_delegation` commented out, etc. — the shape of ejabberd's stock example config, not a hand-curated
   one).
@@ -1021,7 +1021,7 @@ the exact same (still unidentified) triggering condition.
 
 ### Sixth investigation session (2026-07-28, same day) — read upstream source, found the likely exact mechanism
 
-Note on this session: partway through, production `ejabberd` on `iag50srv` went down (see incident note
+Note on this session: partway through, production `ejabberd` on `srv-a` went down (see incident note
 below) — unrelated to the source-reading work itself, but worth flagging that this investigation session
 briefly overlapped with a real outage on the server being investigated.
 
@@ -1086,7 +1086,7 @@ pattern — same approach that worked for the slixmpp O(N²) bug filed earlier i
 (`poezio/slixmpp#3786`). This is a plausible, well-evidenced hypothesis backed by reading the actual
 running version's source, not a proven root cause.
 
-**Incidental production incident during this session:** `ejabberd` on `iag50srv` was stopped (clean,
+**Incidental production incident during this session:** `ejabberd` on `srv-a` was stopped (clean,
 orderly shutdown per its own log — not a crash) partway through this session, apparently by an
 accidental `q().` typed at an `ejabberdctl debug` prompt from session five — in a `-remsh` session, `q()`
 calls `init:stop()` *on the target node*, not just detaching the local shell (the correct safe detach is

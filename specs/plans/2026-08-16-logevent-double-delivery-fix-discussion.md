@@ -71,7 +71,7 @@ no error, just missing events.
 - After deploying the fix to a site, watch that site's clients for gaps: any module that stops
   receiving expected events (log subscribers going quiet, missed state-change events) in the
   hours after rollout is the signal.
-- Rollout order: `ms` first (where the bug reproduces and the fix has a clear before/after via
+- Rollout order: `srv-c` first (where the bug reproduces and the fix has a clear before/after via
   `watch_log_events_no_interest.py`), then other sites one at a time rather than all at once, so a
   regression is traceable to a specific deployment's config.
 - Rollback is trivial: re-adding the `add_interest()` call (`xmppcomm.py:813`) restores prior
@@ -87,14 +87,14 @@ depended on it, because delivery rides on the roster-presence path (`auto-subscr
 caps-interest path.
 
 It was added as "correct XEP-0163 client behavior" but was always redundant for delivery in pyobs.
-It hasn't broken other servers because on every server except `ms` the routing apparently ignores
-the interest path; only `ms` honors both, producing the duplicate.
+It hasn't broken other servers because on every server except `srv-c` the routing apparently ignores
+the interest path; only `srv-c` honors both, producing the duplicate.
 
 Caveats:
 
 - Holds only because pyobs uses shared roster (mutual presence) + `presence` access model. Both
   held in every config inspected so far, but that's "every config we inspected," not a proof.
-- The exact reason `ms` routes both while identical configs elsewhere don't is still unresolved
+- The exact reason `srv-c` routes both while identical configs elsewhere don't is still unresolved
   (the point-15 "why now" mystery). Dropping `add_interest()` fixes the symptom and is harmless
   elsewhere, but sidesteps that question rather than answering it.
 
@@ -131,7 +131,7 @@ registration, and losing the free convenience XEP-0163 auto-subscribe currently 
 If bandwidth/parsing overhead is the actual problem worth solving, the explicit-subscription
 route is the only one that does what `add_interest()` originally implied; the roster split above
 is compatible with it but doesn't by itself give per-event-type granularity. This changes
-delivery semantics for every deployment, not just `ms` — worth an ADR before touching it, not a
+delivery semantics for every deployment, not just `srv-c` — worth an ADR before touching it, not a
 follow-on patch to the double-delivery fix.
 
 ## Can roster and pubsub delivery be split?

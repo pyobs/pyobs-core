@@ -68,3 +68,6 @@ Short decision records for choices that had genuine considered-and-rejected alte
   `IRoboticScheduler`/`ObservationArchive` method; `Scheduler` independently decides to
   reschedule. *accepted* (issue #895; execution tracked in
   `specs/plans/2026-09-10-mastermind-reschedule-on-late-skip.md`)
+- [0020-pyobsd-systemd-mode-uses-system-units.md](0020-pyobsd-systemd-mode-uses-system-units.md) —
+  pyobsd's systemd mode uses system units with a polkit rule and a generator, not user units with linger.
+  *accepted* (`specs/plans/2026-11-25-pyobsd-systemd-mode.md`)

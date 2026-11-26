@@ -136,7 +136,32 @@ There are four basic commands:
     Gives an overview of detected configuration files and started modules. Each module is **running**, **stopped**,
     or **stopping** (it got SIGTERM and is still shutting down, together with how long it may still take if it asked
     for more time). With **--json**, a stopping module keeps ``"running": true``, since its process is still alive,
-    and the ``"state"`` field tells it apart.
+    and the ``"state"`` field tells it apart. Every module also has ``"mode"`` (**pid** or **systemd**) and
+    ``"enabled"`` (its config file doesn't start with an underscore).
+
+:pyobsd setup:
+    Sets up the host, see :ref:`cli-pyobsd-setup`.
+
+systemd mode
+************
+With ``mode: systemd`` in the **pyobsd** section of :file:`/etc/pyobs.yaml` (written by :program:`pyobsd setup`),
+every module runs as an instance of the systemd unit **pyobs@.service**, e.g. **pyobs@camera.service** for
+**camera.yaml** or **_camera.yaml**. systemd starts the enabled modules at boot, restarts a module after an error,
+and writes everything a module prints to the journal. The commands stay the same, they call :program:`systemctl`:
+
+- **start** starts all modules in one call, so they start in parallel, and returns once all are open. A module
+  that fails to open is reported as a failed start. A module that still runs in PID-file mode is refused. A
+  failed module is reset first (``systemctl reset-failed``), so it also starts after systemd gave up restarting it.
+- **stop** waits for the modules to stop, as long as they asked for (e.g. a camera warming up). **--no-wait**
+  returns right away, **--kill** sends SIGKILL and then stops the unit, so that systemd doesn't restart it.
+- **status** also shows **starting** (not open yet), **failed** (stopped after an error, or waiting for systemd
+  to start it again, then shown as "failed (restarting)") and the number of restarts. With **--json**, there's
+  also ``"restarts"``, and ``"restarting": true`` while it waits for a restart. After a failed start, systemd
+  tries again every 10 s, up to 5 times in 5 minutes.
+- **logs** shows the journal of the units (``journalctl -u pyobs@<module>.service``), including tracebacks and
+  output of C libraries.
+
+As root, or as the user from **chuid** if the polkit rule from :program:`pyobsd setup` is installed.
 
 CLI Parameters
 **************
@@ -180,3 +205,89 @@ The command accepts the following optional parameters:
     The path to the :program:`start-stop-daemon` executable, defaults to **/sbin/start-stop-daemon**.
 
 Note that none of the pathes have to be defined, if the recommended path structure is used.
+
+.. _cli-pyobsd-setup:
+
+Setting up a host
+*****************
+:program:`pyobsd setup`, run as root, sets up a host for :program:`pyobsd`. It asks for:
+
+1. the mode, **pid** (default) or **systemd**,
+2. the user and group to run the modules as (default **pyobs:pyobs**), and whether to create the user if it doesn't
+   exist (with ``adduser --system``, home directory is the base path),
+3. the base path (default **/opt/pyobs**),
+4. whether to log to the systemd journal (default yes) and to log files (default no),
+5. in systemd mode only: whether the host has cooled cameras, and if so, how many minutes a reboot or poweroff may
+   wait for the modules to stop (default 60).
+
+The default for each question is the current value from the config file, else the built-in default. Then it shows
+what it will do and asks before doing it:
+
+- create the user,
+- create the directories *config*, *log*, *run* and *storage* in the base path, owned by the user and group, or
+  fix their owner (their content is not touched). A directory that is a symlink, e.g. into a git checkout,
+  is not changed, setup only warns if its owner is wrong,
+- write the answers into the **pyobsd** section of :file:`/etc/pyobs.yaml`. Other sections and other keys in the
+  **pyobsd** section keep their values. An existing file is rewritten as plain YAML, so its comments and formatting
+  are lost. The old file is copied to :file:`/etc/pyobs.yaml.bak` first.
+
+In systemd mode, it also:
+
+- writes the template unit :file:`/etc/systemd/system/pyobs@.service`, which runs a module as the user, as
+  ``pyobsd exec <module>``. It uses the :program:`pyobsd` that runs setup, so run setup again after moving pyobs to
+  another environment.
+- writes the generator :file:`/etc/systemd/system-generators/pyobs-generator`, which starts every module whose config
+  file doesn't start with an underscore at boot. Renaming a config file changes that at the next boot, no
+  ``systemctl enable`` needed.
+- writes the polkit rule :file:`/etc/polkit-1/rules.d/50-pyobs.rules`, which lets the user start, stop, restart and
+  kill ``pyobs@*.service``, and nothing else,
+- runs ``systemctl daemon-reload`` if the unit, the generator or a drop-in changed,
+- adds the user to the group *systemd-journal*, to read the module logs,
+- with cooled cameras, writes drop-ins for *reboot.target* and *poweroff.target* that raise their
+  ``JobTimeoutSec`` (30 min by default on Debian 13), so a reboot doesn't cut a camera's warm-up. Without, it
+  removes them.
+
+and warns if polkitd is not installed (without it, only root can start and stop modules), if the old
+*pyobs.service* is still enabled, if modules are still running in PID-file mode, and if a module name can't be used
+as a unit name (allowed are letters, digits and ``_.:-``). It doesn't install packages.
+
+In PID-file mode, it removes these files again if a systemd setup left them, so a reboot doesn't start the
+modules as units. It refuses that while modules run as units.
+
+Every other :program:`pyobsd` call in systemd mode compares unit, generator and polkit rule with what setup would
+write and warns if one is missing or outdated.
+
+It warns if a config file earlier in the lookup order (see :ref:`cli-config-file`) exists, e.g.
+:file:`~/.config/pyobs.yaml`, since that would be used instead, and if :file:`/opt/pyobs/storage/pyobs.yaml` has a
+**pyobsd** section, which is then ignored. It's safe to run it again, it only changes what differs.
+
+Every question has an option. A question given as an option is not asked. With **-y**, or if stdin is not a
+terminal, nothing is asked at all, and options not given take their default:
+
+:--mode pid|systemd:
+    The mode.
+
+:--user <user>[\:<group>]:
+    The user and group, the group defaults to the user's name.
+
+:--create-user/--no-create-user:
+    Create the user if it doesn't exist. Without **--create-user**, a missing user is an error when nothing is
+    asked.
+
+:--path <dir>:
+    The base path.
+
+:--syslog/--no-syslog, --file-log/--no-file-log:
+    Logging, see above.
+
+:--shutdown-timeout <minutes>, --no-shutdown-timeout:
+    systemd mode: the timeout for reboots and poweroffs on hosts with cooled cameras, or none. Defaults to the
+    current drop-in, if there is one.
+
+:-y/--yes:
+    Ask nothing, don't confirm.
+
+:--strict:
+    Exit with code 1 on warnings, too. The changes are still made.
+
+The exit code is 0 if the host is set up, and 1 on an error, so a deploy script can check it.

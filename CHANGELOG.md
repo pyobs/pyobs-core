@@ -9,6 +9,64 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.30.0] - 2026-11-26
+
+### Added
+
+- Preparation for a systemd mode of pyobsd: a `mode` key in the `pyobsd` section of the config file, a
+  `--mode` option and `$PYOBSD_MODE` (`pid` or `systemd`, default `pid`).
+- `pyobs --pid-file` refuses to start if the config file sets `pyobsd.mode: systemd`, so that a module can't
+  run twice on a host whose modules run under systemd. `PYOBSD_MODE=pid` overrides it. pyobsd in PID-file
+  mode sets it for the modules it starts.
+- A module sends `READY=1` to systemd once it is open (only if `$NOTIFY_SOCKET` is set), for units with
+  `Type=notify`.
+- `pyobsd exec <module>` (internal, not in the help) replaces pyobsd with `pyobs` running the module in the
+  foreground, with the options from the pyobsd config and without a PID file. It finds `<module>.yaml` or
+  `_<module>.yaml`. The systemd unit will run this.
+- `pyobsd setup`, run as root, sets up a host for pyobsd: creates the user (only when confirmed or with
+  `--create-user`), the directories `config`, `log`, `run` and `storage`, and writes the `pyobsd` section of
+  `/etc/pyobs.yaml` (rewritten as plain YAML, the old file is kept as `.bak`). It asks for every value, or takes
+  them from options (`--mode`, `--user`, `--path`, `--syslog`, `--file-log`, `-y`) to run unattended. It warns
+  about config files that hide `/etc/pyobs.yaml`. In systemd mode, it also writes the template unit
+  `pyobs@.service`, a generator that starts the modules without `_` at boot, and a polkit rule that lets the user
+  start, stop, restart and kill `pyobs@*.service`. It adds the user to `systemd-journal`, can raise the timeout of
+  reboots for cooled cameras (`--shutdown-timeout`), and warns about a missing polkitd, an enabled old
+  `pyobs.service` and modules still running with PID files. Other pyobsd calls in systemd mode warn if these files
+  are missing or outdated. In PID-file mode, it removes these files again.
+- systemd mode of pyobsd: `start`, `stop` (`--kill`, `--no-wait`), `restart`, `status` and `logs` work on
+  `pyobs@<module>.service` through `systemctl`, as root or as the user the polkit rule allows. `start` starts
+  all modules in one call and resets failed units first (so a unit that hit the start limit starts again),
+  `stop --kill` sends SIGKILL and a stop (so the unit isn't restarted, and shows as stopped), and a module
+  still running in PID-file mode is refused. `status` reads all units in one `systemctl show` call and shows
+  `starting`, `failed` (also while waiting for an automatic restart) and the number of restarts, plus modules still running in PID-file mode. `logs` uses
+  `journalctl -u`, so it includes what a module wrote to stdout/stderr.
+- `status --json` has `mode` and `enabled` for every module in both modes, and `restarts` in systemd mode.
+- `extend_stop_timeout()` also sends the deadline as the unit's status text, so `pyobsd status` can show it in
+  systemd mode.
+
+### Changed
+
+- pyobsd's PID-file code moved into `PidFileDaemon`, with the parts shared by both modes in
+  `PyobsDaemonBase`. `PyobsDaemon` stays as an alias.
+- With `--syslog`, a module no longer logs to stderr if stderr is the systemd journal (`$JOURNAL_STREAM`
+  matches stderr), so lines don't show up twice in the journal.
+- `pyobs` exits with code 1 if creating, opening, running or closing the module raised, otherwise 0 (also
+  after a stop by signal). `Application.run()` returns that code. Before, it was always 0.
+- A module whose startup failed now exits right away. Before, the process stayed alive, doing nothing, until
+  it got a signal, so in PID-file mode it showed as running.
+- The warm-up progress line on close shows the sensor temperature and power the last step was planned with,
+  instead of reading them again after the step. The done line says why the warm-up ended (setpoint reached, or
+  cooler idle, with the readings). `RampStep` has a new field `idle`.
+- Docs: the installation guide now uses `pyobsd setup` and the `full` extra in `/opt/pyobs/venv`, and its ejabberd
+  section matches `install-ejabberd.sh` (what the script does, shaper values, install via the package manager). A
+  new page "Running modules on a host" covers the two modes of pyobsd, the requirements of the systemd mode,
+  switching a host, setup from deploy scripts and troubleshooting (#1110).
+
+### Fixed
+
+- A module that was still starting, e.g. waiting for an unreachable XMPP server, ignored SIGTERM and only ended
+  with SIGKILL. It now stops and closes right away (#1114).
+
 ## [2.29.1] - 2026-11-25
 
 ### Changed

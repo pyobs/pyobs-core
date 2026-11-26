@@ -16,7 +16,7 @@ before it's actually ready:
 
 ```
 2026-07-17 19:23:41,057 [INFO] (fli) application.py:226 Opening module...
-2026-07-17 19:23:41,290 [INFO] (fli) bind.py:59 JID set to: fli230@monet.saao.ac.za/pyobs
+2026-07-17 19:23:41,290 [INFO] (fli) bind.py:59 JID set to: fli230@site-c.example.org/pyobs
 2026-07-17 19:23:41,291 [INFO] (fli) xmppclient.py:131 Connected to server.
 2026-07-17 19:23:44,022 [INFO] (fli) xmppcomm.py:905 Published capabilities for IModule
 2026-07-17 19:23:44,022 [INFO] (fli) xmppcomm.py:905 Published capabilities for IConfig

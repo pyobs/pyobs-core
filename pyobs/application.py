@@ -4,6 +4,7 @@ import logging.handlers
 import os
 import platform
 import signal
+import sys
 import warnings
 from collections.abc import Awaitable, Callable
 from io import StringIO
@@ -99,6 +100,23 @@ class InfluxLogConfig(TypedDict):
     bucket: str
 
 
+def _stderr_is_journal() -> bool:
+    """Whether stderr is connected to the systemd journal.
+
+    systemd sets $JOURNAL_STREAM to "<device>:<inode>" of that stream. Child processes inherit the variable even if
+    their stderr goes elsewhere, so it is compared with stderr's own device and inode (see systemd.exec(5),
+    $JOURNAL_STREAM)."""
+    value = os.environ.get("JOURNAL_STREAM")
+    if not value:
+        return False
+    try:
+        device, inode = (int(v) for v in value.split(":"))
+        st = os.fstat(sys.stderr.fileno())
+    except (ValueError, OSError, AttributeError):
+        return False
+    return (st.st_dev, st.st_ino) == (device, inode)
+
+
 class Application:
     """Class for initializing and shutting down a pyobs process."""
 
@@ -149,6 +167,10 @@ class Application:
         """
         self._stop_timeout = float(stop_timeout)
         self._stopping = False
+        # set once module.startup() has returned, see _signal_handler()
+        self._started = False
+        # set if a step of _main() raised, makes run() return 1
+        self._failed = False
         # stop file for extend_stop_timeout(), removed again at the end of run(); one left behind by an earlier
         # run (e.g. killed during shutdown) would make this run look like it is stopping
         shutdown.set_stop_file(shutdown.stop_file_for(pid_file) if pid_file is not None else None)
@@ -179,11 +201,13 @@ class Application:
 
         handlers: list[logging.Handler] = []
 
-        # create stdout logging handler
-        stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(formatter)
-        stream_handler.addFilter(module_name_filter)
-        handlers.append(stream_handler)
+        # create stderr logging handler, unless stderr goes to the journal anyway (under systemd), where the
+        # journal handler below already writes every line, with PYOBS_MODULE
+        if not (syslog and _stderr_is_journal()):
+            stream_handler = logging.StreamHandler()
+            stream_handler.setFormatter(formatter)
+            stream_handler.addFilter(module_name_filter)
+            handlers.append(stream_handler)
 
         # create file logging handler, if log file is given
         if log_file is not None:
@@ -328,12 +352,20 @@ class Application:
             self._loop = loop_module_class.new_event_loop()
             asyncio.set_event_loop(self._loop)
 
-    def run(self) -> None:
-        """Run app."""
+    def run(self) -> int:
+        """Run app.
+
+        Returns:
+            Exit code: 1 if creating, opening, running or closing the module raised, otherwise 0. A stop by signal
+            is a normal end, so systemd only restarts the module (Restart=on-failure) after an error.
+        """
 
         # run main task forever -- created before the signal handlers are registered below, so
         # a signal arriving the instant it's registered can never find self._main_task unset
         self._main_task = self._loop.create_task(self._main())
+        # once _main() is done, e.g. after a failed startup, nothing is left to do, so end the process instead of
+        # idling until a signal. Normally, Module.quit() has already stopped the loop by then
+        self._main_task.add_done_callback(lambda _: self._loop.stop())
 
         # signals
         for sig in (signal.SIGTERM, signal.SIGINT):
@@ -374,6 +406,8 @@ class Application:
         # shutdown is done, so a deadline from extend_stop_timeout() no longer applies
         shutdown.clear_stop_file()
 
+        return 1 if self._failed else 0
+
     def _signal_handler(self, sig: int) -> None:
         """React to signals and quit the module."""
 
@@ -392,6 +426,11 @@ class Application:
 
         if self._module is not None:
             self._module.quit()
+            # still in startup() (e.g. XmppComm waiting for an unreachable server): quit() alone doesn't end that
+            # wait, and run() would wait for _main_task until SIGKILL. Cancelling it ends startup(), the finally in
+            # _main() still closes the module (#1114)
+            if not self._started:
+                self._main_task.cancel()
         else:
             # module_factory hasn't resolved yet (e.g. a login dialog still open) -- nothing to
             # quit, so cancel the pending factory wait directly instead. Module.quit() would
@@ -442,7 +481,11 @@ class Application:
                 log.warning("Could not determine loaded pyobs package versions, continuing anyway.", exc_info=True)
 
             await self._module.startup()
+            self._started = True
             log.info("Started successfully.")
+
+            # under systemd (Type=notify), the start only counts as done once the module is open. No-op otherwise
+            shutdown.notify("READY=1")
 
             # run module
             await self._module.main()
@@ -450,6 +493,7 @@ class Application:
         except Exception:
             # some exception was thrown
             log.exception("Something went wrong.")
+            self._failed = True
 
         finally:
             # shutting down
@@ -461,7 +505,8 @@ class Application:
                 try:
                     await self._module.close()
                 except Exception:
-                    log.exception("hey")
+                    log.exception("Could not close module.")
+                    self._failed = True
 
             # finished
             log.info("Finished shutting down.")

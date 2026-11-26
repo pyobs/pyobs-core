@@ -86,6 +86,9 @@ class CoolingRampMixin:
         self._cooling_commanded: float | None = None
         self._cooling_event = asyncio.Event()
         self._cooling_failures = 0
+        # sensor temperature and power the last warm-up step was planned with, and how the last ramp ended
+        self._cooling_reading: tuple[float | None, int | None] = (None, None)
+        self._cooling_end: str | None = None
 
         self._cooling_task = self.add_background_task(self._cooling_ramp_loop, True)  # type: ignore[attr-defined]
 
@@ -197,6 +200,7 @@ class CoolingRampMixin:
         """Runs the warm-up ramp to its end. Logs when it starts, about every _WARMUP_LOG_INTERVAL seconds while it
         runs, and when it is done, so the log shows why the module takes long to stop."""
         start = time.monotonic()
+        self._cooling_reading, self._cooling_end = (None, None), None
         delay = await self._cooling_tick()
         if self._cooling_target is None:
             return  # cooler was off already, or switched off in the first step
@@ -213,25 +217,19 @@ class CoolingRampMixin:
             delay = await self._cooling_tick()
             now = time.monotonic()
             if self._cooling_target is not None and now >= next_log:
-                await self._cooling_log_warm_up(start + timeout - now)
+                self._cooling_log_warm_up(start + timeout - now)
                 next_log = now + _WARMUP_LOG_INTERVAL
-        log.info("Warm-up done after %s, cooling is off.", _duration(time.monotonic() - start))
+        end = f", {self._cooling_end}" if self._cooling_end else ""
+        log.info("Warm-up done after %s%s, cooling is off.", _duration(time.monotonic() - start), end)
 
-    async def _cooling_log_warm_up(self, left: float) -> None:
-        # only for the log, the next tick reports a real problem
-        try:
-            sensor = await self._get_sensor_temperature()
-        except Exception:
-            sensor = None
-        try:
-            _, _, power = await self._get_cooling_hardware()
-        except Exception:
-            power = None
+    def _cooling_log_warm_up(self, left: float) -> None:
+        """Logs the progress, with the readings the last step was planned with."""
+        sensor, power = self._cooling_reading
         log.info(
             "Warming up: setpoint %s, sensor %s, power %s, up to %s left.",
             _temperature(self._cooling_commanded),
             _temperature(sensor),
-            "unknown" if power is None else f"{power} %",
+            _power(power),
             _duration(max(0.0, left)),
         )
 
@@ -303,6 +301,15 @@ class CoolingRampMixin:
             sensor = await self._get_sensor_temperature()
             _, _, power = await self._get_cooling_hardware()
         step = self._cooling_ramp.next_step(commanded, enabled, setpoint, sensor, power)
+        if not enabled:
+            self._cooling_reading = (sensor, power)
+            if step.done:
+                self._cooling_end = (
+                    f"cooler idle at setpoint {_temperature(commanded)}, sensor {_temperature(sensor)}, "
+                    f"power {_power(power)}"
+                    if step.idle
+                    else f"setpoint at {_temperature(commanded)}"
+                )
         if step.write:
             await self._set_cooling_hardware(step.enabled, step.setpoint)
             self._cooling_commanded = step.setpoint
@@ -319,6 +326,10 @@ class CoolingRampMixin:
 
 def _temperature(value: float | None) -> str:
     return "unknown" if value is None else f"{value:.1f} °C"
+
+
+def _power(value: int | None) -> str:
+    return "unknown" if value is None else f"{value} %"
 
 
 def _duration(seconds: float) -> str:

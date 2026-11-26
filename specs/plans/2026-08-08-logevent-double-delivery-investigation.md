@@ -5,14 +5,14 @@ Status: implemented, closed 2026-08-20 — the fix this investigation called for
 (`xmppcomm.py:813`) and replaced with explicit XEP-0060 node subscriptions, eliminating the
 resource-addressed second `ejabberd_sm:route_message` send that caused the duplication. Root
 mechanism was confirmed 2026-08-16 (point 15), directly from production debug logs — no longer
-inferred. Two threads remain recorded below, neither blocking this closure: why `ms`'s real
+inferred. Two threads remain recorded below, neither blocking this closure: why `srv-c`'s real
 accounts specifically double-delivered (points 16-18: seven+ local repros never reproduced it),
 and rollout of #761 to production sites (a standalone operational step).
 
-**But the bug is not universal** (point 16): a live test against the sibling `iagvtsrv` production
+**But the bug is not universal** (point 16): a live test against the sibling `srv-b` production
 server — same ejabberd version, same shared-roster provisioning, real `both` roster state — showed
-*no* duplication. The `pyobs_modules` shaper-tier ACL found on `iagvtsrv` but not `ms` was tested
-locally and refuted (point 17). But investigating *why* `ms` shows repeated
+*no* duplication. The `pyobs_modules` shaper-tier ACL found on `srv-b` but not `srv-c` was tested
+locally and refuted (point 17). But investigating *why* `srv-c` shows repeated
 `ejabberd_system_monitor` overload-kills of stuck client sessions (point 17) — prompted by Tim's
 "1 or 2 modules send way too many log events... both from pyobs-brot" (which has a known
 blocking-SDK-on-event-loop bug from a prior investigation) — led to the **first successful local
@@ -20,23 +20,23 @@ reproduction** (point 18): flooding + a subscriber that blocks its own event loo
 genuinely duplicates a delivery, matching production's real overload-kill log signature exactly.
 
 **However this is a *different* bug from point 15's**: the overload-triggered duplicate is
-transient (a follow-up low-volume test on the same session came back clean), while `ms`'s real
+transient (a follow-up low-volume test on the same session came back clean), while `srv-c`'s real
 symptom is deterministic and load-independent (point 15's controlled single-publish test always
-shows exactly 2 copies). So "why is point 15's persistent mechanism specifically active on `ms`'s
+shows exactly 2 copies). So "why is point 15's persistent mechanism specifically active on `srv-c`'s
 real accounts and not fresh accounts anywhere" is still the open core question — now confirmed
 unrelated to load/overload state, though whether the two bugs are connected via some rarer trigger
 is untested (point 18's closing note). This question is separate from confidence in the fix, which
-doesn't depend on resolving it. Two distinct `ms` timeline events remain on record: Docker→Debian
+doesn't depend on resolving it. Two distinct `srv-c` timeline events remain on record: Docker→Debian
 migration 2026-07-15 (fresh mnesia), separate manual vhost/TLS/shaper edit 2026-08-04.
 
 Repos: pyobs-core (client-side code implicated), pyobs-monet (has the SAAO module configs used
-during investigation), production ejabberd on `monet.saao.ac.za` (config/state implicated, not a
+during investigation), production ejabberd on `site-c.example.org` (config/state implicated, not a
 repo).
 
 ## Problem
 
 User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
-`admin@monet.saao.ac.za`) displays every log message twice. Confirmed facts from the user:
+`admin@site-c.example.org`) displays every log message twice. Confirmed facts from the user:
 
 - Happens from a fresh launch, no logout/reconnect needed.
 - Every module's log lines are duplicated uniformly, not just one module.
@@ -60,9 +60,9 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
   containing that commit), so "not yet deployed" doesn't apply either.
 - **Duplicate client connections**: `ejabberdctl connected_users_info` on production shows
   exactly one session per module, all on resource `/pyobs`. Not double-connected processes.
-- **Leftover/duplicate roster entries**: `ejabberdctl get_roster fli230 monet.saao.ac.za` shows
-  one `both`-subscription entry per contact, all under `monet.saao.ac.za` — no stray
-  `monti.monet.saao.ac.za` duplicates from the recent host addition (see below).
+- **Leftover/duplicate roster entries**: `ejabberdctl get_roster fli230 site-c.example.org` shows
+  one `both`-subscription entry per contact, all under `site-c.example.org` — no stray
+  `monti.site-c.example.org` duplicates from the recent host addition (see below).
 - **Inherent to ejabberd's PEP+flat plugin combination in general**: built a local docker
   ejabberd (`/tmp/.../scratchpad/ejabberd-repro/`, see below) configured to mirror production's
   actual `mod_pubsub` settings (`plugins: [flat, pep]`, no `default_node_config` override) and
@@ -75,7 +75,7 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
 
 1. **Reproduces with a bare, independent XMPP client** — not GUI-specific. Script:
    `pyobs-core/scripts/xmpp/watch_log_events.py`. Connecting as
-   `admin@monet.saao.ac.za/pyobs-debug` (a brand-new resource, unrelated to the running GUI) and
+   `admin@site-c.example.org/pyobs-debug` (a brand-new resource, unrelated to the running GUI) and
    registering only `LogEvent` reproduces the exact same double delivery.
 
 2. **Duplicate pairs share the same event `uuid`** (`Event.uuid`, generated once at construction
@@ -95,34 +95,34 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
    including fli230's rapid-fire exposure-sequence logging that showed 100% duplication in the
    normal path.
 
-   **Conclusion**: ejabberd on `monet.saao.ac.za` is currently delivering PEP notifications via
+   **Conclusion**: ejabberd on `site-c.example.org` is currently delivering PEP notifications via
    two independent paths simultaneously for subscribers that declare explicit interest — implicit
    roster-presence-based auto-subscribe (which alone is sufficient and fires once), *and*
    explicit-interest-based delivery (which pyobs's `add_interest()` call also triggers). Both
    fire, so every subscriber gets two copies of everything.
 
 4. **Timing correlation, not yet proven causal**: `/etc/ejabberd/ejabberd.yml` on the production
-   server (`ssh ms`, i.e. `monet.saao.ac.za` as root) was last modified **2026-08-04 11:18** — the
+   server (`ssh srv-c`, i.e. `site-c.example.org` as root) was last modified **2026-08-04 11:18** — the
    day before this investigation, and around when the user says they started noticing the
    duplication (much better fit than the 2026-07-15 pyobs-core commit). Diffing against the
    most recent auto-backup (`ejabberd.yml.bak.20260715083232`, from a `2026-07-15` package
    install) shows three changes landed since:
-   - A **new virtual host** `monet.saao.ac.za` was added (previously only
-     `monti.monet.saao.ac.za` existed as a vhost on this ejabberd instance).
+   - A **new virtual host** `site-c.example.org` was added (previously only
+     `monti.site-c.example.org` existed as a vhost on this ejabberd instance).
    - `tls: false` → `tls: true` for c2s.
    - Shaper `rate`/`burst_size`/`fast` limits raised ~10x (3000→30000 / 20000→200000 /
      200000→2000000).
 
    **Correction (2026-08-15):** the operator (Tim) says he never flipped TLS or added the
-   `monet.saao.ac.za` vhost. So the 2026-08-04 config change was made by someone/something else —
+   `site-c.example.org` vhost. So the 2026-08-04 config change was made by someone/something else —
    a SAAO sysadmin (hostname migration?), an unattended package update, or similar. Who made it is
    now an open question worth answering before assuming any of the three diffs is benign.
 
    None of these three, individually, is *proven* to cause the double-PEP-delivery — that's the
    open thread. The local docker repro (point above) used a single, TLS-off, single-vhost setup,
    so it didn't test the "two vhosts on one ejabberd node" configuration at all. That was the most
-   likely remaining candidate: **the new `monet.saao.ac.za` vhost coexisting with
-   `monti.monet.saao.ac.za` on the same ejabberd node may be causing PEP/roster logic to
+   likely remaining candidate: **the new `site-c.example.org` vhost coexisting with
+   `monti.site-c.example.org` on the same ejabberd node may be causing PEP/roster logic to
    double-fire**, e.g. via shared roster group scoping, s2s/component routing between the two
    similarly-named hosts, or some interaction between `mod_shared_roster` and having two vhosts.
 
@@ -150,13 +150,13 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
    trigger double delivery. This matches Tim's 2026-08-15 read that the config diff was probably
    unrelated. **Not fully exhausted**, though — untested variants: same username registered on
    both vhosts, an explicit shared-roster group spanning both vhosts, or s2s routing between two
-   *similarly-named* hosts (`monet.saao.ac.za` / `monti.monet.saao.ac.za` share a prefix, unlike
+   *similarly-named* hosts (`site-c.example.org` / `monti.site-c.example.org` share a prefix, unlike
    this test's `a.localtest`/`b.localtest`) — any of these could plausibly be different from the
    plain case just tested. Given Tim's de-prioritization, not planned as a next step unless other
    leads dry up.
 
 7. **Production node inspection (2026-08-16), as fli230 (node owner), on `urn:pyobs:event:LogEvent:1`
-   at `fli230@monet.saao.ac.za`:**
+   at `fli230@site-c.example.org`:**
    - `pubsub#owner` subscription-list query (`get_node_subscriptions`, the thing next-step #1 was
      stuck on) is a dead end on this server: **`feature-not-implemented`**
      (`unsupported feature="manage-subscriptions"`). ejabberd's PEP plugin here doesn't implement
@@ -219,14 +219,14 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
    matching production's `mod_pubsub` config. This means the actual trigger is something not yet
    captured by any local repro — candidates not yet tested: the specific ejabberd
    version/build (`ejabberd/ecs:latest` locally vs whatever's actually installed on
-   `monet.saao.ac.za`, never checked), mnesia/caps-cache state built up over a long-running
+   `site-c.example.org`, never checked), mnesia/caps-cache state built up over a long-running
    instance with many nodes (99 pubsub nodes, ~200 items/node — a fresh local instance starts
    cold), or something about the specific timing/ordering of caps negotiation on a real multi-module
    fleet that a two-peer local repro doesn't exercise. Given three misses in a row, further local
    repro attempts should probably wait for a more specific hypothesis rather than trying more shaper
    or vhost permutations.
 
-9. **Version check (2026-08-16): found it, probably.** `ssh ms "ejabberdctl status"` →
+9. **Version check (2026-08-16): found it, probably.** `ssh srv-c "ejabberdctl status"` →
    production runs **ejabberd 24.12-3+deb13u2** (Debian's packaged build). All three local repro
    attempts so far (points 5, 6, 8) used `ejabberd/ecs:latest`, which turns out to be **ejabberd
    26.04** — confirmed via `/home/ejabberd/lib/ejabberd-26.4.0` inside the image and its
@@ -279,13 +279,13 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
       the mechanism, though state accumulated over the ~1 month *since* the fresh install (in
       production's normal, long-running operation) remains an open, untested possibility distinct
       from that.
-    - Confirms Tim's account structurally: `docker images` on `ms` still shows a dangling
+    - Confirms Tim's account structurally: `docker images` on `srv-c` still shows a dangling
       `ejabberd/ecs` image tagged `latest`, pulled ~4 months ago — i.e. production genuinely ran
       the same `ejabberd/ecs` Docker image family used in every local repro attempt here, before
       the 07-15 switch to Debian's package. The old container/compose file/named volume are gone
       (docker ps -a, docker volume ls, and a search of `/opt`, `/root` turned up nothing) — no way
       to directly diff the pre-migration config.
-    - **Pulled the full current production `ejabberd.yml`** (`ssh ms cat
+    - **Pulled the full current production `ejabberd.yml`** (`ssh srv-c cat
       /etc/ejabberd/ejabberd.yml`) for the first time (previously only a 3-item diff summary was
       available). Confirmed present since the *earliest* 07-15 backup
       (`ejabberd.yml.bak.20260715082915`, i.e. Debian's stock template, not a later addition):
@@ -361,20 +361,20 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
     config edit/restart — I couldn't run it myself, blocked by the auto-mode classifier as a
     mutating production action even after self-granting a permission rule failed; Tim ran it).
     Debug volume was extreme (~8000 log lines/second; the log rotated mid-window on the first
-    attempt, losing it) — second attempt used `ssh ms "timeout 20 tail -f -n0
+    attempt, losing it) — second attempt used `ssh srv-c "timeout 20 tail -f -n0
     /var/log/ejabberd/ejabberd.log"` streamed to a local file (immune to remote rotation) started
     *before* triggering, not a post-hoc grep. `scripts/xmpp/trigger_duplicate.py` (new, this
     session) published one tagged `LogEvent` as `fli230` while subscribed as
-    `admin@monet.saao.ac.za/pyobs-debug-trace` (admin's password from
+    `admin@site-c.example.org/pyobs-debug-trace` (admin's password from
     `pytel-dev/configs/gui-saao.yaml`, do not commit/leak) and grepped the captured log for the
     event's `uuid`.
 
     **Direct evidence**: for one single publish, `ejabberd_sm:route_message/1:804` fires **twice**
     ("Sending to process <PID>", once per delivery path) for admin's session, producing two
     distinct outgoing `Send XML on stream` sends to the same c2s connection:
-    - `<message to='admin@monet.saao.ac.za' ...>` — **no resource**, i.e. addressed to the bare
+    - `<message to='admin@site-c.example.org' ...>` — **no resource**, i.e. addressed to the bare
       JID. This is the implicit/roster-presence path (XEP-0163 `auto-subscribe`).
-    - `<message to='admin@monet.saao.ac.za/pyobs-debug-trace' ...>` — addressed to the specific
+    - `<message to='admin@site-c.example.org/pyobs-debug-trace' ...>` — addressed to the specific
       full JID/resource that declared caps interest. This is the explicit-interest path
       (`filtered-notifications`, i.e. `add_interest()` in `_register_events()`,
       `xmppcomm.py:813`).
@@ -385,7 +385,7 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
     and 7's theory, now confirmed rather than merely plausible).
 
     **Bonus, unrelated finding**: the capture incidentally showed a second live session under
-    `admin@monet.saao.ac.za`, resource `/pyobs` — Tim's actual production `pyobs-gui` is running
+    `admin@site-c.example.org`, resource `/pyobs` — Tim's actual production `pyobs-gui` is running
     right now, connected under the same bare JID as the throwaway debug resource used throughout
     this investigation. It independently exhibited the exact same double-send (once bare-JID, once
     `/pyobs`-addressed) for the same test event, on its own real live session — further
@@ -409,8 +409,8 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
     server — the bug is not universal after all.** Tim raised: "why don't we have the same problem
     on other prod machines" (IAG's `iag50cm`/`iagvt` telescopes, SSH-only, not publicly
     reachable). Checked directly:
-    - Both `iag50srv` and `iagvtsrv` (their ejabberd hosts) run the **exact same** ejabberd
-      24.12-3+deb13u2 as production `ms`.
+    - Both `srv-a` and `srv-b` (their ejabberd hosts) run the **exact same** ejabberd
+      24.12-3+deb13u2 as production `srv-c`.
     - Both use the identical `@all@`-wildcard shared-roster provisioning Tim confirmed he uses
       everywhere (`srg_create all <host> all all all` / `srg_user_add @all@ <host> all <host>`) —
       the same pattern used in every local repro here and in `tests/xmpp/docker-compose.yml`.
@@ -418,12 +418,12 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
       roster entries with existing module accounts — confirming the shared roster is genuinely
       populated, not just defined-but-empty (my first read of `srg_get_members` returning empty
       was a red herring: `@all@` is a wildcard member, not enumerated by that command — same on
-      production `ms`, which also returns empty there despite `fli230` having 37 real `both`
+      production `srv-c`, which also returns empty there despite `fli230` having 37 real `both`
       contacts).
-    - **Live test on `iagvtsrv`** (iag50 skipped — Tim noted it's "not really live at the
+    - **Live test on `srv-b`** (iag50 skipped — Tim noted it's "not really live at the
       moment"): registered throwaway `testpub`/`testsub` accounts, confirmed they inherited real
       `both` presence via the shared roster, tunneled the c2s port locally (`ssh -N -L
-      5226:localhost:5222 iagvtsrv` — the daemonized `-f` form got blocked by the classifier, the
+      5226:localhost:5222 srv-b` — the daemonized `-f` form got blocked by the classifier, the
       foreground/backgrounded-in-one-call form worked), and ran the same trigger-and-observe test
       as point 15's production trace (`scripts/xmpp/trigger_duplicate_iagvt.py`, new, this
       session). **Result: 1 copy received, no duplication** — run twice to rule out a fluke from a
@@ -432,35 +432,35 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
     - **This is a real, structurally different, decisive negative** — not a local Docker repro
       with an unverified fidelity gap, but an actual sibling production ejabberd instance,
       version-matched, same provisioning convention, real roster state. The mechanism (point 15)
-      is confirmed to happen on `ms`; it's now also confirmed to *not* happen on at least one
+      is confirmed to happen on `srv-c`; it's now also confirmed to *not* happen on at least one
       comparable real deployment.
-    - **Config diff, `ms` vs `iagvtsrv`** (direct `diff` of both `ejabberd.yml`s): the known
+    - **Config diff, `srv-c` vs `srv-b`** (direct `diff` of both `ejabberd.yml`s): the known
       two-vhost delta (already tested locally in point 6, refuted alone); and a **new, previously
-      untested** difference — `iagvtsrv` has a `pyobs_modules` ACL (`server:
-      iagvtsrv.astro.physik.uni-goettingen.de`) that routes `c2s_shaper` for all local-vhost
-      traffic to the **`fast`** tier instead of `normal`; `ms` has no such ACL, so `fli230` and
+      untested** difference — `srv-b` has a `pyobs_modules` ACL (`server:
+      srv-b.example.org`) that routes `c2s_shaper` for all local-vhost
+      traffic to the **`fast`** tier instead of `normal`; `srv-c` has no such ACL, so `fli230` and
       every other module sit on the plain `normal` tier. This is qualitatively different from the
       shaper *values* already tested in point 8 (which varied `normal`'s rate/burst uniformly) —
       it's about which shaper *tier* local module traffic is routed to at all, never tested.
-      **However**: `iag50srv` has *no* such ACL either (checked directly, same plain
-      `{none: admin, normal: all}` as `ms`) — so this specific ACL isn't a candidate for a general
-      explanation across both IAG sites, only a real, unreconciled `iagvtsrv`-specific delta. Since
+      **However**: `srv-a` has *no* such ACL either (checked directly, same plain
+      `{none: admin, normal: all}` as `srv-c`) — so this specific ACL isn't a candidate for a general
+      explanation across both IAG sites, only a real, unreconciled `srv-b`-specific delta. Since
       `iag50` wasn't live-tested (not currently live), whether it also lacks the bug despite
       lacking this ACL is still unconfirmed.
 
 17. **Shaper-tier-ACL repro (2026-08-16) — also refuted.** Built `ejabberd-repro-shapertier/`:
     point 12's full-module base plus the `pyobs_modules` ACL and `c2s_shaper: {fast:
-    pyobs_modules, normal: all}` routing, mirroring `iagvtsrv`'s config exactly (point 16). 50
+    pyobs_modules, normal: all}` routing, mirroring `srv-b`'s config exactly (point 16). 50
     sent, 50 received, no duplication. **Eighth local repro miss.**
 
-    **Reframing after this miss**: every local repro (all eight) and the `iagvtsrv` live test
+    **Reframing after this miss**: every local repro (all eight) and the `srv-b` live test
     (point 16) shares one thing none of them examined — they all used **fresh, history-free
     accounts** (`testpub`/`testsub`, or the local Docker repros' throwaway users), never anything
-    resembling `admin@monet.saao.ac.za`/`fli230@monet.saao.ac.za`'s actual state: ~1 month of real
+    resembling `admin@site-c.example.org`/`fli230@site-c.example.org`'s actual state: ~1 month of real
     operation, 37 real roster contacts each, presumably many registered PEP nodes across many
-    event types (not just `LogEvent`), real reconnect/restart history. The `iagvtsrv` test used
+    event types (not just `LogEvent`), real reconnect/restart history. The `srv-b` test used
     real production *infrastructure* but still a fresh account pair with zero history — so it
-    wasn't actually apples-to-apples with `ms`'s specific buggy accounts, only with `ms`'s
+    wasn't actually apples-to-apples with `srv-c`'s specific buggy accounts, only with `srv-c`'s
     *config*, which is by now thoroughly ruled out as the differentiator. Point 10's
     reconnect-churn repro (point 14) tested *volume* of reconnects (30 cycles, ~2 minutes,
     uniform) but not *variety* or *duration* of real operational history. This reopens point 10's
@@ -495,12 +495,12 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
     So this is a *transient* duplicate triggered by the overload condition itself, not a
     persistent corrupted subscription state. It does **not** by itself explain production's
     deterministic double-delivery on point 15's controlled, low-volume, no-load test (where
-    `admin@monet.saao.ac.za` got exactly 2 copies of a single isolated test publish, every time).
+    `admin@site-c.example.org` got exactly 2 copies of a single isolated test publish, every time).
     These look like two distinct, coexisting bugs: (a) the persistent implicit+explicit dual-path
     delivery from point 15, which is deterministic and doesn't depend on load, and (b) this newly
     found transient overload-triggered duplicate, which does. (a) is still unexplained as to why
-    it's specifically active on `ms`'s real accounts and not on fresh accounts anywhere (including
-    `iagvtsrv`); (b) is now reproduced, understood in outline (ejabberd's broadcast/queue-drain
+    it's specifically active on `srv-c`'s real accounts and not on fresh accounts anywhere (including
+    `srv-b`); (b) is now reproduced, understood in outline (ejabberd's broadcast/queue-drain
     logic apparently duplicates a send under severe backpressure), and plausibly tied to the
     `pyobs-brot` modules' known event-loop-blocking bug on the *publishing* side stalling other
     modules' own subscriptions too.
@@ -517,8 +517,8 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
    similarly-*named* hosts) are not planned unless other leads dry up — de-prioritized per Tim.
 
 3. Ask the user directly: did double-logging start specifically after they flipped
-   `tls: false → true`, or was `monet.saao.ac.za` added as a vhost around the same time for an
-   unrelated reason (e.g. migrating off `monti.monet.saao.ac.za`)? Superseded by Tim's 2026-08-15
+   `tls: false → true`, or was `site-c.example.org` added as a vhost around the same time for an
+   unrelated reason (e.g. migrating off `monti.site-c.example.org`)? Superseded by Tim's 2026-08-15
    correction that he didn't make either change — open question is now *who/what* did, not just
    the sequencing.
 
@@ -551,7 +551,7 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
     local miss; prompted the reframing in point 17 toward account-specific accumulated state as
     the leading candidate again.
 
-3j. **New (2026-08-16):** live-test `iag50srv` the same way as `iagvtsrv` if/when Tim considers it
+3j. **New (2026-08-16):** live-test `srv-a` the same way as `srv-b` if/when Tim considers it
     live enough to be a meaningful data point — currently the "lacks the ACL, presumed clean" claim
     is unconfirmed by an actual trigger test there.
 
@@ -563,8 +563,8 @@ User reported: the running pyobs-gui at SAAO (`gui-saao.yaml`, connecting to
 
 3l. **New (2026-08-16):** two open threads from point 18, not yet pursued:
     (a) why is point 15's *persistent, load-independent* double-dispatch specifically active on
-    `ms`'s real accounts (`admin`, `fli230`) and not on any fresh account tested anywhere,
-    including on `iagvtsrv`'s real infrastructure — still the core "why" mystery, now confirmed
+    `srv-c`'s real accounts (`admin`, `fli230`) and not on any fresh account tested anywhere,
+    including on `srv-b`'s real infrastructure — still the core "why" mystery, now confirmed
     unrelated to overload/load state;
     (b) whether repeatedly triggering point 18's transient overload bug (e.g. many times, or
     exactly during a state transition like `send_last_published_item`/`max_items` item rotation)
@@ -638,7 +638,7 @@ Committed nowhere yet (all present on disk, none pushed):
   `ejabberd-repro-tls/`, and `ejabberd-repro-churn/` (2026-08-16) — points 12, 13, 14's repros.
   All containers torn down after their tests.
 - `pyobs-core/scripts/xmpp/trigger_duplicate.py` — new, publishes one tagged `LogEvent` as
-  `fli230` while subscribed as `admin@monet.saao.ac.za` on a throwaway resource, printing the
+  `fli230` while subscribed as `admin@site-c.example.org` on a throwaway resource, printing the
   event `uuid` and wall-clock timestamps for correlating against server-side logs. Used for
   point 15's debug-log capture. Needs `PYOBS_ADMIN_PASSWORD`/`PYOBS_FLI_PASSWORD` env vars.
 - `/tmp/claude-1000/-home-husser-code-pyobs-pyobs-core/25a87842-799f-496f-9e70-17fedb5bb932/scratchpad/ejabberd_capture.log`
@@ -646,10 +646,10 @@ Committed nowhere yet (all present on disk, none pushed):
   point-15 trigger, containing the direct evidence of the double `route_message` dispatch.
   Session-scoped scratchpad, may not survive to a future session.
 - `pyobs-core/scripts/xmpp/trigger_duplicate_iagvt.py` — new, same pattern as
-  `trigger_duplicate.py` but against `iagvtsrv` over an SSH tunnel (`localhost:5226 ->
-  iagvtsrv:5222`), using throwaway `testpub`/`testsub` accounts. Used for point 16. Accounts
-  already cleaned up (`ejabberdctl unregister` on `iagvtsrv`); script is reusable if retesting.
-- `/tmp/claude-1000/-home-husser-code-pyobs-pyobs-core/25a87842-799f-496f-9e70-17fedb5bb932/scratchpad/iagvtsrv_ejabberd.yml`
+  `trigger_duplicate.py` but against `srv-b` over an SSH tunnel (`localhost:5226 ->
+  srv-b:5222`), using throwaway `testpub`/`testsub` accounts. Used for point 16. Accounts
+  already cleaned up (`ejabberdctl unregister` on `srv-b`); script is reusable if retesting.
+- `/tmp/claude-1000/-home-husser-code-pyobs-pyobs-core/25a87842-799f-496f-9e70-17fedb5bb932/scratchpad/srv-b_ejabberd.yml`
   and `ms_ejabberd.yml` — full config snapshots from both hosts, used for the point-16 diff.
 - `/tmp/claude-1000/-home-husser-code-pyobs-pyobs-core/25a87842-799f-496f-9e70-17fedb5bb932/scratchpad/ejabberd-repro-flood/`
   (2026-08-16) — `flood_publisher.py` (continuous unthrottled `LogEvent` publish, parameterized
@@ -666,15 +666,15 @@ Committed nowhere yet (all present on disk, none pushed):
 
 ## Access used
 
-- SSH: `ms` alias in `~/.ssh/config` → `root@monet.saao.ac.za`. Used read-only so far
+- SSH: `srv-c` alias in `~/.ssh/config` → `root@site-c.example.org`. Used read-only so far
   (`ejabberdctl status/connected_users_info/mnesia_info_ctl/get_roster`, `cat`/`diff` on
   `/etc/ejabberd/ejabberd.yml` and its auto-backups). Attempted `ejabberdctl debug` (interactive
   Erlang shell) to dump raw mnesia table rows — **abandoned as too fragile/risky over piped
   non-TTY stdin against a live production Erlang node**; if this is needed later, do it
   interactively (real terminal), not scripted.
-- XMPP: connected to production as `admin@monet.saao.ac.za` (password already known/in
+- XMPP: connected to production as `admin@site-c.example.org` (password already known/in
   `pytel-dev/configs/gui-saao.yaml`) on throwaway resources (`/pyobs-debug` etc), and briefly
-  attempted `fli230@monet.saao.ac.za` (password from `pyobs-monet/config/south/frontend/_fli.yaml`,
+  attempted `fli230@site-c.example.org` (password from `pyobs-monet/config/south/frontend/_fli.yaml`,
   **do not commit this file's contents anywhere**) on a throwaway resource distinct from the live
   module's `/pyobs` resource, specifically to avoid conflict-kicking the running production
   module.

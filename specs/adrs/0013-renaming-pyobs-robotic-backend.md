@@ -147,7 +147,7 @@ rename.
 *Deployments (fleet-wide):* every `class: pyobs.robotic.storage.backend.Backend*Archive`
 dotted path in scheduler/mastermind YAML configs must move to
 `pyobs.robotic.storage.portal.Portal*Archive` in lockstep with the pyobs-core release —
-confirmed present in `pyobs-iagvt` (`config/iagvtsrv/{scheduler,mastermind}.yaml`) and
+confirmed present in `pyobs-iagvt` (`config/srv-b/{scheduler,mastermind}.yaml`) and
 `pyobs-monet` (`config/south/monet/{scheduler,mastermind}.yaml`); docker-compose service
 names/volumes and env files, Keycloak realm configuration (client id + redirect URIs),
 any external docs or scripts referencing the old repo/image name.

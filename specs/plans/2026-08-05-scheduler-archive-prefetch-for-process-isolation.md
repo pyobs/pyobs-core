@@ -98,7 +98,7 @@ from it even less plausible as the 2026-08-15 stall's cause.
 
 That said, this still does not identify what actually produced the 2026-08-15 03:13 stall. An initial
 guess was archive network I/O in the schedule path (`prefetch()`/`add_observations()` hitting
-`iagvtsrv:8097` over aiohttp), but that is **ruled out too**: aiohttp awaits run on the loop and do not
+`srv-b:8097` over aiohttp), but that is **ruled out too**: aiohttp awaits run on the loop and do not
 block it, and the synchronous work actually in the schedule path is tiny when measured —
 
 - `data.night()` → `sun_set_time(previous)` on the main thread: 17 ms/call, `@cache`d per time

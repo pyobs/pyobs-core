@@ -71,7 +71,13 @@ def test_disable_stops_early_when_sensor_stops_following() -> None:
     assert ramp.next_step(6.0, False, None, sensor=5.0, power=0).setpoint == 7.0
     assert ramp.next_step(7.0, False, None, sensor=5.0, power=0).setpoint == 8.0
     step = ramp.next_step(8.0, False, None, sensor=5.0, power=0)
-    assert step.done and step.enabled is False and step.setpoint is None
+    assert step.done and step.enabled is False and step.setpoint is None and step.idle
+
+
+def test_disable_at_the_end_point_is_not_an_idle_stop() -> None:
+    ramp = CoolingRamp(rate_warm=1.0, off_temperature=20.0, idle_steps=1)
+    step = ramp.next_step(20.0, False, None, sensor=5.0, power=0)
+    assert step.done and step.enabled is False and not step.idle
 
 
 def test_disable_needs_idle_readings_in_a_row() -> None:

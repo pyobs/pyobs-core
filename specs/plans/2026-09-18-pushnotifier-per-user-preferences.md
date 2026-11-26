@@ -53,7 +53,7 @@ keyed by `sender` like `register_push_device`. `register_push_device` stays unch
 `{sender: {"devices": [...], "preferences": [...]}}` with a one-time migration in `open()`; (b) a
 second parallel file for preferences. **Chosen: (a)** — one file for one module's state, and the
 module has only shipped in 2026-09-14 (`5b688528`), is not yet in a tagged release, and is deployed
-on exactly one site (monet.saao.ac.za, Tim's device), so the migration surface is trivially small.
+on exactly one site (site-c.example.org, Tim's device), so the migration surface is trivially small.
 Rejected: (b), which splits one module's state across two files for no benefit.
 
 **Default: all-on vs. opt-in.** **Chosen: all-on** — byte-for-byte backward compatible with what

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -8,7 +9,7 @@ if TYPE_CHECKING:
 
 from pyobs import version
 
-from ._cli import CLI
+from ._cli import CLI, PYOBSD_MODE_ENV, pyobsd_mode
 
 
 class PyobsCLI(CLI):
@@ -92,6 +93,10 @@ class PyobsCLI(CLI):
     def run(self) -> None:
         from pyobs.utils.time import Time
 
+        # on a host whose modules run under systemd, a module started with a PID file would run next to its unit
+        if self._config["pid_file"] is not None:
+            self._check_pid_mode()
+
         # get full path of config
         self._config["config"] = os.path.abspath(self._config["config"])
 
@@ -107,13 +112,25 @@ class PyobsCLI(CLI):
             delta = Time(self._config["debug_time"]) - Time.now()
             Time.set_offset_to_now(delta)
 
-        # run app
+        # run app, exit with its exit code
         if self._config["pid_file"] is not None:
-            self._start_daemon(**self._config)
+            sys.exit(self._start_daemon(**self._config))
         else:
-            self.application(**self._config).run()
+            sys.exit(self.application(**self._config).run())
 
-    def _start_daemon(self, pid_file: str, **kwargs: Any) -> None:
+    def _check_pid_mode(self) -> None:
+        """Exits if pyobsd runs the modules on this host under systemd, see pyobsd_mode."""
+        try:
+            mode = pyobsd_mode(self.file_config)
+        except ValueError as e:
+            sys.exit(str(e))
+        if mode == "systemd":
+            sys.exit(
+                "This host runs pyobs modules under systemd (pyobsd mode: systemd), so --pid-file is refused. "
+                f"Use pyobsd start <module>, or set {PYOBSD_MODE_ENV}=pid to start it with a PID file anyway."
+            )
+
+    def _start_daemon(self, pid_file: str, **kwargs: Any) -> int:
         """Start process as a daemon.
 
         Args:
@@ -132,7 +149,7 @@ class PyobsCLI(CLI):
         with daemon.DaemonContext(
             working_directory=run_dir, umask=0o002, pidfile=pidfile.TimeoutPIDLockFile(pid_file)
         ) as _:
-            self.application(**{**self._config, "pid_file": pid_file}).run()
+            return self.application(**{**self._config, "pid_file": pid_file}).run()
 
 
 def main() -> None:

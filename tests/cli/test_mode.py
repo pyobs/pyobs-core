@@ -81,10 +81,15 @@ def test_load_config_empty_file(monkeypatch, tmp_path) -> None:
 
 
 def run_pyobs(monkeypatch, mocker, *args: str) -> tuple[Any, Any]:
-    start_daemon = mocker.patch.object(PyobsCLI, "_start_daemon")
+    start_daemon = mocker.patch.object(PyobsCLI, "_start_daemon", return_value=0)
     application = mocker.patch.object(PyobsCLI, "application")
+    application.return_value.run.return_value = 0
     monkeypatch.setattr(sys, "argv", ["pyobs", *args, "module.yaml"])
-    PyobsCLI()()
+    with pytest.raises(SystemExit) as exc:
+        PyobsCLI()()
+    # pyobs exits with the application's exit code, refusing to start exits with a message
+    if exc.value.code != 0:
+        raise exc.value
     return start_daemon, application
 
 
@@ -180,3 +185,13 @@ def test_pid_mode_passes_mode_to_pyobs(mocker, tmp_path) -> None:
     daemon._start_service("camera")
 
     assert popen.call_args.kwargs["env"]["PYOBSD_MODE"] == "pid"
+
+
+@pytest.mark.parametrize("code", [0, 1])
+def test_pyobs_exits_with_exit_code(monkeypatch, mocker, code) -> None:
+    application = mocker.patch.object(PyobsCLI, "application")
+    application.return_value.run.return_value = code
+    monkeypatch.setattr(sys, "argv", ["pyobs", "module.yaml"])
+    with pytest.raises(SystemExit) as exc:
+        PyobsCLI()()
+    assert exc.value.code == code

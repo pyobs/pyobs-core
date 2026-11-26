@@ -146,3 +146,82 @@ async def test_stream_handler_outside_journal(stderr_file, monkeypatch, mocker, 
     stderr_file()
     monkeypatch.delenv("JOURNAL_STREAM", raising=False)
     assert handler_types(monkeypatch, mocker, tmp_path, syslog=True) == ["StreamHandler", "PyobsJournaldLogHandler"]
+
+
+# ── exit code ────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_main_not_failed() -> None:
+    app = make_app(make_module())
+    app._failed = False
+    await app._main()
+    assert not app._failed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("step", ["startup", "main", "close"])
+async def test_main_failed(step) -> None:
+    module = make_module()
+    getattr(module, step).side_effect = RuntimeError("broken")
+    app = make_app(module)
+    app._failed = False
+
+    await app._main()
+
+    assert app._failed
+    module.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_main_failed_factory() -> None:
+    app = make_app(MagicMock())
+    app._module = None
+    app._module_factory = AsyncMock(side_effect=RuntimeError("login window closed"))
+    app._failed = False
+
+    await app._main()
+
+    assert app._failed
+
+
+def run_app(tmp_path: Path, mocker, **module_kwargs: Any) -> int:
+    """Application.run() with a real event loop and a module with the given startup/main/close."""
+    config = tmp_path / "test_module.yaml"
+    config.write_text("class: pyobs.modules.Module\n")
+    app = Application(config=str(config))
+    assert app._module is not None
+    for name, kwargs in module_kwargs.items():
+        mocker.patch.object(app._module, name, AsyncMock(**kwargs))
+    return app.run()
+
+
+def test_run_exit_code_0(tmp_path, mocker) -> None:
+    assert run_app(tmp_path, mocker, startup={}, main={}, close={}) == 0
+
+
+def test_run_exit_code_1(tmp_path, mocker) -> None:
+    assert run_app(tmp_path, mocker, startup={"side_effect": RuntimeError("no camera")}, close={}) == 1
+
+
+def test_run_exit_code_after_signal(tmp_path, mocker) -> None:
+    """A stop by signal is a normal end: 0, unless closing the module fails."""
+    import signal
+
+    def main_until_signal(app: Application) -> Any:
+        async def main() -> None:
+            app._signal_handler(signal.SIGTERM)
+
+        return main
+
+    for close, code in (({}, 0), ({"side_effect": RuntimeError("warm-up failed")}, 1)):
+        config = tmp_path / "test_module.yaml"
+        config.write_text("class: pyobs.modules.Module\n")
+        app = Application(config=str(config))
+        assert app._module is not None
+        mocker.patch.object(app._module, "startup", AsyncMock())
+        mocker.patch.object(app._module, "main", AsyncMock(side_effect=main_until_signal(app)))
+        mocker.patch.object(app._module, "close", AsyncMock(**close))
+        mocker.patch.object(application.shutdown, "start_watchdog")
+        mocker.patch.object(application.shutdown, "mark_stopping")
+        assert app.run() == code

@@ -167,6 +167,8 @@ class Application:
         """
         self._stop_timeout = float(stop_timeout)
         self._stopping = False
+        # set once module.startup() has returned, see _signal_handler()
+        self._started = False
         # set if a step of _main() raised, makes run() return 1
         self._failed = False
         # stop file for extend_stop_timeout(), removed again at the end of run(); one left behind by an earlier
@@ -424,6 +426,11 @@ class Application:
 
         if self._module is not None:
             self._module.quit()
+            # still in startup() (e.g. XmppComm waiting for an unreachable server): quit() alone doesn't end that
+            # wait, and run() would wait for _main_task until SIGKILL. Cancelling it ends startup(), the finally in
+            # _main() still closes the module (#1114)
+            if not self._started:
+                self._main_task.cancel()
         else:
             # module_factory hasn't resolved yet (e.g. a login dialog still open) -- nothing to
             # quit, so cancel the pending factory wait directly instead. Module.quit() would
@@ -474,6 +481,7 @@ class Application:
                 log.warning("Could not determine loaded pyobs package versions, continuing anyway.", exc_info=True)
 
             await self._module.startup()
+            self._started = True
             log.info("Started successfully.")
 
             # under systemd (Type=notify), the start only counts as done once the module is open. No-op otherwise

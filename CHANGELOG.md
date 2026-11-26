@@ -33,7 +33,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   are missing or outdated. In PID-file mode, it removes these files again.
 - systemd mode of pyobsd: `start`, `stop` (`--kill`, `--no-wait`), `restart`, `status` and `logs` work on
   `pyobs@<module>.service` through `systemctl`, as root or as the user the polkit rule allows. `start` starts
-  all modules in one call, `stop --kill` sends SIGKILL and a stop (so the unit isn't restarted, and shows as stopped), and a module
+  all modules in one call and resets failed units first (so a unit that hit the start limit starts again),
+  `stop --kill` sends SIGKILL and a stop (so the unit isn't restarted, and shows as stopped), and a module
   still running in PID-file mode is refused. `status` reads all units in one `systemctl show` call and shows
   `starting`, `failed` (also while waiting for an automatic restart) and the number of restarts, plus modules still running in PID-file mode. `logs` uses
   `journalctl -u`, so it includes what a module wrote to stdout/stderr.

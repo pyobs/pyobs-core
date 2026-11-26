@@ -112,6 +112,18 @@ def test_start_skips_running(systemctl, tmp_path, capsys) -> None:
     assert systemctl.verbs() == [["start", "--", "pyobs@telescope.service"]]
 
 
+def test_start_resets_failed(systemctl, tmp_path) -> None:
+    """A failed unit gets reset-failed first, otherwise systemd refuses the start after hitting the start limit."""
+    daemon = make_daemon(tmp_path, ["camera.yaml", "telescope.yaml", "dome.yaml"])
+    systemctl.unit("camera", "failed", Result="start-limit-hit")
+    systemctl.unit("telescope", "active", 123)
+    daemon.start()
+    assert systemctl.verbs() == [
+        ["reset-failed", "--", "pyobs@camera.service"],
+        ["start", "--", "pyobs@camera.service", "pyobs@dome.service"],
+    ]
+
+
 def test_start_unknown_module(systemctl, tmp_path, capsys) -> None:
     daemon = make_daemon(tmp_path, ["camera.yaml"])
     with pytest.raises(SystemExit) as exc:

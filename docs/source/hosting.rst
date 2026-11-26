@@ -110,10 +110,7 @@ A module stays **starting**:
 A module is **failed**:
     It stopped after an error, see its log. systemd starts it again after ten seconds, shown as
     "failed (restarting)". After five failed starts within five minutes, systemd gives up. Once the error is fixed,
-    reset the counter and start it again::
-
-        systemctl reset-failed pyobs@<module>.service
-        pyobsd start <module>
+    start it again with ``pyobsd start <module>``, which also resets that counter.
 
 A module isn't started at boot:
     Its config file starts with an underscore, or its name isn't a valid unit name. Renaming the config file takes

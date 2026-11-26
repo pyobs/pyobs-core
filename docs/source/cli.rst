@@ -152,8 +152,14 @@ and writes everything a module prints to the journal. The commands stay the same
 - **start** starts all modules in one call, so they start in parallel, and returns once all are open. A module
   that fails to open is reported as a failed start. A module that still runs in PID-file mode is refused. A
   failed module is reset first (``systemctl reset-failed``), so it also starts after systemd gave up restarting it.
+  **--no-wait** returns once the start is queued (``systemctl --no-block``). A module that fails to open then
+  only shows as **failed** in **status** and in its log.
 - **stop** waits for the modules to stop, as long as they asked for (e.g. a camera warming up). **--no-wait**
   returns right away, **--kill** sends SIGKILL and then stops the unit, so that systemd doesn't restart it.
+- **restart** uses ``systemctl restart``. **--no-wait** returns once the restart is queued, without waiting for
+  the stop and the start. Without module names, it restarts the running enabled modules, stops the running
+  disabled ones and starts the other enabled ones. With **--kill**, the kill still waits (a few seconds at most),
+  only the start doesn't.
 - **status** also shows **starting** (not open yet), **failed** (stopped after an error, or waiting for systemd
   to start it again, then shown as "failed (restarting)") and the number of restarts. With **--json**, there's
   also ``"restarts"``, and ``"restarting": true`` while it waits for a restart. After a failed start, systemd

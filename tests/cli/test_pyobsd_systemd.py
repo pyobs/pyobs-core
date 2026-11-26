@@ -124,6 +124,17 @@ def test_start_resets_failed(systemctl, tmp_path) -> None:
     ]
 
 
+def test_start_no_wait(systemctl, tmp_path) -> None:
+    """--no-block: systemctl returns once the jobs are queued, not after READY=1."""
+    daemon = make_daemon(tmp_path, ["camera.yaml", "dome.yaml"])
+    systemctl.unit("camera", "failed")
+    daemon.start(wait=False)
+    assert systemctl.verbs() == [
+        ["reset-failed", "--", "pyobs@camera.service"],
+        ["start", "--no-block", "--", "pyobs@camera.service", "pyobs@dome.service"],
+    ]
+
+
 def test_start_unknown_module(systemctl, tmp_path, capsys) -> None:
     daemon = make_daemon(tmp_path, ["camera.yaml"])
     with pytest.raises(SystemExit) as exc:
@@ -238,6 +249,37 @@ def test_restart_kill(systemctl, tmp_path) -> None:
     systemctl.unit("camera", "active", 123)
     daemon.restart(["camera"], kill=True)
     assert [c[0] for c in systemctl.verbs()] == ["kill", "stop", "reset-failed", "start"]
+
+
+def test_restart_by_name_no_wait(systemctl, tmp_path) -> None:
+    daemon = make_daemon(tmp_path, ["camera.yaml"])
+    systemctl.unit("camera", "active", 123)
+    daemon.restart(["camera"], wait=False)
+    assert systemctl.verbs() == [["restart", "--no-block", "--", "pyobs@camera.service"]]
+
+
+def test_restart_all_no_wait(systemctl, tmp_path) -> None:
+    """Without names and without waiting: no stop and start of the same unit, the start job would cancel the
+    stop job. Running and enabled ones restart, running and disabled ones stop, the other enabled ones start."""
+    daemon = make_daemon(tmp_path, ["camera.yaml", "telescope.yaml", "_dome.yaml"])
+    systemctl.unit("camera", "active", 123)
+    systemctl.unit("dome", "active", 124)
+    systemctl.unit("roof", "active", 125)  # config removed while it runs
+    daemon.restart(wait=False)
+    assert systemctl.verbs() == [
+        ["stop", "--no-block", "--", "pyobs@dome.service", "pyobs@roof.service"],
+        ["restart", "--no-block", "--", "pyobs@camera.service"],
+        ["start", "--no-block", "--", "pyobs@telescope.service"],
+    ]
+
+
+def test_restart_kill_no_wait(systemctl, tmp_path) -> None:
+    """The kill still waits until the module is gone (a few seconds), only the start doesn't wait."""
+    daemon = make_daemon(tmp_path, ["camera.yaml"])
+    systemctl.unit("camera", "active", 123)
+    daemon.restart(["camera"], kill=True, wait=False)
+    assert [c[0] for c in systemctl.verbs()] == ["kill", "stop", "reset-failed", "start"]
+    assert systemctl.verbs()[-1] == ["start", "--no-block", "--", "pyobs@camera.service"]
 
 
 # ── status ───────────────────────────────────────────────────────────────────

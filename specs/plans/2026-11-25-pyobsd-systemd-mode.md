@@ -3,7 +3,8 @@
 Status: in progress. Stop handling for the PID-file mode is released (pyobs-core 2.29.0/2.29.1, pyobs-web-admin
 2.4.0). Mode switch, guard, `READY=1`, journal dedup, `pyobsd exec` and the exit code are merged (#1105, #1106,
 #1107), `pyobsd setup` for both modes is merged (#1108, #1109, #1112), the systemd backend too (#1113). Checked
-on hosts, see the steps. Scope for now: pyobs-core only, the pyobs-web-admin part comes later.
+on hosts, see the steps. pyobs-core part released in 2.30.0. The pyobs-web-admin part has its own plan,
+`../../../pyobs-web-admin/specs/plans/2026-11-26-pyobsd-systemd-mode.md`.
 Repos: pyobs-core, pyobs-web-admin
 
 ## Summary
@@ -328,8 +329,9 @@ Sending `READY=1` before the connection was considered and dropped: nearly every
 
 ### pyobs-web-admin (deferred)
 
-Not part of the current scope. Until this is done, web-admin on a host in systemd mode cannot start modules:
-its Start runs `pyobs --pid-file`, which the guard refuses.
+Worked out in `../../../pyobs-web-admin/specs/plans/2026-11-26-pyobsd-systemd-mode.md`, which supersedes
+the outline below. Until this is done, web-admin on a host in systemd mode cannot start modules: its Start runs
+`pyobs --pid-file`, which the guard refuses.
 
 In systemd mode (`_pyobsd_config().get("mode") == "systemd"`):
 
@@ -405,12 +407,12 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
       files again. A real warm-up during a reboot (longer than the unit's 30 s) is covered by the same
       extension, not tested with a camera.
 - [x] pyobs-core: a module ignores SIGTERM while connecting to XMPP (#1114).
-- [ ] Release pyobs-core.
+- [x] Release pyobs-core (2.30.0).
 
 Later:
 
-- [ ] pyobs-web-admin: `PYOBSD_EXEC`, systemd-mode branch in `services.py`, `mode` check, tests.
-- [ ] Release pyobs-web-admin.
+- [ ] pyobs-core: `pyobsd start/restart --no-wait` for web-admin, release 2.30.1.
+- [ ] pyobs-web-admin, see its plan `../../../pyobs-web-admin/specs/plans/2026-11-26-pyobsd-systemd-mode.md`.
 
 ## Switching a host
 

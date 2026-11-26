@@ -657,4 +657,17 @@ def test_cli_restart_kill(dirs, mocker, monkeypatch) -> None:
 
     pyobsd.main()
 
-    restart.assert_called_once_with(modules=["camera"], kill=True)
+    restart.assert_called_once_with(modules=["camera"], kill=True, wait=True)
+
+
+@pytest.mark.parametrize("command", ["start", "restart"])
+def test_cli_no_wait(dirs, mocker, monkeypatch, command) -> None:
+    config, run, log = dirs
+    method = mocker.patch.object(PyobsDaemon, command)
+    monkeypatch.setattr(
+        sys, "argv", ["pyobsd", "-c", str(config), "-r", str(run), "-l", str(log), command, "--no-wait", "camera"]
+    )
+
+    pyobsd.main()
+
+    assert method.call_args.kwargs["wait"] is False

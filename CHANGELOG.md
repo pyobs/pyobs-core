@@ -9,6 +9,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.30.0] - 2026-11-26
+
 ### Added
 
 - Preparation for a systemd mode of pyobsd: a `mode` key in the `pyobsd` section of the config file, a

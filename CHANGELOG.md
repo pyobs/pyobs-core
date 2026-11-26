@@ -26,7 +26,12 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   `--create-user`), the directories `config`, `log`, `run` and `storage`, and writes the `pyobsd` section of
   `/etc/pyobs.yaml` (rewritten as plain YAML, the old file is kept as `.bak`). It asks for every value, or takes
   them from options (`--mode`, `--user`, `--path`, `--syslog`, `--file-log`, `-y`) to run unattended. It warns
-  about config files that hide `/etc/pyobs.yaml`. For now only the PID-file mode.
+  about config files that hide `/etc/pyobs.yaml`. In systemd mode, it also writes the template unit
+  `pyobs@.service`, a generator that starts the modules without `_` at boot, and a polkit rule that lets the user
+  start, stop, restart and kill `pyobs@*.service`. It adds the user to `systemd-journal`, can raise the timeout of
+  reboots for cooled cameras (`--shutdown-timeout`), and warns about a missing polkitd, an enabled old
+  `pyobs.service` and modules still running with PID files. Other pyobsd calls in systemd mode warn if these files
+  are missing or outdated. The systemd mode itself (start, stop, status) is still not implemented.
 
 ### Changed
 

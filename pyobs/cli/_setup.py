@@ -6,9 +6,11 @@ command line option, so it can run unattended. See specs/plans/2026-11-25-pyobsd
 
 from __future__ import annotations
 
+import glob
 import grp
 import os
 import pwd
+import re
 import shutil
 import subprocess
 import sys
@@ -16,9 +18,22 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+import psutil
 import yaml
 
 from ._cli import PYOBSD_MODES, config_file_candidates
+from ._systemd_files import (
+    MODULE_NAME_PATTERN,
+    SystemdPaths,
+    SystemdSettings,
+    file_differs,
+    installed_files,
+    read_shutdown_timeout,
+    render_shutdown_dropin,
+)
+
+# shutdown timeout for reboots in minutes, if the host has cooled cameras
+DEFAULT_SHUTDOWN_TIMEOUT = 60
 
 # the file setup writes
 SETUP_CONFIG_FILE = os.path.join("/", "etc", "pyobs.yaml")
@@ -49,6 +64,8 @@ class SetupOptions:
     path: str | None = None
     syslog: bool | None = None
     file_log: bool | None = None
+    # minutes, 0 for none
+    shutdown_timeout: int | None = None
     yes: bool = False
     strict: bool = False
 
@@ -75,6 +92,8 @@ class Setup:
         config_file: The file to write, /etc/pyobs.yaml.
         interactive: Whether questions may be asked. Defaults to stdin being a terminal and no ``-y``.
         input_func: Reads an answer, for tests.
+        pyobsd_exec: The pyobsd the unit runs, defaults to this one.
+        systemd_paths: Where the systemd mode's files go, for tests.
     """
 
     def __init__(
@@ -84,7 +103,11 @@ class Setup:
         config_file: str = SETUP_CONFIG_FILE,
         interactive: bool | None = None,
         input_func: Callable[[str], str] = input,
+        pyobsd_exec: str | None = None,
+        systemd_paths: SystemdPaths = SystemdPaths(),
     ):
+        self._pyobsd_exec = pyobsd_exec
+        self._systemd_paths = systemd_paths
         self._options = options
         section = file_config.get("pyobsd")
         self._current: dict[str, Any] = section if isinstance(section, dict) else {}
@@ -156,8 +179,6 @@ class Setup:
         mode = self._resolve(o.mode, "mode", self._ask_mode)
         if mode not in PYOBSD_MODES:
             raise SetupError(f"Unknown mode {mode!r}, must be one of: {', '.join(PYOBSD_MODES)}.")
-        if mode == "systemd":
-            raise SetupError("The systemd mode is not implemented in this version of pyobsd setup yet.")
 
         # 2. user and group
         chuid = self._resolve(o.user, "chuid", lambda d: self._ask("User and group (user:group)", d))
@@ -181,17 +202,103 @@ class Setup:
         )
 
         # directories
+        dirs: dict[str | None, str] = {}
         for key, default in _DIRECTORIES:
             sub = str(self._current.get(key, default)) if key else default
-            self._plan_directory(plan, os.path.join(path, sub), user, group)
+            dirs[key] = os.path.join(path, sub)
+            self._plan_directory(plan, dirs[key], user, group)
 
         # config file
         values = {"mode": mode, "chuid": chuid, "path": path, "syslog": bool(syslog), "file_log": bool(file_log)}
         self._plan_config_file(plan, values)
 
+        # 5. systemd mode: unit, generator, polkit rule, shutdown drop-ins, journal group, checks
+        if mode == "systemd":
+            settings = SystemdSettings(
+                pyobsd_exec=self._pyobsd_exec or find_pyobsd_exec(),
+                config_path=dirs["config_path"],
+                run_path=dirs["run_path"],
+                user=user,
+                group=group,
+            )
+            self._plan_systemd(plan, settings)
+
         # config files that hide ours, or that we hide
         self._check_shadowing(plan, user)
         return plan
+
+    def _plan_systemd(self, plan: _Plan, settings: SystemdSettings) -> None:
+        paths = self._systemd_paths
+        reload = False
+
+        # unit, generator, polkit rule
+        for filename, (content, mode) in installed_files(settings, paths).items():
+            if file_differs(filename, content) is not False:
+                verb = "Update" if os.path.exists(filename) else "Write"
+                plan.actions.append(_Action(f"{verb} {filename}", _writer(filename, content, mode)))
+                reload = reload or filename != paths.polkit_rule
+
+        # shutdown timeout for reboots
+        minutes = self._ask_shutdown_timeout(read_shutdown_timeout(paths))
+        for filename in paths.shutdown_dropins:
+            if minutes:
+                content = render_shutdown_dropin(minutes)
+                if file_differs(filename, content) is not False:
+                    description = f"Write {filename} (JobTimeoutSec={minutes}min)"
+                    plan.actions.append(_Action(description, _writer(filename, content, 0o644)))
+                    reload = True
+            elif os.path.exists(filename):
+                plan.actions.append(_Action(f"Remove {filename}", _remover(filename)))
+                reload = True
+
+        if reload:
+            plan.actions.append(_Action("Run systemctl daemon-reload", _runner(["systemctl", "daemon-reload"])))
+
+        # journal, for "pyobsd logs" and web-admin as that user
+        if not _in_group(settings.user, "systemd-journal"):
+            cmd = ["usermod", "-aG", "systemd-journal", settings.user]
+            plan.actions.append(_Action(f"Add {settings.user} to the group systemd-journal", _runner(cmd)))
+
+        # checks, no changes
+        if not _unit_exists("polkit.service"):
+            plan.warnings.append(
+                "polkitd is not installed, so only root can start and stop modules. Install it: apt install polkitd"
+            )
+        if _unit_enabled("pyobs.service"):
+            plan.warnings.append(
+                "The old pyobs.service is enabled and starts the modules in PID-file mode at boot. Disable it: "
+                "systemctl disable pyobs.service"
+            )
+        running = _running_pid_files(settings.run_path)
+        if running:
+            plan.warnings.append(
+                f"Modules still running in PID-file mode: {', '.join(running)}. Stop them: pyobsd --mode pid stop"
+            )
+        invalid = [
+            m for m in _module_names(settings.config_path) if not re.fullmatch(MODULE_NAME_PATTERN, m.removeprefix("_"))
+        ]
+        if invalid:
+            plan.warnings.append(
+                f"These module names can't be unit names, so the modules can't run: {', '.join(invalid)}. "
+                "Use only letters, digits and _.:-"
+            )
+
+    def _ask_shutdown_timeout(self, current: int | None) -> int:
+        """Minutes, 0 for none."""
+        given = self._options.shutdown_timeout
+        if given is not None:
+            if given < 0:
+                raise SetupError("The shutdown timeout must not be negative.")
+            return given
+        if not self._interactive:
+            return current or 0
+        if not self._ask_bool("Cooled cameras on this host (longer timeout for reboots)?", current is not None):
+            return 0
+        while True:
+            answer = self._ask("Shutdown timeout for reboots in minutes", str(current or DEFAULT_SHUTDOWN_TIMEOUT))
+            if answer.isdigit() and int(answer) > 0:
+                return int(answer)
+            print("Must be a positive number of minutes.")
 
     def _plan_user(self, plan: _Plan, user: str, group: str, home: str) -> None:
         if _user_exists(user):
@@ -302,7 +409,70 @@ class Setup:
             print(f"Warning: {warning}")
 
 
+def find_pyobsd_exec() -> str:
+    """The pyobsd executable for the unit: this one, else the one in $PATH."""
+    if os.path.basename(sys.argv[0]) == "pyobsd" and os.path.exists(sys.argv[0]):
+        return os.path.abspath(sys.argv[0])
+    found = shutil.which("pyobsd")
+    if found is None:
+        raise SetupError("Could not find the pyobsd executable.")
+    return os.path.abspath(found)
+
+
+def _writer(filename: str, content: str, mode: int) -> Callable[[], None]:
+    def write() -> None:
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        _write_file(filename, content, mode)
+
+    return write
+
+
+def _remover(filename: str) -> Callable[[], None]:
+    return lambda: os.remove(filename)
+
+
+def _runner(cmd: list[str]) -> Callable[[], None]:
+    return lambda: _run(cmd)
+
+
+def _module_names(config_path: str) -> list[str]:
+    files = sorted(glob.glob(os.path.join(config_path, "*.yaml")))
+    return [os.path.basename(f)[: -len(".yaml")] for f in files if not f.endswith(".shared.yaml")]
+
+
+def _running_pid_files(run_path: str) -> list[str]:
+    """Modules with a PID file whose process is alive."""
+    running = []
+    for pid_file in sorted(glob.glob(os.path.join(run_path, "*.pid"))):
+        try:
+            with open(pid_file) as f:
+                pid = int(f.read().strip())
+        except (OSError, ValueError):
+            continue
+        if psutil.pid_exists(pid):
+            running.append(os.path.basename(pid_file)[: -len(".pid")])
+    return running
+
+
 # ── system helpers, patched in tests ──────────────────────────────────────────
+
+
+def _in_group(user: str, group: str) -> bool:
+    try:
+        g = grp.getgrnam(group)
+        return user in g.gr_mem or pwd.getpwnam(user).pw_gid == g.gr_gid
+    except KeyError:
+        return False
+
+
+def _unit_exists(unit: str) -> bool:
+    out = subprocess.run(["systemctl", "list-unit-files", unit], capture_output=True, text=True)
+    return unit in out.stdout
+
+
+def _unit_enabled(unit: str) -> bool:
+    out = subprocess.run(["systemctl", "is-enabled", unit], capture_output=True, text=True)
+    return out.stdout.strip() == "enabled"
 
 
 def _user_exists(user: str) -> bool:
@@ -358,8 +528,12 @@ def _read_yaml(filename: str) -> dict[str, Any]:
 
 
 def _write_yaml(filename: str, cfg: dict[str, Any]) -> None:
+    _write_file(filename, yaml.safe_dump(cfg, sort_keys=False, default_flow_style=False), 0o644)
+
+
+def _write_file(filename: str, content: str, mode: int) -> None:
     tmp = filename + ".tmp"
     with open(tmp, "w") as f:
-        yaml.safe_dump(cfg, f, sort_keys=False, default_flow_style=False)
-    os.chmod(tmp, 0o644)
+        f.write(content)
+    os.chmod(tmp, mode)
     os.replace(tmp, filename)

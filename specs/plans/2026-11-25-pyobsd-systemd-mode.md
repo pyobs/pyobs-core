@@ -2,8 +2,8 @@
 
 Status: in progress. Stop handling for the PID-file mode is released (pyobs-core 2.29.0/2.29.1, pyobs-web-admin
 2.4.0). Mode switch, guard, `READY=1`, journal dedup, `pyobsd exec` and the exit code are merged (#1105, #1106,
-#1107), `pyobsd setup` for the PID-file mode is in review. The systemd backend is not started. Scope for now:
-pyobs-core only, the pyobs-web-admin part comes later.
+#1107), `pyobsd setup` for the PID-file mode is merged (#1108), for the systemd mode it is in review. The
+systemd backend is not started. Scope for now: pyobs-core only, the pyobs-web-admin part comes later.
 Repos: pyobs-core, pyobs-web-admin
 
 ## Summary
@@ -153,7 +153,7 @@ default):
 3. Base path (default `/opt/pyobs`).
 4. Logging: journal (`syslog`, default on), log files in `log/` (`file_log`, default off).
 5. systemd mode only: cooled cameras on this host? If yes, the shutdown timeout for reboots in minutes (default
-   60).
+   60). Not stored in the config file: the current value is read from the drop-in.
 
 Then a summary of every action, `Continue? [y/N]`, and only then changes.
 
@@ -196,11 +196,14 @@ Then a summary of every action, `Continue? [y/N]`, and only then changes.
 **Actions, systemd mode only:**
 
 1. Render unit, generator and polkit rule, compare each with the file on disk, write the ones that are missing
-   or differ. If unit or generator changed, run `systemctl daemon-reload`.
+   or differ. If unit or generator changed, run `systemctl daemon-reload`. The unit's `ExecStart` is the
+   `pyobsd` that runs `setup`.
 2. Add the user to `systemd-journal` (needed for `pyobsd logs` and web-admin's log view as that user).
-3. With a shutdown timeout: a drop-in raising `JobTimeoutSec` of `reboot.target` and `poweroff.target`.
+3. With a shutdown timeout: a drop-in raising `JobTimeoutSec` of `reboot.target` and `poweroff.target`. Without
+   one, an existing drop-in is removed.
 4. Checks, no changes, each printing the command that fixes it: polkitd installed (`apt install polkitd`, not
-   run by pyobsd), old `pyobs.service` still enabled, PID files of running modules from the old mode.
+   run by pyobsd), old `pyobs.service` still enabled, PID files of running modules from the old mode, module
+   names that aren't valid unit names.
 
 **Not done:** installing packages, installing pyobs itself, writing module configs.
 
@@ -355,8 +358,8 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
 - [x] pyobs-core: exit code 1 after an error, exit after a failed startup (#1107).
 - [x] Check on a host: polkit gets `unit`/`verb` for `manage-units`, verbs of `kill`/`reset-failed`.
 - [x] pyobs-core: `pyobsd setup` for both modes: questions and flags, user, directories, `/etc/pyobs.yaml`,
-      shadowing config check; `installing.rst` uses it (own PR, before the systemd parts).
-- [ ] pyobs-core: `pyobsd setup` in systemd mode: render and install unit, generator and polkit rule, journal
+      shadowing config check; `installing.rst` uses it (#1108).
+- [x] pyobs-core: `pyobsd setup` in systemd mode: render and install unit, generator and polkit rule, journal
       group, shutdown drop-in, checks; other calls compare and warn.
 - [ ] pyobs-core: systemd backend for start/stop/restart/kill/status, extended `status --json`, module name
       check.

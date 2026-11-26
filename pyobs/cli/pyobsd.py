@@ -138,7 +138,7 @@ class PyobsDaemonCLI(CLI):
         # own dests (setup_*), so they don't clash with the global options of the same name; None means "not given"
         p = sp.add_parser(
             "setup",
-            help="set up this host for pyobsd (as root): user, directories, /etc/pyobs.yaml",
+            help="set up this host for pyobsd (as root): user, directories, /etc/pyobs.yaml, systemd units",
             description="Set up this host for pyobsd. Asks for every value not given as an option, unless -y is "
             "given or stdin is not a terminal. Run as root.",
         )
@@ -166,6 +166,21 @@ class PyobsDaemonCLI(CLI):
             default=None,
             help="also write log files",
         )
+        p.add_argument(
+            "--shutdown-timeout",
+            dest="setup_shutdown_timeout",
+            type=int,
+            metavar="MINUTES",
+            default=None,
+            help="systemd mode: timeout for reboots and poweroffs, for hosts with cooled cameras",
+        )
+        p.add_argument(
+            "--no-shutdown-timeout",
+            dest="setup_shutdown_timeout",
+            action="store_const",
+            const=0,
+            help="systemd mode: keep the default timeout for reboots and poweroffs",
+        )
         p.add_argument("-y", "--yes", dest="setup_yes", action="store_true", help="ask nothing, don't confirm")
         p.add_argument("--strict", dest="setup_strict", action="store_true", help="exit with 1 on warnings")
 
@@ -178,6 +193,7 @@ class PyobsDaemonCLI(CLI):
 
         # "exec" is the same in both modes
         if self._config["mode"] == "systemd" and self._config["command"] != "exec":
+            self._warn_systemd_files()
             print("The systemd mode is not implemented in this version of pyobsd yet.")
             sys.exit(1)
 
@@ -225,10 +241,31 @@ class PyobsDaemonCLI(CLI):
             path=c["setup_path"],
             syslog=c["setup_syslog"],
             file_log=c["setup_file_log"],
+            shutdown_timeout=c["setup_shutdown_timeout"],
             yes=c["setup_yes"],
             strict=c["setup_strict"],
         )
         sys.exit(Setup(options, self.file_config)())
+
+    def _warn_systemd_files(self) -> None:
+        """Warn on stderr if unit, generator or polkit rule differ from what "pyobsd setup" would write."""
+        from ._setup import SetupError, find_pyobsd_exec
+        from ._systemd_files import SystemdSettings, check_installed
+
+        user, _, group = str(self._config["chuid"]).partition(":")
+        try:
+            pyobsd_exec = find_pyobsd_exec()
+        except SetupError:
+            return
+        settings = SystemdSettings(
+            pyobsd_exec=pyobsd_exec,
+            config_path=os.path.abspath(os.path.join(self._config["path"], self._config["config_path"])),
+            run_path=os.path.abspath(os.path.join(self._config["path"], self._config["run_path"])),
+            user=user,
+            group=group or user,
+        )
+        for warning in check_installed(settings):
+            print(f"Warning: {warning}", file=sys.stderr)
 
 
 class PyobsDaemonBase(abc.ABC):

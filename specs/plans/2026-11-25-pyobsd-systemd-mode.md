@@ -123,8 +123,12 @@ polkit.addRule(function(action, subject) {
 });
 ```
 
-- **Check** on a host: systemd passes `unit` and `verb` to polkit for `manage-units` (I believe since systemd
-  226, not verified), and which verb `systemctl kill` and `reset-failed` use.
+- Checked on a host (systemd 257, polkitd 126, with a test unit and rule, as pyobs via `runuser` without a
+  login session, like web-admin): start, restart, `kill -s SIGKILL`, reset-failed and `stop --no-block` on the
+  matching unit were allowed. Denied: the same calls on a unit whose name doesn't match, verbs not in the list
+  (`reload`, `freeze`), `daemon-reload`, `enable`, and everything once the rule was removed. So systemd passes
+  `unit` and `verb`, and `kill`/`reset-failed` use those verb names. `polkit.log()` output did not show up in
+  the journal (probably debug level only), so the values were only seen through allow/deny.
 - `daemon-reload` and unit-file changes stay root-only.
 - Needs polkitd, which is missing on most hosts so far (doc step).
 
@@ -284,7 +288,7 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
 - [x] pyobs-core: skip the stderr `StreamHandler` when `syslog` and `JOURNAL_STREAM` are set (#1106).
 - [x] pyobs-core: send `READY=1` after the module is open (#1106).
 - [x] pyobs-core: exit code 1 after an error, exit after a failed startup (#1107).
-- [ ] Check on a host: polkit gets `unit`/`verb` for `manage-units`, verbs of `kill`/`reset-failed`.
+- [x] Check on a host: polkit gets `unit`/`verb` for `manage-units`, verbs of `kill`/`reset-failed`.
 - [ ] pyobs-core: render unit, generator and polkit rule, install as root, compare and warn otherwise,
       journal group check.
 - [ ] pyobs-core: systemd backend for start/stop/restart/kill/status, extended `status --json`, module name

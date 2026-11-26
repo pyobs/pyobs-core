@@ -56,4 +56,5 @@ wrapper), but polkit restricts by unit name directly, and pyobs can call `system
   system (true on all hosts checked).
 - A reboot still cuts a long shutdown after the shutdown targets' `JobTimeoutSec` (30 min on Debian 13),
   unless that is raised with a drop-in.
-- Unchecked: that systemd passes `unit` and `verb` to polkit for `org.freedesktop.systemd1.manage-units`.
+- systemd passes `unit` and `verb` to polkit for `org.freedesktop.systemd1.manage-units`, so the rule can
+  restrict by both (checked on a host with systemd 257, see the plan).

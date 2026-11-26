@@ -317,7 +317,8 @@ Since `READY=1` only comes after `open()`, a server that is down for longer than
 systemd count the start as failed, stop the module and start it again after `RestartSec`. Checked on a host with
 the XMPP server unreachable: the module kept trying and did not exit. systemd stopped it after 120 s and started
 it again 10 s after it was gone. The module ignored SIGTERM while connecting (#1114), so each stop took another
-30 s until SIGKILL. With that, one start every ~160 s, after the fix ~130 s. Either way `StartLimitBurst=5` in
+30 s until SIGKILL. With that, one start every ~160 s. After the fix, checked on the same host, the module ends
+0.13 s after systemd's SIGTERM, so one start every ~130 s. Either way `StartLimitBurst=5` in
 300 s is never reached and the module keeps trying until the server is back. A module whose startup fails right
 away (bad config) hits the start limit after 5 tries and stays `failed`.
 
@@ -387,8 +388,9 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
       check.
 - [ ] pyobs-core tests: setup (tmp dirs, mocked `adduser`/`systemctl`, answers via flags and stdin),
       rendering, generator script, status JSON parsing.
-- [ ] pyobs-core docs: `cli.rst`, `installing.rst` (polkitd, journal group, where to put `mode`, shutdown
-      drop-in, switching a host), CHANGELOG.
+- [x] pyobs-core docs: `cli.rst`, `installing.rst` (install layout, `pyobsd setup`, ejabberd section fixed),
+      new `hosting.rst` (modes, polkitd, journal group, where to put `mode`, shutdown timeout, switching a
+      host, deploy scripts, troubleshooting), CHANGELOG (#1110).
 - [x] Check the systemd backend on a host (unit for a test path, no generator/polkit): start of several
       modules in one call returns after `READY=1`, status/JSON, `logs` via `-u` with module fields and no
       duplicate lines, `stop --no-wait` with `extend_stop_timeout(90)` shows "stopping (up to 86 s)" from

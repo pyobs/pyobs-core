@@ -173,17 +173,17 @@ fi
 # immediate re-arm, and that path can silently fail, leaving the connection
 # permanently unresponsive with no crash, no error log, and no self-recovery.
 # See specs/plans/ejabberd-throughput-benchmarking.md (pyobs-core repo) for
-# the full investigation. Confirmed live on iag50 (2026-07-28): raising
-# these values to match what's already been running fine for a long time at
-# monet-south made the bug unreachable in a reproduction that failed
-# reliably every time under the stock defaults. This doesn't fix the
+# the full investigation. Confirmed live on a production installation
+# (2026-07-28): raising these values to match what's already been running
+# fine for a long time on another one made the bug unreachable in a
+# reproduction that failed reliably every time under the stock defaults. This doesn't fix the
 # underlying ejabberd bug (not yet reported upstream) -- it just keeps
 # real fleet traffic from ever triggering the shaper throttle that exposes
 # it.
 yq eval -i '.shaper.normal.rate = 30000' "$CONFIG"
 yq eval -i '.shaper.normal.burst_size = 200000' "$CONFIG"
 yq eval -i '.shaper.fast = 2000000' "$CONFIG"
-echo "Raised shaper.normal to rate=30000/burst_size=200000 and shaper.fast to 2000000 (matching monet-south)"
+echo "Raised shaper.normal to rate=30000/burst_size=200000 and shaper.fast to 2000000"
 
 # --- 6b. Route this host onto the fast c2s shaper -------------------------
 # Belt-and-braces on top of the step 6 baseline raise above: rather than

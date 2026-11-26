@@ -141,6 +141,7 @@ Getting Started
 
    quickstart
    installing
+   hosting
    overview
    cli
 

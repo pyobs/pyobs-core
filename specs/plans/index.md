@@ -414,5 +414,6 @@ Implementation plans, checklist-style. Newest at the bottom.
   that runs modules as `pyobs@<module>` systemd system units as the pyobs user (start on boot, restart on
   failure, stderr in the journal), boot state from the `_` filename prefix via a generator, start/stop for the
   pyobs user via polkit (ADR 0020); web-admin calls `pyobsd` in that mode. PID-file mode unchanged. Also fixes
-  the 5 s SIGKILL that cuts camera warm-up on stop (both modes). **core released (2.30.0)**, web-admin open, see
-  pyobs-web-admin's `specs/plans/2026-11-26-pyobsd-systemd-mode.md` (Repos: pyobs-core, pyobs-web-admin)
+  the 5 s SIGKILL that cuts camera warm-up on stop (both modes). **implemented** (pyobs-core 2.30.0/2.30.1,
+  pyobs-web-admin 2.5.0, see its `specs/plans/2026-11-26-pyobsd-systemd-mode.md`) (Repos: pyobs-core,
+  pyobs-web-admin)

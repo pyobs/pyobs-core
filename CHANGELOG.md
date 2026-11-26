@@ -54,6 +54,10 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 - The warm-up progress line on close shows the sensor temperature and power the last step was planned with,
   instead of reading them again after the step. The done line says why the warm-up ended (setpoint reached, or
   cooler idle, with the readings). `RampStep` has a new field `idle`.
+- Docs: the installation guide now uses `pyobsd setup` and the `full` extra in `/opt/pyobs/venv`, and its ejabberd
+  section matches `install-ejabberd.sh` (what the script does, shaper values, install via the package manager). A
+  new page "Running modules on a host" covers the two modes of pyobsd, the requirements of the systemd mode,
+  switching a host, setup from deploy scripts and troubleshooting (#1110).
 
 ### Fixed
 

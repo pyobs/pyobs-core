@@ -9,6 +9,12 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Added
+
+- `pyobsd start --no-wait` and `pyobsd restart --no-wait`: in systemd mode, return once the job is queued
+  (`systemctl --no-block`), instead of waiting until the modules are open (and, for restart, stopped first). For
+  pyobs-web-admin, which calls pyobsd from a request. In PID-file mode, the option changes nothing.
+
 ## [2.30.0] - 2026-11-26
 
 ### Added

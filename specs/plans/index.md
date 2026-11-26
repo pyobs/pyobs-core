@@ -411,8 +411,9 @@ Implementation plans, checklist-style. Newest at the bottom.
   **core implemented**, drivers and GUIs proposed (Repos: pyobs-core, pyobs-asi, pyobs-sbig, pyobs-fli,
   pyobs-flipro, pyobs-qhyccd, pyobs-gui)
 - [2026-11-25-pyobsd-systemd-mode.md](2026-11-25-pyobsd-systemd-mode.md): optional `mode: systemd` for pyobsd
-  that runs modules as `pyobs@<module>` systemd user units (start on boot, restart on failure, stderr in the
-  journal), enable state synced from the `_` filename prefix on every call; web-admin calls `pyobsd` in that
-  mode. PID-file mode unchanged. Also fixes the 5 s SIGKILL that cuts camera warm-up on stop (both modes,
-  `EXTEND_TIMEOUT_USEC` / `.stopping` deadline). **in progress**: old-mode stop fix in core merged (#1096),
-  web-admin and systemd mode open (Repos: pyobs-core, pyobs-web-admin)
+  that runs modules as `pyobs@<module>` systemd system units as the pyobs user (start on boot, restart on
+  failure, stderr in the journal), boot state from the `_` filename prefix via a generator, start/stop for the
+  pyobs user via polkit (ADR 0020); web-admin calls `pyobsd` in that mode. PID-file mode unchanged. Also fixes
+  the 5 s SIGKILL that cuts camera warm-up on stop (both modes). **in progress**: stop fix, mode switch, guard,
+  module side and exit code merged (#1096, #1105, #1106, #1107), systemd backend and web-admin open
+  (Repos: pyobs-core, pyobs-web-admin)

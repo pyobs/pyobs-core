@@ -148,14 +148,16 @@ def test_pyobsd_pid_mode_by_default(monkeypatch, mocker, tmp_path) -> None:
     list_modules.assert_called_once()
 
 
-def test_pyobsd_systemd_mode_not_implemented(monkeypatch, mocker, tmp_path, capsys) -> None:
+def test_pyobsd_systemd_mode_uses_systemd_backend(monkeypatch, mocker, tmp_path) -> None:
+    from pyobs.cli._systemd_daemon import SystemdDaemon
+
     use_config(monkeypatch, tmp_path, "pyobsd:\n  mode: systemd\n")
-    list_modules = mocker.patch.object(PidFileDaemon, "list_modules")
-    with pytest.raises(SystemExit) as exc:
-        run_pyobsd(monkeypatch, tmp_path)
-    assert exc.value.code == 1
-    assert "systemd mode is not implemented" in capsys.readouterr().out
-    list_modules.assert_not_called()
+    mocker.patch("pyobs.cli.pyobsd.PyobsDaemonCLI._warn_systemd_files")
+    pid_list = mocker.patch.object(PidFileDaemon, "list_modules")
+    systemd_list = mocker.patch.object(SystemdDaemon, "list_modules")
+    run_pyobsd(monkeypatch, tmp_path)
+    systemd_list.assert_called_once()
+    pid_list.assert_not_called()
 
 
 def test_pyobsd_mode_option_overrides_config(monkeypatch, mocker, tmp_path) -> None:

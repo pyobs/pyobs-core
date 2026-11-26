@@ -124,8 +124,24 @@ def test_notify_path_socket(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     address = str(tmp_path / "notify")
     with _receiver(address) as sock:
         monkeypatch.setenv("NOTIFY_SOCKET", address)
+        before = time.time()
         shutdown.extend_stop_timeout(90.5)
-        assert sock.recv(1024) == b"EXTEND_TIMEOUT_USEC=90500000"
+        extend, status = sock.recv(1024).decode().split("\n")
+        assert extend == "EXTEND_TIMEOUT_USEC=90500000"
+        # the deadline in the status text, for "pyobsd status"
+        assert status.startswith("STATUS=stopping, deadline ")
+        deadline = shutdown.parse_status_deadline(status.removeprefix("STATUS="))
+        # sent with 3 decimals
+        assert deadline is not None and before + 90.5 - 0.001 <= deadline <= time.time() + 90.5 + 0.001
+
+
+@pytest.mark.parametrize("text", ["", "stopping", "stopping, deadline x", "running"])
+def test_parse_status_deadline_invalid(text: str) -> None:
+    assert shutdown.parse_status_deadline(text) is None
+
+
+def test_parse_status_deadline() -> None:
+    assert shutdown.parse_status_deadline("stopping, deadline 1764150000.500") == 1764150000.5
 
 
 def test_notify_abstract_socket(monkeypatch: pytest.MonkeyPatch) -> None:

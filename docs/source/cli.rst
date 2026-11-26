@@ -136,10 +136,31 @@ There are four basic commands:
     Gives an overview of detected configuration files and started modules. Each module is **running**, **stopped**,
     or **stopping** (it got SIGTERM and is still shutting down, together with how long it may still take if it asked
     for more time). With **--json**, a stopping module keeps ``"running": true``, since its process is still alive,
-    and the ``"state"`` field tells it apart.
+    and the ``"state"`` field tells it apart. Every module also has ``"mode"`` (**pid** or **systemd**) and
+    ``"enabled"`` (its config file doesn't start with an underscore).
 
 :pyobsd setup:
     Sets up the host, see :ref:`cli-pyobsd-setup`.
+
+systemd mode
+************
+With ``mode: systemd`` in the **pyobsd** section of :file:`/etc/pyobs.yaml` (written by :program:`pyobsd setup`),
+every module runs as an instance of the systemd unit **pyobs@.service**, e.g. **pyobs@camera.service** for
+**camera.yaml** or **_camera.yaml**. systemd starts the enabled modules at boot, restarts a module after an error,
+and writes everything a module prints to the journal. The commands stay the same, they call :program:`systemctl`:
+
+- **start** starts all modules in one call, so they start in parallel, and returns once all are open. A module
+  that fails to open is reported as a failed start. A module that still runs in PID-file mode is refused.
+- **stop** waits for the modules to stop, as long as they asked for (e.g. a camera warming up). **--no-wait**
+  returns right away, **--kill** sends SIGKILL and then stops the unit, so that systemd doesn't restart it.
+- **status** also shows **starting** (not open yet), **failed** (stopped after an error, or waiting for systemd
+  to start it again, then shown as "failed (restarting)") and the number of restarts. With **--json**, there's
+  also ``"restarts"``, and ``"restarting": true`` while it waits for a restart. After a failed start, systemd
+  tries again every 10 s, up to 5 times in 5 minutes.
+- **logs** shows the journal of the units (``journalctl -u pyobs@<module>.service``), including tracebacks and
+  output of C libraries.
+
+As root, or as the user from **chuid** if the polkit rule from :program:`pyobsd setup` is installed.
 
 CLI Parameters
 **************

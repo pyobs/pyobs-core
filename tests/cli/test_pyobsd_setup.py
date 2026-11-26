@@ -574,8 +574,11 @@ def test_cli_warns_in_systemd_mode(monkeypatch, tmp_path, capsys) -> None:
     monkeypatch.setattr(_setup, "find_pyobsd_exec", lambda: "/venv/bin/pyobsd")
     monkeypatch.setattr(_systemd_files, "check_installed", lambda s: [f"{s.user} {s.config_path} missing"])
     monkeypatch.setattr(sys, "argv", ["pyobsd", "-p", "/srv/pyobs", "--chuid", "obs", "list"])
-    with pytest.raises(SystemExit):
-        pyobsd.main()
+    from pyobs.cli._systemd_daemon import SystemdDaemon
+
+    monkeypatch.setattr(SystemdDaemon, "__init__", lambda self, *a, **k: None)
+    monkeypatch.setattr(SystemdDaemon, "list_modules", lambda self: None)
+    pyobsd.main()
     assert "Warning: obs /srv/pyobs/config missing" in capsys.readouterr().err
 
 

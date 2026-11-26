@@ -59,8 +59,8 @@ class PyobsDaemonCLI(CLI):
             type=str,
             choices=PYOBSD_MODES,
             default=mode,
-            help=f"run modules as daemons with PID files, or as systemd user units (default from ${PYOBSD_MODE_ENV} "
-            "or pyobsd.mode in the config file, else pid)",
+            help="run modules as daemons with PID files, or as instances of the systemd unit pyobs@.service "
+            f"(default from ${PYOBSD_MODE_ENV} or pyobsd.mode in the config file, else pid)",
         )
 
         # init parser
@@ -191,14 +191,17 @@ class PyobsDaemonCLI(CLI):
         if self._mode_error is not None:
             self._parser.error(self._mode_error)
 
-        # "exec" is the same in both modes
-        if self._config["mode"] == "systemd" and self._config["command"] != "exec":
-            self._warn_systemd_files()
-            print("The systemd mode is not implemented in this version of pyobsd yet.")
-            sys.exit(1)
+        # "exec" is the same in both modes, and runs at every start of a unit, so it doesn't check the files
+        daemon_class: type[PyobsDaemonBase] = PidFileDaemon
+        if self._config["mode"] == "systemd":
+            from ._systemd_daemon import SystemdDaemon
+
+            daemon_class = SystemdDaemon
+            if self._config["command"] != "exec":
+                self._warn_systemd_files()
 
         # init daemon
-        daemon: PyobsDaemonBase = PidFileDaemon(
+        daemon = daemon_class(
             str(os.path.join(self._config["path"], self._config["config_path"])),
             str(os.path.join(self._config["path"], self._config["run_path"])),
             str(os.path.join(self._config["path"], self._config["log_path"])),
@@ -649,10 +652,13 @@ class PidFileDaemon(PyobsDaemonBase):
             result: dict[str, Any] = {}
             for module in modules:
                 pid = pids.get(module)
+                # same fields as in systemd mode, so consumers can tell the modes apart
+                common = {"mode": "pid", "enabled": module in configs and not module.startswith("_")}
                 if pid is not None:
                     info = self._process_info(pid)
                     deadline = deadlines[module]
                     result[module] = {
+                        **common,
                         "running": True,
                         "state": "stopping" if deadline is not None else "running",
                         "stop_deadline": deadline,
@@ -661,7 +667,7 @@ class PidFileDaemon(PyobsDaemonBase):
                         **info,
                     }
                 else:
-                    result[module] = {"running": False, "state": "stopped"}
+                    result[module] = {**common, "running": False, "state": "stopped"}
             print(json.dumps(result))
         else:
             # header

@@ -12,8 +12,7 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 ### Added
 
 - Preparation for a systemd mode of pyobsd: a `mode` key in the `pyobsd` section of the config file, a
-  `--mode` option and `$PYOBSD_MODE` (`pid` or `systemd`, default `pid`). The systemd mode itself is not
-  implemented yet, pyobsd exits with an error in it.
+  `--mode` option and `$PYOBSD_MODE` (`pid` or `systemd`, default `pid`).
 - `pyobs --pid-file` refuses to start if the config file sets `pyobsd.mode: systemd`, so that a module can't
   run twice on a host whose modules run under systemd. `PYOBSD_MODE=pid` overrides it. pyobsd in PID-file
   mode sets it for the modules it starts.
@@ -31,8 +30,16 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   start, stop, restart and kill `pyobs@*.service`. It adds the user to `systemd-journal`, can raise the timeout of
   reboots for cooled cameras (`--shutdown-timeout`), and warns about a missing polkitd, an enabled old
   `pyobs.service` and modules still running with PID files. Other pyobsd calls in systemd mode warn if these files
-  are missing or outdated. In PID-file mode, it removes these files again. The systemd mode itself (start,
-  stop, status) is still not implemented.
+  are missing or outdated. In PID-file mode, it removes these files again.
+- systemd mode of pyobsd: `start`, `stop` (`--kill`, `--no-wait`), `restart`, `status` and `logs` work on
+  `pyobs@<module>.service` through `systemctl`, as root or as the user the polkit rule allows. `start` starts
+  all modules in one call, `stop --kill` sends SIGKILL and a stop (so the unit isn't restarted, and shows as stopped), and a module
+  still running in PID-file mode is refused. `status` reads all units in one `systemctl show` call and shows
+  `starting`, `failed` (also while waiting for an automatic restart) and the number of restarts, plus modules still running in PID-file mode. `logs` uses
+  `journalctl -u`, so it includes what a module wrote to stdout/stderr.
+- `status --json` has `mode` and `enabled` for every module in both modes, and `restarts` in systemd mode.
+- `extend_stop_timeout()` also sends the deadline as the unit's status text, so `pyobsd status` can show it in
+  systemd mode.
 
 ### Changed
 

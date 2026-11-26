@@ -2,8 +2,8 @@
 
 Status: in progress. Stop handling for the PID-file mode is released (pyobs-core 2.29.0/2.29.1, pyobs-web-admin
 2.4.0). Mode switch, guard, `READY=1`, journal dedup, `pyobsd exec` and the exit code are merged (#1105, #1106,
-#1107). The systemd backend is not started. Scope for now: pyobs-core only, the pyobs-web-admin part comes
-later.
+#1107), `pyobsd setup` for the PID-file mode is in review. The systemd backend is not started. Scope for now:
+pyobs-core only, the pyobs-web-admin part comes later.
 Repos: pyobs-core, pyobs-web-admin
 
 ## Summary
@@ -186,9 +186,9 @@ Then a summary of every action, `Continue? [y/N]`, and only then changes.
   directories keep their content; only a wrong owner on them is fixed.
 - Write the answers into the `pyobsd` section of `/etc/pyobs.yaml`. A new file is just written. An existing
   file is rewritten with plain `yaml` (no `ruamel.yaml` dependency): other sections keep their values, the
-  `pyobsd` section is replaced. Comments and formatting are lost, so before `Continue?` the summary warns
-  about that and shows the diff of the values, and the old file is copied to `/etc/pyobs.yaml.bak` before
-  writing.
+  keys `setup` asks for are replaced in the `pyobsd` section, other keys there (e.g. `stop_timeout`) stay.
+  Comments and formatting are lost, so before `Continue?` the summary warns about that and shows the diff of the
+  values, and the old file is copied to `/etc/pyobs.yaml.bak` before writing.
 - Warn if a config file earlier in the lookup order exists (`~/.config/pyobs.yaml` of root or of the user),
   since it would hide `/etc/pyobs.yaml`. `/opt/pyobs/storage/pyobs.yaml` comes after it, so its `pyobsd`
   section would be ignored; warn about that too.
@@ -354,7 +354,7 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
 - [x] pyobs-core: send `READY=1` after the module is open (#1106).
 - [x] pyobs-core: exit code 1 after an error, exit after a failed startup (#1107).
 - [x] Check on a host: polkit gets `unit`/`verb` for `manage-units`, verbs of `kill`/`reset-failed`.
-- [ ] pyobs-core: `pyobsd setup` for both modes: questions and flags, user, directories, `/etc/pyobs.yaml`,
+- [x] pyobs-core: `pyobsd setup` for both modes: questions and flags, user, directories, `/etc/pyobs.yaml`,
       shadowing config check; `installing.rst` uses it (own PR, before the systemd parts).
 - [ ] pyobs-core: `pyobsd setup` in systemd mode: render and install unit, generator and polkit rule, journal
       group, shutdown drop-in, checks; other calls compare and warn.

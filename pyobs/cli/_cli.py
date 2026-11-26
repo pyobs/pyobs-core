@@ -12,14 +12,18 @@ PYOBSD_MODES = ("pid", "systemd")
 PYOBSD_MODE_ENV = "PYOBSD_MODE"
 
 
-def find_config_file() -> str | None:
-    """The shared pyobs config file, or None. The first one found wins."""
-    candidates = [
+def config_file_candidates() -> list[str]:
+    """Where the shared pyobs config file can be, in lookup order."""
+    return [
         os.path.expanduser(os.path.join("~", ".config", "pyobs.yaml")),
         os.path.join("/", "etc", "pyobs.yaml"),
         os.path.join("/", "opt", "pyobs", "storage", "pyobs.yaml"),
     ]
-    for config_file in candidates:
+
+
+def find_config_file() -> str | None:
+    """The shared pyobs config file, or None. The first one found wins."""
+    for config_file in config_file_candidates():
         if os.path.exists(config_file):
             return config_file
     return None

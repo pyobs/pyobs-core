@@ -95,25 +95,24 @@ Using the pyobsd tool
 ---------------------
 
 *pyobs* comes with its own little tool called *pyobsd* for starting and stopping *pyobs* modules
-(see :ref:`cli-pyobsd`). On Linux systems, you should create a new user "pyobs"::
+(see :ref:`cli-pyobsd`). On Linux systems, set up the host for it as root::
 
-    adduser pyobs --home /opt/pyobs
+    pyobsd setup
 
-Note that we've set the user's home directory to /opt/pyobs.
+It asks for the user to run the modules as (default **pyobs**, created if it doesn't exist), the base path (default
+**/opt/pyobs**) and how to log, then shows what it will do and asks before doing it. It creates the directories
+*config*, *log*, *run* and *storage* in the base path, owned by that user, and writes the answers into the
+**pyobsd** section of :file:`/etc/pyobs.yaml`. It can be run again at any time, e.g. to change an answer. Every
+question has an option, so it can also run unattended, see :ref:`cli-pyobsd-setup`::
 
-Change into the new user, and create some directories::
-
-    su pyobs
-    mkdir -p /opt/pyobs/config
-    mkdir -p /opt/pyobs/log
-    mkdir -p /opt/pyobs/run
-    mkdir -p /opt/pyobs/storage
+    pyobsd setup --user pyobs --create-user --path /opt/pyobs -y
 
 Every configuration YAML file in the *config* directory will now automatically show up in the *pyobsd* tool.
-Logs will be written into the *log* directory, and PID files for each process into *run*.
+Logs will be written into the *log* directory (only with **--file-log**), and PID files for each process into
+*run*.
 
-Instead of passing parameters like **--chuid** to :program:`pyobsd` on every call, you can instead put them into
-:file:`/opt/pyobs/storage/pyobs.yaml`, e.g.::
+Instead of passing parameters like **--chuid** to :program:`pyobsd` on every call, they are read from
+:file:`/etc/pyobs.yaml`, e.g.::
 
     pyobsd:
       chuid: pyobs:pyobs

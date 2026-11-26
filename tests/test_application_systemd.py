@@ -225,3 +225,60 @@ def test_run_exit_code_after_signal(tmp_path, mocker) -> None:
         mocker.patch.object(application.shutdown, "start_watchdog")
         mocker.patch.object(application.shutdown, "mark_stopping")
         assert app.run() == code
+
+
+def test_run_signal_during_startup(tmp_path, mocker) -> None:
+    """A signal while startup() still waits (e.g. for an unreachable XMPP server) ends the wait and closes the
+    module, instead of hanging until SIGKILL (#1114). A stop by signal is a normal end: 0."""
+    import asyncio
+    import signal
+
+    config = tmp_path / "test_module.yaml"
+    config.write_text("class: pyobs.modules.Module\n")
+    app = Application(config=str(config))
+    assert app._module is not None
+
+    async def startup_until_signal() -> None:
+        app._signal_handler(signal.SIGTERM)
+        await asyncio.Future()
+
+    mocker.patch.object(app._module, "startup", AsyncMock(side_effect=startup_until_signal))
+    main = mocker.patch.object(app._module, "main", AsyncMock())
+    close = mocker.patch.object(app._module, "close", AsyncMock())
+    mocker.patch.object(application.shutdown, "start_watchdog")
+    mocker.patch.object(application.shutdown, "mark_stopping")
+    assert app.run() == 0
+    main.assert_not_awaited()
+    close.assert_awaited_once()
+
+
+def test_run_signal_while_xmpp_unreachable(tmp_path, mocker) -> None:
+    """Same with a real XmppComm whose server doesn't answer: SIGTERM ends the module within seconds (#1114)."""
+    import signal
+    import socket
+    import time
+
+    # a port nothing listens on
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+
+    config = tmp_path / "test_module.yaml"
+    config.write_text(
+        "class: pyobs.modules.Module\n"
+        "comm:\n"
+        "  class: pyobs.comm.xmpp.XmppComm\n"
+        "  jid: test@localhost\n"
+        "  password: nothing\n"
+        f"  server: 127.0.0.1:{port}\n"
+    )
+    app = Application(config=str(config))
+    mocker.patch.object(application.shutdown, "start_watchdog")
+    mocker.patch.object(application.shutdown, "mark_stopping")
+    app._loop.call_later(1.0, app._signal_handler, signal.SIGTERM)
+    # without the fix, run() would hang here forever: end it after 15 s, so the test fails instead
+    app._loop.call_later(15.0, lambda: app._main_task.cancel())
+
+    t0 = time.monotonic()
+    assert app.run() == 0
+    assert time.monotonic() - t0 < 10

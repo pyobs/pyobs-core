@@ -2,8 +2,8 @@
 
 Status: in progress. Stop handling for the PID-file mode is released (pyobs-core 2.29.0/2.29.1, pyobs-web-admin
 2.4.0). Mode switch, guard, `READY=1`, journal dedup, `pyobsd exec` and the exit code are merged (#1105, #1106,
-#1107), `pyobsd setup` for the PID-file mode is merged (#1108), for the systemd mode it is in review. The
-systemd backend is not started. Scope for now: pyobs-core only, the pyobs-web-admin part comes later.
+#1107), `pyobsd setup` for both modes is merged (#1108, #1109, #1112), the systemd backend too (#1113). Checked
+on hosts, see the steps. Scope for now: pyobs-core only, the pyobs-web-admin part comes later.
 Repos: pyobs-core, pyobs-web-admin
 
 ## Summary
@@ -311,14 +311,19 @@ warm up the sensor abruptly. See `2026-11-11-shared-cooling-ramp.md`.
 setup reports it (ifupdown's `networking.service` waits for the `auto` interfaces only). The rest is covered
 by `XmppComm.open()`, which waits for the server instead of exiting: slixmpp (1.17) retries a failed connect,
 DNS errors included, with a backoff of up to 300 s, and `XmppComm._connect` waits for that in
-`wait_connect()`. The module only quits on bad credentials or a JID conflict. Checked in the code, not tested
-with the server down.
+`wait_connect()`. The module only quits on bad credentials or a JID conflict.
 
 Since `READY=1` only comes after `open()`, a server that is down for longer than `TimeoutStartSec` makes
-systemd count the start as failed, stop the module and start it again after `RestartSec`. That is one start
-every ~130 s, so `StartLimitBurst=5` in 300 s is never reached and the module keeps trying until the server is
-back. A module whose startup fails right away (bad config) hits the start limit after 5 tries and stays
-`failed`.
+systemd count the start as failed, stop the module and start it again after `RestartSec`. Checked on a host with
+the XMPP server unreachable: the module kept trying and did not exit. systemd stopped it after 120 s and started
+it again 10 s after it was gone. The module ignored SIGTERM while connecting (#1114), so each stop took another
+30 s until SIGKILL. With that, one start every ~160 s, after the fix ~130 s. Either way `StartLimitBurst=5` in
+300 s is never reached and the module keeps trying until the server is back. A module whose startup fails right
+away (bad config) hits the start limit after 5 tries and stays `failed`.
+
+Sending `READY=1` before the connection was considered and dropped: nearly every module's `open()` calls
+`set_state`, `set_capabilities` or `register_event`, and without a connection `_safe_send` gives up after about
+90 s and `open()` fails. It would need XmppComm to queue all of that and replay it on connect.
 
 ### pyobs-web-admin (deferred)
 
@@ -390,8 +395,14 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
       `StatusText` and systemd waits past `TimeoutStopSec=30`, `stop --kill` doesn't restart, a failing
       start is reported right away, `restart` gives a new PID. Found and fixed: `failed` after `--kill`,
       `starting` shown for a unit waiting for its automatic restart.
-- [ ] Check on one host: comm reconnect at boot with the server down, journal without duplicates, reboot
-      starts enabled modules only, reboot during a warm-up.
+- [x] Check on one host with `pyobsd setup` (generator, polkit rule): as the pyobs user without a login
+      session, start, restart, kill, `stop --no-wait` and `logs` work, while restarting another unit,
+      `daemon-reload` and pyobsd as another user are denied. XMPP server unreachable: see "Network at boot",
+      found #1114. Reboot with a module in a 45 s `close()`: shutdown waited for it and it closed cleanly,
+      only the generator-enabled modules came back, after ejabberd. `setup --mode pid` removed all systemd
+      files again. A real warm-up during a reboot (longer than the unit's 30 s) is covered by the same
+      extension, not tested with a camera.
+- [x] pyobs-core: a module ignores SIGTERM while connecting to XMPP (#1114).
 - [ ] Release pyobs-core.
 
 Later:

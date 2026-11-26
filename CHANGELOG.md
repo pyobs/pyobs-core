@@ -55,6 +55,11 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
   instead of reading them again after the step. The done line says why the warm-up ended (setpoint reached, or
   cooler idle, with the readings). `RampStep` has a new field `idle`.
 
+### Fixed
+
+- A module that was still starting, e.g. waiting for an unreachable XMPP server, ignored SIGTERM and only ended
+  with SIGKILL. It now stops and closes right away (#1114).
+
 ## [2.29.1] - 2026-11-25
 
 ### Changed

@@ -207,7 +207,7 @@ def test_second_signal_does_not_restart_shutdown() -> None:
     SIGTERM (e.g. "pyobsd stop" run again) does not fall back to the default action and kill the module in the
     middle of its shutdown."""
     module = MagicMock()
-    app = make_bare_application(_module=module, _stopping=False, _stop_timeout=12.0)
+    app = make_bare_application(_module=module, _stopping=False, _started=True, _stop_timeout=12.0)
 
     with (
         patch("pyobs.application.shutdown.start_watchdog") as start_watchdog,

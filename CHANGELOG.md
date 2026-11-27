@@ -9,6 +9,13 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Fixed
+
+- `RandomMerit` now returns a factor drawn from a normal distribution with mean 1, clipped at 0,
+  instead of mean 0. Merits are multiplied, so the old version made the total merit negative half
+  of the time. `std` defaults to 0.1 and is limited to 1.0; stored merits with a larger `std` no
+  longer validate (#1126).
+
 ## [2.30.2] - 2026-11-27
 
 ### Fixed

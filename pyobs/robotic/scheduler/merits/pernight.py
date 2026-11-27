@@ -18,6 +18,9 @@ class PerNightMerit(Merit):
 
     count: int = Field(ge=0, le=999, default=0)
 
+    def max_value(self) -> float:
+        return 1.0
+
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         from ...observation import ObservationState
 

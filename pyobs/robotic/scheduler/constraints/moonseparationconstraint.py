@@ -8,7 +8,7 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from pydantic import Field
 
-from .constraint import Constraint
+from .constraint import Constraint, stricter
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
@@ -22,7 +22,7 @@ class MoonSeparationConstraint(Constraint):
 
     cost: float = 3.0
     target_dependent: bool = True
-    min_distance: float = Field(ge=0.0, le=180.0, default=30.0)
+    min_distance: float = Field(ge=0.0, le=180.0, default=30.0, json_schema_extra=stricter("higher"))
     req_token: ClassVar[str | None] = "MOONDIST"
 
     def req_fields(self) -> dict[str, tuple[int | float | str, str]]:

@@ -27,6 +27,9 @@ class TimeWindowMerit(Merit):
     windows: list[TimeWindow] = Field(default_factory=list)
     inverse: bool = False
 
+    def max_value(self) -> float:
+        return 1.0
+
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         # is time in any of the windows?
         in_window = False

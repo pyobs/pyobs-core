@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -22,6 +23,10 @@ class RandomMerit(Merit):
     """
 
     std: float = Field(ge=0.0, le=1.0, default=0.1)
+
+    def max_value(self) -> float:
+        # a normal distribution is unbounded
+        return 1.0 if self.std == 0 else math.inf
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         return max(0.0, float(np.random.normal(1.0, self.std)))

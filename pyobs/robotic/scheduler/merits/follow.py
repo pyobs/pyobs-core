@@ -18,6 +18,9 @@ class FollowMerit(Merit):
 
     task_id: Any = Field(default_factory=str)
 
+    def max_value(self) -> float:
+        return 1.0
+
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         from ...observation import ObservationState
 

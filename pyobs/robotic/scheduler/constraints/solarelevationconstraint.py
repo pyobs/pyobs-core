@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, ClassVar
 
 import astroplan
 import astropy.units as u
@@ -9,7 +9,7 @@ from pydantic import Field
 
 from pyobs.utils.time import Time
 
-from .constraint import Constraint
+from .constraint import Constraint, stricter
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
@@ -23,9 +23,8 @@ log = logging.getLogger(__name__)
 class SolarElevationConstraint(Constraint):
     """Solar elevation constraint."""
 
-    min_elevation: float = Field(ge=-90, le=90, default=-90.0)
-    max_elevation: float = Field(ge=-90, le=90, default=-18.0)
-    direction: Literal["rising", "setting", "both"] = "both"
+    min_elevation: float = Field(ge=-90, le=90, default=-90.0, json_schema_extra=stricter("higher"))
+    max_elevation: float = Field(ge=-90, le=90, default=-18.0, json_schema_extra=stricter("lower"))
     req_token: ClassVar[str | None] = "SUNALT"
 
     def req_fields(self) -> dict[str, tuple[int | float | str, str]]:
@@ -34,7 +33,6 @@ class SolarElevationConstraint(Constraint):
             fields["MIN"] = (float(self.min_elevation), "deg")
         if self.max_elevation < 90.0:
             fields["MAX"] = (float(self.max_elevation), "deg")
-        fields["DIR"] = (self.direction, "")
         return fields
 
     def to_astroplan(self) -> astroplan.AtNightConstraint:
@@ -44,18 +42,7 @@ class SolarElevationConstraint(Constraint):
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
         sun = data.sun_altaz(time)
-        in_range = self.min_elevation <= float(sun.alt.degree) <= self.max_elevation
-        if self.direction == "both":
-            return in_range
-        else:
-            sun_coord = data.sun(time)
-            transit = data.observer.target_meridian_transit_time(time, sun_coord, which="nearest")
-            midnight = data.observer.midnight(time, which="nearest")
-
-            if self.direction == "rising":
-                return in_range and bool(midnight < time < transit)
-            else:
-                return in_range and not bool(midnight < time < transit)
+        return self.min_elevation <= float(sun.alt.degree) <= self.max_elevation
 
 
 __all__ = ["SolarElevationConstraint"]

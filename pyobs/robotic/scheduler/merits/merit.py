@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import math
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 
@@ -13,11 +14,24 @@ if TYPE_CHECKING:
     from ..dataprovider import DataProvider
 
 
+MERIT_FACTOR_KEY = "x-pyobs-merit-factor"
+"""JSON-schema key on a merit field whose value is (an upper bound of) the factor the merit returns,
+so editors can bound it."""
+
+
 class Merit(PolymorphicBaseModel, metaclass=ABCMeta):
     """Merit class."""
 
     @abstractmethod
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float: ...
+
+    def max_value(self) -> float:
+        """Largest value this merit can return with its current parameters.
+
+        Merits are multiplied, so a value above 1 raises a task's ranking. Override in derived
+        classes; the default (infinity) treats an undeclared merit as unbounded.
+        """
+        return math.inf
 
     @property
     def name(self) -> str:
@@ -45,4 +59,4 @@ class Merit(PolymorphicBaseModel, metaclass=ABCMeta):
         return [name for name, obj in inspect.getmembers(merits) if inspect.isclass(obj)]
 
 
-__all__ = ["Merit"]
+__all__ = ["Merit", "MERIT_FACTOR_KEY"]

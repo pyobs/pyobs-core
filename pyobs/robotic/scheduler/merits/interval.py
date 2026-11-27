@@ -34,6 +34,9 @@ class IntervalMerit(Merit):
         self._interval = TimeDelta(self.interval * u.Unit(self.unit))
         return self
 
+    def max_value(self) -> float:
+        return 1.0
+
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         from ...observation import ObservationState
 

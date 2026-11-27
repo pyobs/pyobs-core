@@ -7,7 +7,7 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from pydantic import Field
 
-from .constraint import Constraint
+from .constraint import Constraint, stricter
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
@@ -21,7 +21,7 @@ class AirmassConstraint(Constraint):
 
     cost: float = 2.0
     target_dependent: bool = True
-    max_airmass: float = Field(ge=1.0, le=9.9, default=1.3)
+    max_airmass: float = Field(ge=1.0, le=9.9, default=1.3, json_schema_extra=stricter("lower"))
     req_token: ClassVar[str | None] = "AIRMASS"
 
     def req_fields(self) -> dict[str, tuple[int | float | str, str]]:

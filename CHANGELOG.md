@@ -9,6 +9,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.30.2] - 2026-11-27
+
 ### Fixed
 
 - pyobsd in systemd mode no longer warns that `pyobs@.service` is outdated when it is called through a symlink (e.g.

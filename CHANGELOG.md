@@ -9,6 +9,12 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+### Changed
+
+- `SolarElevationConstraint.min_elevation` and `max_elevation` are optional (`None` = no limit), since
+  usually only one is needed. Defaults: no minimum, maximum -18. Stored values stay valid; -90 and 90
+  are normalised to `None`.
+
 ## [2.31.0] - 2026-11-27
 
 ### Added

@@ -96,7 +96,6 @@ Card                                        Value
 ``HIERARCH REQ MOONDIST MIN``               Minimum Moon distance in degrees (``MoonSeparationConstraint``)
 ``HIERARCH REQ MOONFRAC MAX``               Maximum Moon illumination, 0 to 1 (``MoonIlluminationConstraint``)
 ``HIERARCH REQ SUNALT MIN`` / ``MAX``       Solar elevation limits in degrees (``SolarElevationConstraint``)
-``HIERARCH REQ SUNALT DIR``                 ``rising``, ``setting`` or ``both``
 ``HIERARCH REQ TIME START`` / ``END``       Time window in UTC (``TimeConstraint``)
 ==========================================  ==========================================================
 

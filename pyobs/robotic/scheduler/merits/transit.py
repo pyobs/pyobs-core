@@ -44,6 +44,9 @@ class TransitMerit(Merit):
         self._min_window = self.min_window / (24.0 * 60.0 * self.period)
         return self
 
+    def max_value(self) -> float:
+        return 1.0
+
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         if task.target is None:
             return 0.0

@@ -8,7 +8,7 @@ from pydantic import Field
 
 from pyobs.utils.time import Time
 
-from .constraint import Constraint
+from .constraint import Constraint, stricter
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 class TimeConstraint(Constraint):
     """Time constraint."""
 
-    start: AstroPydanticTime = Field(default_factory=Time.now)
-    end: AstroPydanticTime = Field(default_factory=Time.now)
+    start: AstroPydanticTime = Field(default_factory=Time.now, json_schema_extra=stricter("higher"))
+    end: AstroPydanticTime = Field(default_factory=Time.now, json_schema_extra=stricter("lower"))
     req_token: ClassVar[str | None] = "TIME"
 
     def req_fields(self) -> dict[str, tuple[int | float | str, str]]:

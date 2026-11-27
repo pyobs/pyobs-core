@@ -9,6 +9,28 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.31.0] - 2026-11-27
+
+### Added
+
+- Strictness metadata for restricted users (pyobs-portal#198): constraint fields are marked with
+  `stricter("lower" | "higher")` (schema key `x-pyobs-stricter`), readable via
+  `Constraint.stricter_fields()`; `Merit.max_value()` returns the largest factor a merit can
+  produce (infinity by default), and `ConstantMerit.merit` carries `x-pyobs-merit-factor`.
+
+### Removed
+
+- **Breaking:** `SolarElevationConstraint.direction` and the `HIERARCH REQ SUNALT DIR` FITS card.
+  The constraint now only checks `min_elevation` and `max_elevation`. Stored constraints that
+  still contain a `direction` key no longer validate and must be migrated (pyobs-portal#198).
+
+### Fixed
+
+- `RandomMerit` now returns a factor drawn from a normal distribution with mean 1, clipped at 0,
+  instead of mean 0. Merits are multiplied, so the old version made the total merit negative half
+  of the time. `std` defaults to 0.1 and is limited to 1.0; stored merits with a larger `std` no
+  longer validate (#1126).
+
 ## [2.30.2] - 2026-11-27
 
 ### Fixed

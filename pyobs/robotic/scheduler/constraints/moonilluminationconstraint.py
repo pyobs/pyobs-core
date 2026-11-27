@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 import astroplan
 from pydantic import Field
 
-from .constraint import Constraint
+from .constraint import Constraint, stricter
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
@@ -18,7 +18,7 @@ class MoonIlluminationConstraint(Constraint):
     """Maximum Moon illumination (inclusive), ignored when the Moon is below the horizon."""
 
     cost: float = 3.0
-    max_phase: float = Field(ge=0.0, le=1.0, default=0.0)
+    max_phase: float = Field(ge=0.0, le=1.0, default=0.0, json_schema_extra=stricter("lower"))
     req_token: ClassVar[str | None] = "MOONFRAC"
 
     def req_fields(self) -> dict[str, tuple[int | float | str, str]]:

@@ -239,7 +239,7 @@ than accessing the archive directly. This ensures the lookahead cache is used du
    * - :class:`~pyobs.robotic.scheduler.merits.FollowMerit`
      - A specified other task has already completed this night.
    * - :class:`~pyobs.robotic.scheduler.merits.RandomMerit`
-     - Always (but with added Gaussian noise — useful for breaking ties randomly).
+     - Always, as a random factor around 1 (normal distribution, clipped at 0); useful for breaking ties randomly.
 
 .. autoclass:: pyobs.robotic.scheduler.merits.Merit
    :members:

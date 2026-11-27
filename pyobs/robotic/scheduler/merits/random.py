@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -15,12 +16,20 @@ if TYPE_CHECKING:
 
 
 class RandomMerit(Merit):
-    """Merit functions for a random normal-distributed number."""
+    """Random factor drawn from a normal distribution with mean 1, clipped at 0.
 
-    std: float = Field(ge=0.0, le=999.0, default=1.0)
+    Merits are multiplied, so a mean of 1 adds noise around the other merits (e.g. to break ties)
+    without shifting them on average.
+    """
+
+    std: float = Field(ge=0.0, le=1.0, default=0.1)
+
+    def max_value(self) -> float:
+        # a normal distribution is unbounded
+        return 1.0 if self.std == 0 else math.inf
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
-        return np.random.normal(0.0, self.std)
+        return max(0.0, float(np.random.normal(1.0, self.std)))
 
 
 __all__ = ["RandomMerit"]

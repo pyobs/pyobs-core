@@ -90,7 +90,6 @@ async def test_header_has_priority_and_all_constraint_cards(mocker) -> None:
         "HIERARCH REQ MOONDIST MIN": 20.0,
         "HIERARCH REQ MOONFRAC MAX": 0.5,
         "HIERARCH REQ SUNALT MAX": -18.0,
-        "HIERARCH REQ SUNALT DIR": "both",
         "HIERARCH REQ TIME START": "2026-10-13T20:00:00.000",
         "HIERARCH REQ TIME END": "2026-10-13T21:00:00.000",
     }

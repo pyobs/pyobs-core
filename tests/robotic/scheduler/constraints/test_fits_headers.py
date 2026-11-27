@@ -42,7 +42,6 @@ def test_moon_illumination() -> None:
 def test_solar_elevation_omits_unbounded_default() -> None:
     assert values(SolarElevationConstraint().get_fits_headers(1)) == {
         "HIERARCH REQ SUNALT MAX": -18.0,
-        "HIERARCH REQ SUNALT DIR": "both",
     }
 
 
@@ -58,18 +57,16 @@ def test_solar_elevation_omits_unbounded_default() -> None:
 def test_solar_elevation_only_writes_effective_bounds(
     minimum: float, maximum: float, expected_bounds: dict[str, float]
 ) -> None:
-    constraint = SolarElevationConstraint(min_elevation=minimum, max_elevation=maximum, direction="rising")
+    constraint = SolarElevationConstraint(min_elevation=minimum, max_elevation=maximum)
     expected: dict[str, object] = {f"HIERARCH REQ SUNALT2 {name}": value for name, value in expected_bounds.items()}
-    expected["HIERARCH REQ SUNALT2 DIR"] = "rising"
     assert values(constraint.get_fits_headers(2)) == expected
 
 
 def test_solar_elevation_with_values() -> None:
-    constraint = SolarElevationConstraint(min_elevation=-30.0, max_elevation=-12.0, direction="setting")
+    constraint = SolarElevationConstraint(min_elevation=-30.0, max_elevation=-12.0)
     assert values(constraint.get_fits_headers(1)) == {
         "HIERARCH REQ SUNALT MIN": -30.0,
         "HIERARCH REQ SUNALT MAX": -12.0,
-        "HIERARCH REQ SUNALT DIR": "setting",
     }
 
 
@@ -85,7 +82,6 @@ def test_time_window_as_utc_iso_strings() -> None:
 def test_later_constraint_of_a_type_gets_a_number_on_the_type_token() -> None:
     assert set(SolarElevationConstraint().get_fits_headers(2)) == {
         "HIERARCH REQ SUNALT2 MAX",
-        "HIERARCH REQ SUNALT2 DIR",
     }
     assert set(AirmassConstraint().get_fits_headers(3)) == {"HIERARCH REQ AIRMASS3 MAX"}
     assert set(TimeConstraint().get_fits_headers(2)) == {"HIERARCH REQ TIME2 START", "HIERARCH REQ TIME2 END"}
@@ -126,7 +122,7 @@ def test_every_card_fits_into_80_characters(index: int) -> None:
         AirmassConstraint(max_airmass=9.9),
         MoonSeparationConstraint(min_distance=180.0),
         MoonIlluminationConstraint(max_phase=0.123456789),
-        SolarElevationConstraint(min_elevation=-89.999999, max_elevation=-17.999999, direction="setting"),
+        SolarElevationConstraint(min_elevation=-89.999999, max_elevation=-17.999999),
         TimeConstraint(start=far, end=far + 1.0 * u.day),
     ]
     headers = {}

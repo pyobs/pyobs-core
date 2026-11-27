@@ -557,6 +557,35 @@ def test_check_installed(system, tmp_path) -> None:
     assert check_installed(settings, paths) == [f"{paths.unit} is outdated, run pyobsd setup as root."]
 
 
+def test_check_installed_pyobsd_via_symlink(system, tmp_path) -> None:
+    """A unit written with the venv's pyobsd isn't outdated when pyobsd is called through a symlink, or the other
+    way round. Another pyobsd still is."""
+    from pyobs.cli._systemd_files import SystemdSettings, check_installed
+
+    venv_exec = tmp_path / "venv" / "bin" / "pyobsd"
+    venv_exec.parent.mkdir(parents=True)
+    venv_exec.write_text("#!/bin/sh\n")
+    link = tmp_path / "pyobsd-link"
+    link.symlink_to(venv_exec)
+    other = tmp_path / "other-pyobsd"
+    other.write_text("#!/bin/sh\n")
+
+    paths = systemd_paths(tmp_path)
+    assert make_setup(tmp_path, systemd_opts(tmp_path), pyobsd_exec=str(venv_exec))() == 0
+
+    def settings(pyobsd_exec: Path) -> SystemdSettings:
+        return SystemdSettings(
+            str(pyobsd_exec), str(tmp_path / "pyobs" / "config"), str(tmp_path / "pyobs" / "run"), "pyobs", "pyobs"
+        )
+
+    assert check_installed(settings(venv_exec), paths) == []
+    assert check_installed(settings(link), paths) == []
+    assert check_installed(settings(other), paths) == [f"{paths.unit} is outdated, run pyobsd setup as root."]
+
+    assert make_setup(tmp_path, systemd_opts(tmp_path), pyobsd_exec=str(link))() == 0
+    assert check_installed(settings(venv_exec), paths) == []
+
+
 def test_check_installed_skips_unreadable(tmp_path, monkeypatch) -> None:
     from pyobs.cli import _systemd_files
 

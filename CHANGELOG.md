@@ -9,6 +9,8 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.31.0] - 2026-11-27
+
 ### Added
 
 - Strictness metadata for restricted users (pyobs-portal#198): constraint fields are marked with

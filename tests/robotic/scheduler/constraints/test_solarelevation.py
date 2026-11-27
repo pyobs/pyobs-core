@@ -32,3 +32,11 @@ async def test_solarelevation_constraint() -> None:
 
     time = Time("2025-11-03T20:00:00", scale="utc")
     assert await constraint(time, task, data) is True
+
+
+def test_solarelevation_has_no_direction() -> None:
+    from pydantic import ValidationError
+
+    assert "direction" not in SolarElevationConstraint.model_fields
+    with pytest.raises(ValidationError):
+        SolarElevationConstraint.model_validate({"max_elevation": -18.0, "direction": "rising"})

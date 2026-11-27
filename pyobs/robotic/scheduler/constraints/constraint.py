@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import astroplan
 import numpy as np
@@ -19,9 +19,30 @@ if TYPE_CHECKING:
     from ..dataprovider import DataProvider
 
 
+STRICTER_KEY = "x-pyobs-stricter"
+"""JSON-schema key on a constraint field: which direction of the value makes the constraint stricter,
+"lower" or "higher". Lets other tools (e.g. pyobs-portal's restricted users) compare two instances of
+the same constraint without knowing the class."""
+
+
+def stricter(direction: Literal["lower", "higher"]) -> dict[str, Any]:
+    """`json_schema_extra` for a field that gets stricter in the given direction."""
+    return {STRICTER_KEY: direction}
+
+
 class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):
     cost: float = 1.0  # change in derived classes if needed
     target_dependent: bool = False  # change in derived classes if needed
+
+    @classmethod
+    def stricter_fields(cls) -> dict[str, Literal["lower", "higher"]]:
+        """Fields marked with `stricter()`, mapped to the direction that makes the constraint stricter."""
+        result: dict[str, Literal["lower", "higher"]] = {}
+        for name, field in cls.model_fields.items():
+            extra = field.json_schema_extra
+            if isinstance(extra, dict) and extra.get(STRICTER_KEY) in ("lower", "higher"):
+                result[name] = extra[STRICTER_KEY]  # type: ignore[assignment]
+        return result
 
     @abstractmethod
     def to_astroplan(self) -> astroplan.Constraint: ...

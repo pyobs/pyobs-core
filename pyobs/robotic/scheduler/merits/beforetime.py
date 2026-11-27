@@ -20,6 +20,9 @@ class BeforeTimeMerit(Merit):
 
     time: AstroPydanticTime = Field(default_factory=Time.now)
 
+    def max_value(self) -> float:
+        return 1.0
+
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         return 1.0 if time <= self.time else 0.0
 

@@ -388,5 +388,27 @@ def test_logs_uses_units(systemctl, tmp_path, monkeypatch) -> None:
     assert calls == [
         ["journalctl", "-u", "pyobs@camera.service", "-f"],
         ["journalctl", "-u", "pyobs@dome.service"],
-        ["journalctl", "-u", "pyobs@*.service", "-n", "10"],
+        ["journalctl", "-u", "pyobs@dome.service", "-u", "pyobs@camera.service", "-n", "10"],
     ]
+
+
+def test_logs_all_without_glob(systemctl, tmp_path, monkeypatch) -> None:
+    """All modules: every config and every active unit without one, never the glob (#1122)."""
+    daemon = make_daemon(tmp_path, ["camera.yaml", "_dome.yaml", "bad name.yaml"])
+    systemctl.unit("old", "active", 1234)
+    systemctl.unit("dome", "active", 1235)
+    calls = []
+    monkeypatch.setattr(_systemd_daemon.os, "execvp", lambda f, args: calls.append(args))
+    daemon.logs(["-f"])
+    assert calls == [
+        ["journalctl", "-u", "pyobs@dome.service", "-u", "pyobs@camera.service", "-u", "pyobs@old.service", "-f"]
+    ]
+
+
+def test_logs_no_modules(systemctl, tmp_path, monkeypatch, capsys) -> None:
+    daemon = make_daemon(tmp_path, [])
+    monkeypatch.setattr(_systemd_daemon.os, "execvp", lambda f, args: pytest.fail("journalctl called"))
+    with pytest.raises(SystemExit) as e:
+        daemon.logs([])
+    assert e.value.code == 1
+    assert "No modules." in capsys.readouterr().out

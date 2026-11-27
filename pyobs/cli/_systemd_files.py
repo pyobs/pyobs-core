@@ -6,6 +6,7 @@ specs/plans/2026-11-25-pyobsd-systemd-mode.md.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import re
 import shlex
@@ -141,8 +142,29 @@ def file_differs(filename: str, content: str) -> bool | None:
         return None
 
 
+def _installed_pyobsd_exec(paths: SystemdPaths) -> str | None:
+    """The pyobsd in the installed unit's ExecStart, or None."""
+    try:
+        with open(paths.unit) as f:
+            m = re.search(r"^ExecStart=(.+) exec %i$", f.read(), re.MULTILINE)
+    except OSError:
+        return None
+    return m.group(1) if m else None
+
+
+def _same_file(a: str, b: str) -> bool:
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
 def check_installed(s: SystemdSettings, paths: SystemdPaths = SystemdPaths()) -> list[str]:
     """Warnings for missing or outdated files, for calls other than setup."""
+    # the unit may name another path to this pyobsd, e.g. a symlink in /usr/local/bin, that's fine
+    installed_exec = _installed_pyobsd_exec(paths)
+    if installed_exec is not None and installed_exec != s.pyobsd_exec and _same_file(installed_exec, s.pyobsd_exec):
+        s = dataclasses.replace(s, pyobsd_exec=installed_exec)
     warnings = []
     for filename, (content, _) in installed_files(s, paths).items():
         differs = file_differs(filename, content)

@@ -9,6 +9,16 @@ Entries for 2.6.0 to 2.14.0 were generated from commit subjects. Older entries w
 
 ## [Unreleased]
 
+## [2.30.2] - 2026-11-27
+
+### Fixed
+
+- pyobsd in systemd mode no longer warns that `pyobs@.service` is outdated when it is called through a symlink (e.g.
+  `/usr/local/bin/pyobsd`) and the unit names the target (or the other way round).
+- `pyobsd logs` without a module in systemd mode passes one `-u` per module (every config plus every running unit)
+  instead of `-u 'pyobs@*.service'`, which journalctl matches against every unit in the journal and took seconds to
+  minutes on a large journal (#1122).
+
 ## [2.30.1] - 2026-11-26
 
 ### Added

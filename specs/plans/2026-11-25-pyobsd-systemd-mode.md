@@ -1,10 +1,12 @@
 # Plan: systemd mode for pyobsd
 
-Status: in progress. Stop handling for the PID-file mode is released (pyobs-core 2.29.0/2.29.1, pyobs-web-admin
+Status: implemented. Released in pyobs-core 2.30.0 (`pyobsd start/restart --no-wait` in 2.30.1) and
+pyobs-web-admin 2.5.0. Stop handling for the PID-file mode is released (pyobs-core 2.29.0/2.29.1, pyobs-web-admin
 2.4.0). Mode switch, guard, `READY=1`, journal dedup, `pyobsd exec` and the exit code are merged (#1105, #1106,
 #1107), `pyobsd setup` for both modes is merged (#1108, #1109, #1112), the systemd backend too (#1113). Checked
-on hosts, see the steps. pyobs-core part released in 2.30.0. The pyobs-web-admin part has its own plan,
-`../../../pyobs-web-admin/specs/plans/2026-11-26-pyobsd-systemd-mode.md`.
+on hosts, see the steps. The pyobs-web-admin part has its own plan,
+`../../../pyobs-web-admin/specs/plans/2026-11-26-pyobsd-systemd-mode.md`. Open: `pyobsd logs` without a module
+uses a slow unit glob (#1122).
 Repos: pyobs-core, pyobs-web-admin
 
 ## Summary
@@ -327,11 +329,11 @@ Sending `READY=1` before the connection was considered and dropped: nearly every
 `set_state`, `set_capabilities` or `register_event`, and without a connection `_safe_send` gives up after about
 90 s and `open()` fails. It would need XmppComm to queue all of that and replay it on connect.
 
-### pyobs-web-admin (deferred)
+### pyobs-web-admin
 
 Worked out in `../../../pyobs-web-admin/specs/plans/2026-11-26-pyobsd-systemd-mode.md`, which supersedes
-the outline below. Until this is done, web-admin on a host in systemd mode cannot start modules: its Start runs
-`pyobs --pid-file`, which the guard refuses.
+the outline below (released in pyobs-web-admin 2.5.0). Before, web-admin on a host in systemd mode couldn't
+start modules: its Start ran `pyobs --pid-file`, which the guard refuses.
 
 In systemd mode (`_pyobsd_config().get("mode") == "systemd"`):
 
@@ -411,8 +413,9 @@ linger they stop together with that instance, a reboot cuts a warm-up after 2 mi
 
 Later:
 
-- [ ] pyobs-core: `pyobsd start/restart --no-wait` for web-admin, release 2.30.1.
-- [ ] pyobs-web-admin, see its plan `../../../pyobs-web-admin/specs/plans/2026-11-26-pyobsd-systemd-mode.md`.
+- [x] pyobs-core: `pyobsd start/restart --no-wait` for web-admin, release 2.30.1 (#1120).
+- [x] pyobs-web-admin, released in 2.5.0, see its plan
+      `../../../pyobs-web-admin/specs/plans/2026-11-26-pyobsd-systemd-mode.md`.
 
 ## Switching a host
 

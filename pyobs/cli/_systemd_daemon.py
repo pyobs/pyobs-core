@@ -270,16 +270,22 @@ class SystemdDaemon(PyobsDaemonBase):
         if to_start:
             self.start(to_start, wait=False)
 
+    def _known_modules(self) -> list[str]:
+        """All configs, plus active units without a config (renamed or removed since)."""
+        configs = self._list_configs()
+        by_active = {self._strip_disabled(m): m for m in configs}
+        active = {self._module_of_unit(u) for u in self._active_units()}
+        return sorted(set(configs) | {by_active.get(m, m) for m in active})
+
+    def _known_units(self, modules: list[str]) -> dict[str, str]:
+        """Units of the given modules by module, skipping names that can't be unit names."""
+        return {m: self._unit(m) for m in modules if self._valid_name(self._strip_disabled(m))}
+
     def status(self, print_json: bool = False, cpu_interval: float | None = None) -> None:
         configs = self._list_configs()
         by_active = {self._strip_disabled(m): m for m in configs}
-
-        # units of all configs, plus active units without a config (renamed or removed since)
-        active_units = self._active_units()
-        modules = sorted(
-            set(configs) | {by_active.get(self._module_of_unit(u), self._module_of_unit(u)) for u in active_units}
-        )
-        units = {m: self._unit(m) for m in modules if self._valid_name(self._strip_disabled(m))}
+        modules = self._known_modules()
+        units = self._known_units(modules)
         props = self._show(list(units.values()))
 
         # leftovers from the PID-file mode
@@ -379,10 +385,15 @@ class SystemdDaemon(PyobsDaemonBase):
         remainder = list(args)
         if remainder and remainder[0] == "--":
             remainder.pop(0)
-        unit = UNIT_GLOB
         if remainder and self._find_config(remainder[0]) is not None:
-            unit = self._unit(remainder.pop(0))
-        cmd = ["journalctl", "-u", unit, *remainder]
+            units = [self._unit(remainder.pop(0))]
+        else:
+            # one -u per unit, not UNIT_GLOB: journalctl matches a glob against every unit in the journal, which
+            # takes seconds to minutes on a large journal (#1122)
+            units = list(dict.fromkeys(self._known_units(self._known_modules()).values()))
+            if not units:
+                self._error("No modules.")
+        cmd = ["journalctl", *(a for u in units for a in ("-u", u)), *remainder]
         if self._verbose:
             print(f"[DEBUG] Executing: {' '.join(cmd)}")
         os.execvp("journalctl", cmd)

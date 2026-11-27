@@ -165,7 +165,7 @@ and writes everything a module prints to the journal. The commands stay the same
   also ``"restarts"``, and ``"restarting": true`` while it waits for a restart. After a failed start, systemd
   tries again every 10 s, up to 5 times in 5 minutes.
 - **logs** shows the journal of the units (``journalctl -u pyobs@<module>.service``), including tracebacks and
-  output of C libraries.
+  output of C libraries. Without a module, of every module with a config file plus every running one.
 
 As root, or as the user from **chuid** if the polkit rule from :program:`pyobsd setup` is installed.
 
